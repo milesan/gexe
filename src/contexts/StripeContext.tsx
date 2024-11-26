@@ -13,7 +13,7 @@ export function useStripe() {
   return useContext(StripeContext);
 }
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_LIVE_KEY);
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY_PROD || '');
 
 export function StripeProvider({ children }: { children: React.ReactNode }) {
   if (!stripePromise) {
