@@ -7,38 +7,63 @@ interface Props {
   question: ApplicationQuestion;
   value: any;
   onChange: (value: any) => void;
-  onAutoAdvance?: () => void;
+  onBlur?: () => void;
   themeColor?: string;
 }
 
-const MBTI_TYPES = [
-  'INTJ', 'INTP', 'ENTJ', 'ENTP',
-  'INFJ', 'INFP', 'ENFJ', 'ENFP',
-  'ISTJ', 'ISFJ', 'ESTJ', 'ESFJ',
-  'ISTP', 'ISFP', 'ESTP', 'ESFP'
-];
-
-export function RetroQuestionField({ question, value, onChange, onAutoAdvance, themeColor = 'garden-gold' }: Props) {
+export function RetroQuestionField({ question, value, onChange, onBlur, themeColor = 'garden-gold' }: Props) {
   const isConsentQuestion = question.order_number === 3;
   const isMBTIQuestion = question.text.toLowerCase().includes('mbti');
+  const isImageUpload = question.type === 'file';
 
   const handleNoConsent = () => {
-    window.location.href = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+    window.location.href = 'https://www.youtube.com/watch?v=xvFZjo5PgG0';
   };
+
+  if (isImageUpload) {
+    return (
+      <div className="space-y-4">
+        <h3 className="text-2xl font-display text-[#FFBF00]">
+          {question.text}
+          <span className="text-red-500 ml-1">*</span>
+        </h3>
+        <input
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={(e) => {
+            const files = Array.from(e.target.files || []);
+            onChange(files);
+            if (onBlur) onBlur();
+          }}
+          className="w-full bg-black/30 p-3 text-[#FFBF00] focus:outline-none focus:ring-2 focus:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30"
+          style={{
+            clipPath: `polygon(
+              0 4px, 4px 4px, 4px 0,
+              calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
+              100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
+              calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
+              0 calc(100% - 4px)
+            )`
+          }}
+        />
+      </div>
+    );
+  }
 
   if (isMBTIQuestion) {
     return (
       <div className="space-y-4">
         <h3 className="text-2xl font-display text-[#FFBF00]">
           {question.text}
-          {question.required && <span className="text-red-500 ml-1">*</span>}
+          <span className="text-red-500 ml-1">*</span>
         </h3>
         <input
           type="text"
           value={value || ''}
           onChange={(e) => onChange(e.target.value)}
+          onBlur={onBlur}
           className="w-full bg-black/30 p-3 text-[#FFBF00] focus:outline-none focus:ring-2 focus:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30"
-          required={question.required}
           style={{
             clipPath: `polygon(
               0 4px, 4px 4px, 4px 0,
@@ -59,16 +84,12 @@ export function RetroQuestionField({ question, value, onChange, onAutoAdvance, t
       : JSON.parse(question.options);
 
     const handleChange = (option: string) => {
-      if (isConsentQuestion && option === 'No') {
+      if (isConsentQuestion && option === 'Inconceivable!') {
         handleNoConsent();
         return;
       }
       onChange(option);
-      if (isConsentQuestion && option === 'Yes' && onAutoAdvance) {
-        setTimeout(() => {
-          onAutoAdvance();
-        }, 500);
-      }
+      if (onBlur) onBlur();
     };
 
     return (
@@ -88,13 +109,13 @@ export function RetroQuestionField({ question, value, onChange, onAutoAdvance, t
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.65 }}
               >
-                <div className="space-y-4 font-display text-lg leading-relaxed max-w-lg">
+                <div className="space-y-6 font-display text-2xl leading-relaxed max-w-2xl">
                   <p className="text-[#FFBF00]/60">This is a curated place, unlike any other.</p>
                   <p className="text-[#FFBF00]/70">We seek those with the attention span & curiosity 
                   to complete this application.</p>
                   <p className="text-[#FFBF00]/80">We're not impressed by your followers, fortune, 
                   or fame [though none of those exclude you].</p>
-                  <p className="text-[#FFBF00] text-2xl">We seek the realest.</p>
+                  <p className="text-[#FFBF00] text-3xl">We seek the realest.</p>
                 </div>
               </motion.div>
             </div>
@@ -105,31 +126,44 @@ export function RetroQuestionField({ question, value, onChange, onAutoAdvance, t
               animate={{ opacity: 1 }}
               transition={{ delay: 0.85 }}
             >
-              <h3 className="text-xl font-display mb-2 text-[#FFBF00]/90">
-                Do you consent to your data being stored and reviewed?
+              <h3 className="text-2xl font-display mb-2 text-[#FFBF00]/90">
+                {question.text}
+                <span className="text-red-500 ml-1">*</span>
               </h3>
               <p className="text-sm text-[#FFBF00]/60 -mt-1 mb-6">
                 We value data privacy.
               </p>
               <div className="flex justify-center gap-8">
-                {options.map((option: string) => (
-                  <button 
-                    key={option} 
-                    onClick={() => handleChange(option)}
-                    className="bg-[#FFBF00] text-black px-6 py-3 text-lg transition-colors hover:bg-[#FFBF00]/90"
-                    style={{
-                      clipPath: `polygon(
-                        0 4px, 4px 4px, 4px 0,
-                        calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
-                        100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
-                        calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
-                        0 calc(100% - 4px)
-                      )`
-                    }}
-                  >
-                    {option}
-                  </button>
-                ))}
+                <button 
+                  onClick={() => handleChange('As you wish.')}
+                  className="bg-[#FFBF00] text-black px-8 py-4 text-xl transition-colors hover:bg-[#FFBF00]/90"
+                  style={{
+                    clipPath: `polygon(
+                      0 4px, 4px 4px, 4px 0,
+                      calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
+                      100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
+                      calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
+                      0 calc(100% - 4px)
+                    )`
+                  }}
+                >
+                  As you wish.
+                </button>
+                <button 
+                  onClick={() => handleChange('Inconceivable!')}
+                  className="bg-[#FFBF00] text-black px-8 py-4 text-xl opacity-80 transition-colors hover:bg-[#FFBF00]/90"
+                  style={{
+                    clipPath: `polygon(
+                      0 4px, 4px 4px, 4px 0,
+                      calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
+                      100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
+                      calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
+                      0 calc(100% - 4px)
+                    )`
+                  }}
+                >
+                  Inconceivable!
+                </button>
               </div>
             </motion.div>
           </motion.div>
@@ -137,7 +171,7 @@ export function RetroQuestionField({ question, value, onChange, onAutoAdvance, t
           <>
             <h3 className="text-2xl font-display text-[#FFBF00]">
               {question.text}
-              {question.required && <span className="text-red-500 ml-1">*</span>}
+              <span className="text-red-500 ml-1">*</span>
             </h3>
             <div className="space-y-2">
               {options.map((option: string) => {
@@ -184,7 +218,6 @@ export function RetroQuestionField({ question, value, onChange, onAutoAdvance, t
                       checked={isSelected}
                       onChange={() => handleChange(option)}
                       className="sr-only"
-                      required={question.required}
                     />
                     <span className="text-base text-[#FFBF00]">{option}</span>
                   </label>
@@ -202,15 +235,15 @@ export function RetroQuestionField({ question, value, onChange, onAutoAdvance, t
       <div className="space-y-4">
         <h3 className="text-2xl font-display text-[#FFBF00]">
           {question.text}
-          {question.required && <span className="text-red-500 ml-1">*</span>}
+          <span className="text-red-500 ml-1">*</span>
         </h3>
         <div className="relative">
           <textarea
             value={value || ''}
             onChange={(e) => onChange(e.target.value)}
+            onBlur={onBlur}
             className="w-full bg-black/30 p-3 text-[#FFBF00] focus:outline-none focus:ring-2 focus:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30"
             rows={4}
-            required={question.required}
             style={{
               clipPath: `polygon(
                 0 4px, 4px 4px, 4px 0,
@@ -230,15 +263,15 @@ export function RetroQuestionField({ question, value, onChange, onAutoAdvance, t
     <div className="space-y-4">
       <h3 className="text-2xl font-display text-[#FFBF00]">
         {question.text}
-        {question.required && <span className="text-red-500 ml-1">*</span>}
+        <span className="text-red-500 ml-1">*</span>
       </h3>
       <div className="relative">
         <input
           type={question.type}
           value={value || ''}
           onChange={(e) => onChange(e.target.value)}
+          onBlur={onBlur}
           className="w-full bg-black/30 p-3 text-[#FFBF00] focus:outline-none focus:ring-2 focus:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30"
-          required={question.required}
           style={{
             clipPath: `polygon(
               0 4px, 4px 4px, 4px 0,
