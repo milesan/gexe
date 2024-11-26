@@ -1,6 +1,5 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sprout } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -34,7 +33,11 @@ export function WhitelistWelcomeModal({ isOpen, onClose }: Props) {
               )`
             }}
           >
-            <Sprout className="w-12 h-12 text-[#FFBF00] mx-auto mb-4" />
+            <img 
+              src="https://raw.githubusercontent.com/milesan/synesthesia/refs/heads/main/Enso%20Zen%20Soto%20Symbol.png" 
+              alt="Logo" 
+              className="w-12 h-12 mx-auto mb-4 invert"
+            />
             <h2 className="text-[#FFBF00] text-2xl font-display mb-4">Welcome to The Garden</h2>
             <p className="text-[#FFBF00]/60 mb-6">
               You have been approved for 2025 and have bypassed the application.
