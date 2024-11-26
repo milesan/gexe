@@ -1,22 +1,20 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { Trees } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Calendar, Settings, ChevronDown } from 'lucide-react';
 import { isSameWeek, addWeeks, isAfter, isBefore, startOfMonth, format, addMonths } from 'date-fns';
 import { WeekSelector } from '../components/WeekSelector';
 import { CabinSelector } from '../components/CabinSelector';
 import { BookingSummary } from '../components/BookingSummary';
 import { MaxWeeksModal } from '../components/MaxWeeksModal';
-import { WhitelistWelcomeModal } from '../components/WhitelistWelcomeModal';
+import { CalendarConfig } from '../components/admin/CalendarConfig';
 import { generateWeeks, generateSquigglePath, getWeeksInRange } from '../utils/dates';
 import { useWeeklyAccommodations } from '../hooks/useWeeklyAccommodations';
 import { useSession } from '../hooks/useSession';
 import { motion } from 'framer-motion';
 import { convertToUTC1 } from '../utils/timezone';
-import { supabase } from '../lib/supabase';
-import { useMediaQuery } from '../hooks/useMediaQuery';
 
 const DESKTOP_WEEKS = 16;
 const MOBILE_WEEKS = 12;
-const BASE_RATE = 245;
+const BASE_RATE = 3;
 const BACKGROUND_IMAGE = "https://images.unsplash.com/photo-1510798831971-661eb04b3739?q=80&w=2940&auto=format&fit=crop";
 
 export function Book2Page() {
@@ -25,9 +23,10 @@ export function Book2Page() {
   const [selectedAccommodation, setSelectedAccommodation] = useState<string | null>(null);
   const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(convertToUTC1(new Date('2024-12-16'), 0)));
   const [showMaxWeeksModal, setShowMaxWeeksModal] = useState(false);
-  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [showCalendarConfig, setShowCalendarConfig] = useState(false);
   const session = useSession();
-  const isMobile = useMediaQuery('(max-width: 768px)');
+  const isAdmin = session?.user?.email === 'andre@thegarden.pt';
+  const isMobile = window.innerWidth < 768;
   
   const [squigglePaths] = useState(() => 
     Array.from({ length: DESKTOP_WEEKS }, () => generateSquigglePath())
@@ -37,22 +36,6 @@ export function Book2Page() {
     generateWeeks(currentMonth, isMobile ? MOBILE_WEEKS : DESKTOP_WEEKS),
     [currentMonth, isMobile]
   );
-
-  useEffect(() => {
-    const checkWhitelistStatus = async () => {
-      if (!session?.user) return;
-
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user?.user_metadata?.has_seen_welcome && user?.user_metadata?.is_whitelisted) {
-        setShowWelcomeModal(true);
-        await supabase.auth.updateUser({
-          data: { has_seen_welcome: true }
-        });
-      }
-    };
-
-    checkWhitelistStatus();
-  }, [session]);
 
   const isConsecutiveWeek = (nextWeek: Date | undefined) => {
     if (!nextWeek || selectedWeeks.length === 0) return false;
@@ -123,37 +106,6 @@ export function Book2Page() {
         backgroundPosition: 'center',
       }}
     >
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="prose prose-stone mb-8">
-          <h1 className="font-serif text-3xl font-light text-stone-900 mb-4">Welcome to the Garden, wayfarer</h1>
-          <p className="text-stone-600 font-body leading-relaxed">
-            This is the final boss: the calendar. Choice awaits. Here are a few details to help you along the way...
-          </p>
-          <ul className="text-stone-600 font-body space-y-3 list-none pl-0">
-            <li className="flex items-start gap-2">
-              <span className="text-emerald-700">❧</span>
-              <span>A minimum stay of two weeks is recommended, and longer stays are generally <a href="https://www.wikiwand.com/en/articles/Self-selection_bias" target="_blank" rel="noopener noreferrer" className="text-emerald-700 hover:text-emerald-800">more</a> <a href="https://www.wikiwand.com/en/articles/Survivorship_bias" target="_blank" rel="noopener noreferrer" className="text-emerald-700 hover:text-emerald-800">meaningful</a></span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-emerald-700">❧</span>
-              Contributions include stay & lunch & dinner from Monday to Friday
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-emerald-700">❧</span>
-              All accommodations [except van & campers] include sheets, duvet, pillow, and towel
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-emerald-700">❧</span>
-              Free & unlimited access to laundry machines, dryers, and detergent
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-emerald-700">❧</span>
-              You are expected to participate in cleaning up after meals
-            </li>
-          </ul>
-        </div>
-      </div>
-
       <div className="grid lg:grid-cols-[2fr,1fr] gap-8 max-w-6xl mx-auto">
         <section>
           <div className="flex items-center justify-between mb-8">
@@ -166,11 +118,20 @@ export function Book2Page() {
               {getPrevMonthName()}
             </motion.button>
             
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-4">
               <h2 className="text-3xl font-serif font-light">
                 {format(currentMonth, `MMMM '''`)}
                 {format(currentMonth, 'yy')}
               </h2>
+              {isAdmin && (
+                <button
+                  onClick={() => setShowCalendarConfig(true)}
+                  className="flex items-center gap-2 bg-emerald-900 text-white px-4 py-2 rounded-lg hover:bg-emerald-800 transition-colors"
+                >
+                  <Settings className="w-4 h-4" />
+                  <span>Configure Rules</span>
+                </button>
+              )}
             </div>
             
             <motion.button
@@ -192,6 +153,10 @@ export function Book2Page() {
             currentMonth={currentMonth}
             isMobile={isMobile}
           />
+          
+          <div className="flex flex-col items-center mt-6">
+            <ChevronDown className="w-8 h-8 text-stone-400 animate-bounce" />
+          </div>
           
           <CabinSelector
             accommodations={accommodations}
@@ -217,10 +182,15 @@ export function Book2Page() {
         onClose={() => setShowMaxWeeksModal(false)}
       />
 
-      <WhitelistWelcomeModal
-        isOpen={showWelcomeModal}
-        onClose={() => setShowWelcomeModal(false)}
-      />
+      {showCalendarConfig && (
+        <CalendarConfig
+          onClose={() => setShowCalendarConfig(false)}
+          onSave={() => {
+            setShowCalendarConfig(false);
+            setSelectedWeeks([]);
+          }}
+        />
+      )}
     </div>
   );
 }
