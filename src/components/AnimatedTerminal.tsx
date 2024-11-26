@@ -1,10 +1,37 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
-import { Terminal } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-export function AnimatedTerminal() {
+interface Props {
+  onComplete: () => void;
+}
+
+const ASCII_ART = `████████╗██╗  ██╗███████╗     ██████╗  █████╗ ██████╗ ██████╗ ███████╗███╗   ██╗
+╚══██╔══╝██║  ██║██╔════╝    ██╔════╝ ██╔══██╗██╔══██╗██╔══██╗██╔════╝████╗  ██║
+   ██║   ███████║█████╗      ██║  ███╗███████║██████╔╝██║  ██║█████╗  ██╔██╗ ██║
+   ██║   ██╔══██║██╔══╝      ██║   ██║██╔══██║██╔══██╗██║  ██║██╔══╝  ██║╚██╗██║
+   ██║   ██║  ██║███████╗    ╚██████╔╝██║  ██║██║  ██║██████╔╝███████╗██║ ╚████║
+   ╚═╝   ╚═╝  ╚═╝╚══════╝     ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝ ╚══════╝╚═╝  ╚═══╝`;
+
+const MOBILE_ASCII_ART = `████████╗██╗  ██╗███████╗
+╚══██╔══╝██║  ██║██╔════╝
+   ██║   ███████║█████╗  
+   ██║   ██╔══██║██╔══╝  
+   ██║   ██║  ██║███████╗
+   ╚═╝   ╚═╝  ╚═╝╚══════╝
+
+██████╗  █████╗ ██████╗ ██████╗ ███████╗███╗   ██╗
+██╔════╝ ██╔══██╗██╔══██╗██╔══██╗██╔════╝████╗  ██║
+██║  ███╗███████║██████╔╝██║  ██║█████╗  ██╔██╗ ██║
+██║   ██║██╔══██║██╔══██╗██║  ██║██╔══╝  ██║╚██╗██║
+╚██████╔╝██║  ██║██║  ██║██████╔╝███████╗██║ ╚████║
+ ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝ ╚══════╝╚═╝  ╚═══╝`;
+
+export function AnimatedTerminal({ onComplete }: Props) {
+  const [asciiLines, setAsciiLines] = useState<string[]>([]);
+  const [currentLine, setCurrentLine] = useState(0);
+  const [currentChar, setCurrentChar] = useState(0);
   const [borderChars, setBorderChars] = useState<string[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
@@ -13,7 +40,7 @@ export function AnimatedTerminal() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [showAscii, setShowAscii] = useState(true);
+  const [useMatrixTheme] = useState(() => Math.random() < 0.33);
   const navigate = useNavigate();
   const isMobile = window.innerWidth < 768;
 
@@ -32,6 +59,10 @@ export function AnimatedTerminal() {
     window.addEventListener('resize', updateDimensions);
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
+
+  useEffect(() => {
+    setAsciiLines((isMobile ? MOBILE_ASCII_ART : ASCII_ART).split('\n'));
+  }, [isMobile]);
 
   useEffect(() => {
     if (dimensions.width === 0 || dimensions.height === 0) return;
@@ -66,6 +97,31 @@ export function AnimatedTerminal() {
 
     return () => clearInterval(interval);
   }, [dimensions]);
+
+  useEffect(() => {
+    if (asciiLines.length === 0 || currentLine >= asciiLines.length) return;
+
+    const line = asciiLines[currentLine];
+    if (currentChar >= line.length) {
+      setTimeout(() => {
+        setCurrentLine(prev => prev + 1);
+        setCurrentChar(0);
+      }, 100);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setCurrentChar(prev => prev + 1);
+    }, 7);
+
+    return () => clearTimeout(timer);
+  }, [asciiLines, currentLine, currentChar]);
+
+  useEffect(() => {
+    if (currentLine >= asciiLines.length && asciiLines.length > 0) {
+      setTimeout(onComplete, 500);
+    }
+  }, [currentLine, asciiLines.length, onComplete]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,31 +174,7 @@ export function AnimatedTerminal() {
     }
   };
 
-  const getBorderPosition = (index: number, dims = dimensions) => {
-    const { width: totalWidth, height: totalHeight } = dims;
-
-    if (index < totalWidth) {
-      return {
-        left: `${(index / totalWidth) * 100}%`,
-        top: '0'
-      };
-    } else if (index < totalWidth + totalHeight) {
-      return {
-        right: '0',
-        top: `${((index - totalWidth) / totalHeight) * 100}%`
-      };
-    } else if (index < (totalWidth * 2) + totalHeight) {
-      return {
-        right: `${((index - (totalWidth + totalHeight)) / totalWidth) * 100}%`,
-        bottom: '0'
-      };
-    } else {
-      return {
-        left: '0',
-        bottom: `${((index - (totalWidth * 2 + totalHeight)) / totalHeight) * 100}%`
-      };
-    }
-  };
+  const themeColor = useMatrixTheme ? 'garden-matrix' : 'garden-gold';
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-4">
@@ -162,7 +194,7 @@ export function AnimatedTerminal() {
             transition={{ duration: 0.05 }}
             className="absolute font-mono text-[#FFBF00] text-xl"
             style={{
-              ...getBorderPosition(index),
+              ...getBorderPosition(index, dimensions),
               transform: 'translate(-50%, -50%)'
             }}
           >
@@ -171,7 +203,7 @@ export function AnimatedTerminal() {
         ))}
 
         <AnimatePresence>
-          {showLogin && showAscii && (
+          {showLogin && (
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -181,9 +213,9 @@ export function AnimatedTerminal() {
               <div className="w-full max-w-[400px] p-8">
                 <div className="bg-black p-8">
                   <div className="flex items-center justify-center gap-3 mb-8">
-                    <Terminal className="text-[#FFBF00]" style={{ width: '1.5rem', height: '1.5rem' }} />
+                
                     <h1 className="text-base sm:text-xl font-mono text-[#FFBF00] whitespace-nowrap">
-                      create or remember
+                      create / remember
                     </h1>
                   </div>
 
@@ -265,4 +297,30 @@ export function AnimatedTerminal() {
       </div>
     </div>
   );
+}
+
+function getBorderPosition(index: number, dims = { width: 0, height: 0 }) {
+  const { width: totalWidth, height: totalHeight } = dims;
+
+  if (index < totalWidth) {
+    return {
+      left: `${(index / totalWidth) * 100}%`,
+      top: '0'
+    };
+  } else if (index < totalWidth + totalHeight) {
+    return {
+      right: '0',
+      top: `${((index - totalWidth) / totalHeight) * 100}%`
+    };
+  } else if (index < (totalWidth * 2) + totalHeight) {
+    return {
+      right: `${((index - (totalWidth + totalHeight)) / totalWidth) * 100}%`,
+      bottom: '0'
+    };
+  } else {
+    return {
+      left: '0',
+      bottom: `${((index - (totalWidth * 2 + totalHeight)) / totalHeight) * 100}%`
+    };
+  }
 }
