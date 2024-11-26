@@ -1,65 +1,44 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import type { Database } from '../types/database';
-
-type Accommodation = Database['public']['Tables']['accommodations']['Row'];
-
-const MAX_RETRIES = 3;
-const RETRY_DELAY = 1000; // 1 second
-
-async function fetchWithRetry(retries = 0): Promise<Accommodation[]> {
-  try {
-    const { data, error } = await supabase
-      .from('accommodations')
-      .select('*')
-      .order('price', { ascending: true });
-
-    if (error) throw error;
-    return data || [];
-  } catch (error) {
-    if (retries < MAX_RETRIES) {
-      console.warn(`Fetch attempt ${retries + 1} failed, retrying...`);
-      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
-      return fetchWithRetry(retries + 1);
-    }
-    throw error;
-  }
-}
+import type { Accommodation } from '../types';
 
 export function useAccommodations() {
   const [accommodations, setAccommodations] = useState<Accommodation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  useEffect(() => {
-    let isMounted = true;
-    let subscription: ReturnType<typeof supabase.channel> | null = null;
+  const loadAccommodations = useCallback(async () => {
+    try {
+      setError(null);
+      const { data, error: queryError } = await supabase
+        .from('accommodations')
+        .select(`
+          *,
+          parent:parent_accommodation_id (
+            id,
+            title,
+            inventory_count,
+            is_unlimited,
+            is_fungible
+          )
+        `)
+        .is('parent_accommodation_id', null)
+        .order('price', { ascending: true });
 
-    async function loadAccommodations() {
-      try {
-        setError(null);
-        const data = await fetchWithRetry();
-        
-        if (isMounted) {
-          setAccommodations(data);
-        }
-      } catch (e) {
-        console.error('Error loading accommodations:', e);
-        if (isMounted) {
-          setError(e instanceof Error ? e : new Error('Failed to load accommodations'));
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
+      if (queryError) throw queryError;
+      setAccommodations(data || []);
+    } catch (e) {
+      console.error('Error loading accommodations:', e);
+      setError(e instanceof Error ? e : new Error('Failed to load accommodations'));
+    } finally {
+      setLoading(false);
     }
+  }, []);
 
-    // Initial load
+  useEffect(() => {
     loadAccommodations();
 
-    // Subscribe to changes
-    subscription = supabase
+    const subscription = supabase
       .channel('accommodations_changes')
       .on('postgres_changes', 
         { 
@@ -74,10 +53,14 @@ export function useAccommodations() {
       .subscribe();
 
     return () => {
-      isMounted = false;
-      subscription?.unsubscribe();
+      subscription.unsubscribe();
     };
-  }, []);
+  }, [loadAccommodations]);
 
-  return { accommodations, loading, error };
+  return { 
+    accommodations, 
+    loading, 
+    error,
+    refresh: loadAccommodations
+  };
 }
