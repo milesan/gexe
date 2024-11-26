@@ -1,82 +1,41 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { useAccommodations } from './useAccommodations';
+import { useAvailability } from './useAvailability';
+import { addDays, eachDayOfInterval } from 'date-fns';
 import { supabase } from '../lib/supabase';
-import type { Accommodation } from '../types';
 
-function getDatesInRange(startDate: Date, endDate: Date): string[] {
-  const dates: string[] = [];
-  const currentDate = new Date(startDate);
-  
-  while (currentDate < endDate) {
-    dates.push(currentDate.toISOString().split('T')[0]);
-    currentDate.setDate(currentDate.getDate() + 1);
-  }
-  
-  return dates;
+interface DormOccupancy {
+  [dormId: string]: {
+    [date: string]: number;
+  };
 }
 
 export function useWeeklyAccommodations() {
-  const [accommodations, setAccommodations] = useState<Accommodation[]>([]);
+  const { accommodations, loading: accommodationsLoading, error: accommodationsError, refresh } = useAccommodations();
+  const { availabilityMap, loading: availabilityLoading, error: availabilityError, checkAvailability } = useAvailability();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const [availabilityMap, setAvailabilityMap] = useState<Record<string, number>>({});
-  const [lastCheckedDates, setLastCheckedDates] = useState<{start: Date | null, end: Date | null}>({
-    start: null,
-    end: null
-  });
+  const [dormOccupancy, setDormOccupancy] = useState<DormOccupancy>({});
 
-  const loadAccommodations = useCallback(async () => {
+  useEffect(() => {
+    setLoading(accommodationsLoading || availabilityLoading);
+    setError(accommodationsError || availabilityError);
+  }, [accommodationsLoading, availabilityLoading, accommodationsError, availabilityError]);
+
+  const checkWeekAvailability = useCallback(async (startDate: Date, endDate: Date) => {
+    if (!startDate || !endDate) return;
+
     try {
-      setLoading(true);
-      const { data, error: queryError } = await supabase
-        .from('accommodations')
-        .select(`
-          *,
-          parent:parent_accommodation_id (
-            id,
-            title,
-            inventory_count,
-            is_unlimited
-          )
-        `)
-        .order('price', { ascending: true });
-
-      if (queryError) throw queryError;
-      setAccommodations(data || []);
-    } catch (err) {
-      console.error('Error loading accommodations:', err);
-      setError(err instanceof Error ? err : new Error('Failed to load accommodations'));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const checkAvailability = useCallback(async (startDate: Date, endDate: Date) => {
-    try {
-      // If we've already checked these dates, don't check again
-      if (lastCheckedDates.start?.getTime() === startDate.getTime() && 
-          lastCheckedDates.end?.getTime() === endDate.getTime()) {
-        return;
-      }
-
       // Get all bookings for the date range
       const { data: bookings, error } = await supabase
         .from('bookings')
         .select(`
-          id,
           accommodation_id,
           check_in,
           check_out,
           accommodations!inner (
             id,
-            title,
-            parent_accommodation_id,
-            is_unlimited,
-            parent:parent_accommodation_id (
-              id,
-              title,
-              inventory_count,
-              is_unlimited
-            )
+            parent_accommodation_id
           )
         `)
         .eq('status', 'confirmed')
@@ -84,104 +43,87 @@ export function useWeeklyAccommodations() {
 
       if (error) throw error;
 
-      const newAvailabilityMap: Record<string, number> = {};
-      const dateRange = getDatesInRange(startDate, endDate);
+      // Initialize occupancy tracking for dorms
+      const occupancy: DormOccupancy = {};
+      accommodations
+        .filter(acc => acc.is_fungible && !acc.is_unlimited)
+        .forEach(acc => {
+          occupancy[acc.id] = {};
+        });
 
-      // Process each accommodation
-      accommodations.forEach(acc => {
-        if (acc.parent_accommodation_id) {
-          // Skip individual units
-          return;
-        }
-
-        // Handle unlimited accommodations
-        if (acc.is_unlimited) {
-          newAvailabilityMap[acc.id] = 999; // Always available
-          return;
-        }
-
-        if (acc.title.includes('Dorm') || acc.is_fungible) {
-          // For dorms and fungible accommodations, count available units per day
-          const totalUnits = acc.inventory_count;
-          const unitsPerDay = new Map<string, number>();
-          
-          // Initialize all dates with 0 bookings
-          dateRange.forEach(date => unitsPerDay.set(date, 0));
-
-          // Count bookings for each day
-          bookings?.forEach(booking => {
-            if (booking.accommodations?.parent?.id === acc.id) {
-              const bookingStart = new Date(booking.check_in);
-              const bookingEnd = new Date(booking.check_out);
-              const bookingDates = getDatesInRange(
-                bookingStart > startDate ? bookingStart : startDate,
-                bookingEnd < endDate ? bookingEnd : endDate
-              );
-
-              bookingDates.forEach(date => {
-                const currentCount = unitsPerDay.get(date) || 0;
-                unitsPerDay.set(date, currentCount + 1);
-              });
-            }
+      // Process each booking
+      bookings?.forEach(booking => {
+        const parentId = booking.accommodations.parent_accommodation_id;
+        if (parentId && occupancy[parentId]) {
+          const dates = eachDayOfInterval({
+            start: new Date(booking.check_in),
+            end: new Date(booking.check_out)
           });
 
-          // Find minimum available units across all days
-          let minAvailableUnits = totalUnits;
-          unitsPerDay.forEach(unitsUsed => {
-            const availableUnitsForDay = totalUnits - unitsUsed;
-            minAvailableUnits = Math.min(minAvailableUnits, availableUnitsForDay);
+          dates.forEach(date => {
+            const dateStr = date.toISOString().split('T')[0];
+            occupancy[parentId][dateStr] = (occupancy[parentId][dateStr] || 0) + 1;
           });
-
-          newAvailabilityMap[acc.id] = Math.max(0, minAvailableUnits);
-        } else {
-          // For regular accommodations
-          const isBooked = bookings?.some(booking => 
-            booking.accommodation_id === acc.id &&
-            new Date(booking.check_in) < endDate &&
-            new Date(booking.check_out) > startDate
-          );
-
-          newAvailabilityMap[acc.id] = isBooked ? -1 : 1;
         }
       });
 
-      setAvailabilityMap(newAvailabilityMap);
-      setLastCheckedDates({ start: startDate, end: endDate });
+      setDormOccupancy(occupancy);
+      await checkAvailability(startDate, addDays(endDate, 6));
     } catch (err) {
       console.error('Error checking availability:', err);
       setError(err instanceof Error ? err : new Error('Failed to check availability'));
     }
-  }, [accommodations, lastCheckedDates]);
+  }, [checkAvailability, accommodations]);
 
-  useEffect(() => {
-    loadAccommodations();
+  const getMaxOccupancy = useCallback((dormId: string, startDate: Date, endDate: Date) => {
+    const dateRange = eachDayOfInterval({ start: startDate, end: endDate });
+    let maxOccupancy = 0;
 
-    const subscription = supabase
-      .channel('bookings_changes')
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'bookings' 
-        }, 
-        () => {
-          if (lastCheckedDates.start && lastCheckedDates.end) {
-            checkAvailability(lastCheckedDates.start, lastCheckedDates.end);
-          }
-        }
-      )
-      .subscribe();
+    dateRange.forEach(date => {
+      const dateStr = date.toISOString().split('T')[0];
+      const occupancy = dormOccupancy[dormId]?.[dateStr] || 0;
+      maxOccupancy = Math.max(maxOccupancy, occupancy);
+    });
 
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [loadAccommodations, checkAvailability, lastCheckedDates]);
+    return maxOccupancy;
+  }, [dormOccupancy]);
+
+  const isAccommodationAvailable = useCallback(async (accommodation: any, startDate?: Date, endDate?: Date) => {
+    if (!startDate || !endDate) return false;
+
+    try {
+      // For unlimited accommodations
+      if (accommodation.is_unlimited) return true;
+
+      // For fungible accommodations (dorms)
+      if (accommodation.is_fungible && !accommodation.is_unlimited) {
+        const maxOccupancy = getMaxOccupancy(accommodation.id, startDate, endDate);
+        return maxOccupancy < accommodation.inventory_count;
+      }
+
+      // For regular accommodations, check if there are any overlapping bookings
+      const { data: bookings } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('accommodation_id', accommodation.id)
+        .eq('status', 'confirmed')
+        .or(`check_in.lte.${endDate.toISOString()},check_out.gt.${startDate.toISOString()}`);
+
+      return !bookings?.length;
+    } catch (err) {
+      console.error('Error checking availability:', err);
+      return false;
+    }
+  }, [getMaxOccupancy]);
 
   return { 
     accommodations, 
     loading, 
     error,
-    checkAvailability,
-    availabilityMap
+    checkAvailability: checkWeekAvailability,
+    availabilityMap,
+    getMaxOccupancy,
+    isAccommodationAvailable,
+    refresh
   };
 }
