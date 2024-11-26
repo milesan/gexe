@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Calendar } from 'lucide-react';
+import { Calendar, Settings } from 'lucide-react';
 import { isSameWeek, addWeeks, isAfter, isBefore, startOfMonth, format, addMonths } from 'date-fns';
 import { WeekSelector } from './WeekSelector';
 import { CabinSelector } from './CabinSelector';
@@ -12,8 +12,9 @@ import { useSession } from '../hooks/useSession';
 import { motion } from 'framer-motion';
 import { convertToUTC1 } from '../utils/timezone';
 
-const WEEKS_TO_SHOW = 16;
-const BASE_RATE = 245;
+const DESKTOP_WEEKS = 16;
+const MOBILE_WEEKS = 12;
+const BASE_RATE = 3;
 const BACKGROUND_IMAGE = "https://images.unsplash.com/photo-1510798831971-661eb04b3739?q=80&w=2940&auto=format&fit=crop";
 
 export function Book2Page() {
@@ -24,17 +25,17 @@ export function Book2Page() {
   const [showMaxWeeksModal, setShowMaxWeeksModal] = useState(false);
   const [showCalendarConfig, setShowCalendarConfig] = useState(false);
   const session = useSession();
+  const isAdmin = session?.user?.email === 'andre@thegarden.pt';
+  const isMobile = window.innerWidth < 768;
   
   const [squigglePaths] = useState(() => 
-    Array.from({ length: WEEKS_TO_SHOW }, () => generateSquigglePath())
+    Array.from({ length: DESKTOP_WEEKS }, () => generateSquigglePath())
   );
 
   const weeks = useMemo(() => 
-    generateWeeks(currentMonth, WEEKS_TO_SHOW),
-    [currentMonth]
+    generateWeeks(currentMonth, isMobile ? MOBILE_WEEKS : DESKTOP_WEEKS),
+    [currentMonth, isMobile]
   );
-
-  const isAdmin = session?.user?.email === 'andre@thegarden.pt';
 
   const isConsecutiveWeek = (nextWeek: Date | undefined) => {
     if (!nextWeek || selectedWeeks.length === 0) return false;
@@ -104,7 +105,7 @@ export function Book2Page() {
         backgroundSize: 'cover',
         backgroundPosition: 'center',
       }}
-    
+    >
       <div className="grid lg:grid-cols-[2fr,1fr] gap-8 max-w-6xl mx-auto">
         <section>
           <div className="flex items-center justify-between mb-8">
@@ -117,7 +118,7 @@ export function Book2Page() {
               {getPrevMonthName()}
             </motion.button>
             
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-4">
               <h2 className="text-3xl font-serif font-light">
                 {format(currentMonth, `MMMM '''`)}
                 {format(currentMonth, 'yy')}
@@ -125,9 +126,10 @@ export function Book2Page() {
               {isAdmin && (
                 <button
                   onClick={() => setShowCalendarConfig(true)}
-                  className="p-1 hover:bg-stone-100 rounded-full transition-colors"
+                  className="flex items-center gap-2 bg-emerald-900 text-white px-4 py-2 rounded-lg hover:bg-emerald-800 transition-colors"
                 >
-                  <Calendar className="w-4 h-4 text-emerald-600" />
+                  <Settings className="w-4 h-4" />
+                  <span>Configure Rules</span>
                 </button>
               )}
             </div>
@@ -149,6 +151,7 @@ export function Book2Page() {
             isConsecutiveWeek={isConsecutiveWeek}
             isFirstOrLastSelected={isFirstOrLastSelected}
             currentMonth={currentMonth}
+            isMobile={isMobile}
           />
           
           <CabinSelector
@@ -162,7 +165,8 @@ export function Book2Page() {
 
         <BookingSummary
           selectedWeeks={selectedWeeks}
-          selectedAccommodation={selectedAccommodation}
+          selectedAccommodation={selectedAccommodation ? 
+            accommodations.find(a => a.id === selectedAccommodation) : null}
           baseRate={BASE_RATE}
           onClearWeeks={() => setSelectedWeeks([])}
           onClearAccommodation={() => setSelectedAccommodation(null)}
