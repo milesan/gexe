@@ -1,7 +1,6 @@
 import { Auth as SupabaseAuth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { useState, useEffect } from 'react';
-import { Sprout } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export function Auth() {
@@ -32,7 +31,11 @@ export function Auth() {
     <div className="max-w-md mx-auto">
       <div className="text-center mb-12">
         <div className="flex items-center justify-center gap-3 mb-4">
-          <Sprout className="w-10 h-10 text-emerald-900" />
+          <img 
+            src="https://raw.githubusercontent.com/milesan/synesthesia/refs/heads/main/Enso%20Zen%20Soto%20Symbol.png" 
+            alt="Logo" 
+            className="w-10 h-10"
+          />
           <div>
             <h1 className="text-3xl font-display font-light text-stone-900">The Garden</h1>
           </div>
