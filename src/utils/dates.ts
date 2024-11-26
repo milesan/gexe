@@ -1,25 +1,40 @@
-import { addWeeks, startOfWeek, addDays, addMonths } from 'date-fns';
+import { addWeeks, startOfWeek, addDays, addMonths, setDay } from 'date-fns';
 import { convertToUTC1 } from './timezone';
 
 export function generateWeeks(startDate: Date, count: number): Date[] {
   const weeks: Date[] = [];
 
-  // Special period dates in Portugal time
+  // Special period dates in Portugal time (UTC+1)
   const specialDates = {
-    dec16: convertToUTC1(new Date('2024-12-16'), 0),
-    dec23: convertToUTC1(new Date('2024-12-23'), 0),
-    dec30: convertToUTC1(new Date('2024-12-30'), 0)
+    dec16: convertToUTC1(new Date('2024-12-16'), 0), // Monday
+    dec23: convertToUTC1(new Date('2024-12-23'), 0), // Monday
+    dec30: convertToUTC1(new Date('2024-12-30'), 0), // Monday
+    jan07: convertToUTC1(new Date('2025-01-07'), 0)  // Tuesday
   };
 
-  // Special period (Dec 16 - Jan 6)
+  // Special period (Dec 16 - Jan 5)
   if (startDate <= specialDates.dec16) {
-    weeks.push(specialDates.dec16);
-    weeks.push(specialDates.dec23);
-    weeks.push(specialDates.dec30);
+    weeks.push(specialDates.dec16); // Dec 16-22
+    weeks.push(specialDates.dec23); // Dec 23-29
+    weeks.push(specialDates.dec30); // Dec 30-Jan 5
   }
 
-  // For dates after the special period, use scheduling rules
-  let currentWeek = startDate > specialDates.dec30 ? startOfWeek(startDate) : convertToUTC1(new Date('2025-01-07'), 0);
+  // For dates after the special period, start from Jan 7 (Tuesday)
+  let currentWeek = startDate > specialDates.dec30 
+    ? startDate 
+    : specialDates.jan07;
+
+  // Ensure we start on a Tuesday for regular weeks
+  if (startDate > specialDates.jan07) {
+    // Convert to UTC+1 before setting day
+    currentWeek = convertToUTC1(currentWeek, 0);
+    currentWeek = setDay(currentWeek, 2); // 2 = Tuesday
+    
+    // If we went backwards, add a week
+    if (currentWeek < startDate) {
+      currentWeek = addDays(currentWeek, 7);
+    }
+  }
   
   while (weeks.length < count) {
     if (currentWeek >= startDate || weeks.length === 0) {
