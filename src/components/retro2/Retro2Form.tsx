@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { RetroQuestionField } from './RetroQuestionField';
 import { Sprout, Send, ChevronRight, LogOut, Terminal } from 'lucide-react';
+import { AutosaveNotification } from '../AutosaveNotification';
+import { useAutosave } from '../../hooks/useAutosave';
 import type { ApplicationQuestion } from '../../types/application';
 import { supabase } from '../../lib/supabase';
 import { useNavigate } from 'react-router-dom';
@@ -15,51 +17,65 @@ export function Retro2Form({ questions, onSubmit }: Props) {
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentSection, setCurrentSection] = useState(0);
-  const [useMatrixTheme] = useState(() => Math.random() < 0.33);
   const navigate = useNavigate();
   const contentRef = useRef<HTMLDivElement>(null);
+  const { saveData, loadSavedData, showSaveNotification, setShowSaveNotification } = useAutosave();
+
+  // Load saved data and check consent status
+  useEffect(() => {
+    const initializeForm = async () => {
+      const savedData = await loadSavedData();
+      if (savedData) {
+        setFormData(savedData);
+        // If user has already consented, skip to next section
+        if (savedData[3] === 'As you wish.') {
+          setCurrentSection(1);
+        }
+      }
+    };
+    initializeForm();
+  }, [loadSavedData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
       await onSubmit(formData);
+      // Clear saved data after successful submission
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase
+          .from('saved_applications')
+          .delete()
+          .eq('user_id', user.id);
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleChange = (questionId: number, value: any) => {
-    setFormData(prev => ({
-      ...prev,
+    const newFormData = {
+      ...formData,
       [questionId]: value
-    }));
+    };
+    setFormData(newFormData);
 
-    // Auto-scroll to next question after a short delay
-    setTimeout(() => {
-      const currentQuestionEl = document.querySelector(`[data-question="${questionId}"]`);
-      if (currentQuestionEl && contentRef.current) {
-        const nextQuestionEl = currentQuestionEl.nextElementSibling;
-        if (nextQuestionEl) {
-          const offset = nextQuestionEl.getBoundingClientRect().top - 
-                        contentRef.current.getBoundingClientRect().top + 
-                        contentRef.current.scrollTop - 100; // Add some padding
-          contentRef.current.scrollTo({
-            top: offset,
-            behavior: 'smooth'
-          });
-        }
-      }
-    }, 100);
+    // If this is the consent question and user consents, auto-advance
+    if (questionId === 3 && value === 'As you wish.') {
+      setTimeout(() => {
+        setCurrentSection(1);
+      }, 500);
+    }
+  };
+
+  const handleBlur = () => {
+    saveData(formData);
   };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate('/');
-  };
-
-  const handleAutoAdvance = () => {
-    setCurrentSection(prev => Math.min(sectionNames.length - 1, prev + 1));
   };
 
   const sections = questions.reduce((acc, question) => {
@@ -74,25 +90,18 @@ export function Retro2Form({ questions, onSubmit }: Props) {
   const sectionNames = Object.keys(sections);
   const currentSectionName = sectionNames[currentSection];
   const currentQuestions = sections[currentSectionName] || [];
-  
-  // Calculate progress based on answered required questions
-  const totalRequiredQuestions = questions.filter(q => q.required).length;
-  const answeredRequiredQuestions = questions
-    .filter(q => q.required)
-    .filter(q => formData[q.order_number] !== undefined && formData[q.order_number] !== '')
-    .length;
-  const progress = (answeredRequiredQuestions / totalRequiredQuestions) * 100;
 
-  // Check if current section is complete
   const isCurrentSectionComplete = () => {
     return currentQuestions.every(question => {
       if (!question.required) return true;
-      return formData[question.order_number] !== undefined && formData[question.order_number] !== '';
+      const value = formData[question.order_number];
+      return value !== undefined && value !== '' && value !== null;
     });
   };
 
+  const progress = ((currentSection + 1) / sectionNames.length) * 100;
+
   useEffect(() => {
-    // Reset scroll position when changing sections
     if (contentRef.current) {
       contentRef.current.scrollTop = 0;
     }
@@ -100,7 +109,6 @@ export function Retro2Form({ questions, onSubmit }: Props) {
 
   return (
     <div className="min-h-screen bg-black text-[#FFBF00] font-mono">
-      {/* Fixed Header */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-black border-b border-[#FFBF00]/20">
         <div className="max-w-2xl mx-auto px-4">
           <div className="flex items-center justify-between py-4">
@@ -117,7 +125,6 @@ export function Retro2Form({ questions, onSubmit }: Props) {
             </button>
           </div>
 
-          {/* Section Navigation */}
           <div className="flex gap-6 py-2 overflow-x-auto scrollbar-none">
             {sectionNames.map((name, index) => (
               <button
@@ -137,7 +144,6 @@ export function Retro2Form({ questions, onSubmit }: Props) {
             ))}
           </div>
 
-          {/* Progress Bar */}
           <div className="h-0.5 bg-[#FFBF00]/10">
             <motion.div
               className="h-full bg-[#FFBF00]"
@@ -149,7 +155,6 @@ export function Retro2Form({ questions, onSubmit }: Props) {
         </div>
       </div>
 
-      {/* Scrollable Content Area */}
       <div 
         ref={contentRef}
         className="fixed top-[140px] bottom-[80px] left-0 right-0 overflow-y-auto"
@@ -173,9 +178,8 @@ export function Retro2Form({ questions, onSubmit }: Props) {
                   question={question}
                   value={formData[question.order_number]}
                   onChange={(value) => handleChange(question.order_number, value)}
-                  onAutoAdvance={handleAutoAdvance}
+                  onBlur={handleBlur}
                 />
-                {/* Aesthetic divider */}
                 <div className="section-divider relative" />
               </div>
             ))}
@@ -183,7 +187,6 @@ export function Retro2Form({ questions, onSubmit }: Props) {
         </div>
       </div>
 
-      {/* Fixed Navigation Buttons */}
       <div className="fixed bottom-4 right-4 left-4 flex justify-between items-center max-w-2xl mx-auto">
         {currentSection > 0 && (
           <button
@@ -232,7 +235,7 @@ export function Retro2Form({ questions, onSubmit }: Props) {
               </>
             )}
           </button>
-        ) : (
+        ) : currentSection === 0 ? null : (
           <button
             type="button"
             onClick={() => isCurrentSectionComplete() && setCurrentSection(prev => prev + 1)}
@@ -261,6 +264,11 @@ export function Retro2Form({ questions, onSubmit }: Props) {
       <div className="fixed bottom-4 left-4 text-[#FFBF00]/20">
         <Terminal className="w-5 h-5" />
       </div>
+
+      <AutosaveNotification 
+        show={showSaveNotification} 
+        onClose={() => setShowSaveNotification(false)} 
+      />
     </div>
   );
 }
