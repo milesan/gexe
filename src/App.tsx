@@ -7,6 +7,7 @@ import { ConfirmationPage } from './pages/ConfirmationPage';
 import { Retro2Page } from './pages/Retro2Page';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { StripeProvider } from './contexts/StripeContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
 import { useSession } from './hooks/useSession';
@@ -52,12 +53,14 @@ export default function App() {
   if (loading || !session) {
     return (
       <ErrorBoundary>
-        <Router>
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/confirmation" element={<ConfirmationPage />} />
-          </Routes>
-        </Router>
+        <ThemeProvider>
+          <Router>
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/confirmation" element={<ConfirmationPage />} />
+            </Routes>
+          </Router>
+        </ThemeProvider>
       </ErrorBoundary>
     );
   }
@@ -71,14 +74,16 @@ export default function App() {
   if (isAdmin || applicationStatus === 'approved') {
     return (
       <ErrorBoundary>
-        <Router>
-          <StripeProvider>
-            <Routes>
-              <Route path="/*" element={<AuthenticatedApp />} />
-              <Route path="/confirmation" element={<ConfirmationPage />} />
-            </Routes>
-          </StripeProvider>
-        </Router>
+        <ThemeProvider>
+          <Router>
+            <StripeProvider>
+              <Routes>
+                <Route path="/*" element={<AuthenticatedApp />} />
+                <Route path="/confirmation" element={<ConfirmationPage />} />
+              </Routes>
+            </StripeProvider>
+          </Router>
+        </ThemeProvider>
       </ErrorBoundary>
     );
   }
@@ -87,11 +92,13 @@ export default function App() {
   if (!hasApplied) {
     return (
       <ErrorBoundary>
-        <Router>
-          <Routes>
-            <Route path="*" element={<Retro2Page />} />
-          </Routes>
-        </Router>
+        <ThemeProvider>
+          <Router>
+            <Routes>
+              <Route path="*" element={<Retro2Page />} />
+            </Routes>
+          </Router>
+        </ThemeProvider>
       </ErrorBoundary>
     );
   }
@@ -99,7 +106,9 @@ export default function App() {
   // If they've applied but application is pending or rejected
   return (
     <ErrorBoundary>
-      <PendingPage status={applicationStatus} />
+      <ThemeProvider>
+        <PendingPage status={applicationStatus} />
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }
