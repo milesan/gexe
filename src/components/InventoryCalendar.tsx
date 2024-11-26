@@ -40,8 +40,8 @@ export function InventoryCalendar({ onClose }: Props) {
 
   async function loadData() {
     try {
-      setError(null);
       setLoading(true);
+      setError(null);
 
       // Load accommodations
       const { data: accommodationsData, error: accommodationsError } = await supabase
@@ -182,6 +182,11 @@ export function InventoryCalendar({ onClose }: Props) {
     }
   };
 
+  // Adjust dates for display by subtracting one day
+  const adjustDateForDisplay = (date: Date) => {
+    return addDays(date, -1);
+  };
+
   return (
     <AnimatePresence>
       <motion.div
@@ -207,7 +212,7 @@ export function InventoryCalendar({ onClose }: Props) {
                   <ChevronLeft className="w-5 h-5" />
                 </button>
                 <h2 className="text-xl font-semibold">
-                  {format(currentDate, 'MMMM yyyy')}
+                  {format(adjustDateForDisplay(currentDate), 'MMMM yyyy')}
                 </h2>
                 <button
                   onClick={() => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1))}
@@ -274,8 +279,8 @@ export function InventoryCalendar({ onClose }: Props) {
                         </th>
                         {daysInMonth.map(day => (
                           <th key={day.toISOString()} className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            <div>{format(day, 'd')}</div>
-                            <div>{format(day, 'EEE')}</div>
+                            <div>{format(adjustDateForDisplay(day), 'd')}</div>
+                            <div>{format(adjustDateForDisplay(day), 'EEE')}</div>
                           </th>
                         ))}
                       </tr>
@@ -307,6 +312,10 @@ export function InventoryCalendar({ onClose }: Props) {
                   </table>
                 </div>
               )}
+            </div>
+
+            <div className="p-4 border-t border-stone-200 text-sm text-stone-500 text-center">
+              Note: All dates shown are adjusted -1 day for display purposes only
             </div>
           </div>
         </motion.div>
