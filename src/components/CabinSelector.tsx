@@ -52,8 +52,6 @@ const HAS_WIFI = [
   'Master\'s Suite'
 ];
 
-const GLAMPING_SEASON = [4, 5, 6, 7, 8, 9, 10]; // April to October
-
 export function CabinSelector({
   accommodations,
   selectedAccommodation,
@@ -61,7 +59,8 @@ export function CabinSelector({
   selectedWeeks,
   currentMonth
 }: Props) {
-  const { checkAvailability, availabilityMap } = useWeeklyAccommodations();
+  const { checkAvailability, getMaxOccupancy, isAccommodationAvailable } = useWeeklyAccommodations();
+  const [availabilityStatus, setAvailabilityStatus] = useState<Record<string, boolean>>({});
   
   const hasWifi = (title: string) => HAS_WIFI.includes(title);
   const hasElectricity = (title: string) => HAS_ELECTRICITY.includes(title);
@@ -69,40 +68,52 @@ export function CabinSelector({
   useEffect(() => {
     if (selectedWeeks.length > 0) {
       const startDate = selectedWeeks[0];
-      const endDate = new Date(selectedWeeks[selectedWeeks.length - 1]);
-      endDate.setDate(endDate.getDate() + 6); // Add 6 days to include the full last week
+      const endDate = selectedWeeks[selectedWeeks.length - 1];
       checkAvailability(startDate, endDate);
+      updateAvailabilityStatus(startDate, endDate);
     }
   }, [selectedWeeks, checkAvailability]);
 
-  // Filter out individual bed entries and sort free accommodations first
-  const visibleAccommodations = accommodations
-    .filter(acc => {
-      // Filter out individual bed entries
-      if (acc.parent_accommodation_id) return false;
-
-      // Check if it's glamping season for glamping accommodations
-      const isGlamping = ['Tipi', 'Bell Tent', 'Your Own Tent'].some(type => acc.title.includes(type));
-      if (isGlamping) {
-        // If no weeks selected, check current date
-        const dateToCheck = selectedWeeks.length > 0 ? selectedWeeks[0] : new Date();
-        const month = dateToCheck.getMonth();
-        return GLAMPING_SEASON.includes(month); // April to October
+  const updateAvailabilityStatus = async (startDate: Date, endDate: Date) => {
+    const status: Record<string, boolean> = {};
+    
+    for (const acc of accommodations) {
+      if (!acc.parent_accommodation_id) { // Only check parent accommodations
+        status[acc.id] = await isAccommodationAvailable(acc, startDate, endDate);
       }
+    }
+    
+    setAvailabilityStatus(status);
+  };
 
-      return true;
-    })
-    .sort((a, b) => {
-      const aIsFree = a.price === 0;
-      const bIsFree = b.price === 0;
-      if (aIsFree && !bIsFree) return -1;
-      if (!aIsFree && bIsFree) return 1;
-      return 0;
-    });
+  // Filter accommodations based on season and type
+  const visibleAccommodations = accommodations.filter(acc => {
+    // Filter out individual bed entries
+    if (acc.parent_accommodation_id) return false;
+
+    // Check if it's tent season (April 15 - September 1)
+    const currentDate = selectedWeeks.length > 0 ? selectedWeeks[0] : new Date();
+    const month = currentDate.getMonth();
+    const day = currentDate.getDate();
+    const isTentSeason = (month > 3 || (month === 3 && day >= 15)) && 
+                        (month < 8 || (month === 8 && day <= 1));
+
+    // Hide tents outside of season
+    if (!isTentSeason && (acc.type === 'Bell Tent' || acc.type === 'Tipi' || acc.title === 'Your Own Tent')) {
+      return false;
+    }
+
+    return true;
+  }).sort((a, b) => {
+    // Sort free accommodations last
+    if (a.price === 0 && b.price !== 0) return 1;
+    if (a.price !== 0 && b.price === 0) return -1;
+    return 0;
+  });
 
   return (
-    <div className="mt-12">
-      <h2 className="text-2xl font-serif font-light text-stone-900 mb-6">
+    <div className="mt-0">
+      <h2 className="text-2xl font-serif font-light text-stone-900 mb-6 text-center">
         Select Your Accommodation
       </h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -114,21 +125,31 @@ export function CabinSelector({
           const hasDiscount = seasonalDiscount > 0;
           const discountedPrice = Math.round(accommodation.price * (1 - seasonalDiscount));
           
-          const availabilityStatus = availabilityMap[accommodation.id];
-          const isAvailable = accommodation.is_unlimited || 
-            (accommodation.title.includes('Dorm') ? availabilityStatus > 0 : availabilityStatus !== -1);
+          let availableBeds = accommodation.inventory_count;
+          if (accommodation.is_fungible && !accommodation.is_unlimited && selectedWeeks.length > 0) {
+            const maxOccupancy = getMaxOccupancy(
+              accommodation.id, 
+              selectedWeeks[0], 
+              selectedWeeks[selectedWeeks.length - 1]
+            );
+            availableBeds = accommodation.inventory_count - maxOccupancy;
+          }
+
+          const isAvailable = selectedWeeks.length === 0 ? false : 
+            availabilityStatus[accommodation.id] ?? true;
           
           return (
             <motion.button
               key={accommodation.id}
               onClick={() => isAvailable && onSelectAccommodation(accommodation.id)}
               className={clsx(
-                'relative overflow-hidden transition-all duration-300 pixel-corners',
+                'relative overflow-hidden transition-all duration-300',
                 selectedAccommodation === accommodation.id 
                   ? 'border-2 border-emerald-600 shadow-lg transform -translate-y-1' 
                   : 'border-2 border-stone-200 hover:border-emerald-600/20',
                 accommodation.price === 0 && 'md:col-span-1 lg:col-span-1',
-                !isAvailable && 'opacity-50 cursor-not-allowed'
+                !isAvailable && selectedWeeks.length > 0 && 'opacity-50 cursor-not-allowed',
+                selectedWeeks.length === 0 && 'opacity-50 cursor-not-allowed'
               )}
               whileHover={isAvailable ? { scale: 1.02 } : undefined}
               whileTap={isAvailable ? { scale: 0.98 } : undefined}
@@ -139,15 +160,15 @@ export function CabinSelector({
                   alt={accommodation.title}
                   className={clsx(
                     "absolute inset-0 w-full h-full object-cover",
-                    !isAvailable && "grayscale"
+                    !isAvailable && selectedWeeks.length > 0 && "grayscale"
                   )}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                 
-                {/* Available Units Counter for Dorms */}
-                {(accommodation.title.includes('Dorm') || accommodation.is_fungible) && !accommodation.is_unlimited && availabilityStatus > 0 && (
+                {/* Show bed count only for dorms */}
+                {accommodation.type.includes('Dorm') && selectedWeeks.length > 0 && (
                   <div className="absolute top-4 left-4 bg-black/80 text-white px-3 py-1 rounded-full text-sm">
-                    {availabilityStatus} {availabilityStatus === 1 ? 'space' : 'spaces'} available
+                    {availableBeds} {availableBeds === 1 ? 'bed' : 'beds'} available
                   </div>
                 )}
 
@@ -205,7 +226,11 @@ export function CabinSelector({
                   )}
                 </div>
 
-                {!isAvailable && (
+                {selectedWeeks.length === 0 ? (
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                    <p className="text-white font-display text-xl">Select Dates</p>
+                  </div>
+                ) : !isAvailable && (
                   <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                     <p className="text-white font-display text-xl">Not Available</p>
                   </div>
