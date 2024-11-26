@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useTheme } from '../contexts/ThemeContext';
+import { ThemeToggle } from './ThemeToggle';
 
 interface Props {
   onComplete: () => void;
@@ -30,7 +32,7 @@ export function AsciiIntro({ onComplete }: Props) {
   const [asciiLines, setAsciiLines] = useState<string[]>([]);
   const [currentLine, setCurrentLine] = useState(0);
   const [currentChar, setCurrentChar] = useState(0);
-  const [useMatrixTheme] = useState(() => Math.random() < 0.33);
+  const { theme } = useTheme();
   const isMobile = window.innerWidth < 768;
 
   useEffect(() => {
@@ -62,12 +64,11 @@ export function AsciiIntro({ onComplete }: Props) {
     }
   }, [currentLine, asciiLines.length, onComplete]);
 
-  const themeColor = useMatrixTheme ? 'garden-matrix' : 'garden-gold';
-
   return (
     <div className="min-h-screen bg-garden-dark flex items-center justify-center p-4 overflow-hidden">
+      <ThemeToggle />
       <pre 
-        className={`text-${themeColor} whitespace-pre font-mono text-sm md:text-base lg:text-lg overflow-x-auto max-w-full`}
+        className={`text-garden-${theme} whitespace-pre font-mono text-sm md:text-base lg:text-lg overflow-x-auto max-w-full`}
         style={{ 
           maxHeight: '90vh',
           overflowY: 'auto',
