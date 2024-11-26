@@ -4,8 +4,14 @@ import { addHours, format, startOfDay, setHours, setMinutes } from 'date-fns';
 const UTC_PLUS_ONE = 1;
 
 export function convertToUTC1(date: Date, hour: number): Date {
-  // First set to midnight UTC
-  const utcDate = new Date(date.toISOString().split('T')[0] + 'T00:00:00.000Z');
+  // First convert to UTC midnight
+  const utcDate = new Date(Date.UTC(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    0, 0, 0, 0
+  ));
+  
   // Then add hours to get to UTC+1 at the specified hour
   return addHours(utcDate, hour + UTC_PLUS_ONE);
 }
@@ -17,7 +23,12 @@ export function formatDateUTC1(date: Date, formatString: string): string {
 }
 
 export function getUTC1Date(date: Date): Date {
-  const utcDate = startOfDay(new Date(date.toISOString().split('T')[0] + 'T00:00:00.000Z'));
+  const utcDate = new Date(Date.UTC(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    0, 0, 0, 0
+  ));
   return addHours(utcDate, UTC_PLUS_ONE);
 }
 
