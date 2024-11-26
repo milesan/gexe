@@ -2,7 +2,6 @@ import React from 'react';
 import { format } from 'date-fns';
 import { getUserBookings } from '../services/bookings';
 import { motion } from 'framer-motion';
-import { useCredits } from '../hooks/useCredits';
 import { ExternalLink } from 'lucide-react';
 import { useSession } from '../hooks/useSession';
 
@@ -10,7 +9,6 @@ export function MyBookings() {
   const [bookings, setBookings] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  const { credits, loading: creditsLoading } = useCredits();
   const session = useSession();
 
   React.useEffect(() => {
@@ -30,7 +28,7 @@ export function MyBookings() {
     }
   };
 
-  if (loading || creditsLoading) {
+  if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-12">
         <div className="flex justify-center">
@@ -59,9 +57,6 @@ export function MyBookings() {
             <p>{session?.user?.email}</p>
           </div>
         </div>
-        <div className="bg-emerald-50 px-4 py-2 rounded-lg">
-          <span className="text-emerald-900 font-medium">Credits: €{credits}</span>
-        </div>
       </div>
       
       {bookings.length === 0 ? (
@@ -80,10 +75,10 @@ export function MyBookings() {
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="text-xl font-display font-light mb-2">
-                    {booking.accommodations.title}
+                    {booking.accommodations?.title || booking.accommodation_title || 'Accommodation'}
                   </h3>
                   <p className="text-stone-600 mb-4">
-                    {booking.accommodations.location}
+                    {booking.accommodations?.location || booking.accommodation_location || 'The Garden'}
                   </p>
                   <div className="space-y-1 text-sm">
                     <p>
@@ -109,11 +104,13 @@ export function MyBookings() {
                     </a>
                   </div>
                 </div>
-                <img
-                  src={booking.accommodations.image_url}
-                  alt={booking.accommodations.title}
-                  className="w-32 h-32 object-cover rounded-lg"
-                />
+                {(booking.accommodations?.image_url || booking.accommodation_image) && (
+                  <img
+                    src={booking.accommodations?.image_url || booking.accommodation_image}
+                    alt={booking.accommodations?.title || booking.accommodation_title}
+                    className="w-32 h-32 object-cover rounded-lg"
+                  />
+                )}
               </div>
             </motion.div>
           ))}
