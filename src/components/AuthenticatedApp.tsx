@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { Sprout } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
 import { MyBookings } from './MyBookings';
 import { Book2Page } from '../pages/Book2Page';
 import { AdminPage } from '../pages/AdminPage';
@@ -8,24 +7,67 @@ import { useSession } from '../hooks/useSession';
 import { supabase } from '../lib/supabase';
 import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import { PaymentPage } from '../pages/PaymentPage';
+import { useAccommodations } from '../hooks/useAccommodations';
+import { WhitelistWelcomeModal } from './WhitelistWelcomeModal';
 
 export function AuthenticatedApp() {
   const [currentPage, setCurrentPage] = useState<'calendar' | 'my-bookings' | 'admin'>('calendar');
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const session = useSession();
   const navigate = useNavigate();
   const isAdmin = session?.user?.email === 'andre@thegarden.pt';
+  const { accommodations, refresh: refreshAccommodations } = useAccommodations();
+
+  useEffect(() => {
+    checkWhitelistStatus();
+  }, []);
+
+  const checkWhitelistStatus = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) return;
+
+      // Check if user is whitelisted and hasn't seen welcome
+      const { data: metadata } = await supabase.auth.getUser();
+      const isWhitelisted = metadata.user?.user_metadata?.is_whitelisted;
+      const hasSeenWelcome = metadata.user?.user_metadata?.has_seen_welcome;
+
+      if (isWhitelisted && !hasSeenWelcome) {
+        setShowWelcomeModal(true);
+      }
+    } catch (err) {
+      console.error('Error checking whitelist status:', err);
+    }
+  };
 
   const handleSignOut = async () => {
     try {
       await supabase.auth.signOut();
-      // Force a full page reload to clear all state
       window.location.href = '/';
     } catch (error) {
       console.error('Error signing out:', error);
     }
   };
 
-  // If no session, redirect to home
+  const handleWelcomeClose = async () => {
+    try {
+      await supabase.auth.updateUser({
+        data: {
+          has_seen_welcome: true
+        }
+      });
+
+      await supabase.rpc('mark_whitelist_welcome_seen', {
+        p_email: session?.user?.email
+      });
+
+      setShowWelcomeModal(false);
+    } catch (err) {
+      console.error('Error updating welcome status:', err);
+      setShowWelcomeModal(false);
+    }
+  };
+
   if (!session) {
     return <Navigate to="/" replace />;
   }
@@ -40,11 +82,17 @@ export function AuthenticatedApp() {
       <header className="sticky top-0 z-50 bg-white border-b border-stone-200">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div className="text-emerald-900 flex items-center gap-3">
-              <Sprout className="w-8 h-8" />
+            <div className="text-black flex items-center gap-3">
+              <img 
+                src="https://raw.githubusercontent.com/milesan/synesthesia/refs/heads/main/Enso%20Zen%20Soto%20Symbol.png" 
+                alt="Logo" 
+                className="w-[42px] h-[42px]"
+              />
               <div>
                 <h1 className="text-2xl font-display font-light tracking-wide">The Garden</h1>
-                <p className="text-sm text-stone-600 hidden md:block">Escape to reality</p>
+                <p className="text-sm text-stone-600 hidden md:block font-['EB_Garamond'] italic tracking-wide">
+                  a new kind of place
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-6">
@@ -72,19 +120,15 @@ export function AuthenticatedApp() {
                 {isAdmin && (
                   <button
                     onClick={() => handleNavigation('admin')}
-                    className={`text-sm font-body transition-colors ${
-                      currentPage === 'admin' 
-                        ? 'text-emerald-900 font-medium' 
-                        : 'text-stone-600 hover:text-emerald-900'
-                    }`}
+                    className="bg-emerald-900 text-white px-4 py-2 rounded-lg hover:bg-emerald-800 transition-colors text-sm font-body"
                   >
-                    Admin
+                    Admin Panel
                   </button>
                 )}
               </nav>
               <button 
                 onClick={handleSignOut}
-                className="bg-emerald-900 text-white px-6 py-2 hover:bg-emerald-800 transition-colors text-sm font-body pixel-corners"
+                className="bg-stone-100 text-stone-600 px-6 py-2 hover:bg-stone-200 transition-colors text-sm font-body rounded-lg"
               >
                 Sign Out
               </button>
@@ -102,6 +146,11 @@ export function AuthenticatedApp() {
           <Route path="/payment" element={<PaymentPage />} />
         </Routes>
       </main>
+
+      <WhitelistWelcomeModal
+        isOpen={showWelcomeModal}
+        onClose={handleWelcomeClose}
+      />
     </div>
   );
 }
