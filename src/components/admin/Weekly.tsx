@@ -121,6 +121,11 @@ export function Weekly({ onClose }: Props) {
     return 'bg-emerald-500 text-white border-emerald-600';
   };
 
+  // Adjust dates for display by subtracting one day
+  const adjustDateForDisplay = (date: Date) => {
+    return addDays(date, -1);
+  };
+
   return (
     <AnimatePresence>
       <motion.div
@@ -149,7 +154,7 @@ export function Weekly({ onClose }: Props) {
                 
                 <div className="text-center">
                   <h2 className="text-xl font-display">
-                    {format(weekStart, 'MMM d')} → {format(weekEnd, 'MMM d, yyyy')}
+                    {format(adjustDateForDisplay(weekStart), 'MMM d')} → {format(adjustDateForDisplay(weekEnd), 'MMM d, yyyy')}
                   </h2>
                   <p className="text-sm text-stone-500">
                     Week {currentWeekIndex + 1} of {weeks.length}
@@ -218,7 +223,7 @@ export function Weekly({ onClose }: Props) {
                               </div>
                               <div className="flex items-center gap-1">
                                 <Calendar className="w-4 h-4" />
-                                <span>{format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d')}</span>
+                                <span>{format(adjustDateForDisplay(weekStart), 'MMM d')} - {format(adjustDateForDisplay(weekEnd), 'MMM d')}</span>
                               </div>
                             </div>
                           </div>
@@ -240,11 +245,11 @@ export function Weekly({ onClose }: Props) {
                           <div className="mt-3 pt-3 border-t border-white/20 grid grid-cols-2 gap-4 text-sm opacity-90">
                             <div>
                               <span className="opacity-75">Check-in:</span>
-                              <p>{format(new Date(status.booking.check_in), 'MMM d, yyyy')}</p>
+                              <p>{format(adjustDateForDisplay(new Date(status.booking.check_in)), 'MMM d, yyyy')}</p>
                             </div>
                             <div>
                               <span className="opacity-75">Check-out:</span>
-                              <p>{format(new Date(status.booking.check_out), 'MMM d, yyyy')}</p>
+                              <p>{format(adjustDateForDisplay(new Date(status.booking.check_out)), 'MMM d, yyyy')}</p>
                             </div>
                           </div>
                         )}
@@ -253,6 +258,10 @@ export function Weekly({ onClose }: Props) {
                   })}
                 </div>
               )}
+            </div>
+
+            <div className="p-4 border-t border-stone-200 text-sm text-stone-500 text-center">
+              Note: All dates shown are adjusted -1 day for display purposes only
             </div>
           </div>
         </motion.div>
