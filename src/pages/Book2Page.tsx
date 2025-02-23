@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Calendar, Settings, ChevronDown } from 'lucide-react';
-import { isSameWeek, addWeeks, isAfter, isBefore, startOfMonth, format, addMonths } from 'date-fns';
+import { isSameWeek, addWeeks, isAfter, isBefore, startOfMonth, format, addMonths, isSameMonth } from 'date-fns';
 import { WeekSelector } from '../components/WeekSelector';
 import { CabinSelector } from '../components/CabinSelector';
 import { BookingSummary } from '../components/BookingSummary';
@@ -18,10 +18,11 @@ const BASE_RATE = 3;
 const BACKGROUND_IMAGE = "https://images.unsplash.com/photo-1510798831971-661eb04b3739?q=80&w=2940&auto=format&fit=crop";
 
 export function Book2Page() {
-  const { accommodations, loading } = useWeeklyAccommodations();
+  const { accommodations, loading, error, checkWeekAvailability, availabilityMap } = useWeeklyAccommodations();
   const [selectedWeeks, setSelectedWeeks] = useState<Date[]>([]);
   const [selectedAccommodation, setSelectedAccommodation] = useState<string | null>(null);
-  const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(convertToUTC1(new Date('2024-12-16'), 0)));
+  const startDate = useMemo(() => convertToUTC1(new Date('2024-12-16'), 0), []);
+  const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(startDate));
   const [showMaxWeeksModal, setShowMaxWeeksModal] = useState(false);
   const [showCalendarConfig, setShowCalendarConfig] = useState(false);
   const session = useSession();
@@ -36,6 +37,12 @@ export function Book2Page() {
     generateWeeks(currentMonth, isMobile ? MOBILE_WEEKS : DESKTOP_WEEKS),
     [currentMonth, isMobile]
   );
+
+  const isWeekAvailable = useCallback((week: Date) => {
+    if (!selectedAccommodation) return true;
+    const availability = availabilityMap[selectedAccommodation];
+    return availability?.isAvailable ?? false;
+  }, [selectedAccommodation, availabilityMap]);
 
   const isConsecutiveWeek = (nextWeek: Date | undefined) => {
     if (!nextWeek || selectedWeeks.length === 0) return false;
@@ -83,6 +90,14 @@ export function Book2Page() {
         return prev;
       }
 
+      // Only check availability if an accommodation is selected
+      if (selectedAccommodation) {
+        const accommodation = accommodations.find(a => a.id === selectedAccommodation);
+        if (accommodation) {
+          checkWeekAvailability(accommodation, newWeeks);
+        }
+      }
+
       return newWeeks;
     });
   };
@@ -111,9 +126,10 @@ export function Book2Page() {
           <div className="flex items-center justify-between mb-8">
             <motion.button
               onClick={() => setCurrentMonth(prev => addMonths(prev, -1))}
-              className="bg-white px-6 py-2 rounded-lg font-serif text-lg hover:bg-stone-50 transition-colors pixel-corners"
+              className="bg-white px-6 py-2 rounded-lg font-serif text-lg hover:bg-stone-50 transition-colors pixel-corners disabled:opacity-50 disabled:cursor-not-allowed"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
+              disabled={isSameMonth(currentMonth, startDate)}
             >
               {getPrevMonthName()}
             </motion.button>

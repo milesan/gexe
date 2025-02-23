@@ -1,97 +1,45 @@
 import { useState, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
-import { addDays } from 'date-fns';
+import { bookingService } from '../services/BookingService';
+import type { AvailabilityResult } from '../types/availability';
+
+export interface AvailabilityMap {
+  [accommodationId: string]: {
+    isAvailable: boolean;
+    availableCapacity: number | null;
+  };
+}
 
 export function useAvailability() {
-  const [availabilityMap, setAvailabilityMap] = useState<Record<string, number>>({});
+  const [availabilityMap, setAvailabilityMap] = useState<AvailabilityMap>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
   const checkAvailability = useCallback(async (startDate: Date, endDate: Date) => {
+    console.log('[useAvailability] checkAvailability called with:', { startDate, endDate });
     if (!startDate || !endDate) return;
+    if (endDate <= startDate) {
+      setError(new Error('Check-out date must be after check-in date'));
+      return;
+    }
 
     try {
       setLoading(true);
       setError(null);
 
-      // Get all accommodations first
-      const { data: accommodations, error: accError } = await supabase
-        .from('accommodations')
-        .select(`
-          *,
-          parent:parent_accommodation_id (
-            id,
-            title,
-            inventory_count,
-            is_unlimited,
-            is_fungible
-          )
-        `)
-        .is('parent_accommodation_id', null);
+      console.log('[useAvailability] Calling bookingService.getAvailability');
+      const availability = await bookingService.getAvailability(startDate, endDate);
+      console.log('[useAvailability] Got availability result:', availability);
+      const newAvailabilityMap: AvailabilityMap = {};
 
-      if (accError) throw accError;
-
-      // Get all bookings that overlap with the selected date range
-      const { data: bookings, error: bookingsError } = await supabase
-        .from('bookings')
-        .select(`
-          id,
-          accommodation_id,
-          check_in,
-          check_out
-        `)
-        .eq('status', 'confirmed')
-        .or(`check_in.lte.${endDate.toISOString()},check_out.gt.${startDate.toISOString()}`);
-
-      if (bookingsError) throw bookingsError;
-
-      const newAvailabilityMap: Record<string, number> = {};
-
-      // Process each accommodation
-      accommodations?.forEach(acc => {
-        // Handle unlimited accommodations
-        if (acc.is_unlimited) {
-          newAvailabilityMap[acc.id] = 999;
-          return;
-        }
-
-        // Handle fungible accommodations (dorms, etc)
-        if (acc.is_fungible) {
-          let maxBookedUnits = 0;
-          const currentDate = new Date(startDate);
-
-          // Check each day in the range
-          while (currentDate <= endDate) {
-            const bookedUnits = bookings?.filter(b => {
-              const bookingStart = new Date(b.check_in);
-              const bookingEnd = new Date(b.check_out);
-              return (b.accommodation_id === acc.id) &&
-                     currentDate >= bookingStart &&
-                     currentDate < bookingEnd;
-            }).length || 0;
-
-            maxBookedUnits = Math.max(maxBookedUnits, bookedUnits);
-            currentDate.setDate(currentDate.getDate() + 1);
-          }
-
-          newAvailabilityMap[acc.id] = Math.max(0, acc.inventory_count - maxBookedUnits);
-        } else {
-          // Handle regular accommodations
-          const isBooked = bookings?.some(b => {
-            const bookingStart = new Date(b.check_in);
-            const bookingEnd = new Date(b.check_out);
-            return b.accommodation_id === acc.id &&
-                   bookingStart < endDate &&
-                   bookingEnd > startDate;
-          });
-
-          newAvailabilityMap[acc.id] = isBooked ? -1 : 1;
-        }
+      availability.forEach(result => {
+        newAvailabilityMap[result.accommodation_id] = {
+          isAvailable: result.is_available,
+          availableCapacity: result.available_capacity
+        };
       });
 
       setAvailabilityMap(newAvailabilityMap);
     } catch (err) {
-      console.error('Error checking availability:', err);
       setError(err instanceof Error ? err : new Error('Failed to check availability'));
     } finally {
       setLoading(false);

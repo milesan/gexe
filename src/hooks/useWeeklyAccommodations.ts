@@ -1,129 +1,125 @@
-import { useEffect, useState, useCallback } from 'react';
-import { useAccommodations } from './useAccommodations';
-import { useAvailability } from './useAvailability';
-import { addDays, eachDayOfInterval } from 'date-fns';
-import { supabase } from '../lib/supabase';
+import { useState, useCallback, useEffect } from 'react';
+import { bookingService } from '../services/BookingService';
+import type { Accommodation } from '../types';
+import type { AvailabilityResult } from '../types/availability';
+import { addDays } from 'date-fns';
 
-interface DormOccupancy {
-  [dormId: string]: {
-    [date: string]: number;
+interface WeeklyAvailabilityMap {
+  [accommodationId: string]: {
+    isAvailable: boolean;
+    availableCapacity: number | null;
   };
 }
 
 export function useWeeklyAccommodations() {
-  const { accommodations, loading: accommodationsLoading, error: accommodationsError, refresh } = useAccommodations();
-  const { availabilityMap, loading: availabilityLoading, error: availabilityError, checkAvailability } = useAvailability();
+  const [accommodations, setAccommodations] = useState<Accommodation[]>([]);
+  const [availabilityMap, setAvailabilityMap] = useState<WeeklyAvailabilityMap>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const [dormOccupancy, setDormOccupancy] = useState<DormOccupancy>({});
 
-  useEffect(() => {
-    setLoading(accommodationsLoading || availabilityLoading);
-    setError(accommodationsError || availabilityError);
-  }, [accommodationsLoading, availabilityLoading, accommodationsError, availabilityError]);
-
-  const checkWeekAvailability = useCallback(async (startDate: Date, endDate: Date) => {
-    if (!startDate || !endDate) return;
-
-    try {
-      // Get all bookings for the date range
-      const { data: bookings, error } = await supabase
-        .from('bookings')
-        .select(`
-          accommodation_id,
-          check_in,
-          check_out,
-          accommodations!inner (
-            id,
-            parent_accommodation_id
-          )
-        `)
-        .eq('status', 'confirmed')
-        .or(`check_in.lte.${endDate.toISOString()},check_out.gt.${startDate.toISOString()}`);
-
-      if (error) throw error;
-
-      // Initialize occupancy tracking for dorms
-      const occupancy: DormOccupancy = {};
-      accommodations
-        .filter(acc => acc.is_fungible && !acc.is_unlimited)
-        .forEach(acc => {
-          occupancy[acc.id] = {};
-        });
-
-      // Process each booking
-      bookings?.forEach(booking => {
-        const parentId = booking.accommodations.parent_accommodation_id;
-        if (parentId && occupancy[parentId]) {
-          const dates = eachDayOfInterval({
-            start: new Date(booking.check_in),
-            end: new Date(booking.check_out)
-          });
-
-          dates.forEach(date => {
-            const dateStr = date.toISOString().split('T')[0];
-            occupancy[parentId][dateStr] = (occupancy[parentId][dateStr] || 0) + 1;
-          });
-        }
-      });
-
-      setDormOccupancy(occupancy);
-      await checkAvailability(startDate, addDays(endDate, 6));
-    } catch (err) {
-      console.error('Error checking availability:', err);
-      setError(err instanceof Error ? err : new Error('Failed to check availability'));
-    }
-  }, [checkAvailability, accommodations]);
-
-  const getMaxOccupancy = useCallback((dormId: string, startDate: Date, endDate: Date) => {
-    const dateRange = eachDayOfInterval({ start: startDate, end: endDate });
-    let maxOccupancy = 0;
-
-    dateRange.forEach(date => {
-      const dateStr = date.toISOString().split('T')[0];
-      const occupancy = dormOccupancy[dormId]?.[dateStr] || 0;
-      maxOccupancy = Math.max(maxOccupancy, occupancy);
+  const checkWeekAvailability = useCallback(async (
+    accommodation: Accommodation,
+    weeks: Date[]
+  ): Promise<boolean> => {
+    console.log('[useWeeklyAccommodations] Checking availability for:', {
+      accommodationId: accommodation.id,
+      accommodationTitle: accommodation.title,
+      weeks: weeks.map(w => w.toISOString()),
+      isUnlimited: accommodation.is_unlimited
     });
 
-    return maxOccupancy;
-  }, [dormOccupancy]);
-
-  const isAccommodationAvailable = useCallback(async (accommodation: any, startDate?: Date, endDate?: Date) => {
-    if (!startDate || !endDate) return false;
-
+    if (accommodation.is_unlimited) {
+      console.log('[useWeeklyAccommodations] Accommodation is unlimited, returning true');
+      setAvailabilityMap(prev => ({
+        ...prev,
+        [accommodation.id]: {
+          isAvailable: true,
+          availableCapacity: null
+        }
+      }));
+      return true;
+    }
+    
+    if (weeks.length === 0) {
+      console.log('[useWeeklyAccommodations] No weeks selected, returning true');
+      return true;
+    }
+    
     try {
-      // For unlimited accommodations
-      if (accommodation.is_unlimited) return true;
-
-      // For fungible accommodations (dorms)
-      if (accommodation.is_fungible && !accommodation.is_unlimited) {
-        const maxOccupancy = getMaxOccupancy(accommodation.id, startDate, endDate);
-        return maxOccupancy < accommodation.inventory_count;
-      }
-
-      // For regular accommodations, check if there are any overlapping bookings
-      const { data: bookings } = await supabase
-        .from('bookings')
-        .select('*')
-        .eq('accommodation_id', accommodation.id)
-        .eq('status', 'confirmed')
-        .or(`check_in.lte.${endDate.toISOString()},check_out.gt.${startDate.toISOString()}`);
-
-      return !bookings?.length;
+      const startDate = weeks[0];
+      const endDate = addDays(weeks[weeks.length - 1], 7); // Add 7 days to include the full last week
+      
+      console.log('[useWeeklyAccommodations] Fetching availability:', {
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString()
+      });
+      
+      const availability = await bookingService.getAvailability(startDate, endDate);
+      console.log('[useWeeklyAccommodations] Received availability:', availability);
+      
+      // Update the availability map for all accommodations in the result
+      const newAvailabilityMap: WeeklyAvailabilityMap = {};
+      availability.forEach(result => {
+        newAvailabilityMap[result.accommodation_id] = {
+          isAvailable: result.is_available,
+          availableCapacity: result.available_capacity
+        };
+        console.log(`[useWeeklyAccommodations] Setting availability for ${result.accommodation_id}:`, {
+          isAvailable: result.is_available,
+          availableCapacity: result.available_capacity
+        });
+      });
+      
+      setAvailabilityMap(prev => {
+        const updated = { ...prev, ...newAvailabilityMap };
+        console.log('[useWeeklyAccommodations] Updated availability map:', updated);
+        return updated;
+      });
+      
+      const result = availability.find(a => a.accommodation_id === accommodation.id);
+      console.log('[useWeeklyAccommodations] Availability result for accommodation:', {
+        accommodationId: accommodation.id,
+        result
+      });
+      
+      return result?.is_available ?? false;
     } catch (err) {
-      console.error('Error checking availability:', err);
+      console.error('[useWeeklyAccommodations] Error checking weekly availability:', err);
       return false;
     }
-  }, [getMaxOccupancy]);
+  }, []);
 
-  return { 
-    accommodations, 
-    loading, 
-    error,
-    checkAvailability: checkWeekAvailability,
+  const fetchAccommodations = useCallback(async () => {
+    console.log('[useWeeklyAccommodations] Fetching accommodations');
+    try {
+      setLoading(true);
+      const data = await bookingService.getAccommodations();
+      console.log('[useWeeklyAccommodations] Received accommodations:', data);
+      
+      // Only show root-level accommodations (those without parents)
+      const rootAccommodations = data.filter(acc => !acc.parent_accommodation_id);
+      console.log('[useWeeklyAccommodations] Filtered root accommodations:', rootAccommodations);
+      
+      setAccommodations(rootAccommodations);
+    } catch (err) {
+      console.error('[useWeeklyAccommodations] Error fetching accommodations:', err);
+      setError(err instanceof Error ? err : new Error('Failed to fetch accommodations'));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    console.log('[useWeeklyAccommodations] Initial mount, fetching accommodations');
+    fetchAccommodations();
+  }, [fetchAccommodations]);
+
+  return {
+    accommodations,
     availabilityMap,
-    getMaxOccupancy,
-    isAccommodationAvailable,
-    refresh
+    loading,
+    error,
+    checkWeekAvailability,
+    refresh: fetchAccommodations
   };
 }

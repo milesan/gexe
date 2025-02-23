@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle, Calendar, MapPin, Users, ArrowLeft, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
@@ -7,6 +7,7 @@ import { StripeCheckoutForm } from '../components/StripeCheckoutForm';
 import { supabase } from '../lib/supabase';
 
 export function PaymentPage() {
+  console.log('[Payment Page] Component mounted');
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -14,37 +15,69 @@ export function PaymentPage() {
 
   const [authToken, setAuthToken] = useState('');
 
-  supabase.auth.getSession().then(res => {
-    const authToken = res?.data?.session?.access_token;
-    if(authToken && authToken != ''){
-      setAuthToken(authToken)
-    }
-  });
+  useEffect(() => {
+    console.log('[Payment Page] Initial booking data:', {
+      exists: !!booking,
+      checkIn: booking?.checkIn,
+      checkOut: booking?.checkOut,
+      accommodation: booking?.accommodation,
+      guests: booking?.guests,
+      totalPrice: booking?.totalPrice
+    });
+  }, [booking]);
 
-  React.useEffect(() => {
+  useEffect(() => {
+    console.log('[Payment Page] Getting Supabase session');
+    supabase.auth.getSession().then(res => {
+      const authToken = res?.data?.session?.access_token;
+      console.log('[Payment Page] Auth token retrieved:', !!authToken);
+      if(authToken && authToken != ''){
+        setAuthToken(authToken)
+      }
+    }).catch(error => {
+      console.error('[Payment Page] Error getting auth session:', error);
+    });
+  }, []);
+
+  useEffect(() => {
     // If user tries to access confirmation page directly without booking data
     if (!booking) {
+      console.warn('[Payment Page] No booking data found, redirecting to /my-bookings');
       navigate('/my-bookings');
     }
   }, [booking, navigate]);
 
   // Handle back navigation
-  React.useEffect(() => {
+  useEffect(() => {
+    console.log('[Payment Page] Setting up back navigation handler');
     const handleNavigation = (e: PopStateEvent) => {
+      console.log('[Payment Page] Back navigation detected, redirecting to /my-bookings');
       navigate('/my-bookings');
     };
 
     window.addEventListener('popstate', handleNavigation);
-    return () => window.removeEventListener('popstate', handleNavigation);
+    return () => {
+      console.log('[Payment Page] Cleaning up back navigation handler');
+      window.removeEventListener('popstate', handleNavigation);
+    }
   }, [navigate]);
 
-  const checkInDateString = format(new Date(booking.checkIn), 'EEEE, MMMM d');
-  const checkOutDateString = format(new Date(booking.checkOut), 'EEEE, MMMM d');
-  const accommodationString = booking.accommodation;
-  const totalPriceString = booking.totalPrice;
+  const checkInDateString = format(new Date(booking?.checkIn), 'EEEE, MMMM d');
+  const checkOutDateString = format(new Date(booking?.checkOut), 'EEEE, MMMM d');
+  const accommodationString = booking?.accommodation;
+  const totalPriceString = booking?.totalPrice;
   const descriptionString = `${accommodationString} from ${checkInDateString} to ${checkOutDateString}`;
 
+  console.log('[Payment Page] Formatted booking details:', {
+    checkInDate: checkInDateString,
+    checkOutDate: checkOutDateString,
+    accommodation: accommodationString,
+    totalPrice: totalPriceString,
+    description: descriptionString
+  });
+
   if (!booking) {
+    console.log('[Payment Page] Rendering null due to missing booking data');
     return null;
   }
 

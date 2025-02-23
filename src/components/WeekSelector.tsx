@@ -1,5 +1,5 @@
 import React from 'react';
-import { addDays } from 'date-fns';
+import { addDays, isBefore, startOfToday } from 'date-fns';
 import { WeekBox } from './WeekBox';
 import clsx from 'clsx';
 
@@ -30,7 +30,7 @@ export function WeekSelector({
       {weeks.map((week) => {
         const isSelected = selectedWeeks.some(w => week.getTime() === w.getTime());
         const isFirstSelected = selectedWeeks.length > 0 && week.getTime() === selectedWeeks[0].getTime();
-        const isSelectable = true; // You can add your availability logic here
+        const isSelectable = !isBefore(week, startOfToday());
         
         return (
           <WeekBox

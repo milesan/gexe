@@ -1,6 +1,7 @@
 import { loadStripe } from '@stripe/stripe-js';
 
 const STRIPE_LIVE_KEY = import.meta.env.VITE_STRIPE_LIVE_KEY;
+console.log('[Stripe Frontend] Initializing with key:', STRIPE_LIVE_KEY ? 'Present' : 'Missing');
 const stripePromise = loadStripe(STRIPE_LIVE_KEY);
 
 export async function redirectToCheckout(
@@ -9,9 +10,27 @@ export async function redirectToCheckout(
   checkOut: Date,
   amount: number
 ) {
+  console.log('[Stripe Frontend] Starting checkout:', {
+    title,
+    checkIn: checkIn.toISOString(),
+    checkOut: checkOut.toISOString(),
+    amount
+  });
+
   try {
+    console.log('[Stripe Frontend] Loading Stripe instance...');
     const stripe = await stripePromise;
     if (!stripe) throw new Error('Stripe failed to load');
+    console.log('[Stripe Frontend] Stripe instance loaded successfully');
+
+    console.log('[Stripe Frontend] Creating checkout session with params:', {
+      mode: 'payment',
+      amount: amount * 100,
+      title,
+      dates: `${checkIn.toLocaleDateString()} to ${checkOut.toLocaleDateString()}`,
+      successUrl: `${window.location.origin}/success`,
+      cancelUrl: `${window.location.origin}/cancel`
+    });
 
     const { error } = await stripe.redirectToCheckout({
       mode: 'payment',
@@ -30,9 +49,22 @@ export async function redirectToCheckout(
       cancelUrl: `${window.location.origin}/cancel`,
     });
 
-    if (error) throw error;
+    if (error) {
+      console.error('[Stripe Frontend] Checkout redirect error:', {
+        type: error.type,
+        message: error.message,
+        code: error.code
+      });
+      throw error;
+    }
+
+    console.log('[Stripe Frontend] Checkout redirect successful');
   } catch (err) {
-    console.error('Error creating checkout session:', err);
+    console.error('[Stripe Frontend] Error in checkout process:', {
+      name: err.name,
+      message: err.message,
+      stack: err.stack
+    });
     throw err;
   }
 }

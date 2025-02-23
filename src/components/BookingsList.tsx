@@ -12,7 +12,6 @@ interface Booking {
   status: string;
   created_at: string;
   accommodation_title: string;
-  accommodation_location: string;
   user_email: string;
 }
 
@@ -56,7 +55,7 @@ export function BookingsList() {
         // Get accommodation details
         const { data: accomData } = await supabase
           .from('accommodations')
-          .select('title, location')
+          .select('title')
           .eq('id', booking.accommodation_id)
           .single();
 
@@ -70,7 +69,6 @@ export function BookingsList() {
         return {
           ...booking,
           accommodation_title: accomData?.title || 'N/A',
-          accommodation_location: accomData?.location || 'N/A',
           user_email: userData?.email || 'N/A'
         };
       }));
@@ -129,9 +127,6 @@ export function BookingsList() {
               <td className="px-6 py-4 whitespace-nowrap">
                 <div className="text-sm font-medium text-gray-900">
                   {booking.accommodation_title}
-                </div>
-                <div className="text-sm text-gray-500">
-                  {booking.accommodation_location}
                 </div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">

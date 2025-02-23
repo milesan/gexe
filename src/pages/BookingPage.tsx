@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DateRange } from 'react-day-picker';
 import { DateRangePicker } from '../components/DateRangePicker';
 import { AccommodationCard } from '../components/AccommodationCard';
 import { useAccommodations } from '../hooks/useAccommodations';
+import { useAvailability } from '../hooks/useAvailability';
 import { useSession } from '../hooks/useSession';
 import { AdminArrivalRules } from '../components/AdminArrivalRules';
 import { useArrivalRules } from '../hooks/useArrivalRules';
@@ -11,11 +12,25 @@ export function BookingPage() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [showAccommodations, setShowAccommodations] = useState(false);
   const [showArrivalRules, setShowArrivalRules] = useState(false);
-  const { accommodations, loading, error } = useAccommodations();
+  const { accommodations, loading: accommodationsLoading, error: accommodationsError } = useAccommodations();
+  const { availabilityMap, loading: availabilityLoading, error: availabilityError, checkAvailability } = useAvailability();
   const { rules } = useArrivalRules();
   const session = useSession();
 
+  const loading = accommodationsLoading || availabilityLoading;
+  const error = accommodationsError || availabilityError;
+
   const isAdmin = session?.user?.email === 'andre@thegarden.pt';
+
+  useEffect(() => {
+    if (dateRange?.from && dateRange?.to && showAccommodations) {
+      console.log('[BookingPage] Checking availability:', {
+        from: dateRange.from,
+        to: dateRange.to
+      });
+      checkAvailability(dateRange.from, dateRange.to);
+    }
+  }, [dateRange?.from, dateRange?.to, showAccommodations, checkAvailability]);
 
   const handleSearch = () => {
     if (dateRange?.from && dateRange?.to) {
@@ -26,6 +41,11 @@ export function BookingPage() {
   const capitalizeFirstLetter = (string: string) => {
     return string.charAt(0).toUpperCase() + string.slice(1);
   };
+
+  const availableAccommodations = accommodations.filter(acc => {
+    const availability = availabilityMap[acc.id];
+    return availability?.isAvailable;
+  });
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12">
@@ -68,20 +88,21 @@ export function BookingPage() {
             </div>
           ) : error ? (
             <div className="text-center py-12 text-rose-600">
-              {error.message}
+              {error.message || 'An error occurred while loading accommodations'}
             </div>
-          ) : accommodations.length === 0 ? (
+          ) : availableAccommodations.length === 0 ? (
             <div className="text-center py-12 text-stone-600">
               No rooms available for these dates. Please try different dates.
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-              {accommodations.map((accommodation) => (
+              {availableAccommodations.map((accommodation) => (
                 <AccommodationCard 
                   key={accommodation.id} 
                   accommodation={accommodation}
                   checkIn={dateRange?.from}
                   checkOut={dateRange?.to}
+                  availableCapacity={availabilityMap[accommodation.id]?.availableCapacity}
                 />
               ))}
             </div>

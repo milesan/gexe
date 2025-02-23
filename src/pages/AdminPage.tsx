@@ -5,7 +5,9 @@ import { BookingsList } from '../components/BookingsList';
 import { InventoryCalendar } from '../components/InventoryCalendar';
 import { Weekly } from '../components/admin/Weekly';
 import { Whitelist } from '../components/admin/Whitelist';
-import { ClipboardList, Calendar, Users, LayoutGrid, ListChecks, UserPlus } from 'lucide-react';
+import { Housekeeping } from '../components/admin/Housekeeping';
+import { ClipboardList, Calendar, Users, LayoutGrid, ListChecks, UserPlus, Home } from 'lucide-react';
+import { AnimatePresence } from 'framer-motion';
 
 type AdminView = 'applications' | 'appview' | 'bookings' | 'calendar' | 'weekly' | 'whitelist';
 
@@ -13,6 +15,7 @@ export function AdminPage() {
   const [currentView, setCurrentView] = useState<AdminView>('applications');
   const [showCalendar, setShowCalendar] = useState(false);
   const [showWeekly, setShowWeekly] = useState(false);
+  const [showHousekeeping, setShowHousekeeping] = useState(false);
 
   return (
     <div className="min-h-screen bg-stone-50">
@@ -77,10 +80,17 @@ export function AdminPage() {
           >
             <ListChecks className="w-4 h-4" />
             Weekly
-            <div className="text-xs text-stone-500">
-              for weekly: need to pre-load whole year so it is visible (right now it only shows the first month bookings then resets)
-              need to fix dates so they correspond to weekselector
-            </div>
+          </button>
+          <button
+            onClick={() => setShowHousekeeping(true)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${
+              showHousekeeping
+                ? 'bg-emerald-900 text-white'
+                : 'bg-white text-stone-600 hover:bg-stone-50 border border-stone-200'
+            }`}
+          >
+            <Home className="w-4 h-4" />
+            Housekeeping
           </button>
           <button
             onClick={() => setCurrentView('whitelist')}
@@ -101,15 +111,19 @@ export function AdminPage() {
           {currentView === 'bookings' && <BookingsList />}
           {currentView === 'whitelist' && <Whitelist />}
         </div>
+
+        <AnimatePresence>
+          {showCalendar && (
+            <InventoryCalendar onClose={() => setShowCalendar(false)} />
+          )}
+          {showWeekly && (
+            <Weekly onClose={() => setShowWeekly(false)} />
+          )}
+          {showHousekeeping && (
+            <Housekeeping onClose={() => setShowHousekeeping(false)} />
+          )}
+        </AnimatePresence>
       </div>
-
-      {showCalendar && (
-        <InventoryCalendar onClose={() => setShowCalendar(false)} />
-      )}
-
-      {showWeekly && (
-        <Weekly onClose={() => setShowWeekly(false)} />
-      )}
     </div>
   );
 }

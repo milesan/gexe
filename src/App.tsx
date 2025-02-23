@@ -6,7 +6,6 @@ import { AuthenticatedApp } from './components/AuthenticatedApp';
 import { ConfirmationPage } from './pages/ConfirmationPage';
 import { Retro2Page } from './pages/Retro2Page';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { StripeProvider } from './contexts/StripeContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
@@ -76,12 +75,10 @@ export default function App() {
       <ErrorBoundary>
         <ThemeProvider>
           <Router>
-            <StripeProvider>
-              <Routes>
-                <Route path="/*" element={<AuthenticatedApp />} />
-                <Route path="/confirmation" element={<ConfirmationPage />} />
-              </Routes>
-            </StripeProvider>
+            <Routes>
+              <Route path="/*" element={<AuthenticatedApp />} />
+              <Route path="/confirmation" element={<ConfirmationPage />} />
+            </Routes>
           </Router>
         </ThemeProvider>
       </ErrorBoundary>

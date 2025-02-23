@@ -136,7 +136,7 @@ export function Shmookings() {
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm('')}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-stone-400 hover:text-stone-600"
+                className="flex items-center gap-2 bg-emerald-900 text-white px-4 py-2 rounded-lg hover:bg-emerald-800 mb-4"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -184,9 +184,10 @@ export function Shmookings() {
                       <span className="text-stone-500">Total Price:</span>{' '}
                       €{booking.total_price}
                     </p>
-                    <p>
-                      <span className="text-stone-500">Booked on:</span>{' '}
-                      {format(new Date(booking.created_at), 'PPP')}
+                    <p className="text-sm text-stone-500">
+                      <span>Booked on:</span>{' '}
+                      {format(new Date(booking.created_at), 'PPP')} at{' '}
+                      {format(new Date(booking.created_at), 'p')}
                     </p>
                   </div>
                 </div>

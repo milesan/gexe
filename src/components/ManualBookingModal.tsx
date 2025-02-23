@@ -27,12 +27,14 @@ export function ManualBookingModal({ onClose, onSuccess, accommodations }: Manua
   const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
 
   const checkAvailability = async (from: Date, to: Date) => {
+    console.log('[ManualBookingModal] checkAvailability called with:', { from, to });
     try {
       setIsCheckingAvailability(true);
       setError(null);
 
       const utc1From = getUTC1Date(from);
       const utc1To = getUTC1Date(to);
+      console.log('[ManualBookingModal] Checking availability with UTC1 dates:', { utc1From, utc1To });
 
       // Check for both booked and held dates
       const [{ data: bookedData, error: bookedError }, { data: heldData, error: heldError }] = await Promise.all([
@@ -49,6 +51,8 @@ export function ManualBookingModal({ onClose, onSuccess, accommodations }: Manua
           .gte('date', utc1From.toISOString().split('T')[0])
           .lte('date', utc1To.toISOString().split('T')[0])
       ]);
+
+      console.log('[ManualBookingModal] Availability query results:', { bookedData, heldData });
 
       if (bookedError) throw bookedError;
       if (heldError) throw heldError;

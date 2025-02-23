@@ -29,9 +29,15 @@ export function AccommodationCard({ accommodation, checkIn, checkOut }: Accommod
   }, [checkIn, checkOut]);
 
   const checkAvailability = async () => {
+    console.log('[AccommodationCard] checkAvailability called for:', {
+      accommodationId: accommodation.id,
+      checkIn,
+      checkOut
+    });
     if (!checkIn || !checkOut) return;
 
     try {
+      console.log('[AccommodationCard] Querying supabase for availability');
       const { data: unavailableDates, error } = await supabase
         .from('availability')
         .select('*')
@@ -43,6 +49,7 @@ export function AccommodationCard({ accommodation, checkIn, checkOut }: Accommod
       if (error) throw error;
 
       const available = !unavailableDates || unavailableDates.length === 0;
+      console.log('[AccommodationCard] Availability result:', { available, unavailableDates });
       setIsAvailable(available);
 
       if (!available) {
