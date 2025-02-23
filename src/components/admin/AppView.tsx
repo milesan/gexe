@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle, XCircle, X } from 'lucide-react';
+import { Housekeeping } from './Housekeeping';
+import { ImageModal } from '../shared/ImageModal';
 
 interface Application {
   id: string;
@@ -16,6 +18,20 @@ interface FullApplicationModalProps {
   application: Application;
   onClose: () => void;
 }
+
+const DISPLAY_QUESTIONS = {
+  firstName: "First Name",
+  lastName: "Last Name",
+  photos: "What photo(s) of you best captures your essence? No more than 3, please.",
+  astrology: "What, if anything, does astrology mean to you?",
+  mbti: "If you know it, what is your MBTI type?",
+  conspiracy: "What's your favorite conspiracy theory?",
+  logicPuzzle: "If some robots are mechanics and some mechanics are purple, does it logically follow that some robots must be purple?",
+  uniqueBelief: "What do you believe is true that most other people believe is false?",
+  gettingToKnow: "What's your ideal way of getting to know a new person?",
+  identity: "How do you identify yourself?",
+  reallyKnowYou: "If we really knew you, what would we know?"
+} as const;
 
 function FullApplicationModal({ application, onClose }: FullApplicationModalProps) {
   const renderAnswer = (value: any) => {
@@ -110,14 +126,31 @@ function AnswerTooltip({ children, content }: { children: React.ReactNode; conte
 
 export function AppView() {
   const [applications, setApplications] = useState<Application[]>([]);
+  const [questions, setQuestions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
 
   React.useEffect(() => {
     loadApplications();
+    loadQuestions();
   }, []);
+
+  const loadQuestions = async () => {
+    try {
+      const { data, error: queryError } = await supabase
+        .from('application_questions')
+        .select('*')
+        .order('order_number');
+
+      if (queryError) throw queryError;
+      setQuestions(data || []);
+    } catch (err) {
+      console.error('Error loading questions:', err);
+    }
+  };
 
   const loadApplications = async () => {
     try {
@@ -139,10 +172,20 @@ export function AppView() {
   const updateApplicationStatus = async (id: string, status: string) => {
     try {
       if (status === 'approved') {
+        const application = applications.find(app => app.id === id);
+        console.log('AppView: Approving application', { id, email: application?.user_email });
         const { error } = await supabase.rpc('approve_application', {
           p_application_id: id
         });
-        if (error) throw error;
+        console.log('AppView: Approval result', { error });
+
+        if (!error && application?.user_email) {
+          // Send approval email
+          const { error: emailError } = await supabase.functions.invoke('send-approval-email', {
+            body: { email: application.user_email }
+          });
+          console.log('AppView: Email sending result', { emailError });
+        }
       } else if (status === 'rejected') {
         const { error } = await supabase.rpc('reject_application', {
           p_application_id: id
@@ -159,20 +202,16 @@ export function AppView() {
   const renderPhotoGrid = (photos: any) => {
     if (!photos) return null;
 
-    let photoArray: string[] = [];
+    let photoUrls: string[] = [];
     try {
-      if (typeof photos === 'string') {
-        const parsed = JSON.parse(photos);
-        photoArray = Array.isArray(parsed) ? parsed : [];
-      } else if (Array.isArray(photos)) {
-        photoArray = photos;
+      if (Array.isArray(photos)) {
+        photoUrls = photos.map(p => p.url).filter(Boolean);
       }
     } catch (e) {
       return null;
     }
 
-    const validPhotos = photoArray.filter(photo => typeof photo === 'string' && photo.trim() !== '');
-    if (validPhotos.length === 0) return null;
+    if (photoUrls.length === 0) return null;
 
     const gridConfig = {
       1: 'grid-cols-1',
@@ -182,15 +221,16 @@ export function AppView() {
     };
 
     return (
-      <div className={`grid ${gridConfig[Math.min(validPhotos.length, 4) as keyof typeof gridConfig]} gap-2 aspect-square`}>
-        {validPhotos.slice(0, 4).map((photo, index) => (
+      <div className={`grid ${gridConfig[Math.min(photoUrls.length, 4) as keyof typeof gridConfig]} gap-2 aspect-square`}>
+        {photoUrls.slice(0, 4).map((url, index) => (
           <img
             key={index}
-            src={photo}
+            src={url}
             alt={`Applicant photo ${index + 1}`}
-            className={`w-full h-full object-cover rounded-lg ${
-              validPhotos.length === 3 && index === 2 ? 'col-span-2' : ''
+            className={`w-full h-full object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity ${
+              photoUrls.length === 3 && index === 2 ? 'col-span-2' : ''
             }`}
+            onClick={() => setSelectedImage(url)}
           />
         ))}
       </div>
@@ -207,19 +247,23 @@ export function AppView() {
   };
 
   const renderApplicationCard = (application: Application) => {
-    const {
-      data: {
-        13: photos,
-        25: astrology,
-        29: mbti,
-        23: conspiracy,
-        26: logicPuzzle,
-        24: uniqueBelief,
-        19: gettingToKnow,
-        21: identity,
-        17: reallyKnowYou
-      }
-    } = application;
+    // Create a map of question text to order number
+    const questionMap = Object.fromEntries(
+      questions.map(q => [q.text, q.order_number])
+    );
+
+    // Get answers using the question map
+    const firstName = application.data[questionMap[DISPLAY_QUESTIONS.firstName]];
+    const lastName = application.data[questionMap[DISPLAY_QUESTIONS.lastName]];
+    const photos = application.data[questionMap[DISPLAY_QUESTIONS.photos]];
+    const astrology = application.data[questionMap[DISPLAY_QUESTIONS.astrology]];
+    const mbti = application.data[questionMap[DISPLAY_QUESTIONS.mbti]];
+    const conspiracy = application.data[questionMap[DISPLAY_QUESTIONS.conspiracy]];
+    const logicPuzzle = application.data[questionMap[DISPLAY_QUESTIONS.logicPuzzle]];
+    const uniqueBelief = application.data[questionMap[DISPLAY_QUESTIONS.uniqueBelief]];
+    const gettingToKnow = application.data[questionMap[DISPLAY_QUESTIONS.gettingToKnow]];
+    const identity = application.data[questionMap[DISPLAY_QUESTIONS.identity]];
+    const reallyKnowYou = application.data[questionMap[DISPLAY_QUESTIONS.reallyKnowYou]];
 
     return (
       <motion.div
@@ -236,7 +280,7 @@ export function AppView() {
               className="font-medium text-lg hover:text-emerald-600 transition-colors text-left group"
             >
               <span className="group-hover:underline">
-                {application.data[4]} {application.data[5]}
+                {firstName} {lastName}
               </span>
             </button>
             <p className="text-stone-600">{application.user_email}</p>
@@ -345,7 +389,7 @@ export function AppView() {
   const filteredApplications = applications.filter(app => app.status === activeTab);
 
   return (
-    <div className="p-6">
+    <div className="space-y-6">
       <div className="flex gap-4 mb-6">
         {(['pending', 'approved', 'rejected'] as const).map((tab) => (
           <button
@@ -380,6 +424,13 @@ export function AppView() {
           />
         )}
       </AnimatePresence>
+
+      {selectedImage && (
+        <ImageModal
+          imageUrl={selectedImage}
+          onClose={() => setSelectedImage(null)}
+        />
+      )}
     </div>
   );
 }

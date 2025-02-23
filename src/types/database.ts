@@ -5,20 +5,80 @@ export interface Database {
         Row: {
           id: string;
           title: string;
-          location: string;
-          price: number;
-          rating: number | null;
-          reviews: number;
-          image_url: string;
+          base_price: number;
           type: string;
-          beds: number;
-          bathrooms: number;
-          superhost: boolean;
-          inventory_count: number;
-          created_at: string;
+          capacity: number;
+          has_wifi: boolean;
+          has_electricity: boolean;
+          image_url: string | null;
+          is_unlimited: boolean;
+          is_fungible: boolean;
+          parent_accommodation_id: string | null;
         };
-        Insert: Omit<Database['public']['Tables']['accommodations']['Row'], 'id' | 'created_at'>;
-        Update: Partial<Database['public']['Tables']['accommodations']['Insert']>;
+        Insert: {
+          id?: string;
+          title: string;
+          base_price: number;
+          type: string;
+          capacity: number;
+          has_wifi?: boolean;
+          has_electricity?: boolean;
+          image_url?: string | null;
+          is_unlimited?: boolean;
+          is_fungible?: boolean;
+          parent_accommodation_id?: string | null;
+        };
+        Update: {
+          id?: string;
+          title?: string;
+          base_price?: number;
+          type?: string;
+          capacity?: number;
+          has_wifi?: boolean;
+          has_electricity?: boolean;
+          image_url?: string | null;
+          is_unlimited?: boolean;
+          is_fungible?: boolean;
+          parent_accommodation_id?: string | null;
+        };
+      };
+      bookings: {
+        Row: {
+          id: string;
+          user_id: string;
+          accommodation_id: string;
+          check_in: string;
+          check_out: string;
+          total_price: number;
+          status: string;
+          payment_intent_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          accommodation_id: string;
+          check_in: string;
+          check_out: string;
+          total_price: number;
+          status?: string;
+          payment_intent_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          accommodation_id?: string;
+          check_in?: string;
+          check_out?: string;
+          total_price?: number;
+          status?: string;
+          payment_intent_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
       };
       availability: {
         Row: {
@@ -30,20 +90,6 @@ export interface Database {
         };
         Insert: Omit<Database['public']['Tables']['availability']['Row'], 'id' | 'created_at'>;
         Update: Partial<Database['public']['Tables']['availability']['Insert']>;
-      };
-      bookings: {
-        Row: {
-          id: string;
-          user_id: string;
-          accommodation_id: string;
-          check_in: string;
-          check_out: string;
-          total_price: number;
-          status: string;
-          created_at: string;
-        };
-        Insert: Omit<Database['public']['Tables']['bookings']['Row'], 'id' | 'created_at'>;
-        Update: Partial<Database['public']['Tables']['bookings']['Insert']>;
       };
       credits: {
         Row: {
@@ -69,6 +115,18 @@ export interface Database {
       };
     };
     Functions: {
+      get_accommodation_availability: {
+        Args: {
+          check_in_date: string;
+          check_out_date: string;
+        };
+        Returns: {
+          accommodation_id: string;
+          title: string;
+          is_available: boolean;
+          available_capacity: number | null;
+        }[];
+      };
       create_confirmed_booking: {
         Args: {
           p_accommodation_id: string;

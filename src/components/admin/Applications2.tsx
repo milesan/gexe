@@ -23,16 +23,27 @@ export function Applications2() {
   const [error, setError] = useState<string | null>(null);
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [questions, setQuestions] = useState<any[]>([]);
 
   useEffect(() => {
     loadApplications();
+    loadQuestions();
   }, []);
 
   const loadApplications = async () => {
     try {
       const { data, error: queryError } = await supabase
         .from('application_details')
-        .select('*')
+        .select(`
+          id,
+          data,
+          status,
+          created_at,
+          user_email,
+          linked_name,
+          linked_email,
+          linked_application_id
+        `)
         .order('created_at', { ascending: false });
 
       if (queryError) throw queryError;
@@ -45,13 +56,37 @@ export function Applications2() {
     }
   };
 
+  const loadQuestions = async () => {
+    try {
+      const { data, error: queryError } = await supabase
+        .from('application_questions')
+        .select('*')
+        .order('order_number');
+
+      if (queryError) throw queryError;
+      setQuestions(data || []);
+    } catch (err) {
+      console.error('Error loading questions:', err);
+    }
+  };
+
   const updateApplicationStatus = async (id: string, status: string) => {
     try {
       if (status === 'approved') {
+        const application = applications.find(app => app.id === id);
+        console.log('Applications2: Approving application', { id, email: application?.user_email });
         const { error } = await supabase.rpc('approve_application', {
           p_application_id: id
         });
-        if (error) throw error;
+        console.log('Applications2: Approval result', { error });
+        
+        if (!error && application?.user_email) {
+          // Send approval email
+          const { error: emailError } = await supabase.functions.invoke('send-approval-email', {
+            body: { email: application.user_email }
+          });
+          console.log('Applications2: Email sending result', { emailError });
+        }
       } else if (status === 'rejected') {
         const { error } = await supabase.rpc('reject_application', {
           p_application_id: id
@@ -145,7 +180,11 @@ export function Applications2() {
               <div className="flex justify-between items-start">
                 <div>
                   <h3 className="font-medium">
-                    {application.data[4]} {application.data[5]}
+                    {questions.length > 0 && application.data && (
+                      <>
+                        {application.data[questions[1]?.order_number]} {application.data[questions[2]?.order_number]}
+                      </>
+                    )}
                   </h3>
                   <p className="text-sm text-stone-600">
                     {application.user_email}

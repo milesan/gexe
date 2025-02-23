@@ -1,7 +1,6 @@
 import React from 'react';
-import { Sprout } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { motion } from 'framer-motion';
+import { supabase } from '../lib/supabase';
 
 interface Props {
   status?: 'pending' | 'rejected';
@@ -16,7 +15,15 @@ export function PendingPage({ status = 'pending' }: Props) {
         className="max-w-md w-full bg-white rounded-2xl shadow-sm border border-stone-200 p-8"
       >
         <div className="flex flex-col items-center text-center space-y-6">
-          <Sprout className="w-12 h-12 text-emerald-900" />
+          <img 
+            src="https://raw.githubusercontent.com/milesan/synesthesia/refs/heads/main/Enso%20Zen%20Soto%20Symbol.png"
+            alt="Enso Logo"
+            className="w-12 h-12"
+            style={{ 
+              filter: 'brightness(0) invert(0.75) sepia(0.6) saturate(400%) hue-rotate(360deg)',
+              opacity: 0.9
+            }}
+          />
           
           <h1 className="text-3xl font-display font-light text-stone-900">
             {status === 'pending' ? 'Application Pending' : 'Application Not Accepted'}

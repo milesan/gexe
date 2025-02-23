@@ -1,12 +1,13 @@
 import React from 'react';
 import { format } from 'date-fns';
-import { getUserBookings } from '../services/bookings';
+import { bookingService } from '../services/BookingService';
 import { motion } from 'framer-motion';
 import { ExternalLink } from 'lucide-react';
 import { useSession } from '../hooks/useSession';
+import type { Booking } from '../types';
 
 export function MyBookings() {
-  const [bookings, setBookings] = React.useState<any[]>([]);
+  const [bookings, setBookings] = React.useState<Booking[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const session = useSession();
@@ -18,7 +19,7 @@ export function MyBookings() {
   const loadBookings = async () => {
     try {
       setLoading(true);
-      const data = await getUserBookings();
+      const data = await bookingService.getUserBookings();
       setBookings(data || []);
     } catch (err) {
       console.error('Error loading bookings:', err);

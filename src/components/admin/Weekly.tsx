@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { format, addDays, startOfWeek, endOfWeek, addWeeks, isSameWeek } from 'date-fns';
+import { format, addDays } from 'date-fns';
 import { X, ChevronLeft, ChevronRight, Users, Calendar, BedDouble } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { generateWeeks } from '../../utils/dates';
@@ -10,41 +10,28 @@ interface Props {
   onClose: () => void;
 }
 
-interface Accommodation {
-  id: string;
-  title: string;
-  inventory_count: number;
-  type: string;
-}
-
-interface Booking {
-  id: string;
+interface AvailabilityData {
   accommodation_id: string;
-  check_in: string;
-  check_out: string;
-  user_email: string;
-  total_price: number;
-}
-
-interface WeeklyStatus {
-  [key: string]: {
-    isBooked: boolean;
-    booking?: Booking;
-  };
+  title: string;
+  is_available: boolean;
+  available_capacity: number | null;
+  bookings: any[];
 }
 
 export function Weekly({ onClose }: Props) {
   const [currentWeekIndex, setCurrentWeekIndex] = useState(0);
-  const [accommodations, setAccommodations] = useState<Accommodation[]>([]);
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [availabilityData, setAvailabilityData] = useState<AvailabilityData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Generate weeks starting from Dec 16, 2024
   const weeks = generateWeeks(convertToUTC1(new Date('2024-12-16'), 0), 52);
   const currentWeek = weeks[currentWeekIndex];
-  const weekStart = startOfWeek(currentWeek);
-  const weekEnd = endOfWeek(currentWeek);
+  
+  // For each week, we want to show Mon-Sun
+  // The currentWeek date from generateWeeks is already the start of the week (Monday)
+  const weekStart = currentWeek;
+  const weekEnd = addDays(weekStart, 6); // Add 6 days to get to Sunday
 
   useEffect(() => {
     loadData();
@@ -63,37 +50,35 @@ export function Weekly({ onClose }: Props) {
 
   async function loadData() {
     try {
-      setLoading(true);
+      // Don't show loading state if we already have data
+      if (availabilityData.length === 0) {
+        setLoading(true);
+      }
       setError(null);
 
-      // Load accommodations
-      const { data: accommodationsData, error: accommodationsError } = await supabase
-        .from('accommodations')
-        .select('*')
-        .order('price', { ascending: true });
+      const { data, error: availabilityError } = await supabase
+        .rpc('get_accommodation_availability_range', {
+          start_date: weekStart.toISOString(),
+          end_date: weekEnd.toISOString()
+        });
 
-      if (accommodationsError) throw accommodationsError;
+      if (availabilityError) throw availabilityError;
 
-      // Load bookings for current week using the booking_details view
-      const { data: bookingsData, error: bookingsError } = await supabase
-        .from('booking_details')
-        .select(`
-          id,
-          accommodation_id,
-          check_in,
-          check_out,
-          total_price,
-          user_email
-        `)
-        .or(
-          `check_in.lte.${weekEnd.toISOString()},check_out.gt.${weekStart.toISOString()}`
-        )
-        .eq('status', 'confirmed');
+      // Group by accommodation_id to get the latest status for each accommodation
+      const groupedData = data.reduce((acc: { [key: string]: AvailabilityData }, curr: any) => {
+        if (!acc[curr.accommodation_id]) {
+          acc[curr.accommodation_id] = {
+            accommodation_id: curr.accommodation_id,
+            title: curr.title,
+            is_available: curr.is_available,
+            available_capacity: curr.available_capacity,
+            bookings: curr.bookings || []
+          };
+        }
+        return acc;
+      }, {});
 
-      if (bookingsError) throw bookingsError;
-
-      setAccommodations(accommodationsData || []);
-      setBookings(bookingsData || []);
+      setAvailabilityData(Object.values(groupedData));
     } catch (err) {
       console.error('Error loading data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load data');
@@ -102,28 +87,11 @@ export function Weekly({ onClose }: Props) {
     }
   }
 
-  const getWeeklyStatus = (accommodation: Accommodation): WeeklyStatus[string] => {
-    const booking = bookings.find(b => 
-      b.accommodation_id === accommodation.id &&
-      isSameWeek(new Date(b.check_in), currentWeek)
-    );
-
-    return {
-      isBooked: !!booking,
-      booking
-    };
-  };
-
-  const getStatusColor = (status: WeeklyStatus[string]) => {
-    if (status.isBooked) {
+  const getStatusColor = (data: AvailabilityData) => {
+    if (!data.is_available) {
       return 'bg-black text-white border-stone-300';
     }
     return 'bg-emerald-500 text-white border-emerald-600';
-  };
-
-  // Adjust dates for display by subtracting one day
-  const adjustDateForDisplay = (date: Date) => {
-    return addDays(date, -1);
   };
 
   return (
@@ -154,7 +122,7 @@ export function Weekly({ onClose }: Props) {
                 
                 <div className="text-center">
                   <h2 className="text-xl font-display">
-                    {format(adjustDateForDisplay(weekStart), 'MMM d')} → {format(adjustDateForDisplay(weekEnd), 'MMM d, yyyy')}
+                    {format(weekStart, 'MMM d')} → {format(weekEnd, 'MMM d, yyyy')}
                   </h2>
                   <p className="text-sm text-stone-500">
                     Week {currentWeekIndex + 1} of {weeks.length}
@@ -174,7 +142,7 @@ export function Weekly({ onClose }: Props) {
                 <div className="flex items-center gap-4 text-sm">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-black"></div>
-                    <span>Occupied</span>
+                    <span>Fully Booked</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
@@ -198,70 +166,55 @@ export function Weekly({ onClose }: Props) {
                 </div>
               )}
 
-              {loading ? (
+              {loading && availabilityData.length === 0 ? (
                 <div className="flex justify-center items-center h-96">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
                 </div>
               ) : (
                 <div className="grid gap-2">
-                  {accommodations.map((accommodation) => {
-                    const status = getWeeklyStatus(accommodation);
-                    return (
-                      <div
-                        key={accommodation.id}
-                        className={`p-4 rounded-lg border ${getStatusColor(status)} transition-colors`}
-                      >
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h3 className="text-lg font-display mb-1">
-                              {accommodation.title}
-                            </h3>
-                            <div className="flex items-center gap-4 text-sm opacity-90">
-                              <div className="flex items-center gap-1">
-                                <BedDouble className="w-4 h-4" />
-                                <span>{accommodation.inventory_count} unit{accommodation.inventory_count !== 1 ? 's' : ''}</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <Calendar className="w-4 h-4" />
-                                <span>{format(adjustDateForDisplay(weekStart), 'MMM d')} - {format(adjustDateForDisplay(weekEnd), 'MMM d')}</span>
-                              </div>
+                  {availabilityData.map((data) => (
+                    <div
+                      key={data.accommodation_id}
+                      className={`p-4 rounded-lg border ${getStatusColor(data)} transition-colors`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="text-lg font-display mb-1">
+                            {data.title}
+                          </h3>
+                          <div className="flex items-center gap-4 text-sm opacity-90">
+                            <div className="flex items-center gap-1">
+                              <BedDouble className="w-4 h-4" />
+                              {data.is_available ? (
+                                data.available_capacity === null ? (
+                                  <span>Unlimited</span>
+                                ) : (
+                                  <span>{data.available_capacity} available</span>
+                                )
+                              ) : (
+                                <span>Fully booked</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Calendar className="w-4 h-4" />
+                              <span>{format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d')}</span>
                             </div>
                           </div>
-
-                          {status.isBooked && status.booking && (
-                            <div className="text-right">
-                              <div className="flex items-center gap-2 mb-1">
-                                <Users className="w-4 h-4" />
-                                <span>{status.booking.user_email}</span>
-                              </div>
-                              <p className="text-sm opacity-90">
-                                €{status.booking.total_price}
-                              </p>
-                            </div>
-                          )}
                         </div>
 
-                        {status.isBooked && status.booking && (
-                          <div className="mt-3 pt-3 border-t border-white/20 grid grid-cols-2 gap-4 text-sm opacity-90">
-                            <div>
-                              <span className="opacity-75">Check-in:</span>
-                              <p>{format(adjustDateForDisplay(new Date(status.booking.check_in)), 'MMM d, yyyy')}</p>
-                            </div>
-                            <div>
-                              <span className="opacity-75">Check-out:</span>
-                              <p>{format(adjustDateForDisplay(new Date(status.booking.check_out)), 'MMM d, yyyy')}</p>
+                        {data.bookings && data.bookings.length > 0 && (
+                          <div className="text-right">
+                            <div className="flex items-center gap-2">
+                              <Users className="w-4 h-4" />
+                              <span>{data.bookings.length} booking{data.bookings.length !== 1 ? 's' : ''}</span>
                             </div>
                           </div>
                         )}
                       </div>
-                    );
-                  })}
+                    </div>
+                  ))}
                 </div>
               )}
-            </div>
-
-            <div className="p-4 border-t border-stone-200 text-sm text-stone-500 text-center">
-              Note: All dates shown are adjusted -1 day for display purposes only
             </div>
           </div>
         </motion.div>

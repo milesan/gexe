@@ -149,20 +149,7 @@ export function AnimatedTerminal({ onComplete }: Props) {
 
         if (signUpError) throw signUpError;
 
-        // If sign up successful, create profile
-        if (signUpData?.user) {
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .insert([
-              { 
-                id: signUpData.user.id,
-                email: signUpData.user.email,
-                credits: 0
-              }
-            ]);
-
-          if (profileError) throw profileError;
-        }
+        // Profile will be created in Retro2Page with additional user details
       } else if (signInError) {
         throw signInError;
       }

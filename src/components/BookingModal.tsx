@@ -2,7 +2,7 @@ import React from 'react';
 import { X } from 'lucide-react';
 import { differenceInDays } from 'date-fns';
 import { bookingRules } from '../utils/bookingRules';
-import { createBooking } from '../services/bookings';
+import { bookingService } from '../services/BookingService';
 import { useCredits } from '../hooks/useCredits';
 
 interface BookingModalProps {
@@ -44,12 +44,12 @@ export function BookingModal({
     setError(null);
     
     try {
-      await createBooking(
-        accommodation.id,
+      await bookingService.createBooking({
+        accommodationId: accommodation.id,
         checkIn,
         checkOut,
-        totalAmount
-      );
+        totalPrice: totalAmount
+      });
       await refreshCredits();
       onBookingComplete();
     } catch (err) {

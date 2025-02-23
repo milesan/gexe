@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Check } from 'lucide-react';
+import { Check, Upload, X } from 'lucide-react';
 import type { ApplicationQuestion } from '../../types/application';
+import { supabase } from '../../lib/supabase';
 
 interface Props {
   question: ApplicationQuestion;
@@ -9,15 +10,72 @@ interface Props {
   onChange: (value: any) => void;
   onBlur?: () => void;
   themeColor?: string;
+  questionIndex: number;
 }
 
-export function RetroQuestionField({ question, value, onChange, onBlur, themeColor = 'garden-gold' }: Props) {
-  const isConsentQuestion = question.order_number === 3;
+export function RetroQuestionField({ question, value, onChange, onBlur, themeColor = 'garden-gold', questionIndex }: Props) {
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const isConsentQuestion = questionIndex === 0 && question.section === 'intro';
   const isMBTIQuestion = question.text.toLowerCase().includes('mbti');
   const isImageUpload = question.type === 'file';
 
   const handleNoConsent = () => {
     window.location.href = 'https://www.youtube.com/watch?v=xvFZjo5PgG0';
+  };
+
+  const handleFileUpload = async (files: File[]) => {
+    setUploadError(null);
+    setUploadProgress(0);
+    console.log('🖼️ Starting file upload:', { 
+      numberOfFiles: files.length,
+      fileNames: files.map(f => f.name),
+      questionId: question.order_number 
+    });
+    
+    try {
+      const uploadedUrls = await Promise.all(
+        files.map(async (file) => {
+          // Validate file type and size
+          if (!file.type.startsWith('image/')) {
+            throw new Error('Please upload only image files');
+          }
+          if (file.size > 5 * 1024 * 1024) { // 5MB limit
+            throw new Error('File size must be less than 5MB');
+          }
+
+          const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '')}`;
+          console.log('📤 Uploading to storage:', { fileName });
+          
+          const { data, error } = await supabase.storage
+            .from('application-photos')
+            .upload(`photos/${fileName}`, file, {
+              upsert: false,
+              contentType: file.type
+            });
+
+          if (error) throw error;
+          console.log('✅ Upload successful:', { fileName });
+
+          const { data: { publicUrl } } = supabase.storage
+            .from('application-photos')
+            .getPublicUrl(`photos/${fileName}`);
+
+          console.log('🔗 Generated public URL:', { publicUrl });
+
+          setUploadProgress((prev) => prev + (100 / files.length));
+          return { url: publicUrl };
+        })
+      );
+
+      console.log('📸 All files uploaded, calling onChange with URLs:', uploadedUrls);
+      onChange(uploadedUrls);
+      setUploadProgress(100);
+    } catch (err: any) {
+      console.error('Upload error:', err);
+      setUploadError(err.message || 'Failed to upload image');
+      setUploadProgress(0);
+    }
   };
 
   if (isImageUpload) {
@@ -27,26 +85,58 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
           {question.text}
           <span className="text-red-500 ml-1">*</span>
         </h3>
-        <input
-          type="file"
-          accept="image/*"
-          multiple
-          onChange={(e) => {
-            const files = Array.from(e.target.files || []);
-            onChange(files);
-            if (onBlur) onBlur();
-          }}
-          className="w-full bg-black/30 p-3 text-[#FFBF00] focus:outline-none focus:ring-2 focus:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30"
-          style={{
-            clipPath: `polygon(
-              0 4px, 4px 4px, 4px 0,
-              calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
-              100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
-              calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
-              0 calc(100% - 4px)
-            )`
-          }}
-        />
+
+        <div className="relative">
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={(e) => {
+              const files = Array.from(e.target.files || []);
+              handleFileUpload(files);
+            }}
+            className="w-full bg-black/30 p-3 text-[#FFBF00] focus:outline-none focus:ring-2 focus:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30"
+            style={{
+              clipPath: `polygon(
+                0 4px, 4px 4px, 4px 0,
+                calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
+                100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
+                calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
+                0 calc(100% - 4px)
+              )`
+            }}
+          />
+          
+          {uploadProgress > 0 && uploadProgress < 100 && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+              <div className="text-[#FFBF00]">
+                <Upload className="w-6 h-6 animate-bounce" />
+                <span className="ml-2">{Math.round(uploadProgress)}%</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {uploadError && (
+          <div className="flex items-center text-red-500">
+            <X className="w-4 h-4 mr-2" />
+            {uploadError}
+          </div>
+        )}
+
+        {value && value.length > 0 && (
+          <div className="grid grid-cols-3 gap-4">
+            {value.map((file: { url: string }, index: number) => (
+              <div key={index} className="relative">
+                <img 
+                  src={file.url} 
+                  alt={`Uploaded photo ${index + 1}`}
+                  className="w-full h-32 object-cover rounded-lg"
+                />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     );
   }
@@ -213,7 +303,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
                     </div>
                     <input
                       type="radio"
-                      name={`question-${question.order_number}`}
+                      name={`question-${questionIndex}`}
                       value={option}
                       checked={isSelected}
                       onChange={() => handleChange(option)}

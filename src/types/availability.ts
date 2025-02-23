@@ -1,5 +1,12 @@
 export type AvailabilityStatus = 'AVAILABLE' | 'BOOKED' | 'HOLD';
 
+export interface AvailabilityResult {
+  accommodation_id: string;
+  title: string;
+  is_available: boolean;
+  available_capacity: number | null;
+}
+
 export interface Event {
   id: string;
   title: string;

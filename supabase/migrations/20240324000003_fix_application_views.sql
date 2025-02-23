@@ -53,7 +53,11 @@ BEGIN
       'provider', 'email',
       'providers', ARRAY['email']
     ),
-    raw_user_meta_data = jsonb_build_object('approved', true),
+    raw_user_meta_data = jsonb_build_object(
+      'approved', true,
+      'has_applied', true,
+      'application_status', 'approved'
+    ),
     updated_at = now()
   WHERE id = v_user_id;
 

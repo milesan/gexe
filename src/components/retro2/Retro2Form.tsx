@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { RetroQuestionField } from './RetroQuestionField';
-import { Sprout, Send, ChevronRight, LogOut, Terminal } from 'lucide-react';
+import { Send, ChevronRight, LogOut, Terminal } from 'lucide-react';
 import { AutosaveNotification } from '../AutosaveNotification';
 import { useAutosave } from '../../hooks/useAutosave';
 import type { ApplicationQuestion } from '../../types/application';
@@ -27,14 +27,16 @@ export function Retro2Form({ questions, onSubmit }: Props) {
       const savedData = await loadSavedData();
       if (savedData) {
         setFormData(savedData);
+        // Find the consent question (first question) and its order_number
+        const consentQuestion = questions.find(q => q.section === 'intro');
         // If user has already consented, skip to next section
-        if (savedData[3] === 'As you wish.') {
+        if (consentQuestion && savedData[consentQuestion.order_number] === 'As you wish.') {
           setCurrentSection(1);
         }
       }
     };
     initializeForm();
-  }, [loadSavedData]);
+  }, [loadSavedData, questions]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,22 +57,31 @@ export function Retro2Form({ questions, onSubmit }: Props) {
   };
 
   const handleChange = (questionId: number, value: any) => {
+    console.log('📝 Form field changed:', { 
+      questionId, 
+      isImageUpload: Array.isArray(value) && value.length > 0 && value[0]?.url,
+      value: Array.isArray(value) && value.length > 0 && value[0]?.url ? 'Image URLs' : value
+    });
     const newFormData = {
       ...formData,
       [questionId]: value
     };
     setFormData(newFormData);
 
+    // Save after state update
+    setTimeout(() => {
+      console.log('💾 Auto-saving after field change');
+      saveData(newFormData);  // Use newFormData instead of formData to ensure we have latest
+    }, 0);
+
     // If this is the consent question and user consents, auto-advance
-    if (questionId === 3 && value === 'As you wish.') {
+    const consentQuestion = questions.find(q => q.section === 'intro');
+    if (consentQuestion && questionId === consentQuestion.order_number && value === 'As you wish.') {
+      console.log('User consented, moving to next section');
       setTimeout(() => {
         setCurrentSection(1);
       }, 500);
     }
-  };
-
-  const handleBlur = () => {
-    saveData(formData);
   };
 
   const handleLogout = async () => {
@@ -113,7 +124,15 @@ export function Retro2Form({ questions, onSubmit }: Props) {
         <div className="max-w-2xl mx-auto px-4">
           <div className="flex items-center justify-between py-4">
             <div className="flex items-center gap-3">
-              <Sprout className="w-6 h-6" />
+              <img 
+                src="https://raw.githubusercontent.com/milesan/synesthesia/refs/heads/main/Enso%20Zen%20Soto%20Symbol.png"
+                alt="Enso Logo"
+                className="w-6 h-6"
+                style={{ 
+                  filter: 'brightness(0) invert(0.75) sepia(0.6) saturate(400%) hue-rotate(360deg)',
+                  opacity: 0.9
+                }}
+              />
               <h1 className="text-xl font-display">The Garden</h1>
             </div>
             <button
@@ -168,21 +187,17 @@ export function Retro2Form({ questions, onSubmit }: Props) {
             transition={{ duration: 0.2 }}
             className="space-y-12 pb-12"
           >
-            {currentQuestions.map((question) => (
-              <div 
-                key={question.order_number}
-                data-question={question.order_number}
-                className="space-y-4 relative"
-              >
+            {questions
+              .filter(q => q.section === sectionNames[currentSection].toLowerCase())
+              .map((question, index) => (
                 <RetroQuestionField
+                  key={question.id}
                   question={question}
+                  questionIndex={index}
                   value={formData[question.order_number]}
-                  onChange={(value) => handleChange(question.order_number, value)}
-                  onBlur={handleBlur}
+                  onChange={value => handleChange(question.order_number, value)}
                 />
-                <div className="section-divider relative" />
-              </div>
-            ))}
+              ))}
           </motion.div>
         </div>
       </div>

@@ -1,28 +1,37 @@
+export type AccommodationType = 'room' | 'dorm' | 'cabin' | 'tent' | 'parking' | 'addon';
+export type BookingStatus = 'pending' | 'confirmed' | 'cancelled';
+
 export interface Accommodation {
   id: string;
   title: string;
-  location: string;
-  price: number;
-  rating: number;
-  reviews: number;
-  imageUrl: string;
-  type: string;
-  beds: number;
-  bathrooms: number;
-  superhost: boolean;
-  inventory_count: number;
-  is_fungible?: boolean;
-  is_unlimited?: boolean;
-  parent_accommodation_id?: string | null;
+  base_price: number;
+  type: AccommodationType;
+  capacity: number | null;
+  has_wifi: boolean;
+  has_electricity: boolean;
+  image_url: string | null;
+  is_unlimited: boolean;
 }
 
-export interface CabinRates {
-  [key: string]: number;
+export interface Booking {
+  id: string;
+  user_id: string;
+  accommodation_id: string;
+  check_in: string;
+  check_out: string;
+  total_price: number;
+  status: BookingStatus;
+  payment_intent_id?: string;
+  created_at: string;
+  updated_at: string;
+  accommodation?: Accommodation;
 }
 
-export interface Week {
-  date: Date;
-  isSelected: boolean;
-  isFirstWeek: boolean;
-  isLastWeek: boolean;
+export interface AccommodationAvailability {
+  accommodation_id: string;
+  title: string;
+  is_unlimited: boolean;
+  check_in: string | null;
+  check_out: string | null;
+  availability_status: number | null;
 }
