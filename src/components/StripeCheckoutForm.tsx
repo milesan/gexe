@@ -5,15 +5,17 @@ import {
   EmbeddedCheckout
 } from '@stripe/react-stripe-js';
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY_PROD);
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
+console.log('[Stripe Checkout Form] Stripe public key:', import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
 interface Props {
   description: string,
   total: number,
-  authToken: string
+  authToken: string,
+  onSuccess?: () => Promise<void>
 }
 
-export function StripeCheckoutForm({ total, authToken, description }: Props) {
+export function StripeCheckoutForm({ total, authToken, description, onSuccess }: Props) {
   const fetchClientSecret = useCallback(() => {
     // Create a Checkout Session
     return fetch(import.meta.env.VITE_SUPABASE_URL + "/functions/v1/stripe-webhook", {
@@ -37,7 +39,7 @@ export function StripeCheckoutForm({ total, authToken, description }: Props) {
         stripe={stripePromise}
         options={options}
       >
-        <EmbeddedCheckout />
+        <EmbeddedCheckout onComplete={onSuccess} />
       </EmbeddedCheckoutProvider>
     </div>
   )
