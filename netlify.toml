@@ -4,9 +4,7 @@
   functions = "netlify/functions"
 
 [build.environment]
-  NODE_VERSION = "20"
-  STRIPE_SECRET_KEY_PROD = "sk_test_51KRJB4Gi5eXNGIkHXQTluQ6BUJBlzFNpgUYXtu0ToOKw0qHAaIGbgC2iixBalnAQYheP4OpX1wmnu1m2fww3J85K003idaWdKI"
-  VITE_STRIPE_PUBLIC_KEY_PROD = "pk_test_51KRJB4Gi5eXNGIkHSucqLNxKB6rfUkfLroMBMYWo8E2u56xqXXsX7TLKZbMUT6IFdtTfWpJtgoEi4zQ3CZzrJiEL00aJtBw3Mu"
+NODE_VERSION = "20"
 
 [[redirects]]
   from = "/*"
