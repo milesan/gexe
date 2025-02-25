@@ -33,15 +33,30 @@ export function BookingSummary({
   });
 
   const [isBooking, setIsBooking] = useState(false);
+  console.log('[BookingSummary] useState(isBooking) called');
+  
   const [error, setError] = useState<string | null>(null);
+  console.log('[BookingSummary] useState(error) called');
+  
   const [showStripeModal, setShowStripeModal] = useState(false);
+  console.log('[BookingSummary] useState(showStripeModal) called');
+  
   const [authToken, setAuthToken] = useState('');
+  console.log('[BookingSummary] useState(authToken) called');
+  
   const { getArrivalDepartureForDate } = useSchedulingRules();
+  console.log('[BookingSummary] useSchedulingRules hook called');
+  
   const navigate = useNavigate();
+  console.log('[BookingSummary] useNavigate hook called');
+  
   const session = useSession();
+  console.log('[BookingSummary] useSession hook called');
+  
   const isAdmin = session?.user?.email === 'andre@thegarden.pt';
 
   useEffect(() => {
+    console.log('[BookingSummary] useEffect(getSession) called');
     console.log('[Booking Summary] Getting Supabase session...');
     supabase.auth.getSession().then(res => {
       const token = res?.data?.session?.access_token;
@@ -96,8 +111,6 @@ export function BookingSummary({
     }
   };
 
-  if (selectedWeeks.length === 0 && !selectedAccommodation) return null;
-
   const numberOfWeeks = selectedWeeks.length;
   const baseAccommodationRate = selectedAccommodation?.price || 0;
   
@@ -124,76 +137,93 @@ export function BookingSummary({
   const durationDiscountAmount = Math.round(subtotal * durationDiscount);
   const totalAmount = Math.round(subtotal - durationDiscountAmount);
 
-  const handleBookingSuccess = async () => {
-    if (!selectedAccommodation) {
-      console.warn('[Booking Summary] No accommodation selected for booking');
-      return;
-    }
-    
-    console.log('[Booking Summary] Starting booking process...');
-    setIsBooking(true);
-    setError(null);
-    
+  const handleBookingSuccess = useCallback(async () => {
     try {
-      const checkIn = selectedWeeks[0];
-      const checkOut = addDays(selectedWeeks[selectedWeeks.length - 1], 6);
-      
-      console.log('[Booking Summary] Creating booking:', {
-        accommodationId: selectedAccommodation.id,
-        checkIn: checkIn.toISOString(),
-        checkOut: checkOut.toISOString(),
-        totalPrice: totalAmount
-      });
-
-      const booking = await bookingService.createBooking({
-        accommodationId: selectedAccommodation.id,
-        checkIn: checkIn.toISOString(),
-        checkOut: checkOut.toISOString(),
-        totalPrice: totalAmount
-      });
-
-      console.log('[Booking Summary] Booking created:', booking);
-
-      // Update booking status to confirmed after successful payment
-      console.log('[Booking Summary] Updating booking status to confirmed...');
-      const { error: updateError } = await supabase
-        .from('bookings')
-        .update({ 
-          status: 'confirmed',
-          payment_intent_id: booking.id // Use booking ID as payment intent for now
-        })
-        .eq('id', booking.id);
-
-      if (updateError) {
-        console.error('[Booking Summary] Error updating booking status:', updateError);
-        throw updateError;
+      if (!selectedAccommodation || selectedWeeks.length === 0) {
+        throw new Error('Missing required booking information');
       }
 
-      console.log('[Booking Summary] Booking status updated successfully');
-      
-      onClearWeeks();
-      onClearAccommodation();
-      setShowStripeModal(false);
-      
-      console.log('[Booking Summary] Navigating to confirmation page...');
-      navigate('/confirmation', {
-        state: {
-          booking: {
-            checkIn,
-            checkOut,
-            accommodation: selectedAccommodation.title,
-            totalPrice: totalAmount,
-            guests: 1
-          }
-        }
+      // Get first week's check-in and last week's check-out
+      const checkIn = selectedWeeks[0];
+      const checkOut = addDays(selectedWeeks[selectedWeeks.length - 1], 6);
+
+      console.log('[Booking Summary] Date debug:', {
+        selectedWeeks,
+        firstWeek: selectedWeeks[0],
+        checkIn,
+        checkOut,
+        checkInType: typeof checkIn,
+        checkOutType: typeof checkOut,
+        isCheckInDate: checkIn instanceof Date,
+        isCheckOutDate: checkOut instanceof Date
       });
+
+      console.log('[Booking Summary] Starting booking process...');
+      setIsBooking(true);
+      setError(null);
+      
+      try {
+        console.log('[Booking Summary] Creating booking:', {
+          accommodationId: selectedAccommodation.id,
+          checkIn: checkIn.toISOString(),
+          checkOut: checkOut.toISOString(),
+          totalPrice: totalAmount
+        });
+
+        const booking = await bookingService.createBooking({
+          accommodationId: selectedAccommodation.id,
+          checkIn: checkIn.toISOString(),
+          checkOut: checkOut.toISOString(),
+          totalPrice: totalAmount
+        });
+
+        console.log('[Booking Summary] Booking created:', booking);
+
+        // Update booking status to confirmed after successful payment
+        console.log('[Booking Summary] Updating booking status to confirmed...');
+        const { error: updateError } = await supabase
+          .from('bookings')
+          .update({ 
+            status: 'confirmed',
+            payment_intent_id: booking.id // Use booking ID as payment intent for now
+          })
+          .eq('id', booking.id);
+
+        if (updateError) {
+          console.error('[Booking Summary] Error updating booking status:', updateError);
+          throw updateError;
+        }
+
+        console.log('[Booking Summary] Booking status updated successfully');
+        
+        onClearWeeks();
+        onClearAccommodation();
+        setShowStripeModal(false);
+        
+        console.log('[Booking Summary] Navigating to confirmation page...');
+        navigate('/confirmation', {
+          state: {
+            booking: {
+              checkIn,
+              checkOut,
+              accommodation: selectedAccommodation.title,
+              totalPrice: totalAmount,
+              guests: 1
+            }
+          }
+        });
+      } catch (err) {
+        console.error('[Booking Summary] Error in booking process:', err);
+        setError(err instanceof Error ? err.message : 'Failed to create booking');
+      } finally {
+        setIsBooking(false);
+      }
     } catch (err) {
-      console.error('[Booking Summary] Error in booking process:', err);
+      console.error('[Booking Summary] Error in booking success:', err);
       setError(err instanceof Error ? err.message : 'Failed to create booking');
-    } finally {
-      setIsBooking(false);
     }
-  };
+  }, [selectedAccommodation, selectedWeeks, totalAmount, onClearWeeks, onClearAccommodation, setShowStripeModal, navigate]);
+  if (selectedWeeks.length === 0 && !selectedAccommodation) return null;
 
   const handleConfirmClick = async () => {
     console.log('[Booking Summary] Confirm button clicked');
@@ -431,7 +461,6 @@ export function BookingSummary({
               </div>
 
               {authToken && selectedAccommodation && (
-                console.log('[Booking Summary] Auth Token:', authToken),
                 <StripeCheckoutForm
                   authToken={authToken}
                   total={totalAmount}

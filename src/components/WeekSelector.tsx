@@ -22,6 +22,12 @@ export function WeekSelector({
   currentMonth,
   isMobile = false
 }: Props) {
+  console.log('[WeekSelector] Component render called with:', {
+    weeksCount: weeks.length,
+    selectedWeeksCount: selectedWeeks.length,
+    currentMonth: currentMonth.toISOString()
+  });
+  
   return (
     <div className={clsx(
       'grid gap-4',

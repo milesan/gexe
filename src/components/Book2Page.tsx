@@ -19,23 +19,39 @@ const BACKGROUND_IMAGE = "https://images.unsplash.com/photo-1510798831971-661eb0
 
 export function Book2Page() {
   const { accommodations, loading } = useWeeklyAccommodations();
+  console.log('[Book2Page] useWeeklyAccommodations hook called:', { loading });
+  
   const [selectedWeeks, setSelectedWeeks] = useState<Date[]>([]);
+  console.log('[Book2Page] useState(selectedWeeks) called');
+  
   const [selectedAccommodation, setSelectedAccommodation] = useState<string | null>(null);
+  console.log('[Book2Page] useState(selectedAccommodation) called');
+  
   const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(convertToUTC1(new Date('2024-12-16'), 0)));
+  console.log('[Book2Page] useState(currentMonth) called');
+  
   const [showMaxWeeksModal, setShowMaxWeeksModal] = useState(false);
+  console.log('[Book2Page] useState(showMaxWeeksModal) called');
+  
   const [showCalendarConfig, setShowCalendarConfig] = useState(false);
+  console.log('[Book2Page] useState(showCalendarConfig) called');
+  
   const session = useSession();
+  console.log('[Book2Page] useSession hook called');
+  
   const isAdmin = session?.user?.email === 'andre@thegarden.pt';
   const isMobile = window.innerWidth < 768;
   
   const [squigglePaths] = useState(() => 
     Array.from({ length: DESKTOP_WEEKS }, () => generateSquigglePath())
   );
+  console.log('[Book2Page] useState(squigglePaths) called');
 
   const weeks = useMemo(() => 
     generateWeeks(currentMonth, isMobile ? MOBILE_WEEKS : DESKTOP_WEEKS),
     [currentMonth, isMobile]
   );
+  console.log('[Book2Page] useMemo(weeks) called');
 
   const isConsecutiveWeek = (nextWeek: Date | undefined) => {
     if (!nextWeek || selectedWeeks.length === 0) return false;
