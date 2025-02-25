@@ -174,33 +174,56 @@ class BookingService {
     return data;
   }
 
+  async getCurrentUser() {
+    const { data: { user } } = await supabase.auth.getUser();
+    return user;
+  }
+
   async createBooking(booking: {
     accommodationId: string;
-    checkIn: Date;
-    checkOut: Date;
+    checkIn: Date | string;
+    checkOut: Date | string;
     totalPrice: number;
   }): Promise<Booking> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
+    console.log('[BookingService] Creating booking with data:', {
+      ...booking,
+      checkInType: booking.checkIn instanceof Date ? 'Date' : 'string',
+      checkOutType: booking.checkOut instanceof Date ? 'Date' : 'string'
+    });
 
-    // Validate check_out is after check_in (matching database constraint)
-    if (booking.checkOut <= booking.checkIn) {
-      throw new Error('Check-out date must be after check-in date');
+    const user = await this.getCurrentUser();
+    console.log('[BookingService] Current user:', user?.id);
+    
+    if (!user) {
+      console.error('[BookingService] No authenticated user found');
+      throw new Error('User not authenticated');
     }
 
     // Validate total_price is non-negative (matching database constraint)
     if (booking.totalPrice < 0) {
+      console.error('[BookingService] Invalid total price:', booking.totalPrice);
       throw new Error('Total price must be non-negative');
     }
 
     try {
+      const checkInISO = booking.checkIn instanceof Date ? booking.checkIn.toISOString() : booking.checkIn;
+      const checkOutISO = booking.checkOut instanceof Date ? booking.checkOut.toISOString() : booking.checkOut;
+      
+      console.log('[BookingService] Inserting booking with processed dates:', {
+        checkInISO,
+        checkOutISO,
+        accommodationId: booking.accommodationId,
+        userId: user.id,
+        totalPrice: booking.totalPrice
+      });
+
       const { data: newBooking, error } = await supabase
         .from('bookings')
         .insert({
           accommodation_id: booking.accommodationId,
           user_id: user.id,
-          check_in: booking.checkIn.toISOString(),
-          check_out: booking.checkOut.toISOString(),
+          check_in: checkInISO,
+          check_out: checkOutISO,
           total_price: booking.totalPrice,
           status: 'confirmed',
           payment_intent_id: null,
@@ -210,17 +233,31 @@ class BookingService {
         .select('*')
         .single();
 
-      if (error) throw error;
-      if (!newBooking) throw new Error('Failed to create booking');
+      if (error) {
+        console.error('[BookingService] Error creating booking:', error);
+        throw error;
+      }
+      if (!newBooking) {
+        console.error('[BookingService] No booking returned after creation');
+        throw new Error('Failed to create booking');
+      }
       
+      console.log('[BookingService] Successfully created booking:', newBooking);
+
       const { data: accommodation, error: accError } = await supabase
         .from('accommodations')
         .select('title, type, image_url')
         .eq('id', newBooking.accommodation_id)
         .single();
 
-      if (accError) throw accError;
+      if (accError) {
+        console.warn('[BookingService] Error fetching accommodation details:', accError);
+      }
 
+      console.log('[BookingService] Returning booking with accommodation:', {
+        booking: newBooking,
+        accommodation
+      });
       return { ...newBooking, accommodation };
     } catch (error) {
       console.error('Error creating booking:', error);

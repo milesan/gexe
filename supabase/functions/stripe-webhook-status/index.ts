@@ -18,26 +18,10 @@ serve(async (req) => {
   }
 
   try {
-    const body = await req.json();
-    const { total, description } = body;
-
-    const session = await stripe.checkout.sessions.create({
-      ui_mode: 'embedded',
-      line_items: [{
-        price_data: {
-          currency: "eur",
-          tax_behavior: "inclusive",
-          unit_amount: total * 100,
-          product_data: { name: "Donation to the Garden Associação, " + description },
-        },
-        quantity: 1,
-      }],
-      mode: 'payment',
-      automatic_tax: { enabled: true },
-      redirect_on_completion: 'never', // Keep embedded flow
-    });
-
-    return new Response(JSON.stringify({ clientSecret: session.client_secret }), {
+    const { clientSecret } = await req.json();
+    const sessionId = clientSecret.split('_secret_')[0]; // Extract session ID from clientSecret
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    return new Response(JSON.stringify({ status: session.payment_status }), {
       headers: corsHeaders,
       status: 200,
     });
