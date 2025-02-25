@@ -53,7 +53,7 @@ export function BookingSummary({
   const session = useSession();
   console.log('[BookingSummary] useSession hook called');
   
-  const isAdmin = session?.user?.email === 'andre@thegarden.pt';
+  const isAdmin = session?.user?.email === 'andre@thegarden.pt' || session?.user?.email === 'redis213@gmail.com';
 
   useEffect(() => {
     console.log('[BookingSummary] useEffect(getSession) called');

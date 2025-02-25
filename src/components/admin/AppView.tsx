@@ -182,7 +182,10 @@ export function AppView() {
         if (!error && application?.user_email) {
           // Send approval email
           const { error: emailError } = await supabase.functions.invoke('send-approval-email', {
-            body: { email: application.user_email }
+            body: { 
+              email: application.user_email,
+              applicationId: id
+            }
           });
           console.log('AppView: Email sending result', { emailError });
         }

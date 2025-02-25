@@ -26,7 +26,7 @@ export function Book2Page() {
   const [showMaxWeeksModal, setShowMaxWeeksModal] = useState(false);
   const [showCalendarConfig, setShowCalendarConfig] = useState(false);
   const session = useSession();
-  const isAdmin = session?.user?.email === 'andre@thegarden.pt';
+  const isAdmin = session?.user?.email === 'andre@thegarden.pt' || session?.user?.email === 'redis213@gmail.com';
   const isMobile = window.innerWidth < 768;
   
   const [squigglePaths] = useState(() => 

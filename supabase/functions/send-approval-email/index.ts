@@ -4,6 +4,7 @@ import { corsHeaders } from '../_shared/cors.ts'
 
 interface EmailPayload {
   email: string;
+  applicationId: string;
 }
 
 serve(async (req) => {
@@ -17,11 +18,11 @@ serve(async (req) => {
     const body = await req.json() as EmailPayload
     console.log('Parsed request body:', body)
     
-    if (!body.email) {
-      throw new Error('Email is required')
+    if (!body.email || !body.applicationId) {
+      throw new Error('Email and applicationId are required')
     }
     
-    const { email } = body
+    const { email, applicationId } = body
     console.log('Received request to send email to:', email)
 
     // Create a Supabase client with service role key
@@ -38,6 +39,20 @@ serve(async (req) => {
     
     const supabaseClient = createClient(supabaseUrl, serviceRoleKey)
 
+    console.log('Creating acceptance token...')
+    
+    // Generate acceptance token using Edge Function
+    const { data: tokenData, error: tokenError } = await supabaseClient.functions.invoke('create-acceptance-token', {
+      body: { applicationId }
+    });
+
+    if (tokenError) {
+      console.error('Error creating token:', tokenError)
+      throw tokenError
+    }
+
+    const acceptanceUrl = `${supabaseUrl}/accept?token=${tokenData.token}`
+    
     console.log('Attempting to send email...')
     
     // Send email using Supabase's email service
@@ -49,9 +64,17 @@ serve(async (req) => {
           subject: 'Your Garden Application Has Been Approved!',
           html: `
             <h2>Congratulations!</h2>
-            <p>Your application to The Garden has been approved.</p>
-            <p>You can now log in to your account and start making bookings.</p>
-            <p>Welcome to The Garden community!</p>
+            <p>We're excited to inform you that your application to join Garden has been approved!</p>
+            <p>To complete your registration and join our community, please click the button below:</p>
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${acceptanceUrl}" style="background-color: #064e3b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+                Accept Invitation
+              </a>
+            </div>
+            <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
+            <p>${acceptanceUrl}</p>
+            <p>This invitation link will expire in 7 days.</p>
+            <p>Welcome to Garden!</p>
           `
         }
       ])
