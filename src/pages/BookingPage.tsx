@@ -20,7 +20,7 @@ export function BookingPage() {
   const loading = accommodationsLoading || availabilityLoading;
   const error = accommodationsError || availabilityError;
 
-  const isAdmin = session?.user?.email === 'andre@thegarden.pt';
+  const isAdmin = session?.user?.email === 'andre@thegarden.pt' || session?.user?.email === 'redis213@gmail.com';
 
   useEffect(() => {
     if (dateRange?.from && dateRange?.to && showAccommodations) {

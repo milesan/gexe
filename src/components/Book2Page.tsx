@@ -39,7 +39,7 @@ export function Book2Page() {
   const session = useSession();
   console.log('[Book2Page] useSession hook called');
   
-  const isAdmin = session?.user?.email === 'andre@thegarden.pt';
+  const isAdmin = session?.user?.email === 'andre@thegarden.pt'||session?.user?.email === 'redis213@gmail.com';
   const isMobile = window.innerWidth < 768;
   
   const [squigglePaths] = useState(() => 

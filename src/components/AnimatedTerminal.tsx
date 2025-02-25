@@ -37,8 +37,8 @@ export function AnimatedTerminal({ onComplete }: Props) {
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [showLogin, setShowLogin] = useState(false);
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [useMatrixTheme] = useState(() => Math.random() < 0.33);
   const navigate = useNavigate();
@@ -126,33 +126,23 @@ export function AnimatedTerminal({ onComplete }: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccess(null);
     setIsLoading(true);
     
     try {
-      // First try to sign in
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      console.log('Sending magic link to:', email);
+      const { error } = await supabase.auth.signInWithOtp({
         email,
-        password
-      });
-
-      // If sign in fails with "Invalid login credentials", try to sign up
-      if (signInError && signInError.message.includes('Invalid login credentials')) {
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              has_applied: false
-            }
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          // Include user_metadata if needed
+          data: {
+            has_applied: false
           }
-        });
-
-        if (signUpError) throw signUpError;
-
-        // Profile will be created in Retro2Page with additional user details
-      } else if (signInError) {
-        throw signInError;
-      }
+        }
+      });
+      if (error) throw error;
+      setSuccess('Check your email for the magic link');
     } catch (err) {
       console.error('Error:', err);
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
@@ -160,8 +150,6 @@ export function AnimatedTerminal({ onComplete }: Props) {
       setIsLoading(false);
     }
   };
-
-  const themeColor = useMatrixTheme ? 'garden-matrix' : 'garden-gold';
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-4">
@@ -200,9 +188,8 @@ export function AnimatedTerminal({ onComplete }: Props) {
               <div className="w-full max-w-[400px] p-8">
                 <div className="bg-black p-8">
                   <div className="flex items-center justify-center gap-3 mb-8">
-                
                     <h1 className="text-base sm:text-xl font-mono text-[#FFBF00] whitespace-nowrap">
-                      create / remember
+                      enter the garden
                     </h1>
                   </div>
 
@@ -231,31 +218,15 @@ export function AnimatedTerminal({ onComplete }: Props) {
                       </div>
                     </div>
 
-                    <div className="w-full">
-                      <div className="relative w-full">
-                        <input
-                          type="password"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          className="w-full min-w-[200px] bg-black text-[#FFBF00] border-2 border-[#FFBF00]/30 p-3 font-mono focus:outline-none focus:ring-2 focus:ring-[#FFBF00]/50 placeholder-[#FFBF00]/30"
-                          style={{
-                            clipPath: `polygon(
-                              0 4px, 4px 4px, 4px 0,
-                              calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
-                              100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
-                              calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
-                              0 calc(100% - 4px)
-                            )`
-                          }}
-                          placeholder="password"
-                          required
-                        />
-                      </div>
-                    </div>
-
                     {error && (
                       <div className="font-mono text-red-500 text-sm">
                         {error}
+                      </div>
+                    )}
+
+                    {success && (
+                      <div className="font-mono text-[#FFBF00] text-sm">
+                        {success}
                       </div>
                     )}
 
@@ -273,7 +244,7 @@ export function AnimatedTerminal({ onComplete }: Props) {
                         )`
                       }}
                     >
-                      {isLoading ? 'Processing...' : 'enter'}
+                      {isLoading ? 'sending...' : 'send magic link'}
                     </button>
                   </form>
                 </div>

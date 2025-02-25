@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useSearchParams } from 'react-router-dom';
 import { LandingPage } from './pages/LandingPage';
 import { PendingPage } from './pages/PendingPage';
 import { AuthenticatedApp } from './components/AuthenticatedApp';
@@ -10,6 +10,48 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
 import { useSession } from './hooks/useSession';
+import { WhitelistWelcomeModal } from './components/WhitelistWelcomeModal';
+
+function AcceptancePage() {
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token');
+  const [showWelcome, setShowWelcome] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  
+  React.useEffect(() => {
+    if (!token) {
+      setError('Invalid acceptance link');
+      return;
+    }
+
+    const verifyToken = async () => {
+      try {
+        const { error: verifyError } = await supabase.functions.invoke('verify-acceptance-token', {
+          body: { token }
+        });
+
+        if (verifyError) throw verifyError;
+        setShowWelcome(true);
+      } catch (err) {
+        console.error('Error accepting invitation:', err);
+        setError(err instanceof Error ? err.message : 'Failed to accept invitation');
+      }
+    };
+
+    verifyToken();
+  }, [token]);
+
+  if (error) {
+    return <div className="p-4 text-red-600">{error}</div>;
+  }
+
+  return (
+    <WhitelistWelcomeModal 
+      isOpen={showWelcome} 
+      onClose={() => window.location.href = '/app'} 
+    />
+  );
+}
 
 export default function App() {
   const session = useSession();
@@ -65,7 +107,7 @@ export default function App() {
   }
 
   // Get user metadata with proper type checking
-  const isAdmin = metadata?.is_admin === true;
+  const isAdmin = session?.user?.email === 'andre@thegarden.pt' || session?.user?.email === 'redis213@gmail.com';
   const hasApplied = metadata?.has_applied === true;
   const applicationStatus = metadata?.application_status;
 
@@ -104,6 +146,23 @@ export default function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider>
+        <Router>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/pending" element={<PendingPage />} />
+            <Route path="/confirmation" element={<ConfirmationPage />} />
+            <Route path="/retro2" element={<Retro2Page />} />
+            <Route path="/accept" element={<AcceptancePage />} />
+            <Route
+              path="/*"
+              element={
+                <ErrorBoundary>
+                  <AuthenticatedApp />
+                </ErrorBoundary>
+              }
+            />
+          </Routes>
+        </Router>
         <PendingPage status={applicationStatus} />
       </ThemeProvider>
     </ErrorBoundary>

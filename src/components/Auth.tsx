@@ -1,29 +1,37 @@
-import { Auth as SupabaseAuth } from '@supabase/auth-ui-react';
-import { ThemeSupa } from '@supabase/auth-ui-shared';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 
 export function Auth() {
-  const [authError, setAuthError] = useState<string | null>(null);
+  const [email, setEmail] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_UP') {
-        setAuthError('Please check your email for the confirmation link.');
-      } else {
-        setAuthError(null);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const handleError = (error: any) => {
-    console.error('Auth error:', error);
-    if (error.message.includes('Database error saving new user')) {
-      setAuthError('Unable to create account. Please try again later.');
-    } else {
-      setAuthError(error.message);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+    setIsLoading(true);
+    
+    try {
+      console.log('Sending magic link to:', email);
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          // Include user_metadata if needed
+          data: {
+            has_applied: false
+          }
+        }
+      });
+      if (error) throw error;
+      setSuccess('Check your email for the magic link');
+    } catch (err) {
+      console.error('Error:', err);
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -44,39 +52,40 @@ export function Auth() {
       </div>
       
       <div className="bg-white p-8 rounded-xl shadow-sm border border-stone-200">
-        {authError && (
-          <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-lg text-sm">
-            {authError}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-900 rounded-lg text-sm">
+            {error}
           </div>
         )}
-        <SupabaseAuth
-          supabaseClient={supabase}
-          appearance={{
-            theme: ThemeSupa,
-            variables: {
-              default: {
-                colors: {
-                  brand: '#064E3B',
-                  brandAccent: '#065F46',
-                  defaultButtonBackground: '#FFFFFF',
-                  defaultButtonBackgroundHover: '#F5F7F6',
-                  inputBackground: '#FFFFFF',
-                  inputBorder: '#E5E7EB',
-                  inputText: '#1F2937',
-                },
-              },
-            },
-            className: {
-              container: 'font-body',
-              button: 'font-body text-sm',
-              input: 'font-body text-sm',
-              label: 'font-body text-sm text-stone-600',
-            },
-          }}
-          providers={[]}
-          onError={handleError}
-          redirectTo={window.location.origin}
-        />
+        {success && (
+          <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-lg text-sm">
+            {success}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-stone-700 mb-1">
+              Email address
+            </label>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-3 py-2 border border-stone-300 rounded-md shadow-sm focus:ring-emerald-500 focus:border-emerald-500"
+              required
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full bg-emerald-800 text-white py-2 px-4 rounded-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isLoading ? 'Sending...' : 'Send Magic Link'}
+          </button>
+        </form>
       </div>
     </div>
   );
