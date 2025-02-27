@@ -1,109 +1,147 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { corsHeaders } from '../_shared/cors.ts'
-
-interface TokenPayload {
-  token: string;
-}
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { corsHeaders } from '../_shared/cors.ts';
 
 serve(async (req) => {
-  // Handle CORS
+  console.log('Function invoked with method:', req.method);
+  console.log('Request headers:', Object.fromEntries(req.headers.entries()));
+
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    console.log('Handling OPTIONS request');
+    return new Response('ok', {
+      headers: {
+        ...corsHeaders,
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      },
+      status: 200,
+    });
   }
 
+  console.log('Processing POST request');
+
   try {
-    const body = await req.json() as TokenPayload
-    
-    if (!body.token) {
-      throw new Error('Token is required')
-    }
-    
-    const { token } = body
-    console.log('Verifying token:', token)
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    console.log('SUPABASE_URL:', supabaseUrl || 'not set');
+    console.log('SUPABASE_SERVICE_ROLE_KEY:', serviceRoleKey ? '[redacted]' : 'not set');
 
-    // Create a Supabase client with service role key
-    const supabaseUrl = Deno.env.get('PROJECT_URL')
-    const serviceRoleKey = Deno.env.get('SERVICE_ROLE_KEY')
-    
-    if (!supabaseUrl || !serviceRoleKey) {
-      throw new Error('Missing required environment variables')
+    if (!supabaseUrl) {
+      throw new Error('SUPABASE_URL is not set');
     }
-    
-    const supabaseClient = createClient(supabaseUrl, serviceRoleKey)
+    if (!serviceRoleKey) {
+      throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set');
+    }
 
-    // Get and verify the token
-    const { data: tokenData, error: selectError } = await supabaseClient
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+    console.log('Supabase client initialized successfully');
+
+    const { token } = await req.json();
+    console.log('Received token:', token);
+    if (!token) {
+      throw new Error('Token is required');
+    }
+
+    const { data: tokenData, error: tokenError } = await supabase
       .from('acceptance_tokens')
-      .select('*')
+      .select(`
+        token,
+        application_id,
+        used_at,
+        expires_at,
+        applications (
+          user_id,
+          users (
+            email
+          )
+        )
+      `)
       .eq('token', token)
-      .single()
+      .single();
 
-    if (selectError) {
-      throw selectError
+    if (tokenError) {
+      console.error('Error fetching token:', tokenError);
+      throw new Error('Token verification failed: ' + tokenError.message);
     }
 
     if (!tokenData) {
-      throw new Error('Invalid token')
+      throw new Error('Token not found');
     }
 
     if (tokenData.used_at) {
-      throw new Error('Token has already been used')
+      throw new Error('Token already used');
     }
 
-    if (new Date(tokenData.expires_at) < new Date()) {
-      throw new Error('Token has expired')
+    const now = new Date();
+    const expiresAt = new Date(tokenData.expires_at);
+    if (now > expiresAt) {
+      throw new Error('Token has expired');
     }
 
-    // Mark token as used
-    const { error: updateError } = await supabaseClient
+    const email = tokenData.applications?.users?.email;
+    if (!email) {
+      throw new Error('No email associated with this token');
+    }
+
+    console.log('Token valid for email:', email);
+
+    const { error: updateTokenError } = await supabase
       .from('acceptance_tokens')
-      .update({ used_at: new Date().toISOString() })
-      .eq('token', token)
+      .update({ used_at: now.toISOString() })
+      .eq('token', token);
 
-    if (updateError) {
-      throw updateError
+    if (updateTokenError) {
+      console.error('Error marking token as used:', updateTokenError);
+      throw new Error('Failed to update token status');
     }
 
-    // Get application details
-    const { data: applicationData, error: appError } = await supabaseClient
+    const { error: updateAppError } = await supabase
       .from('applications')
-      .select('*')
-      .eq('id', tokenData.application_id)
-      .single()
+      .update({ status: 'approved' })
+      .eq('id', tokenData.application_id);
 
-    if (appError) {
-      throw appError
+    if (updateAppError) {
+      console.error('Error updating application status:', updateAppError);
+      throw new Error('Failed to update application status');
     }
 
-    // Add user to whitelist
-    const { error: whitelistError } = await supabaseClient
-      .from('whitelist')
-      .insert({
-        email: applicationData.user_email,
-        status: 'approved',
-        year: '2025'
-      })
+    // Set a temporary password and sign in
+    const tempPassword = crypto.randomUUID();
+    const { error: updateUserError } = await supabase.auth.admin.updateUserById(tokenData.applications.user_id, {
+      password: tempPassword,
+    });
 
-    if (whitelistError) {
-      throw whitelistError
+    if (updateUserError) {
+      console.error('Error setting temp password:', updateUserError);
+      throw new Error('Failed to set temp password');
     }
 
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password: tempPassword,
+    });
+
+    if (authError) {
+      console.error('Error signing in with temp password:', authError);
+      throw new Error('Failed to sign in: ' + authError.message);
+    }
+
+    console.log('User signed in successfully:', email);
     return new Response(
-      JSON.stringify({ success: true }),
+      JSON.stringify({ session: authData.session }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
-      },
-    )
+      }
+    );
   } catch (error) {
-    console.error('Error:', error)
+    console.error('Verification function error:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
-      },
-    )
+      }
+    );
   }
-})
+});
