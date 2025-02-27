@@ -74,13 +74,18 @@ export default function App() {
 
   // Show public routes while loading or no session
   if (loading || !session) {
-    console.log('App: Showing public routes', { loading, hasSession: !!session });
+    console.log('App: Showing public routes', { loading, hasSession: !!session, pathname: window.location.pathname });
     return (
       <ErrorBoundary>
         <ThemeProvider>
           <Router>
             <Routes>
-              <Route path="/accept" element={<AcceptInvitePage />} />
+              <Route path="/accept" element={
+                <>
+                  {console.log('App: Rendering AcceptInvitePage route')}
+                  <AcceptInvitePage />
+                </>
+              } />
               <Route path="/" element={<LandingPage />} />
               <Route path="/pending" element={<PendingPage />} />
               <Route path="/confirmation" element={<ConfirmationPage />} />

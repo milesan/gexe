@@ -26,22 +26,22 @@ serve(async (req) => {
     console.log('Received request to send email to:', email)
 
     // Create a Supabase client with service role key
-    const frontendUrl = Deno.env.get('FRONTEND_URL')
+    const supabaseUrl = Deno.env.get('BACKEND_URL')
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
     const resendApiKey = Deno.env.get('RESEND_API_KEY')
-    const webpageUrl = Deno.env.get('WEBPAGE_URL')
+    const frontendUrl = Deno.env.get('FRONTEND_URL')
     
-    if (!frontendUrl || !serviceRoleKey || !resendApiKey || !webpageUrl) {
+    if (!supabaseUrl || !serviceRoleKey || !resendApiKey || !frontendUrl) {
       console.error('Missing environment variables:', {
-        hasFrontendUrl: !!frontendUrl,
+        hasSupabaseUrl: !!supabaseUrl,
         hasServiceRoleKey: !!serviceRoleKey,
         hasResendApiKey: !!resendApiKey,
-        hasWebpageUrl: !!webpageUrl
+        hasFrontendUrl: !!frontendUrl
       })
       throw new Error('Missing required environment variables')
     }
     
-    const supabaseClient = createClient(frontendUrl, serviceRoleKey)
+    const supabaseClient = createClient(supabaseUrl, serviceRoleKey)
     const resendClient = new resend.Resend(resendApiKey)
 
     console.log('Creating acceptance token...')

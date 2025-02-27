@@ -21,7 +21,7 @@ serve(async (req) => {
   console.log('Processing POST request');
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseUrl = Deno.env.get('BACKEND_URL')
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     console.log('SUPABASE_URL:', supabaseUrl || 'not set');
     console.log('SUPABASE_SERVICE_ROLE_KEY:', serviceRoleKey ? '[redacted]' : 'not set');

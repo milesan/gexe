@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface Props {
@@ -9,6 +9,18 @@ interface Props {
 export function WhitelistWelcomeModal({ isOpen, onClose }: Props) {
   console.log('WhitelistWelcomeModal: Rendering', { isOpen });
 
+  useEffect(() => {
+    console.log('WhitelistWelcomeModal: useEffect triggered', { isOpen });
+    if (isOpen) {
+      console.log('WhitelistWelcomeModal: Modal is open');
+    }
+  }, [isOpen]);
+
+  const handleClose = () => {
+    console.log('WhitelistWelcomeModal: Closing modal');
+    onClose();
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -16,7 +28,7 @@ export function WhitelistWelcomeModal({ isOpen, onClose }: Props) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          onClick={onClose}
+          onClick={handleClose}
           className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
         >
           <motion.div
@@ -45,7 +57,7 @@ export function WhitelistWelcomeModal({ isOpen, onClose }: Props) {
               You have been approved for 2025 and have bypassed the application.
             </p>
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="bg-[#FFBF00] text-black px-8 py-3 font-display text-xl"
               style={{
                 clipPath: `polygon(
