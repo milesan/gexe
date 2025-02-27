@@ -1,27 +1,29 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { WhitelistWelcomeModal } from '../components/WhitelistWelcomeModal';
 
 export function AcceptInvitePage() {
+  console.log('AcceptInvitePage: Component mounted');
   const [searchParams] = useSearchParams();
+  const token = searchParams.get('token');
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState('');
-  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 
   useEffect(() => {
+    console.log('AcceptInvitePage: useEffect triggered', { token, status });
+    
     const acceptInvitation = async () => {
-      const token = searchParams.get('token');
-      console.log('AcceptInvitePage: Processing token', { token });
       if (!token) {
+        console.error('AcceptInvitePage: No token provided');
         setStatus('error');
-        setErrorMessage('No token provided');
+        setErrorMessage('No invitation token provided');
         return;
       }
 
       try {
         const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verify-acceptance-token`;
-        console.log('AcceptInvitePage: Sending request to:', url);
+        console.log('AcceptInvitePage: Sending request to:', url, { token });
+        console.log('AcceptInvitePage: Processing token', { token });
         const response = await fetch(url, {
           method: 'POST',
           mode: 'cors',
@@ -64,7 +66,7 @@ export function AcceptInvitePage() {
 
         console.log('AcceptInvitePage: Successfully processed token and signed in user');
         setStatus('success');
-        setShowWelcomeModal(true);
+        window.location.href = '/';
       } catch (error) {
         console.error('AcceptInvitePage: Unexpected error', error);
         setStatus('error');
@@ -96,12 +98,5 @@ export function AcceptInvitePage() {
     );
   }
 
-  return (
-    <WhitelistWelcomeModal
-      isOpen={showWelcomeModal}
-      onClose={() => {
-        window.location.href = '/';
-      }}
-    />
-  );
+  return null;
 }
