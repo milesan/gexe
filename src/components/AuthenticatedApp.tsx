@@ -3,6 +3,7 @@ import { MyBookings } from './MyBookings';
 import { Book2Page } from '../pages/Book2Page';
 import { AdminPage } from '../pages/AdminPage';
 import { ConfirmationPage } from '../pages/ConfirmationPage';
+import { AcceptInvitePage } from '../pages/AcceptInvitePage';
 import { useSession } from '../hooks/useSession';
 import { supabase } from '../lib/supabase';
 import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
@@ -11,6 +12,7 @@ import { useAccommodations } from '../hooks/useAccommodations';
 import { WhitelistWelcomeModal } from './WhitelistWelcomeModal';
 
 export function AuthenticatedApp() {
+  console.log('AuthenticatedApp: Initializing');
   const [currentPage, setCurrentPage] = useState<'calendar' | 'my-bookings' | 'admin'>('calendar');
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const session = useSession();
@@ -18,6 +20,12 @@ export function AuthenticatedApp() {
   const adminEmails = ['andre@thegarden.pt', 'redis213@gmail.com'];
   const isAdmin = adminEmails.includes(session?.user?.email);
   const { accommodations, refresh: refreshAccommodations } = useAccommodations();
+
+  console.log('AuthenticatedApp: User status', { 
+    email: session?.user?.email,
+    isAdmin,
+    currentPage 
+  });
 
   useEffect(() => {
     checkWhitelistStatus();
@@ -142,7 +150,7 @@ export function AuthenticatedApp() {
         <Routes>
           <Route path="/" element={<Book2Page />} />
           <Route path="/my-bookings" element={<MyBookings />} />
-          {isAdmin && <Route path="/admin" element={<AdminPage />} />}
+          <Route path="/admin" element={isAdmin ? <AdminPage /> : <Navigate to="/" />} />
           <Route path="/confirmation" element={<ConfirmationPage />} />
           <Route path="/payment" element={<PaymentPage />} />
         </Routes>

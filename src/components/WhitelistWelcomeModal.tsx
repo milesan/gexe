@@ -7,6 +7,8 @@ interface Props {
 }
 
 export function WhitelistWelcomeModal({ isOpen, onClose }: Props) {
+  console.log('WhitelistWelcomeModal: Rendering', { isOpen });
+
   return (
     <AnimatePresence>
       {isOpen && (

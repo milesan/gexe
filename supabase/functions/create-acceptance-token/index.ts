@@ -23,14 +23,18 @@ serve(async (req) => {
     console.log('Creating token for application:', applicationId)
 
     // Create a Supabase client with service role key
-    const supabaseUrl = Deno.env.get('PROJECT_URL')
-    const serviceRoleKey = Deno.env.get('SERVICE_ROLE_KEY')
+    const projectUrl = Deno.env.get('PROJECT_URL')
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
     
-    if (!supabaseUrl || !serviceRoleKey) {
+    if (!projectUrl || !serviceRoleKey) {
+      console.error('Missing environment variables:', {
+        hasProjectUrl: !!projectUrl,
+        hasServiceRoleKey: !!serviceRoleKey
+      })
       throw new Error('Missing required environment variables')
     }
     
-    const supabaseClient = createClient(supabaseUrl, serviceRoleKey)
+    const supabaseClient = createClient(projectUrl, serviceRoleKey)
 
     // Generate a secure random token
     const token = crypto.randomUUID()

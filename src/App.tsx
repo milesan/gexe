@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, useSearchParams } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useSearchParams, Navigate } from 'react-router-dom';
 import { LandingPage } from './pages/LandingPage';
 import { PendingPage } from './pages/PendingPage';
 import { AuthenticatedApp } from './components/AuthenticatedApp';
@@ -10,53 +10,30 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
 import { useSession } from './hooks/useSession';
-import { WhitelistWelcomeModal } from './components/WhitelistWelcomeModal';
-
-function AcceptancePage() {
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get('token');
-  const [showWelcome, setShowWelcome] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-  
-  React.useEffect(() => {
-    if (!token) {
-      setError('Invalid acceptance link');
-      return;
-    }
-
-    const verifyToken = async () => {
-      try {
-        const { error: verifyError } = await supabase.functions.invoke('verify-acceptance-token', {
-          body: { token }
-        });
-
-        if (verifyError) throw verifyError;
-        setShowWelcome(true);
-      } catch (err) {
-        console.error('Error accepting invitation:', err);
-        setError(err instanceof Error ? err.message : 'Failed to accept invitation');
-      }
-    };
-
-    verifyToken();
-  }, [token]);
-
-  if (error) {
-    return <div className="p-4 text-red-600">{error}</div>;
-  }
-
-  return (
-    <WhitelistWelcomeModal 
-      isOpen={showWelcome} 
-      onClose={() => window.location.href = '/app'} 
-    />
-  );
-}
+import { AcceptInvitePage } from './pages/AcceptInvitePage';
 
 export default function App() {
   const session = useSession();
   const [loading, setLoading] = useState(true);
   const [metadata, setMetadata] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Check if we have a session
+    const checkSession = async () => {
+      try {
+        console.log('App: Checking session');
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log('App: Session check complete', { hasSession: !!session });
+        setIsLoading(false);
+      } catch (error) {
+        console.error('App: Error checking session:', error);
+        setIsLoading(false);
+      }
+    };
+
+    checkSession();
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -90,15 +67,28 @@ export default function App() {
     };
   }, [session]);
 
+  if (isLoading) {
+    console.log('App: Loading state');
+    return <div>Loading...</div>;
+  }
+
   // Show public routes while loading or no session
   if (loading || !session) {
+    console.log('App: Showing public routes', { loading, hasSession: !!session });
     return (
       <ErrorBoundary>
         <ThemeProvider>
           <Router>
             <Routes>
+              <Route path="/accept" element={<AcceptInvitePage />} />
               <Route path="/" element={<LandingPage />} />
+              <Route path="/pending" element={<PendingPage />} />
               <Route path="/confirmation" element={<ConfirmationPage />} />
+              <Route path="/retro2" element={<Retro2Page />} />
+              <Route
+                path="/*"
+                element={<Navigate to="/" replace />}
+              />
             </Routes>
           </Router>
         </ThemeProvider>
@@ -113,11 +103,13 @@ export default function App() {
 
   // If user is admin or has an approved application, show full app
   if (isAdmin || applicationStatus === 'approved') {
+    console.log('App: Rendering admin/approved view', { isAdmin, applicationStatus });
     return (
       <ErrorBoundary>
         <ThemeProvider>
           <Router>
             <Routes>
+              <Route path="/accept" element={<AcceptInvitePage />} />
               <Route path="/*" element={<AuthenticatedApp />} />
               <Route path="/confirmation" element={<ConfirmationPage />} />
             </Routes>
@@ -143,6 +135,21 @@ export default function App() {
   }
 
   // If they've applied but application is pending or rejected
+  if (applicationStatus === 'pending') {
+    return (
+      <ErrorBoundary>
+        <ThemeProvider>
+          <Router>
+            <Routes>
+              <Route path="/*" element={<PendingPage />} />
+            </Routes>
+          </Router>
+        </ThemeProvider>
+      </ErrorBoundary>
+    );
+  }
+
+  // For users with no application or rejected
   return (
     <ErrorBoundary>
       <ThemeProvider>
@@ -152,18 +159,12 @@ export default function App() {
             <Route path="/pending" element={<PendingPage />} />
             <Route path="/confirmation" element={<ConfirmationPage />} />
             <Route path="/retro2" element={<Retro2Page />} />
-            <Route path="/accept" element={<AcceptancePage />} />
             <Route
               path="/*"
-              element={
-                <ErrorBoundary>
-                  <AuthenticatedApp />
-                </ErrorBoundary>
-              }
+              element={<Navigate to="/" replace />}
             />
           </Routes>
         </Router>
-        <PendingPage status={applicationStatus} />
       </ThemeProvider>
     </ErrorBoundary>
   );
