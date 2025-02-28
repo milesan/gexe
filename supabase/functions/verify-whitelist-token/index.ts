@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
+import { crypto } from 'https://deno.land/std@0.168.0/crypto/mod.ts'
 
 interface TokenPayload {
   token: string;
@@ -88,8 +89,9 @@ serve(async (req) => {
 
     // Check if user already exists
     const email = tokenRecord.email
+    console.log('🔍 Processing whitelist token for email:', { email, tokenId: tokenRecord.token_id })
     if (!email) {
-      console.error('No email found in token data')
+      console.error('❌ No email found in token data:', { tokenRecord })
       return new Response(
         JSON.stringify({ error: 'Invalid token: no email associated' }),
         { 
@@ -99,79 +101,30 @@ serve(async (req) => {
       )
     }
 
-    const { data: existingUser, error: userCheckError } = await supabaseClient.auth.admin
-      .listUsers({ filter: { email } })
-
-    if (userCheckError) {
-      console.error('Failed to check existing user:', { error: userCheckError })
-      throw userCheckError
-    }
-
-    let userId: string
-    if (existingUser?.users?.length > 0) {
-      console.log('User already exists, updating metadata')
-      userId = existingUser.users[0].id
-      const { error: updateError } = await supabaseClient.auth.admin.updateUserById(
-        userId,
-        {
-          user_metadata: {
-            has_applied: false,
-            is_whitelisted: true,
-            has_seen_welcome: false
-          },
-          email_confirm: true
-        }
-      )
-
-      if (updateError) {
-        console.error('Failed to update user:', { error: updateError })
-        throw updateError
-      }
-    } else {
-      console.log('Creating new user')
-      const { data: authData, error: authError } = await supabaseClient.auth.admin.createUser({
-        email,
-        email_confirm: true,
-        user_metadata: {
-          has_applied: false,
-          is_whitelisted: true,
-          has_seen_welcome: false
-        },
-        password: crypto.randomUUID()
-      })
-
-      if (authError) {
-        console.error('Failed to create user:', { error: authError })
-        throw authError
-      }
-      userId = authData.user.id
-    }
-
-    console.log('Generating magic link with params:', {
-      email,
-      redirectTo: `${Deno.env.get('FRONTEND_URL') || 'http://localhost:5173'}/`,
-      type: 'magiclink'
-    });
-    
+    // Generate magic link - this creates a passwordless flow
+    console.log('🔗 Generating magic link for:', { email })
+    await new Promise(resolve => setTimeout(resolve, 10000)) // 5 second delay
     const { data: signInData, error: signInError } = await supabaseClient.auth.admin.generateLink({
       type: 'magiclink',
       email,
-      options: {
-        redirectTo: `${Deno.env.get('FRONTEND_URL') || 'http://localhost:5173'}/`
-      }
-    });
-    
+      redirectTo: `${Deno.env.get('FRONTEND_URL') || 'http://localhost:5173'}/`
+    })
+
     if (signInError) {
-      console.error('Magic link generation failed with details:', {
-        message: signInError.message,
-        code: signInError.code,
-        status: signInError.status,
-        stack: signInError.stack
-      });
-      throw signInError;
+      console.error('❌ Failed to generate invite link:', {
+        error: signInError,
+        email,
+        tokenId: tokenRecord.token_id
+      })
+      throw signInError
     }
 
-    console.log('All operations completed successfully')
+    console.log('✅ Successfully generated invite link:', {
+      email,
+      tokenId: tokenRecord.token_id,
+      hasActionLink: !!signInData?.properties?.action_link
+    })
+
     return new Response(
       JSON.stringify({
         data: {
@@ -183,7 +136,7 @@ serve(async (req) => {
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
-      },
+      }
     )
   } catch (error) {
     console.error('Function failed with error:', {
