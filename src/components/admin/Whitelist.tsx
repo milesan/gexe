@@ -8,10 +8,15 @@ interface WhitelistEntry {
   email: string;
   notes: string;
   created_at: string;
+  updated_at: string;
   last_login: string | null;
   has_seen_welcome: boolean;
   has_created_account: boolean;
   account_created_at: string | null;
+  has_booked: boolean;
+  first_booking_at: string | null;
+  last_booking_at: string | null;
+  total_bookings: number;
 }
 
 export function Whitelist() {
@@ -23,39 +28,65 @@ export function Whitelist() {
   const [showUpload, setShowUpload] = useState(false);
 
   useEffect(() => {
+    console.log(' Initializing Whitelist component');
     loadWhitelist();
 
     const subscription = supabase
-      .channel('whitelist_changes')
+      .channel('whitelist')
       .on('postgres_changes', 
         { 
           event: '*', 
           schema: 'public', 
           table: 'whitelist' 
         }, 
-        () => {
+        (payload) => {
+          console.log(' Realtime update received:', payload);
           loadWhitelist();
         }
       )
       .subscribe();
 
+    console.log(' Realtime subscription established');
+
     return () => {
+      console.log(' Cleaning up realtime subscription');
       subscription.unsubscribe();
     };
   }, []);
 
   const loadWhitelist = async () => {
+    console.log('📥 Loading whitelist data...');
     try {
       setLoading(true);
+
+      // Check auth state
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      console.log('🔑 Current auth state:', { user, error: authError });
+      
+      if (authError) {
+        throw new Error(`Authentication error: ${authError.message}`);
+      }
+
+      // Check if table exists and its contents
+      console.log('🔍 Checking database schema...');
+      const { data: schemaData, error: schemaError } = await supabase
+        .rpc('debug_db_info');
+
+      console.log('📊 Schema info:', { data: schemaData, error: schemaError });
+
+      console.log('🔍 Executing Supabase query...');
       const { data, error: queryError } = await supabase
         .from('whitelist')
         .select('*')
         .order('created_at', { ascending: false });
 
+      console.log('📊 Raw Supabase response:', { data, error: queryError });
+
       if (queryError) throw queryError;
+      console.log('✅ Whitelist data loaded:', data?.length, 'entries');
       setEntries(data || []);
     } catch (err) {
-      console.error('Error loading whitelist:', err);
+      console.error('❌ Error loading whitelist:', err);
       setError(err instanceof Error ? err.message : 'Failed to load whitelist');
     } finally {
       setLoading(false);
@@ -63,32 +94,58 @@ export function Whitelist() {
   };
 
   const addToWhitelist = async () => {
-    if (!newEmail) return;
+    if (!newEmail) {
+      console.warn('⚠️ Attempted to add empty email to whitelist');
+      return;
+    }
 
+    console.log('➕ Adding to whitelist:', { email: newEmail, notes: newNotes });
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('whitelist')
-        .insert({ email: newEmail, notes: newNotes });
+        .insert({ email: newEmail, notes: newNotes })
+        .select()
+        .single();
 
       if (error) throw error;
+      
+      console.log('✅ Successfully added to whitelist');
+
+      // Send acceptance email
+      console.log('📧 Sending acceptance email to:', newEmail);
+      const { error: emailError } = await supabase.functions.invoke('send-whitelist-email', {
+        body: { 
+          email: newEmail,
+          whitelistId: data.id
+        }
+      });
+
+      if (emailError) {
+        console.error('❌ Error sending acceptance email:', emailError);
+        setError('Added to whitelist but failed to send acceptance email');
+      } else {
+        console.log('✅ Successfully sent acceptance email');
+      }
       
       setNewEmail('');
       setNewNotes('');
       await loadWhitelist();
     } catch (err) {
-      console.error('Error adding to whitelist:', err);
+      console.error('❌ Error adding to whitelist:', err);
       setError(err instanceof Error ? err.message : 'Failed to add to whitelist');
     }
   };
 
   const removeFromWhitelist = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('whitelist')
-        .delete()
-        .eq('id', id);
+      const { data, error } = await supabase.functions.invoke('delete-whitelist-entry', {
+        body: { id }
+      });
 
       if (error) throw error;
+      if (!data?.success) throw new Error('Failed to delete whitelist entry');
+
+      console.log('Successfully removed from whitelist');
       await loadWhitelist();
     } catch (err) {
       console.error('Error removing from whitelist:', err);
@@ -98,29 +155,73 @@ export function Whitelist() {
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      console.warn(' No file selected for upload');
+      return;
+    }
 
+    console.log(' Processing CSV file:', file.name);
     try {
       const text = await file.text();
       const emails = text.split('\n')
         .map(line => line.trim())
         .filter(email => email && email.includes('@'));
+      
+      console.log(' Found', emails.length, 'valid email addresses in CSV');
 
-      const { error } = await supabase
+      // First check which emails are already whitelisted
+      const { data: existingEntries, error: checkError } = await supabase
+        .from('whitelist')
+        .select('email')
+        .in('email', emails);
+
+      if (checkError) throw checkError;
+
+      const existingEmails = new Set(existingEntries?.map(e => e.email) || []);
+      const newEmails = emails.filter(email => !existingEmails.has(email));
+
+      if (existingEmails.size > 0) {
+        console.log(' Skipping', existingEmails.size, 'already whitelisted emails:', Array.from(existingEmails));
+        setError(`Skipped ${existingEmails.size} already whitelisted email(s). Adding ${newEmails.length} new email(s).`);
+      }
+
+      if (newEmails.length === 0) {
+        console.log(' No new emails to add');
+        setShowUpload(false);
+        return;
+      }
+
+      const { data, error } = await supabase
         .from('whitelist')
         .insert(
-          emails.map(email => ({
+          newEmails.map(email => ({
             email,
             notes: 'Added via CSV upload'
           }))
-        );
+        )
+        .select();
 
       if (error) throw error;
       
+      // Send acceptance emails to all newly whitelisted users
+      console.log(' Sending acceptance emails to', newEmails.length, 'users');
+      for (const entry of data) {
+        const { error: emailError } = await supabase.functions.invoke('send-whitelist-email', {
+          body: { 
+            email: entry.email,
+            whitelistId: entry.id
+          }
+        });
+        if (emailError) {
+          console.error(' Error sending acceptance email to', entry.email, ':', emailError);
+        }
+      }
+      
+      console.log(' Successfully uploaded CSV data and sent emails');
       setShowUpload(false);
       await loadWhitelist();
     } catch (err) {
-      console.error('Error uploading CSV:', err);
+      console.error(' Error uploading CSV:', err);
       setError(err instanceof Error ? err.message : 'Failed to upload CSV');
     }
   };

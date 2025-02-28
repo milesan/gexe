@@ -19,6 +19,29 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Handle auth callback from URL
+    const handleAuthCallback = async () => {
+      const hash = window.location.hash;
+      if (hash && hash.includes('access_token')) {
+        const params = new URLSearchParams(hash.replace('#', '?'));
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+        if (accessToken && refreshToken) {
+          console.log('App: Setting session from URL tokens');
+          await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+          // Remove the hash to clean up the URL
+          window.location.hash = '';
+        }
+      }
+    };
+
+    handleAuthCallback();
+  }, []);
+
+  useEffect(() => {
     // Check if we have a session
     const checkSession = async () => {
       try {
@@ -50,9 +73,20 @@ export default function App() {
         if (error) throw error;
         if (!mounted) return;
 
-        // Get user metadata
+        // Get user metadata and check whitelist status
         const userMetadata = user?.user_metadata || {};
-        setMetadata(userMetadata);
+        const { data: whitelistStatus } = await supabase.rpc('get_whitelist_status');
+        
+        // If whitelisted but metadata doesn't show it, refresh the page to get updated metadata
+        if (whitelistStatus && !userMetadata.is_whitelisted) {
+          window.location.reload();
+          return;
+        }
+
+        setMetadata({
+          ...userMetadata,
+          is_whitelisted: whitelistStatus
+        });
       } catch (err) {
         console.error('Error checking user status:', err);
       } finally {
@@ -86,6 +120,12 @@ export default function App() {
                   <AcceptInvitePage />
                 </>
               } />
+              <Route path="/accept-invite" element={
+                <>
+                  {console.log('App: Rendering AcceptInvitePage route for whitelist')}
+                  <AcceptInvitePage isWhitelist={true} />
+                </>
+              } />
               <Route path="/" element={<LandingPage />} />
               <Route path="/pending" element={<PendingPage />} />
               <Route path="/confirmation" element={<ConfirmationPage />} />
@@ -105,16 +145,24 @@ export default function App() {
   const isAdmin = session?.user?.email === 'andre@thegarden.pt' || session?.user?.email === 'redis213@gmail.com';
   const hasApplied = metadata?.has_applied === true;
   const applicationStatus = metadata?.application_status;
+  console.log('App: Checking whitelist status:', { metadata, isWhitelisted: metadata?.is_whitelisted });
+  const isWhitelisted = metadata?.is_whitelisted === true;
 
-  // If user is admin or has an approved application, show full app
-  if (isAdmin || applicationStatus === 'approved') {
-    console.log('App: Rendering admin/approved view', { isAdmin, applicationStatus });
+  // If user is admin, whitelisted, or has an approved application, show full app
+  if (isAdmin || isWhitelisted || applicationStatus === 'approved') {
+    console.log('App: Rendering admin/approved/whitelisted view', { isAdmin, isWhitelisted, applicationStatus });
     return (
       <ErrorBoundary>
         <ThemeProvider>
           <Router>
             <Routes>
               <Route path="/accept" element={<AcceptInvitePage />} />
+              <Route path="/accept-invite" element={
+                <>
+                  {console.log('App: Rendering AcceptInvitePage route for whitelist')}
+                  <AcceptInvitePage isWhitelist={true} />
+                </>
+              } />
               <Route path="/*" element={<AuthenticatedApp />} />
               <Route path="/confirmation" element={<ConfirmationPage />} />
             </Routes>
