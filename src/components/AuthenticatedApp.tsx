@@ -38,8 +38,10 @@ export function AuthenticatedApp() {
 
       // Check if user is whitelisted and hasn't seen welcome
       const { data: metadata } = await supabase.auth.getUser();
-      const isWhitelisted = metadata.user?.user_metadata?.is_whitelisted;
-      const hasSeenWelcome = metadata.user?.user_metadata?.has_seen_welcome;
+      const { data: isWhitelisted } = await supabase.rpc('is_whitelisted', { 
+        user_email: metadata.user?.email 
+      });
+      const hasSeenWelcome = metadata.user?.user_metadata?.has_seen_welcome ?? false;
 
       if (isWhitelisted && !hasSeenWelcome) {
         setShowWelcomeModal(true);

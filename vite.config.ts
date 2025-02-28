@@ -5,6 +5,7 @@ export default defineConfig({
   plugins: [react()],
   define: {
     'process.env.STRIPE_PUBLIC_KEY': JSON.stringify(process.env.STRIPE_PUBLIC_KEY),
+    'process.env.STRIPE_SECRET_KEY': JSON.stringify(process.env.STRIPE_SECRET_KEY),
   },
   optimizeDeps: {
     exclude: ['lucide-react'],

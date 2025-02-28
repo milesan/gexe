@@ -15,7 +15,7 @@ import { AcceptInvitePage } from './pages/AcceptInvitePage';
 export default function App() {
   const session = useSession();
   const [loading, setLoading] = useState(true);
-  const [metadata, setMetadata] = useState<any>(null);
+  const [isWhitelisted, setIsWhitelisted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -69,24 +69,10 @@ export default function App() {
           return;
         }
 
-        const { data: { user }, error } = await supabase.auth.getUser();
-        if (error) throw error;
-        if (!mounted) return;
-
-        // Get user metadata and check whitelist status
-        const userMetadata = user?.user_metadata || {};
-        const { data: whitelistStatus } = await supabase.rpc('get_whitelist_status');
-        
-        // If whitelisted but metadata doesn't show it, refresh the page to get updated metadata
-        if (whitelistStatus && !userMetadata.is_whitelisted) {
-          window.location.reload();
-          return;
-        }
-
-        setMetadata({
-          ...userMetadata,
-          is_whitelisted: whitelistStatus
-        });
+        const { data: isWhitelisted, error: whitelistError } = await supabase
+          .rpc('is_whitelisted', { user_email: session.user.email })
+        console.log('User email:', session.user.email)
+        setIsWhitelisted(!!isWhitelisted);
       } catch (err) {
         console.error('Error checking user status:', err);
       } finally {
@@ -143,14 +129,11 @@ export default function App() {
 
   // Get user metadata with proper type checking
   const isAdmin = session?.user?.email === 'andre@thegarden.pt' || session?.user?.email === 'redis213@gmail.com';
-  const hasApplied = metadata?.has_applied === true;
-  const applicationStatus = metadata?.application_status;
-  console.log('App: Checking whitelist status:', { metadata, isWhitelisted: metadata?.is_whitelisted });
-  const isWhitelisted = metadata?.is_whitelisted === true;
+  console.log('App: Checking whitelist status:', { isWhitelisted });
 
-  // If user is admin, whitelisted, or has an approved application, show full app
-  if (isAdmin || isWhitelisted || applicationStatus === 'approved') {
-    console.log('App: Rendering admin/approved/whitelisted view', { isAdmin, isWhitelisted, applicationStatus });
+  // If user is admin or whitelisted, show full app
+  if (isAdmin || isWhitelisted) {
+    console.log('App: Rendering admin/whitelisted view', { isAdmin, isWhitelisted });
     return (
       <ErrorBoundary>
         <ThemeProvider>
@@ -165,36 +148,6 @@ export default function App() {
               } />
               <Route path="/*" element={<AuthenticatedApp />} />
               <Route path="/confirmation" element={<ConfirmationPage />} />
-            </Routes>
-          </Router>
-        </ThemeProvider>
-      </ErrorBoundary>
-    );
-  }
-
-  // If they haven't applied yet, show Retro2 application page
-  if (!hasApplied) {
-    return (
-      <ErrorBoundary>
-        <ThemeProvider>
-          <Router>
-            <Routes>
-              <Route path="*" element={<Retro2Page />} />
-            </Routes>
-          </Router>
-        </ThemeProvider>
-      </ErrorBoundary>
-    );
-  }
-
-  // If they've applied but application is pending or rejected
-  if (applicationStatus === 'pending') {
-    return (
-      <ErrorBoundary>
-        <ThemeProvider>
-          <Router>
-            <Routes>
-              <Route path="/*" element={<PendingPage />} />
             </Routes>
           </Router>
         </ThemeProvider>
