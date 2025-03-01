@@ -77,12 +77,28 @@ export function InventoryCalendar({ onClose }: Props) {
 
       if (availabilityError) throw availabilityError;
 
+      console.log('Availability data sample:', availabilityData.slice(0, 3));
+
       // Transform availability data into a more usable format
       const availability: DailyAvailability = {};
       availabilityData.forEach((data: AvailabilityData) => {
         if (!availability[data.availability_date]) {
           availability[data.availability_date] = {};
         }
+        
+        // Ensure bookings is always an array
+        if (!data.bookings) {
+          data.bookings = [];
+        }
+        
+        // Debug: Log any checkout dates found
+        data.bookings.forEach(booking => {
+          const checkOutDate = format(new Date(booking.check_out), 'yyyy-MM-dd');
+          if (checkOutDate === data.availability_date) {
+            console.log('Found checkout date:', data.availability_date, 'for accommodation:', data.accommodation_id);
+          }
+        });
+        
         availability[data.availability_date][data.accommodation_id] = data;
       });
 
@@ -107,34 +123,43 @@ export function InventoryCalendar({ onClose }: Props) {
       return availabilityData.available_capacity ?? accommodation.capacity ?? 0;
     }
     
-    // For regular accommodations
-    if (!availabilityData.is_available) return 'BOOKED';
-    
-    // Check for check-in/out dates
-    const hasCheckIn = availabilityData.bookings?.some(b => format(new Date(b.check_in), 'yyyy-MM-dd') === dateStr);
-    const hasCheckOut = availabilityData.bookings?.some(b => format(new Date(b.check_out), 'yyyy-MM-dd') === dateStr);
-    
-    if (hasCheckIn) return 'CHECK_IN';
-    if (hasCheckOut) return 'CHECK_OUT';
-    
-    return availabilityData.is_available ? 'AVAILABLE' : 'BOOKED';
-  };
-
-  const handleDateClick = (date: Date, accommodationId: string) => {
-    const status = getDateStatus(date, accommodationId);
-    if (status === 'BOOKED') return;
-
-    if (!selectedDates) {
-      setSelectedDates({ start: date, end: date });
-    } else if (selectedDates.start && !selectedDates.end) {
-      if (date < selectedDates.start) {
-        setSelectedDates({ start: date, end: selectedDates.start });
-      } else {
-        setSelectedDates({ ...selectedDates, end: date });
+    // Check for check-in/out dates regardless of availability status
+    if (availabilityData.bookings && availabilityData.bookings.length > 0) {
+      const hasCheckIn = availabilityData.bookings.some(b => format(new Date(b.check_in), 'yyyy-MM-dd') === dateStr);
+      const hasCheckOut = availabilityData.bookings.some(b => format(new Date(b.check_out), 'yyyy-MM-dd') === dateStr);
+      
+      // If both check-in and check-out occur on the same day, treat as fully booked
+      if (hasCheckIn && hasCheckOut) {
+        return 'BOOKED';
       }
-    } else {
-      setSelectedDates({ start: date, end: date });
+      
+      if (hasCheckIn) return 'CHECK_IN';
+      if (hasCheckOut) return 'CHECK_OUT';
     }
+    
+    // Check all bookings for this accommodation for checkout dates
+    // This is a fallback in case the availability data doesn't properly include checkout dates
+    for (const dayData of Object.values(dailyAvailability)) {
+      const accommodationData = dayData[accommodationId];
+      if (accommodationData?.bookings) {
+        const isCheckOut = accommodationData.bookings.some(b => format(new Date(b.check_out), 'yyyy-MM-dd') === dateStr);
+        if (isCheckOut) {
+          // Check if there's also a check-in on this date
+          const isCheckIn = accommodationData.bookings.some(b => format(new Date(b.check_in), 'yyyy-MM-dd') === dateStr);
+          if (isCheckIn) {
+            return 'BOOKED'; // Both check-in and check-out on same day
+          }
+          return 'CHECK_OUT';
+        }
+      }
+    }
+    
+    // For regular accommodations
+    if (!availabilityData.is_available) {
+      return 'BOOKED';
+    }
+    
+    return 'AVAILABLE';
   };
 
   const getCellContent = (accommodation: any, date: Date) => {
@@ -150,9 +175,9 @@ export function InventoryCalendar({ onClose }: Props) {
     const status = getDateStatus(date, accommodation.id);
     switch (status) {
       case 'CHECK_IN':
-        return '→';
+        return '→'; // Right arrow for check-in
       case 'CHECK_OUT':
-        return '←';
+        return '→'; // Right arrow for check-out (indicating leaving)
       case 'BOOKED':
         return '×';
       case 'PENDING':
@@ -189,15 +214,32 @@ export function InventoryCalendar({ onClose }: Props) {
 
     switch (status) {
       case 'CHECK_IN':
-        return `${baseStyle} bg-gradient-to-r from-emerald-500 to-black text-white`;
+        return `${baseStyle} bg-gradient-to-r from-emerald-500 to-black text-white font-bold`;
       case 'CHECK_OUT':
-        return `${baseStyle} bg-gradient-to-l from-emerald-500 to-black text-white`;
+        return `${baseStyle} bg-gradient-to-l from-emerald-500 to-black text-white font-bold`;
       case 'BOOKED':
         return `${baseStyle} bg-black text-white cursor-not-allowed`;
       case 'PENDING':
         return `${baseStyle} bg-yellow-400`;
       default:
         return `${baseStyle} bg-emerald-500 text-white`;
+    }
+  };
+
+  const handleDateClick = (date: Date, accommodationId: string) => {
+    const status = getDateStatus(date, accommodationId);
+    if (status === 'BOOKED') return;
+
+    if (!selectedDates) {
+      setSelectedDates({ start: date, end: date });
+    } else if (selectedDates.start && !selectedDates.end) {
+      if (date < selectedDates.start) {
+        setSelectedDates({ start: date, end: selectedDates.start });
+      } else {
+        setSelectedDates({ ...selectedDates, end: date });
+      }
+    } else {
+      setSelectedDates({ start: date, end: date });
     }
   };
 
@@ -259,7 +301,11 @@ export function InventoryCalendar({ onClose }: Props) {
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-20 h-3 rounded-full bg-gradient-to-r from-emerald-500 to-black"></div>
-                    <span>Check-in/out</span>
+                    <span>Check-in →</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-20 h-3 rounded-full bg-gradient-to-l from-emerald-500 to-black"></div>
+                    <span>Check-out →</span>
                   </div>
                   <div className="h-6 border-l border-stone-200 mx-2"></div>
                   <div className="flex items-center gap-2">

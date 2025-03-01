@@ -142,6 +142,148 @@
   .stay2-booking-summary {
     @apply lg:sticky lg:top-8 transition-all duration-300;
   }
+
+  /* Admin Toggle Switch */
+  .admin-toggle {
+    position: relative;
+    display: inline-block;
+    width: 56px;
+    height: 32px;
+  }
+
+  .admin-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .admin-toggle .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 34px;
+  }
+
+  .admin-toggle .slider:before {
+    position: absolute;
+    content: "";
+    height: 24px;
+    width: 24px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+  }
+
+  .admin-toggle input:checked + .slider {
+    background-color: #2563eb;
+  }
+
+  .admin-toggle input:checked + .slider:before {
+    transform: translateX(24px);
+  }
+
+  /* Week Status Colors */
+  .week-status-hidden {
+    @apply border-stone-400 bg-stone-50;
+  }
+
+  .week-status-deleted {
+    @apply border-red-400 bg-red-50;
+  }
+
+  .week-status-visible {
+    @apply border-blue-400 bg-white;
+  }
+
+  .week-status-default {
+    @apply border-stone-200 bg-white;
+  }
+
+  /* Base Styles */
+  .stay2-page {
+    @apply min-h-screen bg-stone-50;
+  }
+
+  /* Grid Layout */
+  .stay2-grid {
+    @apply grid gap-8 max-w-7xl mx-auto p-4;
+  }
+
+  @screen lg {
+    .stay2-grid {
+      @apply grid-cols-[2fr,1fr];
+    }
+  }
+
+  /* Week Selector */
+  .stay2-week-selector {
+    @apply mb-8;
+  }
+
+  .stay2-week-selector h2 {
+    @apply text-2xl font-display mb-6;
+  }
+
+  /* Cabin Selector */
+  .stay2-cabin-selector {
+    @apply space-y-4;
+  }
+
+  /* Booking Summary */
+  .stay2-booking-summary {
+    @apply bg-white rounded-lg shadow-lg p-6;
+  }
+
+  @screen lg {
+    .stay2-booking-summary {
+      @apply sticky top-4;
+    }
+  }
+
+  /* Admin Controls */
+  .stay2-admin-controls {
+    @apply mb-6 flex items-center gap-4;
+  }
+
+  /* Animations */
+  @keyframes stay2-squiggle {
+    0% {
+      stroke-dashoffset: 1000;
+    }
+    100% {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  .stay2-squiggle {
+    animation: stay2-squiggle 2s ease-in-out forwards;
+  }
+
+  /* Responsive Adjustments */
+  @screen sm {
+    .stay2-page {
+      @apply p-4;
+    }
+  }
+
+  @screen md {
+    .stay2-page {
+      @apply p-6;
+    }
+  }
+
+  @screen lg {
+    .stay2-page {
+      @apply p-8;
+    }
+  }
 }
 
 @keyframes stay2-squiggle {

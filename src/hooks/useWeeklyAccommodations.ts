@@ -24,7 +24,7 @@ export function useWeeklyAccommodations() {
     console.log('[useWeeklyAccommodations] Checking availability for:', {
       accommodationId: accommodation.id,
       accommodationTitle: accommodation.title,
-      weeks: weeks.map(w => w.toISOString()),
+      weeks: weeks.map(w => w instanceof Date ? w.toISOString() : 'Invalid date'),
       isUnlimited: accommodation.is_unlimited
     });
 
