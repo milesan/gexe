@@ -3,16 +3,19 @@ import { motion } from 'framer-motion';
 import { Wifi, Zap, BedDouble, WifiOff, ZapOff, Bath } from 'lucide-react';
 import clsx from 'clsx';
 import type { Accommodation } from '../types';
+import { Week } from '../types/calendar';
 import { getSeasonalDiscount } from '../utils/pricing';
 import { useWeeklyAccommodations } from '../hooks/useWeeklyAccommodations';
-import { addDays } from 'date-fns';
+import { addDays, isDate } from 'date-fns';
 
 interface Props {
   accommodations: Accommodation[];
-  selectedAccommodation: string | null;
+  selectedAccommodationId: string | null;
   onSelectAccommodation: (id: string) => void;
-  selectedWeeks: Date[];
-  currentMonth: Date;
+  isLoading?: boolean;
+  selectedWeeks?: Week[];
+  currentMonth?: Date;
+  isDisabled?: boolean;
 }
 
 const BED_SIZES = {
@@ -53,13 +56,42 @@ const HAS_WIFI = [
   'Master\'s Suite'
 ];
 
-export function CabinSelector({
-  accommodations,
-  selectedAccommodation,
+export function CabinSelector({ 
+  accommodations, 
+  selectedAccommodationId, 
   onSelectAccommodation,
-  selectedWeeks,
-  currentMonth
+  isLoading = false,
+  selectedWeeks = [],
+  currentMonth = new Date(),
+  isDisabled = false
 }: Props) {
+  console.log('[CabinSelector] Rendering with props:', {
+    accommodationsCount: accommodations?.length,
+    selectedAccommodationId,
+    selectedWeeksCount: selectedWeeks?.length,
+    selectedWeeks: selectedWeeks?.map(w => {
+      if (!w || typeof w === 'string') return null;
+      
+      // Check if it's a Week object with startDate and endDate properties
+      if (w.startDate && w.endDate) {
+        return {
+          startDate: w.startDate.toISOString(),
+          endDate: w.endDate.toISOString()
+        };
+      }
+      
+      // If it's a plain Date object
+      if (w instanceof Date) {
+        return {
+          startDate: w.toISOString(),
+          endDate: addDays(w, 7).toISOString()
+        };
+      }
+      
+      return null;
+    }).filter(Boolean)
+  });
+
   const { checkWeekAvailability, availabilityMap } = useWeeklyAccommodations();
   
   const hasWifi = (title: string) => HAS_WIFI.includes(title);
@@ -70,23 +102,27 @@ export function CabinSelector({
       // Check availability for all accommodations when weeks are selected
       accommodations.forEach(acc => {
         if (!acc.parent_accommodation_id) { // Only check parent accommodations
-          checkWeekAvailability(acc, selectedWeeks);
+          checkWeekAvailability(acc, selectedWeeks.map(w => w.startDate || w));
         }
       });
     }
   }, [selectedWeeks, accommodations, checkWeekAvailability]);
 
   const handleSelectAccommodation = useCallback((id: string) => {
+    console.log('[CabinSelector] Accommodation selected:', {
+      accommodationId: id,
+      previousSelection: selectedAccommodationId
+    });
     // Check availability when accommodation is selected and weeks are already chosen
     if (selectedWeeks.length > 0) {
-      const accommodation = accommodations.find(acc => acc.id === id);
+      const accommodation = accommodations.find(a => a.id === id);
       if (accommodation) {
-        checkWeekAvailability(accommodation, selectedWeeks);
+        checkWeekAvailability(accommodation, selectedWeeks.map(w => w.startDate || w));
       }
     }
 
     onSelectAccommodation(id);
-  }, [accommodations, selectedWeeks, checkWeekAvailability, onSelectAccommodation]);
+  }, [accommodations, selectedWeeks, checkWeekAvailability, onSelectAccommodation, selectedAccommodationId]);
 
   // Filter accommodations based on season and type
   const visibleAccommodations = accommodations.filter(acc => {
@@ -95,17 +131,25 @@ export function CabinSelector({
     return true;
   });
 
+  // Convert selectedWeeks to dates for comparison
+  const selectedDates = selectedWeeks?.map(w => w.startDate || w) || [];
+  
+  // Get month for filtering
+  const month = currentMonth.getMonth();
+  const year = currentMonth.getFullYear();
+
   // Check if it's tent season (April 15 - September 1)
-  const currentDate = selectedWeeks.length > 0 ? selectedWeeks[0] : new Date();
-  const month = currentDate.getMonth();
-  const day = currentDate.getDate();
-  const isTentSeason = (month > 3 || (month === 3 && day >= 15)) && 
-                      (month < 8 || (month === 8 && day <= 1));
+  const currentDate = selectedWeeks.length > 0 
+    ? (selectedWeeks[0].startDate || new Date()) 
+    : new Date();
+  
+  const isTentSeason = (month > 3 || (month === 3 && currentDate.getDate() >= 15)) && 
+                      (month < 8 || (month === 8 && currentDate.getDate() <= 1));
 
   const seasonalDiscount = getSeasonalDiscount(currentMonth);
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+    <div className={clsx("grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6", isDisabled && "opacity-70")}>
       {visibleAccommodations.map((accommodation) => {
         const isAvailable = selectedWeeks.length === 0 || 
           availabilityMap[accommodation.id]?.isAvailable;
@@ -122,10 +166,10 @@ export function CabinSelector({
             className={clsx(
               'relative w-full text-left rounded-xl overflow-hidden transition-all duration-200',
               'focus:outline-none focus:ring-2 focus:ring-emerald-900 focus:ring-offset-2',
-              selectedAccommodation === accommodation.id ? 'ring-2 ring-emerald-900 ring-offset-2' : 'hover:ring-2 hover:ring-emerald-900/50 hover:ring-offset-2',
-              (!isAvailable || isOutOfSeason) && 'opacity-50 cursor-not-allowed'
+              selectedAccommodationId === accommodation.id ? 'ring-2 ring-emerald-900 ring-offset-2' : 'hover:ring-2 hover:ring-emerald-900/50 hover:ring-offset-2',
+              (!isAvailable || isOutOfSeason || isDisabled) && 'opacity-50 cursor-not-allowed'
             )}
-            disabled={!isAvailable || isOutOfSeason}
+            disabled={!isAvailable || isOutOfSeason || isDisabled}
             whileHover={{ y: -4 }}
             whileTap={{ y: 0 }}
           >

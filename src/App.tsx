@@ -72,6 +72,11 @@ export default function App() {
         const { data: isWhitelisted, error: whitelistError } = await supabase
           .rpc('is_whitelisted', { user_email: session.user.email })
         console.log('User email:', session.user.email)
+        
+        // Check if the user has applied by looking at their user metadata
+        const hasApplied = session.user.user_metadata?.has_applied === true;
+        console.log('App: User application status:', { hasApplied });
+        
         setIsWhitelisted(!!isWhitelisted);
       } catch (err) {
         console.error('Error checking user status:', err);
@@ -129,7 +134,8 @@ export default function App() {
 
   // Get user metadata with proper type checking
   const isAdmin = session?.user?.email === 'andre@thegarden.pt' || session?.user?.email === 'redis213@gmail.com';
-  console.log('App: Checking whitelist status:', { isWhitelisted });
+  const hasApplied = session?.user?.user_metadata?.has_applied === true;
+  console.log('App: Checking whitelist status:', { isWhitelisted, hasApplied });
 
   // If user is admin or whitelisted, show full app
   if (isAdmin || isWhitelisted) {
@@ -156,18 +162,42 @@ export default function App() {
   }
 
   // For users with no application or rejected
+  if (!hasApplied) {
+    console.log('App: User has not applied yet, showing application flow');
+    return (
+      <ErrorBoundary>
+        <ThemeProvider>
+          <Router>
+            <Routes>
+              <Route path="/" element={<Retro2Page />} />
+              <Route path="/pending" element={<PendingPage />} />
+              <Route path="/confirmation" element={<ConfirmationPage />} />
+              <Route path="/retro2" element={<Retro2Page />} />
+              <Route
+                path="/*"
+                element={<Navigate to="/retro2" replace />}
+              />
+            </Routes>
+          </Router>
+        </ThemeProvider>
+      </ErrorBoundary>
+    );
+  }
+
+  // For users who have applied but aren't whitelisted or admin
+  console.log('App: User has applied but is not whitelisted or admin, showing pending status');
   return (
     <ErrorBoundary>
       <ThemeProvider>
         <Router>
           <Routes>
-            <Route path="/" element={<LandingPage />} />
+            <Route path="/" element={<Navigate to="/pending" replace />} />
             <Route path="/pending" element={<PendingPage />} />
             <Route path="/confirmation" element={<ConfirmationPage />} />
             <Route path="/retro2" element={<Retro2Page />} />
             <Route
               path="/*"
-              element={<Navigate to="/" replace />}
+              element={<Navigate to="/pending" replace />}
             />
           </Routes>
         </Router>

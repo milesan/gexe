@@ -184,6 +184,7 @@ class BookingService {
     checkIn: Date | string;
     checkOut: Date | string;
     totalPrice: number;
+    isAdmin?: boolean;
   }): Promise<Booking> {
     console.log('[BookingService] Creating booking with data:', {
       ...booking,
@@ -194,7 +195,7 @@ class BookingService {
     const user = await this.getCurrentUser();
     console.log('[BookingService] Current user:', user?.id);
     
-    if (!user) {
+    if (!user && !booking.isAdmin) {
       console.error('[BookingService] No authenticated user found');
       throw new Error('User not authenticated');
     }
@@ -206,14 +207,21 @@ class BookingService {
     }
 
     try {
-      const checkInISO = booking.checkIn instanceof Date ? booking.checkIn.toISOString() : booking.checkIn;
-      const checkOutISO = booking.checkOut instanceof Date ? booking.checkOut.toISOString() : booking.checkOut;
+      // Convert dates to just date strings without time or timezone
+      const checkInDate = booking.checkIn instanceof Date ? booking.checkIn : new Date(booking.checkIn);
+      const checkOutDate = booking.checkOut instanceof Date ? booking.checkOut : new Date(booking.checkOut);
+      
+      // Format as YYYY-MM-DD to remove time and timezone components
+      const checkInISO = checkInDate.toISOString().split('T')[0];
+      const checkOutISO = checkOutDate.toISOString().split('T')[0];
       
       console.log('[BookingService] Inserting booking with processed dates:', {
-        checkInISO,
-        checkOutISO,
+        originalCheckIn: booking.checkIn instanceof Date ? booking.checkIn.toISOString() : booking.checkIn,
+        originalCheckOut: booking.checkOut instanceof Date ? booking.checkOut.toISOString() : booking.checkOut,
+        processedCheckIn: checkInISO,
+        processedCheckOut: checkOutISO,
         accommodationId: booking.accommodationId,
-        userId: user.id,
+        userId: user?.id || 'admin',
         totalPrice: booking.totalPrice
       });
 
@@ -221,7 +229,7 @@ class BookingService {
         .from('bookings')
         .insert({
           accommodation_id: booking.accommodationId,
-          user_id: user.id,
+          user_id: user?.id || 'admin',
           check_in: checkInISO,
           check_out: checkOutISO,
           total_price: booking.totalPrice,
@@ -302,8 +310,17 @@ class BookingService {
     const firstWeek = weeks[0];
     const lastWeek = weeks[weeks.length - 1];
     
-    const checkIn = convertToUTC1(startOfWeek(firstWeek));
-    const checkOut = convertToUTC1(addDays(endOfWeek(lastWeek), 1));
+    // Format as YYYY-MM-DD to remove time and timezone components
+    const checkIn = startOfWeek(firstWeek).toISOString().split('T')[0];
+    const checkOut = addDays(endOfWeek(lastWeek), 1).toISOString().split('T')[0];
+
+    console.log('[BookingService] Creating weekly booking:', {
+      accommodationId,
+      weeksCount: weeks.length,
+      checkIn,
+      checkOut,
+      totalPrice
+    });
 
     // Validate total_price is non-negative (matching database constraint)
     if (totalPrice < 0) {
@@ -316,8 +333,8 @@ class BookingService {
         .insert({
           accommodation_id: accommodationId,
           user_id: user.id,
-          check_in: checkIn.toISOString(),
-          check_out: checkOut.toISOString(),
+          check_in: checkIn,
+          check_out: checkOut,
           total_price: totalPrice,
           status: 'confirmed',
           created_at: new Date().toISOString(),
@@ -330,8 +347,9 @@ class BookingService {
 
       // Mark dates as booked in availability
       const dates = [];
-      let currentDate = checkIn;
-      while (currentDate < checkOut) {
+      let currentDate = new Date(checkIn);
+      const endDate = new Date(checkOut);
+      while (currentDate < endDate) {
         dates.push(currentDate.toISOString().split('T')[0]);
         currentDate = addDays(currentDate, 1);
       }

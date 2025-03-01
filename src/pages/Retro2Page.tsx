@@ -5,12 +5,14 @@ import { supabase } from '../lib/supabase';
 import { Retro2Form } from '../components/retro2/Retro2Form';
 import { Retro2Intro } from '../components/retro2/Retro2Intro';
 import type { ApplicationQuestion } from '../types/application';
+import { useNavigate } from 'react-router-dom';
 
 export function Retro2Page() {
   const [showForm, setShowForm] = useState(false);
   const [questions, setQuestions] = useState<ApplicationQuestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   React.useEffect(() => {
     loadQuestions();
@@ -149,6 +151,9 @@ export function Retro2Page() {
       console.log('✅ Session refreshed:', sessionData);
 
       console.log('🎉 Application process completed successfully!');
+      
+      // Redirect to pending page
+      navigate('/pending');
 
     } catch (error) {
       console.error('❌ Error in application process:', error);

@@ -3,16 +3,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { useSchedulingRules } from '../hooks/useSchedulingRules';
 import { getSeasonalDiscount, getDurationDiscount } from '../utils/pricing';
-import type { Accommodation } from '../types';
-import { format, addDays } from 'date-fns';
+import type { Accommodation, Week } from '../types';
+import { format, addDays, differenceInDays } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { bookingService } from '../services/BookingService';
 import { supabase } from '../lib/supabase';
 import { StripeCheckoutForm } from './StripeCheckoutForm';
 import { useSession } from '../hooks/useSession';
 
-interface Props {
-  selectedWeeks: Date[];
+interface BookingSummaryProps {
+  selectedWeeks: Week[];
   selectedAccommodation: Accommodation | null;
   baseRate: number;
   onClearWeeks: () => void;
@@ -25,9 +25,19 @@ export function BookingSummary({
   baseRate,
   onClearWeeks,
   onClearAccommodation,
-}: Props) {
+}: BookingSummaryProps) {
+  console.log('[BookingSummary] Rendering:', {
+    selectedWeeksCount: selectedWeeks.length,
+    selectedWeeksDates: selectedWeeks.map(w => ({
+      start: w.startDate.toISOString(),
+      end: w.endDate.toISOString()
+    })),
+    selectedAccommodation: selectedAccommodation?.title,
+    baseRate
+  });
+
   console.log('[Booking Summary] Component mounted with:', {
-    selectedWeeks: selectedWeeks.map(w => w.toISOString()),
+    selectedWeeks: selectedWeeks.map(w => w.startDate.toISOString()),
     selectedAccommodation: selectedAccommodation?.title,
     baseRate
   });
@@ -44,6 +54,9 @@ export function BookingSummary({
   const [authToken, setAuthToken] = useState('');
   console.log('[BookingSummary] useState(authToken) called');
   
+  const [isStripeLoading, setIsStripeLoading] = useState(false);
+  const [stripeError, setStripeError] = useState<string | null>(null);
+
   const { getArrivalDepartureForDate } = useSchedulingRules();
   console.log('[BookingSummary] useSchedulingRules hook called');
   
@@ -81,8 +94,8 @@ export function BookingSummary({
       return false;
     }
 
-    const startDate = selectedWeeks[0];
-    const endDate = addDays(selectedWeeks[selectedWeeks.length - 1], 6);
+    const startDate = selectedWeeks[0].startDate;
+    const endDate = selectedWeeks[selectedWeeks.length - 1].endDate;
     
     console.log('[Booking Summary] Checking availability for:', {
       accommodation: selectedAccommodation.title,
@@ -111,29 +124,39 @@ export function BookingSummary({
     }
   };
 
-  const numberOfWeeks = selectedWeeks.length;
+  // Calculate total nights based on actual week lengths
+  const totalNights = selectedWeeks.reduce((total, week) => {
+    const nights = differenceInDays(week.endDate, week.startDate) + 1;
+    return total + nights;
+  }, 0);
+
+  // Format date ranges for display
+  const formatDateRange = (week: Week) => {
+    return `${format(week.startDate, 'MMM d')} - ${format(week.endDate, 'MMM d')}`;
+  };
+
   const baseAccommodationRate = selectedAccommodation?.price || 0;
   
   // Calculate seasonal discount
   const seasonalDiscount = selectedWeeks.length > 0 ? 
-    selectedWeeks.reduce((acc, week) => acc + getSeasonalDiscount(week), 0) / selectedWeeks.length : 
+    selectedWeeks.reduce((acc, week) => acc + getSeasonalDiscount(week.startDate), 0) / selectedWeeks.length : 
     0;
 
   // Calculate duration discount
-  const durationDiscount = getDurationDiscount(numberOfWeeks);
+  const durationDiscount = getDurationDiscount(totalNights);
   
   // Apply seasonal discount to accommodation rate
   const accommodationRate = baseAccommodationRate * (1 - seasonalDiscount);
 
   // Special December 2024 rate for food & facilities
   const effectiveBaseRate = selectedWeeks.some(week => {
-    const month = week.getMonth();
-    const year = week.getFullYear();
+    const month = week.startDate.getMonth();
+    const year = week.startDate.getFullYear();
     return month === 11 && year === 2024;
   }) ? 190 : baseRate;
 
-  const weeklyRate = effectiveBaseRate + Math.round(accommodationRate);
-  const subtotal = weeklyRate * numberOfWeeks;
+  const nightlyRate = effectiveBaseRate + Math.round(accommodationRate);
+  const subtotal = nightlyRate * totalNights;
   const durationDiscountAmount = Math.round(subtotal * durationDiscount);
   const totalAmount = Math.round(subtotal - durationDiscountAmount);
 
@@ -144,8 +167,8 @@ export function BookingSummary({
       }
 
       // Get first week's check-in and last week's check-out
-      const checkIn = selectedWeeks[0];
-      const checkOut = addDays(selectedWeeks[selectedWeeks.length - 1], 6);
+      const checkIn = selectedWeeks[0].startDate;
+      const checkOut = selectedWeeks[selectedWeeks.length - 1].endDate;
 
       console.log('[Booking Summary] Date debug:', {
         selectedWeeks,
@@ -165,15 +188,15 @@ export function BookingSummary({
       try {
         console.log('[Booking Summary] Creating booking:', {
           accommodationId: selectedAccommodation.id,
-          checkIn: checkIn.toISOString(),
-          checkOut: checkOut.toISOString(),
+          checkIn: checkIn.toISOString().split('T')[0],
+          checkOut: checkOut.toISOString().split('T')[0],
           totalPrice: totalAmount
         });
 
         const booking = await bookingService.createBooking({
           accommodationId: selectedAccommodation.id,
-          checkIn: checkIn.toISOString(),
-          checkOut: checkOut.toISOString(),
+          checkIn: checkIn.toISOString().split('T')[0],
+          checkOut: checkOut.toISOString().split('T')[0],
           totalPrice: totalAmount
         });
 
@@ -263,21 +286,21 @@ export function BookingSummary({
     setError(null);
     
     try {
-      const checkIn = selectedWeeks[0];
-      const checkOut = addDays(selectedWeeks[selectedWeeks.length - 1], 6);
+      const checkIn = selectedWeeks[0].startDate;
+      const checkOut = selectedWeeks[selectedWeeks.length - 1].endDate;
       
       console.log('[Booking Summary] Creating admin booking:', {
         accommodationId: selectedAccommodation.id,
-        checkIn: checkIn.toISOString(),
-        checkOut: checkOut.toISOString(),
+        checkIn: format(checkIn, 'yyyy-MM-dd'),
+        checkOut: format(checkOut, 'yyyy-MM-dd'),
         totalPrice: totalAmount,
         isAdmin: true
       });
 
       await bookingService.createBooking({
         accommodationId: selectedAccommodation.id,
-        checkIn,
-        checkOut,
+        checkIn: format(checkIn, 'yyyy-MM-dd'),
+        checkOut: format(checkOut, 'yyyy-MM-dd'),
         totalPrice: totalAmount,
         isAdmin: true
       });
@@ -310,8 +333,8 @@ export function BookingSummary({
   const firstWeek = selectedWeeks[0];
   const lastWeek = selectedWeeks[selectedWeeks.length - 1];
   
-  const firstWeekDays = firstWeek ? getArrivalDepartureForDate(firstWeek) : null;
-  const lastWeekDays = lastWeek ? getArrivalDepartureForDate(lastWeek) : null;
+  const firstWeekDays = firstWeek ? getArrivalDepartureForDate(firstWeek.startDate) : null;
+  const lastWeekDays = lastWeek ? getArrivalDepartureForDate(lastWeek.startDate) : null;
 
   return (
     <>
@@ -344,7 +367,7 @@ export function BookingSummary({
             <div className="space-y-6">
               <div>
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-medium">{numberOfWeeks} weeks</h3>
+                  <h3 className="font-medium">{totalNights} nights</h3>
                   <button
                     onClick={onClearWeeks}
                     className="text-stone-400 hover:text-stone-600"
@@ -355,7 +378,7 @@ export function BookingSummary({
 
                 <div className="space-y-2 text-stone-600">
                   <div className="text-lg font-serif">
-                    {format(firstWeek, 'MMM d')} → {format(addDays(lastWeek, 6), 'MMM d')}
+                    {formatDateRange(selectedWeeks[0])} → {formatDateRange(selectedWeeks[selectedWeeks.length - 1])}
                   </div>
                   <div className="text-sm">
                     Check-in {firstWeekDays?.arrival.charAt(0).toUpperCase() + firstWeekDays?.arrival.slice(1)} 3-6PM
@@ -393,7 +416,7 @@ export function BookingSummary({
 
               <div className="border-t border-stone-200 pt-4">
                 <div className="flex justify-between text-stone-600 mb-4">
-                  <span>€{weeklyRate} × {numberOfWeeks} weeks</span>
+                  <span>€{nightlyRate} × {totalNights} nights</span>
                   <span>€{subtotal}</span>
                 </div>
 
@@ -464,7 +487,7 @@ export function BookingSummary({
                 <StripeCheckoutForm
                   authToken={authToken}
                   total={totalAmount}
-                  description={`${selectedAccommodation.title} for ${numberOfWeeks} weeks`}
+                  description={`${selectedAccommodation.title} for ${totalNights} nights`}
                   onSuccess={handleBookingSuccess}
                 />
               )}

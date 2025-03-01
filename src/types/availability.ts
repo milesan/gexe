@@ -1,4 +1,4 @@
-export type AvailabilityStatus = 'AVAILABLE' | 'BOOKED' | 'HOLD';
+export type AvailabilityStatus = 'AVAILABLE' | 'BOOKED' | 'HOLD' | 'CHECK_IN' | 'CHECK_OUT' | 'PENDING';
 
 export interface AvailabilityResult {
   accommodation_id: string;

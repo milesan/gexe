@@ -1,12 +1,27 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabase';
+import { useNavigate } from 'react-router-dom';
 
 interface Props {
   status?: 'pending' | 'rejected';
 }
 
 export function PendingPage({ status = 'pending' }: Props) {
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    try {
+      console.log('PendingPage: Signing out user');
+      await supabase.auth.signOut();
+      
+      // Force refresh the page to reset app state
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4">
       <motion.div 
@@ -38,7 +53,7 @@ export function PendingPage({ status = 'pending' }: Props) {
           </p>
 
           <button
-            onClick={() => supabase.auth.signOut()}
+            onClick={handleSignOut}
             className="w-full bg-emerald-900 text-white py-3 px-6 rounded-lg hover:bg-emerald-800 transition-colors"
           >
             Sign Out
