@@ -6,10 +6,10 @@ type WeekCustomizationRow = Database['public']['Tables']['week_customizations'][
 
 // Domain types
 export interface CalendarConfig {
-    id: string;
+    id?: string;
     checkInDay: number;
     checkOutDay: number;
-    createdAt: Date;
+    createdAt?: Date;
 }
 
 export type WeekStatus = 'visible' | 'hidden' | 'deleted';
@@ -31,6 +31,8 @@ export interface Week {
     status: 'default' | WeekStatus;
     isCustom: boolean;
     id?: string;
+    isPartialWeek?: boolean;
+    isEdgeWeek?: boolean;
 }
 
 // Type guards

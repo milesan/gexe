@@ -151,7 +151,7 @@ export function Book2Page() {
                   className="flex items-center gap-2 bg-emerald-900 text-white px-4 py-2 rounded-lg hover:bg-emerald-800 transition-colors"
                 >
                   <Settings className="w-4 h-4" />
-                  <span>{isAdminMode ? '22 Edit Mode' : 'Edit Weeks'}</span>
+                  <span>{isAdminMode ? 'Exit Edit Mode' : 'Edit Weeks'}</span>
                 </button>
               )}
             </div>
