@@ -18,7 +18,8 @@ const getSimplifiedWeekInfo = (week: Week, isAdmin: boolean = false) => {
     weekStatus: week.status,
     weekName: week.name,
     isCustom: week.isCustom,
-    isSelectable: isWeekSelectable(week, isAdmin)
+    isSelectable: isWeekSelectable(week, isAdmin),
+    isEdgeWeek: week.isEdgeWeek
   };
 };
 
@@ -241,7 +242,8 @@ export function WeekSelector({
               const diffTime = week.endDate.getTime() - week.startDate.getTime();
               const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 because both start and end dates are inclusive
               
-              if (diffDays !== 7) {
+              // Only show day count for non-standard weeks that are not at the edge of the view
+              if (diffDays !== 7 && !week.isEdgeWeek) {
                 return (
                   <div className="text-xs text-indigo-600 mt-1 font-medium">
                     {diffDays} {diffDays === 1 ? 'day' : 'days'}

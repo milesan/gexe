@@ -128,6 +128,20 @@ export function InventoryCalendar({ onClose }: Props) {
       const hasCheckIn = availabilityData.bookings.some(b => format(new Date(b.check_in), 'yyyy-MM-dd') === dateStr);
       const hasCheckOut = availabilityData.bookings.some(b => format(new Date(b.check_out), 'yyyy-MM-dd') === dateStr);
       
+      console.log(`[InventoryCalendar] Checking date status for ${dateStr} (${accommodationId}):`, {
+        hasBookings: availabilityData.bookings.length > 0,
+        hasCheckIn,
+        hasCheckOut,
+        bookingsInfo: availabilityData.bookings.map(b => ({
+          id: b.id,
+          checkIn: format(new Date(b.check_in), 'yyyy-MM-dd'),
+          checkOut: format(new Date(b.check_out), 'yyyy-MM-dd'),
+          isCheckInToday: format(new Date(b.check_in), 'yyyy-MM-dd') === dateStr,
+          isCheckOutToday: format(new Date(b.check_out), 'yyyy-MM-dd') === dateStr,
+          durationDays: Math.round((new Date(b.check_out).getTime() - new Date(b.check_in).getTime()) / (1000 * 60 * 60 * 24))
+        }))
+      });
+      
       // If both check-in and check-out occur on the same day, treat as fully booked
       if (hasCheckIn && hasCheckOut) {
         return 'BOOKED';
@@ -146,6 +160,14 @@ export function InventoryCalendar({ onClose }: Props) {
         if (isCheckOut) {
           // Check if there's also a check-in on this date
           const isCheckIn = accommodationData.bookings.some(b => format(new Date(b.check_in), 'yyyy-MM-dd') === dateStr);
+          
+          console.log(`[InventoryCalendar] Found potential cross-day checkout for ${dateStr}:`, {
+            isCheckOut,
+            isCheckIn,
+            hasOverlap: isCheckIn && isCheckOut,
+            finalStatus: isCheckIn ? 'BOOKED' : 'CHECK_OUT'
+          });
+          
           if (isCheckIn) {
             return 'BOOKED'; // Both check-in and check-out on same day
           }
@@ -189,6 +211,8 @@ export function InventoryCalendar({ onClose }: Props) {
 
   const getCellStyle = (status: AvailabilityStatus | number) => {
     const baseStyle = 'h-8 px-2 text-center text-xs border-r cursor-pointer transition-colors';
+    
+    console.log('[InventoryCalendar] Getting cell style for status:', status);
     
     if (typeof status === 'number') {
       // For dorm occupancy numbers

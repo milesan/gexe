@@ -20,13 +20,8 @@ interface Props {
 export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave }: Props) {
     console.log('[WeekCustomizationModal] Opening modal for week:', {
         isOpen,
-        weekDetails: week ? {
-            startDate: formatDateForDisplay(week.startDate),
-            endDate: formatDateForDisplay(week.endDate),
-            status: week.status,
-            name: week.name,
-            isCustom: week.isCustom
-        } : null
+        weekId: week?.id,
+        status: week?.status
     });
 
     const [status, setStatus] = useState<WeekStatus>(week?.status === 'default' ? 'visible' : week?.status || 'default');
@@ -48,10 +43,7 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave }:
                         checkInDay: config.checkInDay,
                         checkOutDay: config.checkOutDay
                     });
-                    console.log('[WeekCustomizationModal] Loaded calendar config:', {
-                        checkInDay: config.checkInDay,
-                        checkOutDay: config.checkOutDay
-                    });
+                    console.log('[WeekCustomizationModal] Loaded calendar config');
                 }
             } catch (err) {
                 console.error('[WeekCustomizationModal] Error fetching calendar config:', err);
@@ -92,17 +84,29 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave }:
                 warning = `End date should be a ${dayNames[calendarConfig.checkOutDay]} (check-out day)`;
             }
             
+            console.log('[WeekCustomizationModal] Validating dates:', {
+                startDate,
+                endDate,
+                startDay,
+                endDay,
+                expectedCheckInDay: calendarConfig.checkInDay,
+                expectedCheckOutDay: calendarConfig.checkOutDay,
+                warning,
+                durationDays: Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
+            });
+            
             setDateWarning(warning);
         }
     }, [startDate, endDate, calendarConfig]);
 
     const handleSave = useCallback(async () => {
         try {
-            console.log('[WeekCustomizationModal] Saving customization:', {
-                weekStartDate: formatDateForDisplay(week?.startDate),
-                weekEndDate: formatDateForDisplay(week?.endDate),
+            console.log('[WeekCustomizationModal] Save button clicked with values:', {
+                weekId: week?.id,
                 status,
-                name
+                name,
+                startDate,
+                endDate
             });
 
             if (!week) {
@@ -125,6 +129,7 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave }:
                 startDate: new Date(startDate),
                 endDate: new Date(endDate)
             });
+            
             onClose();
         } catch (err) {
             console.error('[WeekCustomizationModal] Error saving customization:', err);

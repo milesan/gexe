@@ -152,7 +152,12 @@ export function useCalendar({ startDate, endDate, isAdminMode = false }: UseCale
     }, []);
 
     // Admin actions with state updates
-    const createCustomization = useCallback(async (customization: Omit<WeekCustomization, 'id' | 'createdAt' | 'createdBy'>) => {
+    const createCustomization = useCallback(async (customization: {
+        startDate: Date;
+        endDate: Date;
+        status: string;
+        name?: string | null;
+    }) => {
         console.log('[useCalendar] Creating customization:', {
             startDate: customization.startDate.toISOString(),
             endDate: customization.endDate.toISOString(),
@@ -160,7 +165,12 @@ export function useCalendar({ startDate, endDate, isAdminMode = false }: UseCale
             name: customization.name
         });
 
-        const result = await CalendarService.createCustomization(customization);
+        const result = await CalendarService.createCustomization({
+            startDate: customization.startDate,
+            endDate: customization.endDate,
+            status: customization.status,
+            name: customization.name
+        });
         
         if (result) {
             console.log('[useCalendar] Customization created successfully:', {
@@ -170,7 +180,6 @@ export function useCalendar({ startDate, endDate, isAdminMode = false }: UseCale
             });
             
             setCustomizations(prev => [...prev, result]);
-            // Force refresh to regenerate weeks
             setLastRefresh(Date.now());
         } else {
             console.error('[useCalendar] Failed to create customization - no result returned');
@@ -184,7 +193,8 @@ export function useCalendar({ startDate, endDate, isAdminMode = false }: UseCale
             startDate: updates.startDate?.toISOString(),
             endDate: updates.endDate?.toISOString(),
             status: updates.status,
-            name: updates.name
+            name: updates.name,
+            isDateUpdate: !!updates.startDate || !!updates.endDate
         });
 
         try {

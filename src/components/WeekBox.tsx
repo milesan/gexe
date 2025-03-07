@@ -167,7 +167,9 @@ export function WeekBox({
               const diffTime = week.endDate.getTime() - week.startDate.getTime();
               const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 because both start and end dates are inclusive
               
-              if (diffDays !== 7) {
+              // Only show duration for custom weeks that aren't 7 days long
+              // AND are not at the edge of the view range (first or last week)
+              if (diffDays !== 7 && week.isCustom && !week.isEdgeWeek) {
                 return (
                   <div className="text-xs text-indigo-600 font-medium mt-1">
                     {diffDays} {diffDays === 1 ? 'day' : 'days'}

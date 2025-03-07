@@ -83,6 +83,8 @@ export function AcceptInvitePage({ isWhitelist = false }: AcceptInvitePageProps)
           return;
         }
 
+        
+
         // Check for magic link
         if (responseData.data?.properties?.action_link) {
           console.log('AcceptInvitePage: Redirecting to magic link');

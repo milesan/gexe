@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { format, addDays, addWeeks, subWeeks, startOfWeek, endOfWeek, isWithinInterval, parseISO } from 'date-fns';
 import { supabase } from '../../lib/supabase';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
@@ -6,6 +6,7 @@ import { CalendarService } from '../../services/CalendarService';
 import { formatDateForDisplay } from '../../utils/dates';
 import { bookingService } from '../../services/BookingService';
 import { Booking } from '../../types';
+import { CalendarConfigButton } from './CalendarConfigButton';
 
 interface Props {
   onClose: () => void;
@@ -45,28 +46,28 @@ export function Weekly({ onClose }: Props) {
     'bg-teal-100 border-teal-300 text-teal-800'
   ];
 
-  useEffect(() => {
-    async function fetchCalendarConfig() {
-      try {
-        console.log('[Weekly] Fetching calendar configuration');
-        const config = await CalendarService.getConfig();
-        
-        if (config && config.checkInDay !== undefined) {
-          const configCheckInDay = config.checkInDay;
-          console.log(`[Weekly] Retrieved check-in day from config: ${configCheckInDay}`);
-          setCheckInDay(configCheckInDay);
-        } else {
-          console.log('[Weekly] No check-in day found in config, using default (Monday)');
-          setCheckInDay(1); // Default to Monday
-        }
-      } catch (err) {
-        console.error('[Weekly] Error fetching calendar config:', err);
-        setCheckInDay(1); // Default to Monday on error
+  const fetchCalendarConfig = useCallback(async () => {
+    try {
+      console.log('[Weekly] Fetching calendar configuration');
+      const config = await CalendarService.getConfig();
+      
+      if (config && config.checkInDay !== undefined) {
+        const configCheckInDay = config.checkInDay;
+        console.log(`[Weekly] Retrieved check-in day from config: ${configCheckInDay}`);
+        setCheckInDay(configCheckInDay);
+      } else {
+        console.log('[Weekly] No check-in day found in config, using default (Monday)');
+        setCheckInDay(1); // Default to Monday
       }
+    } catch (err) {
+      console.error('[Weekly] Error fetching calendar config:', err);
+      setCheckInDay(1); // Default to Monday on error
     }
-
-    fetchCalendarConfig();
   }, []);
+
+  useEffect(() => {
+    fetchCalendarConfig();
+  }, [fetchCalendarConfig]);
 
   // Generate weeks based on the current date
   useEffect(() => {
@@ -342,12 +343,22 @@ export function Weekly({ onClose }: Props) {
               </button>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            Close
-          </button>
+          
+          {/* Add the Calendar Config Button here */}
+          <div className="flex items-center space-x-3">
+            <CalendarConfigButton 
+              onConfigChanged={() => {
+                // Reload calendar config when settings change
+                fetchCalendarConfig();
+              }} 
+            />
+            <button
+              onClick={onClose}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              Close
+            </button>
+          </div>
         </div>
 
         {/* Content */}
