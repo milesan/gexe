@@ -1,202 +1,270 @@
 import { supabase } from "../lib/supabase";
-import { CalendarConfig, WeekCustomization, WeekStatus } from "../types/calendar";
+import { CalendarConfig, WeekCustomization, WeekStatus, Week } from "../types/calendar";
 import {
   mapCalendarConfigFromRow,
   mapCalendarConfigToRow,
   mapWeekCustomizationFromRow,
   mapWeekCustomizationToRow
 } from "../utils/mappers";
+import { 
+  normalizeToUTCDate, 
+  formatDateForDisplay, 
+  doDateRangesOverlap,
+  generateStandardWeek,
+  generateWeeksWithCustomizations
+} from '../utils/dates';
+import { addDays, isSameDay } from 'date-fns';
 
-// Helper function for date formatting in logs
-function formatDateForDisplay(date: Date): string {
-  if (!date) return 'undefined';
-  return date.toISOString().split('T')[0];
-}
-
+/**
+ * CalendarService - Manages all calendar-related operations
+ * 
+ * This service centralizes all calendar business logic including:
+ * - Calendar configuration (check-in/check-out days)
+ * - Week customizations (status, name, date range)
+ * - Flexible check-in dates
+ * - Week overlap resolution
+ */
 export class CalendarService {
+  private static instance: CalendarService;
+
+  private constructor() {}
+
+  public static getInstance(): CalendarService {
+    if (!CalendarService.instance) {
+      CalendarService.instance = new CalendarService();
+    }
+    return CalendarService.instance;
+  }
+
   /**
    * Get the current calendar configuration
+   * @returns The current calendar configuration or null if not set
    */
   static async getConfig(): Promise<CalendarConfig | null> {
-    console.log('[CalendarService] Fetching config');
-
+    console.log('[CalendarService] Getting calendar config');
     const { data, error } = await supabase
       .from('calendar_config')
       .select('*')
+      .order('created_at', { ascending: false })
       .limit(1)
       .single();
 
     if (error) {
-      console.error('Error fetching calendar config:', error);
+      console.error('[CalendarService] Error getting calendar config:', error);
       return null;
     }
 
-    return data ? mapCalendarConfigFromRow(data) : null;
+    return data ? {
+      checkInDay: data.check_in_day,
+      checkOutDay: data.check_out_day
+    } : null;
   }
 
   /**
-   * Get week customizations within a date range
+   * Update the calendar configuration
+   * @param config The new calendar configuration
+   * @returns The updated configuration
+   */
+  static async updateConfig(config: { checkInDay: number; checkOutDay: number }) {
+    console.log('[CalendarService] Updating calendar config:', config);
+    const { data, error } = await supabase
+      .from('calendar_config')
+      .insert({
+        check_in_day: config.checkInDay,
+        check_out_day: config.checkOutDay
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[CalendarService] Error updating calendar config:', error);
+      throw error;
+    }
+
+    return data;
+  }
+
+  /**
+   * Get all week customizations within a date range
+   * @param startDate The start date of the range
+   * @param endDate The end date of the range
+   * @returns Array of week customizations
    */
   static async getCustomizations(startDate: Date, endDate: Date): Promise<WeekCustomization[]> {
-    console.log('[CalendarService] Fetching customizations');
+    // Normalize dates for consistent handling
+    const normalizedStart = normalizeToUTCDate(startDate);
+    const normalizedEnd = normalizeToUTCDate(endDate);
+    
+    console.log('[CalendarService] Getting customizations:', {
+      startDate: formatDateForDisplay(normalizedStart),
+      endDate: formatDateForDisplay(normalizedEnd)
+    });
 
-    try {
-      // Get all customizations that overlap with our date range
-      const { data, error } = await supabase
-        .from('week_customizations')
-        .select('*')
-        .or(`start_date.lte.${endDate.toISOString()},end_date.gte.${startDate.toISOString()}`)
-        .order('start_date', { ascending: true });
+    const { data: customizations, error } = await supabase
+      .from('week_customizations')
+      .select(`
+        *,
+        flexible_checkins (
+          allowed_checkin_date
+        )
+      `)
+      .or(`start_date.lte.${normalizedEnd.toISOString()},end_date.gte.${normalizedStart.toISOString()}`);
 
-      if (error) {
-        console.error('[CalendarService] Error fetching customizations:', error);
-        throw error;
-      }
-
-      // Map to proper types
-      return data ? data.map(mapWeekCustomizationFromRow) : [];
-    } catch (err) {
-      console.error('[CalendarService] Failed to fetch customizations:', err);
-      throw err;
+    if (error) {
+      console.error('[CalendarService] Error getting customizations:', error);
+      throw error;
     }
+
+    return customizations.map(row => ({
+      ...mapWeekCustomizationFromRow(row),
+      flexibleDates: row.flexible_checkins?.map((fc: { allowed_checkin_date: string }) => 
+        normalizeToUTCDate(new Date(fc.allowed_checkin_date))
+      ) || []
+    }));
+  }
+
+  /**
+   * Get all weeks (standard and customized) for a date range
+   * @param startDate The start date of the range
+   * @param endDate The end date of the range
+   * @param isAdminMode Whether to include admin-only weeks
+   * @returns Array of weeks
+   */
+  static async getWeeks(startDate: Date, endDate: Date, isAdminMode: boolean = false): Promise<Week[]> {
+    // Get calendar config
+    const config = await this.getConfig();
+    
+    // Get customizations
+    const customizations = await this.getCustomizations(startDate, endDate);
+    
+    // Generate weeks with customizations
+    return generateWeeksWithCustomizations(
+      startDate,
+      endDate,
+      config,
+      customizations,
+      isAdminMode
+    );
   }
 
   /**
    * Create a new week customization
+   * @param customization The week customization to create
+   * @returns The created customization or null if failed
    */
   static async createCustomization(customization: {
     startDate: Date;
     endDate: Date;
     status: string;
     name?: string;
+    flexibleDates?: Date[];
   }): Promise<WeekCustomization | null> {
+    // Normalize all dates upfront
+    const normalizedDates = {
+      startDate: normalizeToUTCDate(customization.startDate),
+      endDate: normalizeToUTCDate(customization.endDate),
+      status: customization.status as WeekStatus,
+      name: customization.name,
+      flexibleDates: customization.flexibleDates?.map(d => normalizeToUTCDate(d))
+    };
+
     console.log('[CalendarService] Creating customization:', {
-      startDate: formatDateForDisplay(customization.startDate),
-      endDate: formatDateForDisplay(customization.endDate),
-      status: customization.status
+      startDate: formatDateForDisplay(normalizedDates.startDate),
+      endDate: formatDateForDisplay(normalizedDates.endDate),
+      status: normalizedDates.status,
+      flexibleDatesCount: normalizedDates.flexibleDates?.length || 0
     });
     
     try {
-      // First, get all existing weeks in the date range that might overlap
-      const { data: existingWeeks } = await supabase
-        .from('week_customizations')
-        .select('*')
-        .or(`start_date.lte.${customization.endDate.toISOString()},end_date.gte.${customization.startDate.toISOString()}`);
-      
-      // Check for exact match first
-      const exactMatch = existingWeeks?.find(w => 
-        new Date(w.start_date).toISOString().split('T')[0] === customization.startDate.toISOString().split('T')[0] &&
-        new Date(w.end_date).toISOString().split('T')[0] === customization.endDate.toISOString().split('T')[0]
+      // First check for overlapping customizations
+      const existingCustomizations = await this.getCustomizations(
+        normalizedDates.startDate,
+        normalizedDates.endDate
       );
       
-      if (exactMatch) {
-        console.log('[CalendarService] Found exact date match - updating instead');
-        const { data, error } = await supabase
-          .from('week_customizations')
-          .update({
-            status: customization.status,
-            name: customization.name
-          })
-          .eq('id', exactMatch.id)
-          .select()
-          .single();
-          
-        if (error) {
-          throw error;
-        }
-        
-        return data ? mapWeekCustomizationFromRow(data) : null;
-      }
+      const overlaps = existingCustomizations.filter(c => 
+        doDateRangesOverlap(
+          normalizeToUTCDate(c.startDate),
+          normalizeToUTCDate(c.endDate),
+          normalizedDates.startDate,
+          normalizedDates.endDate
+        )
+      );
       
-      // Handle overlapping weeks - but PRESERVE non-overlapping parts instead of deleting them
-      const overlaps = existingWeeks?.filter(w => 
-        new Date(w.end_date) >= customization.startDate && 
-        new Date(w.start_date) <= customization.endDate
-      ) || [];
-      
+      // If there are overlaps, handle them first
       if (overlaps.length > 0) {
-        console.log(`[CalendarService] Processing ${overlaps.length} overlapping weeks with preservation`);
+        console.log('[CalendarService] Found overlapping customizations:', overlaps.length);
         
-        for (const week of overlaps) {
-          const weekStartDate = new Date(week.start_date);
-          const weekEndDate = new Date(week.end_date);
-          
-          // There are multiple overlap cases to handle:
-          
-          // Case 1: Week is completely contained in our new customization - delete it
-          if (weekStartDate >= customization.startDate && weekEndDate <= customization.endDate) {
-            console.log(`[CalendarService] Completely removing contained week: ${formatDateForDisplay(weekStartDate)} - ${formatDateForDisplay(weekEndDate)}`);
-            await supabase
-              .from('week_customizations')
-              .delete()
-              .eq('id', week.id);
-            
-          // Case 2: Our new customization is in the middle of a week - split into two parts
-          } else if (weekStartDate < customization.startDate && weekEndDate > customization.endDate) {
-            console.log(`[CalendarService] Splitting week into two parts: ${formatDateForDisplay(weekStartDate)} - ${formatDateForDisplay(weekEndDate)}`);
-            
-            // Update the original to be the first part
-            await supabase
-              .from('week_customizations')
-              .update({
-                end_date: new Date(customization.startDate.getTime() - 86400000).toISOString() // day before our customization
-              })
-              .eq('id', week.id);
-            
-            // Create a new week for the second part
-            await supabase
-              .from('week_customizations')
-              .insert({
-                start_date: new Date(customization.endDate.getTime() + 86400000).toISOString(), // day after our customization  
-                end_date: weekEndDate.toISOString(),
-                status: week.status,
-                name: week.name
-              });
-            
-          // Case 3: Overlap at start - truncate existing week's end
-          } else if (weekStartDate < customization.startDate && weekEndDate >= customization.startDate) {
-            console.log(`[CalendarService] Preserving start of week: ${formatDateForDisplay(weekStartDate)} - ${formatDateForDisplay(new Date(customization.startDate.getTime() - 86400000))}`);
-            
-            await supabase
-              .from('week_customizations')
-              .update({
-                end_date: new Date(customization.startDate.getTime() - 86400000).toISOString() // day before our customization
-              })
-              .eq('id', week.id);
-            
-          // Case 4: Overlap at end - truncate existing week's start  
-          } else if (weekStartDate <= customization.endDate && weekEndDate > customization.endDate) {
-            console.log(`[CalendarService] Preserving end of week: ${formatDateForDisplay(new Date(customization.endDate.getTime() + 86400000))} - ${formatDateForDisplay(weekEndDate)}`);
-            
-            await supabase
-              .from('week_customizations')
-              .update({
-                start_date: new Date(customization.endDate.getTime() + 86400000).toISOString() // day after our customization
-              })
-              .eq('id', week.id);
-          }
-        }
+        // Create operations to resolve overlaps
+        const operations = this.createOverlapResolutionOperations(
+          overlaps,
+          normalizedDates.startDate,
+          normalizedDates.endDate,
+          normalizedDates.status,
+          normalizedDates.name,
+          normalizedDates.flexibleDates
+        );
+        
+        // Process the operations
+        await this.processWeekOperations(operations);
+        
+        // Get the newly created customization
+        const newCustomizations = await this.getCustomizations(
+          normalizedDates.startDate,
+          normalizedDates.endDate
+        );
+        
+        const exactMatch = newCustomizations.find(c => 
+          isSameDay(normalizeToUTCDate(c.startDate), normalizedDates.startDate) && 
+          isSameDay(normalizeToUTCDate(c.endDate), normalizedDates.endDate)
+        );
+        
+        return exactMatch || null;
       }
       
-      // Create the new week
-      const { data: newWeek, error } = await supabase
+      // If no overlaps, proceed with simple creation
+      const { data: newWeek, error: weekError } = await supabase
         .from('week_customizations')
-        .insert({
-          start_date: customization.startDate.toISOString(),
-          end_date: customization.endDate.toISOString(),
-          status: customization.status,
-          name: customization.name
-        })
+        .insert(mapWeekCustomizationToRow(normalizedDates))
         .select()
         .single();
-        
-      if (error) {
-        console.error('[CalendarService] Failed to create customization:', error);
-        return null;
+
+      if (weekError) throw weekError;
+
+      // If we have flexible dates, insert them
+      if (normalizedDates.flexibleDates?.length) {
+        const { error: flexError } = await supabase
+          .from('flexible_checkins')
+          .insert(
+            normalizedDates.flexibleDates.map(date => ({
+              week_customization_id: newWeek.id,
+              allowed_checkin_date: formatDateForDisplay(date)
+            }))
+          );
+
+        if (flexError) throw flexError;
       }
-      
-      console.log('[CalendarService] Successfully created customization with ID:', newWeek.id);
-      return mapWeekCustomizationFromRow(newWeek);
+
+      // Get the complete customization with flexible dates
+      const { data: complete, error: getError } = await supabase
+        .from('week_customizations')
+        .select(`
+          *,
+          flexible_checkins (
+            allowed_checkin_date
+          )
+        `)
+        .eq('id', newWeek.id)
+        .single();
+
+      if (getError) throw getError;
+
+      return {
+        ...mapWeekCustomizationFromRow(complete),
+        flexibleDates: complete.flexible_checkins?.map((fc: { allowed_checkin_date: string }) => 
+          normalizeToUTCDate(new Date(fc.allowed_checkin_date))
+        ) || []
+      };
     } catch (err) {
       console.error('[CalendarService] Failed to create customization:', err);
       return null;
@@ -205,51 +273,159 @@ export class CalendarService {
 
   /**
    * Update an existing week customization
+   * @param id The ID of the customization to update
+   * @param updates The updates to apply
+   * @returns The updated customization or null if failed
    */
   static async updateCustomization(
     id: string,
-    updates: Partial<WeekCustomization>
+    updates: Partial<WeekCustomization & { flexibleDates?: Date[] }>
   ): Promise<WeekCustomization | null> {
-    console.log('[CalendarService] Updating customization:', id);
+    // Normalize any dates in the updates
+    const normalizedUpdates = {
+      ...updates,
+      startDate: updates.startDate ? normalizeToUTCDate(updates.startDate) : undefined,
+      endDate: updates.endDate ? normalizeToUTCDate(updates.endDate) : undefined,
+      flexibleDates: updates.flexibleDates?.map(d => normalizeToUTCDate(d))
+    };
+    
+    console.log('[CalendarService] Updating customization:', {
+      id,
+      updates: {
+        ...normalizedUpdates,
+        startDate: normalizedUpdates.startDate ? formatDateForDisplay(normalizedUpdates.startDate) : undefined,
+        endDate: normalizedUpdates.endDate ? formatDateForDisplay(normalizedUpdates.endDate) : undefined,
+        flexibleDatesCount: normalizedUpdates.flexibleDates?.length,
+        flexibleDatesProvided: normalizedUpdates.flexibleDates !== undefined
+      }
+    });
     
     try {
-      const result = await CalendarService.processWeekOperations([{
-        type: 'update',
-        week: {
-          id,
-          startDate: updates.startDate,
-          endDate: updates.endDate,
-          status: updates.status,
-          name: updates.name
-        }
-      }]);
-      
-      if (!result) {
-        return null;
-      }
-      
-      // For non-date updates, get the updated week
-      if (!updates.startDate && !updates.endDate) {
-        const { data } = await supabase
+      // If dates are changing, check for overlaps
+      if (normalizedUpdates.startDate || normalizedUpdates.endDate) {
+        // Get the current customization
+        const { data: current, error: currentError } = await supabase
           .from('week_customizations')
           .select('*')
           .eq('id', id)
           .single();
           
-        return data ? mapWeekCustomizationFromRow(data) : null;
-      } else {
-        // For date updates, the week ID has changed, so we need to find by dates
-        const { data } = await supabase
-          .from('week_customizations')
-          .select('*')
-          .eq('start_date', updates.startDate!.toISOString())
-          .eq('end_date', updates.endDate!.toISOString())
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
+        if (currentError) throw currentError;
+        
+        const currentStartDate = normalizeToUTCDate(new Date(current.start_date));
+        const currentEndDate = normalizeToUTCDate(new Date(current.end_date));
+        
+        // Get the new date range
+        const newStartDate = normalizedUpdates.startDate || currentStartDate;
+        const newEndDate = normalizedUpdates.endDate || currentEndDate;
+        
+        // Check for overlaps with the new date range
+        const existingCustomizations = await this.getCustomizations(
+          newStartDate,
+          newEndDate
+        );
+        
+        const overlaps = existingCustomizations.filter(c => 
+          c.id !== id && // Exclude the current customization
+          doDateRangesOverlap(
+            normalizeToUTCDate(c.startDate),
+            normalizeToUTCDate(c.endDate),
+            newStartDate,
+            newEndDate
+          )
+        );
+        
+        // If there are overlaps, handle them first
+        if (overlaps.length > 0) {
+          console.log('[CalendarService] Found overlapping customizations for update:', overlaps.length);
           
-        return data ? mapWeekCustomizationFromRow(data) : null;
+          // Delete the current customization
+          await this.deleteCustomization(id);
+          
+          // Create operations to resolve overlaps and create the new customization
+          const operations = this.createOverlapResolutionOperations(
+            overlaps,
+            newStartDate,
+            newEndDate,
+            normalizedUpdates.status || current.status,
+            normalizedUpdates.name !== undefined ? normalizedUpdates.name : current.name,
+            normalizedUpdates.flexibleDates
+          );
+          
+          // Process the operations
+          await this.processWeekOperations(operations);
+          
+          // Get the newly created customization
+          const newCustomizations = await this.getCustomizations(
+            newStartDate,
+            newEndDate
+          );
+          
+          const exactMatch = newCustomizations.find(c => 
+            isSameDay(normalizeToUTCDate(c.startDate), newStartDate) && 
+            isSameDay(normalizeToUTCDate(c.endDate), newEndDate)
+          );
+          
+          return exactMatch || null;
+        }
       }
+      
+      // If no date changes or no overlaps, proceed with simple update
+      const { data: updated, error: weekError } = await supabase
+        .from('week_customizations')
+        .update(mapWeekCustomizationToRow(normalizedUpdates))
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (weekError) throw weekError;
+
+      // If flexible dates are provided, update them
+      if (normalizedUpdates.flexibleDates !== undefined) {
+        // First delete existing dates
+        console.log('[CalendarService] Updating flexible check-in dates for week:', id);
+        const { error: deleteError } = await supabase
+          .from('flexible_checkins')
+          .delete()
+          .eq('week_customization_id', id);
+
+        if (deleteError) throw deleteError;
+
+        // Then insert new ones if any
+        if (normalizedUpdates.flexibleDates.length > 0) {
+          const { error: insertError } = await supabase
+            .from('flexible_checkins')
+            .insert(
+              normalizedUpdates.flexibleDates.map(date => ({
+                week_customization_id: id,
+                allowed_checkin_date: formatDateForDisplay(date)
+              }))
+            );
+
+          if (insertError) throw insertError;
+        }
+      }
+
+      // Get the complete updated customization
+      const { data: complete, error: getError } = await supabase
+        .from('week_customizations')
+        .select(`
+          *,
+          flexible_checkins (
+            allowed_checkin_date
+          )
+        `)
+        .eq('id', id)
+        .single();
+
+      if (getError) throw getError;
+
+      return {
+        ...mapWeekCustomizationFromRow(complete),
+        flexibleDates: complete.flexible_checkins?.map((fc: { allowed_checkin_date: string }) => 
+          normalizeToUTCDate(new Date(fc.allowed_checkin_date))
+        ) || []
+      };
     } catch (err) {
       console.error('[CalendarService] Failed to update customization:', err);
       return null;
@@ -258,113 +434,192 @@ export class CalendarService {
 
   /**
    * Delete a week customization
+   * @param id The ID of the customization to delete
+   * @returns True if successful, false otherwise
    */
   static async deleteCustomization(id: string): Promise<boolean> {
-    console.log('[CalendarService] Deleting customization:', id);
-    
-    return await CalendarService.processWeekOperations([{
-      type: 'delete',
-      week: { id }
-    }]);
-  }
+    console.log('[CalendarService] Deleting customization:', { id });
+    const { error } = await supabase
+      .from('week_customizations')
+      .delete()
+      .eq('id', id);
 
-  private static async fillGap(
-    gapStart: Date,
-    gapEnd: Date,
-    checkInDay: number,
-    checkOutDay: number
-  ): Promise<void> {
-    let currentDate = new Date(gapStart);
-    
-    // If not starting on a check-in day and there's room for a partial week
-    if (currentDate.getDay() !== checkInDay) {
-      const nextCheckIn = new Date(currentDate);
-      const daysToAdd = (checkInDay - nextCheckIn.getDay() + 7) % 7;
-      nextCheckIn.setDate(nextCheckIn.getDate() + daysToAdd);
-      
-      // Only create partial week if it doesn't extend beyond gap
-      if (nextCheckIn <= gapEnd) {
-        // Create partial week up to next check-in
-        await supabase
-          .from('week_customizations')
-          .insert({
-            start_date: currentDate.toISOString(),
-            end_date: new Date(nextCheckIn.getTime() - 86400000).toISOString(),
-            status: 'visible'
-          });
-        currentDate = nextCheckIn;
-      }
+    if (error) {
+      console.error('[CalendarService] Error deleting customization:', error);
+      return false;
     }
-    
-    // Fill remaining gap with full weeks where possible
-    while (currentDate <= gapEnd) {
-      const weekEnd = new Date(currentDate);
-      weekEnd.setDate(currentDate.getDate() + 6); // Standard 7-day week
-      
-      // If this would go beyond gap end, adjust to gap end
-      const endDate = weekEnd > gapEnd ? gapEnd : weekEnd;
-      
-      // Create week
-      await supabase
-        .from('week_customizations')
-        .insert({
-          start_date: currentDate.toISOString(),
-          end_date: endDate.toISOString(),
-          status: 'visible'
-        });
-      
-      if (weekEnd > gapEnd) break;
-      
-      // Move to next week
-      currentDate = new Date(weekEnd.getTime() + 86400000);
-    }
+
+    return true;
   }
 
   /**
-   * Update the calendar configuration
+   * Get flexible check-in dates for a specific week
+   * @param weekId The ID of the week
+   * @returns Array of flexible check-in dates
    */
-  static async updateConfig(config: CalendarConfig): Promise<void> {
-    try {
-      console.log('[CalendarService] Updating calendar config:', config);
+  static async getFlexibleCheckinDates(weekId: string): Promise<Date[]> {
+    console.log('[CalendarService] Getting flexible check-in dates for week:', weekId);
+    const { data, error } = await supabase
+      .from('flexible_checkins')
+      .select('allowed_checkin_date')
+      .eq('week_customization_id', weekId);
 
-      // First check if we have any config rows
-      const { data: existingConfig } = await supabase
-        .from('calendar_config')
-        .select('*')
-        .limit(1);
-
-      if (existingConfig && existingConfig.length > 0) {
-        // If we have a config, update the first row
-        const { error } = await supabase
-          .from('calendar_config')
-          .update({
-            check_in_day: config.checkInDay,
-            check_out_day: config.checkOutDay
-          })
-          .eq('id', existingConfig[0].id); // Add WHERE clause here
-        
-        if (error) throw error;
-        console.log('[CalendarService] Config updated successfully');
-      } else {
-        // If no config exists yet, insert one
-        const { error } = await supabase
-          .from('calendar_config')
-          .insert({
-            check_in_day: config.checkInDay,
-            check_out_day: config.checkOutDay
-          });
-        
-        if (error) throw error;
-        console.log('[CalendarService] Config created successfully');
-      }
-    } catch (err) {
-      console.error('[CalendarService] Failed to update config:', err);
-      throw err;
+    if (error) {
+      console.error('[CalendarService] Error getting flexible check-in dates:', error);
+      return [];
     }
+
+    return data.map(row => normalizeToUTCDate(new Date(row.allowed_checkin_date)));
   }
 
   /**
-   * Process a queue of week operations without recursion
+   * Create operations to resolve overlapping weeks
+   * @param overlaps The overlapping weeks
+   * @param newStartDate The start date of the new week
+   * @param newEndDate The end date of the new week
+   * @param status The status of the new week
+   * @param name The name of the new week
+   * @param flexibleDates The flexible dates of the new week
+   * @returns Array of operations to resolve overlaps
+   */
+  private static createOverlapResolutionOperations(
+    overlaps: WeekCustomization[],
+    newStartDate: Date,
+    newEndDate: Date,
+    status?: string,
+    name?: string | null,
+    flexibleDates?: Date[]
+  ): Array<{
+    type: 'create' | 'update' | 'delete';
+    week: {
+      id?: string;
+      startDate?: Date;
+      endDate?: Date;
+      status?: string;
+      name?: string | null;
+      flexibleDates?: Date[];
+    }
+  }> {
+    const operations: Array<{
+      type: 'create' | 'update' | 'delete';
+      week: {
+        id?: string;
+        startDate?: Date;
+        endDate?: Date;
+        status?: string;
+        name?: string | null;
+        flexibleDates?: Date[];
+      }
+    }> = [];
+    
+    // First add the operation to create the new week
+    operations.push({
+      type: 'create',
+      week: {
+        startDate: newStartDate,
+        endDate: newEndDate,
+        status,
+        name,
+        flexibleDates
+      }
+    });
+    
+    // Then handle each overlap
+    for (const overlap of overlaps) {
+      const overlapStart = normalizeToUTCDate(overlap.startDate);
+      const overlapEnd = normalizeToUTCDate(overlap.endDate);
+      
+      // Case 1: The overlap is completely contained within the new week
+      if (newStartDate <= overlapStart && overlapEnd <= newEndDate) {
+        operations.push({
+          type: 'delete',
+          week: { id: overlap.id }
+        });
+      }
+      // Case 2: The overlap extends before the new week
+      else if (overlapStart < newStartDate && overlapEnd >= newStartDate && overlapEnd <= newEndDate) {
+        const newEndDate = addDays(newStartDate, -1);
+        
+        // Filter flexible dates that are still in the valid range
+        const adjustedFlexDates = overlap.flexibleDates?.filter(date => 
+          normalizeToUTCDate(date) < newStartDate
+        );
+        
+        operations.push({
+          type: 'update',
+          week: {
+            id: overlap.id,
+            endDate: newEndDate,
+            flexibleDates: adjustedFlexDates
+          }
+        });
+      }
+      // Case 3: The overlap extends after the new week
+      else if (overlapStart >= newStartDate && overlapStart <= newEndDate && overlapEnd > newEndDate) {
+        const newStartDate = addDays(newEndDate, 1);
+        
+        // Filter flexible dates that are still in the valid range
+        const adjustedFlexDates = overlap.flexibleDates?.filter(date => 
+          normalizeToUTCDate(date) > newEndDate
+        );
+        
+        operations.push({
+          type: 'update',
+          week: {
+            id: overlap.id,
+            startDate: newStartDate,
+            flexibleDates: adjustedFlexDates
+          }
+        });
+      }
+      // Case 4: The new week is completely contained within the overlap
+      else if (overlapStart < newStartDate && overlapEnd > newEndDate) {
+        // First part: from overlap start to before new start
+        const firstEndDate = addDays(newStartDate, -1);
+        
+        // Second part: from after new end to overlap end
+        const secondStartDate = addDays(newEndDate, 1);
+        
+        // Filter flexible dates for each part
+        const firstFlexDates = overlap.flexibleDates?.filter(date => 
+          normalizeToUTCDate(date) < newStartDate
+        );
+        
+        const secondFlexDates = overlap.flexibleDates?.filter(date => 
+          normalizeToUTCDate(date) > newEndDate
+        );
+        
+        // Update the existing week to be the first part
+        operations.push({
+          type: 'update',
+          week: {
+            id: overlap.id,
+            endDate: firstEndDate,
+            flexibleDates: firstFlexDates
+          }
+        });
+        
+        // Create a new week for the second part
+        operations.push({
+          type: 'create',
+          week: {
+            startDate: secondStartDate,
+            endDate: overlap.endDate,
+            status: overlap.status,
+            name: overlap.name,
+            flexibleDates: secondFlexDates
+          }
+        });
+      }
+    }
+    
+    return operations;
+  }
+
+  /**
+   * Process a batch of week operations (create, update, delete)
+   * @param operations The operations to process
+   * @returns True if successful, false otherwise
    */
   static async processWeekOperations(operations: Array<{
     type: 'create' | 'update' | 'delete';
@@ -374,112 +629,107 @@ export class CalendarService {
       endDate?: Date;
       status?: string;
       name?: string | null;
+      flexibleDates?: Date[];
     }
   }>): Promise<boolean> {
     console.log('[CalendarService] Processing week operations batch:', operations.length);
     
     try {
-      // First, get all existing weeks in the date range
-      const allDates = operations.flatMap(op => [
-        op.week.startDate, 
-        op.week.endDate
-      ]).filter(Boolean) as Date[];
-      
-      if (allDates.length === 0) {
-        return true;
-      }
-      
-      const minDate = new Date(Math.min(...allDates.map(d => d.getTime())));
-      const maxDate = new Date(Math.max(...allDates.map(d => d.getTime())));
-      
-      // Load all weeks that might be affected
-      const { data: existingWeeks } = await supabase
-        .from('week_customizations')
-        .select('*')
-        .or(`start_date.lte.${maxDate.toISOString()},end_date.gte.${minDate.toISOString()}`);
-      
-      // Handle all operations in order
+      // Process each operation in sequence
       for (const op of operations) {
+        console.log('[CalendarService] Processing operation:', {
+          type: op.type,
+          weekId: op.week.id,
+          startDate: op.week.startDate ? formatDateForDisplay(op.week.startDate) : undefined,
+          endDate: op.week.endDate ? formatDateForDisplay(op.week.endDate) : undefined
+        });
+        
+        // Normalize dates in the operation
+        const normalizedWeek = {
+          ...op.week,
+          startDate: op.week.startDate ? normalizeToUTCDate(op.week.startDate) : undefined,
+          endDate: op.week.endDate ? normalizeToUTCDate(op.week.endDate) : undefined,
+          flexibleDates: op.week.flexibleDates?.map(d => normalizeToUTCDate(d))
+        };
+        
         if (op.type === 'create') {
-          // For create, first check if we have a week with exact dates
-          const exactMatch = existingWeeks?.find(w => 
-            new Date(w.start_date).toISOString().split('T')[0] === op.week.startDate?.toISOString().split('T')[0] &&
-            new Date(w.end_date).toISOString().split('T')[0] === op.week.endDate?.toISOString().split('T')[0]
-          );
-          
-          if (exactMatch) {
-            // Update the existing week
+          // Create a new week customization
+          if (normalizedWeek.startDate && normalizedWeek.endDate && normalizedWeek.status) {
             await supabase
               .from('week_customizations')
-              .update({
-                status: op.week.status,
-                name: op.week.name
-              })
-              .eq('id', exactMatch.id);
-          } else {
-            // Find any overlapping weeks and delete them
-            const overlaps = existingWeeks?.filter(w => 
-              new Date(w.end_date) >= op.week.startDate! && 
-              new Date(w.start_date) <= op.week.endDate!
-            ) || [];
-            
-            // Delete all overlapping weeks
-            for (const overlap of overlaps) {
-              await supabase
-                .from('week_customizations')
-                .delete()
-                .eq('id', overlap.id);
-            }
-            
-            // Create the new week
-            await supabase
-              .from('week_customizations')
-              .insert({
-                start_date: op.week.startDate!.toISOString(),
-                end_date: op.week.endDate!.toISOString(),
-                status: op.week.status,
-                name: op.week.name
+              .insert(mapWeekCustomizationToRow({
+                startDate: normalizedWeek.startDate,
+                endDate: normalizedWeek.endDate,
+                status: normalizedWeek.status as WeekStatus,
+                name: normalizedWeek.name || undefined
+              }))
+              .select()
+              .single()
+              .then(async ({ data, error }) => {
+                if (error) throw error;
+                
+                // If we have flexible dates, insert them
+                if (normalizedWeek.flexibleDates?.length) {
+                  const { error: flexError } = await supabase
+                    .from('flexible_checkins')
+                    .insert(
+                      normalizedWeek.flexibleDates.map(date => ({
+                        week_customization_id: data.id,
+                        allowed_checkin_date: formatDateForDisplay(date)
+                      }))
+                    );
+                  
+                  if (flexError) throw flexError;
+                }
               });
           }
-        } else if (op.type === 'update' && op.week.id) {
-          // If only updating status/name, do direct update
-          if (!op.week.startDate && !op.week.endDate) {
+        } else if (op.type === 'update' && normalizedWeek.id) {
+          // Update an existing week customization
+          const updateData: any = {};
+          
+          if (normalizedWeek.startDate) updateData.start_date = normalizedWeek.startDate.toISOString();
+          if (normalizedWeek.endDate) updateData.end_date = normalizedWeek.endDate.toISOString();
+          if (normalizedWeek.status) updateData.status = normalizedWeek.status;
+          if (normalizedWeek.name !== undefined) updateData.name = normalizedWeek.name;
+          
             await supabase
               .from('week_customizations')
-              .update({
-                status: op.week.status,
-                name: op.week.name === undefined ? null : op.week.name
-              })
-              .eq('id', op.week.id);
-          } else {
-            // For date changes: delete and recreate
-            // First find the existing week to get its full data
-            const existingWeek = existingWeeks?.find(w => w.id === op.week.id);
-            if (!existingWeek) continue;
-            
-            // Delete it
-            await supabase
-              .from('week_customizations')
+            .update(updateData)
+            .eq('id', normalizedWeek.id)
+            .then(async ({ error }) => {
+              if (error) throw error;
+              
+              // If we have flexible dates, update them
+              if (normalizedWeek.flexibleDates !== undefined) {
+                // First delete existing dates
+                const { error: deleteError } = await supabase
+                  .from('flexible_checkins')
               .delete()
-              .eq('id', op.week.id);
-            
-            // Then add the create operation to our queue
-            operations.push({
-              type: 'create',
-              week: {
-                startDate: op.week.startDate || new Date(existingWeek.start_date),
-                endDate: op.week.endDate || new Date(existingWeek.end_date),
-                status: op.week.status || existingWeek.status,
-                name: op.week.name === undefined ? existingWeek.name : op.week.name
+                  .eq('week_customization_id', normalizedWeek.id);
+                
+                if (deleteError) throw deleteError;
+                
+                // Then insert new ones if any
+                if (normalizedWeek.flexibleDates.length > 0) {
+                  const { error: insertError } = await supabase
+                    .from('flexible_checkins')
+                    .insert(
+                      normalizedWeek.flexibleDates.map(date => ({
+                        week_customization_id: normalizedWeek.id,
+                        allowed_checkin_date: formatDateForDisplay(date)
+                      }))
+                    );
+                  
+                  if (insertError) throw insertError;
+                }
               }
             });
-          }
-        } else if (op.type === 'delete' && op.week.id) {
-          // Simple delete
+        } else if (op.type === 'delete' && normalizedWeek.id) {
+          // Delete a week customization
           await supabase
             .from('week_customizations')
             .delete()
-            .eq('id', op.week.id);
+            .eq('id', normalizedWeek.id);
         }
       }
       

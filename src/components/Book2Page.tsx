@@ -1,18 +1,21 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { Calendar } from 'lucide-react';
-import { isSameWeek, addWeeks, isAfter, isBefore, startOfMonth, format, addMonths } from 'date-fns';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { Calendar, Settings } from 'lucide-react';
+import { isSameWeek, addWeeks, isAfter, isBefore, startOfMonth, format, addMonths, isSameDay } from 'date-fns';
 import { WeekSelector } from './WeekSelector';
 import { CabinSelector } from './CabinSelector';
 import { BookingSummary } from './BookingSummary';
 import { MaxWeeksModal } from './MaxWeeksModal';
 import { WeekCustomizationModal } from './admin/WeekCustomizationModal';
-import { generateWeeksWithCustomizations, generateSquigglePath, getWeeksInRange } from '../utils/dates';
+import { generateWeeksWithCustomizations, generateSquigglePath } from '../utils/dates';
 import { useWeeklyAccommodations } from '../hooks/useWeeklyAccommodations';
 import { useSession } from '../hooks/useSession';
 import { motion } from 'framer-motion';
 import { convertToUTC1 } from '../utils/timezone';
+import { normalizeToUTCDate } from '../utils/dates';
 import { useCalendar } from '../hooks/useCalendar';
 import { Week, WeekStatus } from '../types/calendar';
+import { CalendarService } from '../services/CalendarService';
+import { formatDateForDisplay } from '../utils/dates';
 
 const DESKTOP_WEEKS = 16;
 const MOBILE_WEEKS = 12;
@@ -39,10 +42,12 @@ export function Book2Page() {
     customizations,
     isLoading: calendarLoading,
     createCustomization,
-    updateCustomization
+    updateCustomization,
+    setLastRefresh
   } = useCalendar({
     startDate: currentMonth,
-    endDate: addMonths(currentMonth, isMobile ? 3 : 4)
+    endDate: addMonths(currentMonth, isMobile ? 3 : 4),
+    isAdminMode: isAdminMode
   });
 
   const handleWeekSelect = useCallback((week: Week) => {
@@ -69,11 +74,20 @@ export function Book2Page() {
       const earliestDate = prev[0].startDate;
       const latestDate = prev[prev.length - 1].startDate;
 
+      // Filter weeks that are in the desired range
       let newWeeks: Week[];
       if (isBefore(week.startDate, earliestDate)) {
-        newWeeks = [...getWeeksInRange(weeks, week.startDate, latestDate)];
+        // Get weeks between the new week and the latest selected week
+        newWeeks = weeks.filter(w => 
+          (isSameDay(w.startDate, week.startDate) || isAfter(w.startDate, week.startDate)) && 
+          (isBefore(w.startDate, latestDate) || isSameDay(w.startDate, latestDate))
+        );
       } else if (isAfter(week.startDate, latestDate)) {
-        newWeeks = [...getWeeksInRange(weeks, earliestDate, week.startDate)];
+        // Get weeks between the earliest selected week and the new week
+        newWeeks = weeks.filter(w => 
+          (isSameDay(w.startDate, earliestDate) || isAfter(w.startDate, earliestDate)) && 
+          (isBefore(w.startDate, week.startDate) || isSameDay(w.startDate, week.startDate))
+        );
       } else {
         return prev;
       }
@@ -92,22 +106,231 @@ export function Book2Page() {
     name?: string;
     startDate?: Date;
     endDate?: Date;
+    flexibleDates?: Date[];
   }) => {
     if (!selectedWeekForCustomization) return;
 
-    const existing = customizations.find(c => 
-      isSameWeek(c.startDate, selectedWeekForCustomization.startDate)
-    );
+    // Get the final start and end dates after updates
+    const finalStartDate = updates.startDate || selectedWeekForCustomization.startDate;
+    const finalEndDate = updates.endDate || selectedWeekForCustomization.endDate;
 
-    if (existing) {
-      await updateCustomization(existing.id, updates);
-    } else {
-      await createCustomization({
-        ...updates,
-        startDate: updates.startDate || selectedWeekForCustomization.startDate,
-        endDate: updates.endDate || selectedWeekForCustomization.endDate,
-        status: updates.status
+    // Check for overlapping customizations
+    console.log('[Book2Page] Checking for overlapping customizations with new dates:', {
+      startDate: updates.startDate ? formatDateForDisplay(updates.startDate) : 'unchanged',
+      endDate: updates.endDate ? formatDateForDisplay(updates.endDate) : 'unchanged'
+    });
+
+    // Find existing customization for this week
+    const existing = customizations.find(c => {
+        // Normalize dates for comparison
+        const cStart = normalizeToUTCDate(c.startDate);
+        const cEnd = normalizeToUTCDate(c.endDate);
+        const weekStart = normalizeToUTCDate(selectedWeekForCustomization.startDate);
+        const weekEnd = normalizeToUTCDate(selectedWeekForCustomization.endDate);
+        
+        // Use isSameDay for proper date comparison
+        return isSameDay(cStart, weekStart) && isSameDay(cEnd, weekEnd);
+    });
+
+    // If we're changing dates, we need to check for overlaps
+    if (updates.startDate || updates.endDate) {
+      const startDate = finalStartDate;
+      const endDate = finalEndDate;
+      
+      // Find any customizations that overlap with the new date range
+      const overlappingCustomizations = customizations.filter(c => {
+        if (existing && c.id === existing.id) return false; // Skip the current customization
+        
+        // Normalize dates for comparison
+        const cStart = normalizeToUTCDate(c.startDate);
+        const cEnd = normalizeToUTCDate(c.endDate);
+        const newStart = normalizeToUTCDate(startDate);
+        const newEnd = normalizeToUTCDate(endDate);
+        
+        // Check for any kind of overlap between date ranges
+        const hasOverlap = (
+          // Case 1: New range starts during existing range
+          (cStart <= newStart && newStart <= cEnd) ||
+          // Case 2: New range ends during existing range
+          (cStart <= newEnd && newEnd <= cEnd) ||
+          // Case 3: New range completely contains existing range
+          (newStart <= cStart && cEnd <= newEnd) ||
+          // Case 4: Existing range completely contains new range
+          (cStart <= newStart && newEnd <= cEnd)
+        );
+        
+        console.log('[Book2Page] Checking for overlap:', {
+          customization: { 
+            start: formatDateForDisplay(cStart), 
+            end: formatDateForDisplay(cEnd),
+            id: c.id
+          },
+          newRange: { 
+            start: formatDateForDisplay(newStart), 
+            end: formatDateForDisplay(newEnd)
+          },
+          hasOverlap
+        });
+        
+        return hasOverlap;
       });
+      
+      console.log('[Book2Page] Found overlapping customizations:', {
+        count: overlappingCustomizations.length,
+        overlaps: overlappingCustomizations.map(c => ({
+          id: c.id,
+          startDate: formatDateForDisplay(c.startDate),
+          endDate: formatDateForDisplay(c.endDate)
+        }))
+      });
+      
+      // Use processWeekOperations to handle overlaps properly
+      if (overlappingCustomizations.length > 0) {
+        const operations: Array<{
+          type: 'create' | 'update' | 'delete';
+          week: {
+            id?: string;
+            startDate?: Date;
+            endDate?: Date;
+            status?: string;
+            name?: string | null;
+            flexibleDates?: Date[];
+          }
+        }> = [];
+        
+        // Add update/create operation for current week
+        operations.push({
+          type: existing ? 'update' as const : 'create' as const,
+          week: {
+            id: existing?.id,
+            startDate,
+            endDate,
+            status: updates.status,
+            name: updates.name,
+            flexibleDates: updates.flexibleDates
+          }
+        });
+        
+        // Add operations to handle overlapping weeks
+        for (const overlap of overlappingCustomizations) {
+          const overlapStart = normalizeToUTCDate(overlap.startDate);
+          const overlapEnd = normalizeToUTCDate(overlap.endDate);
+          const newStart = normalizeToUTCDate(startDate);
+          const newEnd = normalizeToUTCDate(endDate);
+          
+          // If the overlap is completely contained, delete it
+          if (newStart <= overlapStart && overlapEnd <= newEnd) {
+            operations.push({
+              type: 'delete' as const,
+              week: { id: overlap.id }
+            });
+          } 
+          // If the overlap extends before our new start date, adjust it to end before our start
+          else if (overlapStart < newStart && overlapEnd >= newStart && overlapEnd <= newEnd) {
+            const newEndDate = new Date(newStart);
+            newEndDate.setDate(newEndDate.getDate() - 1);
+            
+            // Also handle flexible dates that might be in the overlap
+            const flexibleDates = overlap.flexibleDates?.filter(date => 
+              normalizeToUTCDate(date) < newStart
+            );
+            
+            operations.push({
+              type: 'update' as const,
+              week: {
+                id: overlap.id,
+                endDate: newEndDate,
+                status: overlap.status,
+                name: overlap.name,
+                flexibleDates
+              }
+            });
+          }
+          // If the overlap extends after our new end date, adjust it to start after our end
+          else if (overlapStart >= newStart && overlapStart <= newEnd && overlapEnd > newEnd) {
+            const newStartDate = new Date(newEnd);
+            newStartDate.setDate(newStartDate.getDate() + 1);
+            
+            // Also handle flexible dates that might be in the overlap
+            const flexibleDates = overlap.flexibleDates?.filter(date => 
+              normalizeToUTCDate(date) > newEnd
+            );
+            
+            operations.push({
+              type: 'update' as const,
+              week: {
+                id: overlap.id,
+                startDate: newStartDate,
+                status: overlap.status,
+                name: overlap.name,
+                flexibleDates
+              }
+            });
+          }
+          // If the new range is completely contained within the overlap, split it into two
+          else if (overlapStart < newStart && overlapEnd > newEnd) {
+            // First part: from overlap start to before new start
+            const firstEndDate = new Date(newStart);
+            firstEndDate.setDate(firstEndDate.getDate() - 1);
+            
+            // Second part: from after new end to overlap end
+            const secondStartDate = new Date(newEnd);
+            secondStartDate.setDate(secondStartDate.getDate() + 1);
+            
+            // Filter flexible dates for each part
+            const firstFlexDates = overlap.flexibleDates?.filter(date => 
+              normalizeToUTCDate(date) < newStart
+            );
+            
+            const secondFlexDates = overlap.flexibleDates?.filter(date => 
+              normalizeToUTCDate(date) > newEnd
+            );
+            
+            // Update the existing week to be the first part
+            operations.push({
+              type: 'update' as const,
+              week: {
+                id: overlap.id,
+                endDate: firstEndDate,
+                status: overlap.status,
+                name: overlap.name,
+                flexibleDates: firstFlexDates
+              }
+            });
+            
+            // Create a new week for the second part
+            operations.push({
+              type: 'create' as const,
+              week: {
+                startDate: secondStartDate,
+                endDate: overlap.endDate,
+                status: overlap.status,
+                name: overlap.name,
+                flexibleDates: secondFlexDates
+              }
+            });
+          }
+        }
+        
+        console.log('[Book2Page] Processing week operations to handle overlaps:', operations);
+        await CalendarService.processWeekOperations(operations);
+        
+        // Refresh calendar data
+        setLastRefresh(Date.now());
+        return;
+      }
+    }
+
+    // If no overlaps or no date changes, proceed with normal update/create
+    if (existing) {
+        await updateCustomization(existing.id, updates);
+    } else {
+        await createCustomization({
+            ...updates,
+            startDate: finalStartDate,
+            endDate: finalEndDate,
+            status: updates.status
+        });
     }
   };
 
@@ -169,7 +392,7 @@ export function Book2Page() {
           <WeekSelector
             weeks={weeks}
             selectedWeeks={selectedWeeks}
-            onSelectWeek={handleWeekSelect}
+            onWeekSelect={handleWeekSelect}
             currentMonth={currentMonth}
             isMobile={isMobile}
             isAdmin={isAdminMode}
@@ -177,7 +400,7 @@ export function Book2Page() {
           
           <CabinSelector
             accommodations={accommodations}
-            selectedAccommodation={selectedAccommodation}
+            selectedAccommodationId={selectedAccommodation}
             onSelectAccommodation={setSelectedAccommodation}
             selectedWeeks={selectedWeeks}
             currentMonth={currentMonth}

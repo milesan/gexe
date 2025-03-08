@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { format, addDays, parseISO, addWeeks, subWeeks, startOfWeek } from 'date-fns';
+import { format, addDays, parseISO, addWeeks, subWeeks, startOfWeek, Day } from 'date-fns';
 import { X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { CalendarService } from '../../services/CalendarService';
-import { formatDateForDisplay } from '../../utils/dates';
+import { formatDateForDisplay, normalizeToUTCDate } from '../../utils/dates';
 
 interface Props {
   onClose: () => void;
@@ -69,8 +69,11 @@ export function Housekeeping({ onClose }: Props) {
         
         console.log(`[Housekeeping] Generating weeks with check-in day: ${checkInDay}`);
         
+        // Normalize the current date to UTC midnight to prevent timezone issues
+        const normalizedDate = normalizeToUTCDate(currentDate);
+        
         // Adjust current date to start of week with the configured check-in day
-        const adjustedDate = startOfWeek(currentDate, { weekStartsOn: checkInDay });
+        const adjustedDate = startOfWeek(normalizedDate, { weekStartsOn: checkInDay as Day });
         
         // Generate 52 weeks (1 year) of data - 26 weeks before and 26 weeks after
         const startDate = subWeeks(adjustedDate, 26);

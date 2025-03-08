@@ -1,15 +1,85 @@
-import { addWeeks, startOfWeek, addDays, addMonths, setDay, startOfDay, isSameDay } from 'date-fns';
+import { addWeeks, startOfWeek, addDays, addMonths, setDay, startOfDay, isSameDay, endOfDay, isBefore, isAfter, subMonths, format, Day, parseISO } from 'date-fns';
 import { convertToUTC1 } from './timezone';
-import { CalendarConfig, Week, WeekCustomization } from '../types/calendar';
-import { format } from 'date-fns';
+import { CalendarConfig, Week, WeekCustomization, WeekStatus } from '../types/calendar';
+
+// Helper function for consistent date formatting
+export function formatDateOnly(date: Date): string {
+    return format(startOfDay(date), 'yyyy-MM-dd');
+}
 
 // Re-export the startOfDay function from date-fns
 export { startOfDay };
 
-// Helper function to format dates consistently for display and logging
-export const formatDateForDisplay = (date: Date): string => {
-  return format(date, 'MMM d, yyyy');
-};
+/**
+ * Normalizes a date to UTC midnight to ensure consistent date handling across timezones.
+ * This prevents date shifting issues when converting between timezones.
+ * 
+ * @param date The date to normalize
+ * @returns A new Date object at UTC midnight
+ */
+export function normalizeToUTCDate(date: Date | string): Date {
+  const inputDate = typeof date === 'string' ? new Date(date) : date;
+  return new Date(Date.UTC(
+    inputDate.getFullYear(),
+    inputDate.getMonth(),
+    inputDate.getDate(),
+    0, 0, 0, 0
+  ));
+}
+
+/**
+ * Safely parses a date string to a Date object, ensuring consistent behavior
+ * regardless of the user's timezone.
+ * 
+ * @param dateString The date string to parse (ISO format preferred)
+ * @returns A normalized Date object at UTC midnight
+ */
+export function safeParseDate(dateString: string): Date {
+  try {
+    // First try to parse as ISO
+    const parsedDate = parseISO(dateString);
+    return normalizeToUTCDate(parsedDate);
+  } catch (e) {
+    // Fallback to regular Date constructor with normalization
+    return normalizeToUTCDate(new Date(dateString));
+  }
+}
+
+/**
+ * Format a date for display in logs and UI (YYYY-MM-DD)
+ */
+export function formatDateForDisplay(date: Date | null | undefined): string {
+  if (!date) return 'null';
+  return format(normalizeToUTCDate(date), 'yyyy-MM-dd');
+}
+
+/**
+ * Format a date for display in UI with month and day (MMM d)
+ */
+export function formatDateShort(date: Date): string {
+  return format(date, 'MMM d');
+}
+
+/**
+ * Format a week's date range for display
+ */
+export function formatWeekRange(week: Week): string {
+  return `${formatDateShort(week.startDate)} - ${formatDateShort(week.endDate)}`;
+}
+
+/**
+ * Generate a unique ID for a week that's stable across timezones
+ */
+export function generateWeekId(startDate: Date): string {
+  return `week-${formatDateForDisplay(startDate)}`;
+}
+
+/**
+ * Generate a truly unique ID for a week that includes both start and end dates
+ */
+export function generateUniqueWeekId(startDate: Date, endDate: Date): string {
+  return `week-${formatDateForDisplay(startDate)}-to-${formatDateForDisplay(endDate)}`;
+}
 
 export function generateWeeks(startDate: Date, count: number): Date[] {
   console.log('[generateWeeks] Called with:', {
@@ -69,26 +139,99 @@ export function getWeekDates(week: Date): Date[] {
   return Array.from({ length: 7 }, (_, i) => addDays(week, i));
 }
 
+/**
+ * Adjust a date to the specified check-in day of the week
+ * 
+ * @param date The date to adjust
+ * @param checkInDay The day of week (0-6, where 0 is Sunday)
+ * @returns A new date adjusted to the next occurrence of the check-in day
+ */
 export function adjustToCheckInDay(date: Date, checkInDay: number = 0): Date {
-  console.log('[dates] Adjusting date to check-in day:', {
-    originalDate: formatDateForDisplay(date),
-    currentDay: date.getDay(),
-    targetDay: checkInDay
-  });
+  const normalizedDate = normalizeToUTCDate(date);
   
   // If already on check-in day, return the same date
-  if (date.getDay() === checkInDay) {
-    return new Date(date);
+  if (normalizedDate.getDay() === checkInDay) {
+    return normalizedDate;
   }
   
   // Calculate days to add to reach next check-in day
-  const daysToAdd = (checkInDay - date.getDay() + 7) % 7;
-  const adjustedDate = addDays(date, daysToAdd);
-  
-  console.log('[dates] Adjusted to:', formatDateForDisplay(adjustedDate));
-  return adjustedDate;
+  const daysToAdd = (checkInDay - normalizedDate.getDay() + 7) % 7;
+  return addDays(normalizedDate, daysToAdd);
 }
 
+/**
+ * Check if a date falls within a week
+ */
+export function isDateInWeek(date: Date, week: Week): boolean {
+  const normalizedDate = normalizeToUTCDate(date);
+  const normalizedStart = normalizeToUTCDate(week.startDate);
+  const normalizedEnd = normalizeToUTCDate(week.endDate);
+  
+  return (
+    normalizedDate >= normalizedStart && 
+    normalizedDate <= normalizedEnd
+  );
+}
+
+/**
+ * Check if two date ranges overlap
+ */
+export function doDateRangesOverlap(
+  start1: Date, 
+  end1: Date, 
+  start2: Date, 
+  end2: Date
+): boolean {
+  const s1 = normalizeToUTCDate(start1);
+  const e1 = normalizeToUTCDate(end1);
+  const s2 = normalizeToUTCDate(start2);
+  const e2 = normalizeToUTCDate(end2);
+  
+  return (
+    // Case 1: Range 2 starts during range 1
+    (s1 <= s2 && s2 <= e1) ||
+    // Case 2: Range 2 ends during range 1
+    (s1 <= e2 && e2 <= e1) ||
+    // Case 3: Range 2 completely contains range 1
+    (s2 <= s1 && e1 <= e2) ||
+    // Case 4: Range 1 completely contains range 2
+    (s1 <= s2 && e2 <= e1)
+  );
+}
+
+/**
+ * Generate a standard week based on a start date and check-in/out days
+ */
+export function generateStandardWeek(
+  startDate: Date, 
+  config: { checkInDay: number; checkOutDay: number }
+): { startDate: Date; endDate: Date } {
+  const normalizedStart = normalizeToUTCDate(startDate);
+  
+  // If not starting on check-in day, adjust to next check-in day
+  const adjustedStart = normalizedStart.getDay() !== config.checkInDay
+    ? adjustToCheckInDay(normalizedStart, config.checkInDay)
+    : normalizedStart;
+  
+  // Calculate end date based on check-out day
+  let endDate: Date;
+  
+  if (config.checkOutDay >= config.checkInDay) {
+    // Simple case: check-out is later in the week than check-in
+    const daysToAdd = config.checkOutDay - config.checkInDay;
+    endDate = addDays(adjustedStart, daysToAdd);
+  } else {
+    // Complex case: check-out is earlier in the week than check-in (wraps to next week)
+    const daysToAdd = 7 - (config.checkInDay - config.checkOutDay);
+    endDate = addDays(adjustedStart, daysToAdd);
+  }
+  
+  return { startDate: adjustedStart, endDate };
+}
+
+/**
+ * Generate weeks with customizations for a date range
+ */
 export function generateWeeksWithCustomizations(
   from: Date,
   to: Date,
@@ -96,388 +239,215 @@ export function generateWeeksWithCustomizations(
   customizations: WeekCustomization[] = [],
   isAdminMode: boolean = false
 ): Week[] {
-  // Ensure we're working with normalized dates (start of day)
-  const normalizedStartDate = startOfDay(from);
-  const normalizedEndDate = startOfDay(to);
+  // Normalize input dates
+  const normalizedStartDate = normalizeToUTCDate(from);
+  const normalizedEndDate = normalizeToUTCDate(to);
   
-  console.log('[dates] Starting week generation with new algorithm:', {
+  console.log('[generateWeeksWithCustomizations] Starting with:', {
     startDate: formatDateForDisplay(normalizedStartDate),
     endDate: formatDateForDisplay(normalizedEndDate),
     customizationsCount: customizations.length,
     isAdminMode
   });
+  
+  // Default config if none provided
+  const safeConfig = config || { checkInDay: 0, checkOutDay: 6 };
+  
+  // Sort and normalize customizations
+  const sortedCustomizations = [...customizations]
+    .map(c => ({
+      ...c,
+      startDate: normalizeToUTCDate(c.startDate),
+      endDate: normalizeToUTCDate(c.endDate),
+      flexibleDates: c.flexibleDates?.map(d => normalizeToUTCDate(d)) || []
+    }))
+    .sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
 
-  // Get check-in and check-out days from config (default to Sunday/Saturday if not specified)
-  const checkInDay = config?.checkInDay ?? 0; // Sunday default
-  const checkOutDay = config?.checkOutDay ?? 6; // Saturday default
-
-  console.log('[dates] Using check-in/check-out configuration:', {
-    checkInDay,
-    checkOutDay
-  });
-
-  // Sort customizations by start date for efficient processing
-  const sortedCustomizations = [...customizations].sort((a, b) => 
-    startOfDay(new Date(a.startDate)).getTime() - startOfDay(new Date(b.startDate)).getTime()
+  // Filter relevant customizations
+  const relevantCustomizations = sortedCustomizations.filter(c => 
+    doDateRangesOverlap(c.startDate, c.endDate, normalizedStartDate, normalizedEndDate)
   );
-
-  // Filter customizations to only those relevant to our date range
-  // A customization is relevant if any part of it overlaps with our date range
-  const relevantCustomizations = sortedCustomizations.filter(c => {
-    const customStart = startOfDay(new Date(c.startDate));
-    const customEnd = startOfDay(new Date(c.endDate));
-    
-    // If either the start or end date falls within our range, or if the customization
-    // completely encompasses our range, it's relevant
-    return (
-      (customStart >= normalizedStartDate && customStart <= normalizedEndDate) || // Start within range
-      (customEnd >= normalizedStartDate && customEnd <= normalizedEndDate) || // End within range
-      (customStart <= normalizedStartDate && customEnd >= normalizedEndDate) // Customization covers entire range
-    );
-  });
-
-  console.log('[dates] Filtered to relevant customizations:', {
-    originalCount: sortedCustomizations.length,
-    relevantCount: relevantCustomizations.length,
-    relevantCustomizations: relevantCustomizations.map(c => ({
+  
+  console.log('[generateWeeksWithCustomizations] Relevant customizations:', {
+    count: relevantCustomizations.length,
+    customizations: relevantCustomizations.map(c => ({
       id: c.id,
-      startDate: c.startDate,
-      endDate: c.endDate,
+      startDate: formatDateForDisplay(c.startDate),
+      endDate: formatDateForDisplay(c.endDate),
       status: c.status
     }))
   });
 
-  // STEP 1: Create a timeline of all date ranges we need to consider
-  // This combines both customized weeks and default weeks in chronological order
+  // Create timeline of all date ranges
   const timeline: { 
     type: 'custom' | 'default', 
     startDate: Date, 
     endDate: Date, 
     customization?: WeekCustomization,
+    id?: string,
     isPartialWeek?: boolean 
   }[] = [];
 
-  // Add all customizations to the timeline (including hidden/deleted if in admin mode)
+  // Add customizations to timeline
   relevantCustomizations.forEach(customization => {
-    // Always include all customizations in the timeline, regardless of status
-    // This ensures deleted weeks are properly represented in the UI
-    const startDate = startOfDay(new Date(customization.startDate));
-    const endDate = startOfDay(new Date(customization.endDate));
-    
-    // Calculate if this is a partial week (not exactly 7 days)
-    const daysDiff = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    const isPartial = daysDiff !== 7;
+    const daysDiff = Math.round(
+      (customization.endDate.getTime() - customization.startDate.getTime()) / (1000 * 60 * 60 * 24)
+    ) + 1;
     
     timeline.push({
       type: 'custom',
-      startDate,
-      endDate,
+      startDate: customization.startDate,
+      endDate: customization.endDate,
       customization,
-      isPartialWeek: isPartial
+      isPartialWeek: daysDiff !== 7
     });
   });
 
-  // STEP 2: Sort the timeline by start date
+  // Sort timeline by start date
   timeline.sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
-  
-  console.log('[dates] Initial timeline created:', timeline.map(item => ({
-    type: item.type,
-    startDate: formatDateForDisplay(item.startDate),
-    endDate: formatDateForDisplay(item.endDate),
-    status: item.customization?.status || 'n/a'
-  })));
 
-  // STEP 3: Find gaps in the timeline where we need to add default weeks
+  // Track weeks we've already added to prevent duplicates
+  const addedWeekStartDates = new Set<string>();
+  
+  // Generate standard weeks for the entire date range
   let currentDate = new Date(normalizedStartDate);
   
-  // Ensure we start on a check-in day for default weeks
-  if (timeline.length === 0 || timeline[0].startDate > currentDate) {
-    // Only adjust to check-in day if there's no customization at the start
-    if (currentDate.getDay() !== checkInDay) {
-      currentDate = adjustToCheckInDay(currentDate, checkInDay);
-    }
-  }
-  
-  // Create a new timeline that includes both customizations and default weeks
-  const completeTimeline: { 
-    type: 'custom' | 'default', 
-    startDate: Date, 
-    endDate: Date, 
-    customization?: WeekCustomization,
-    isPartialWeek?: boolean 
-  }[] = [];
-  
-  // Process each item in the original timeline, filling gaps with default weeks
-  for (let i = 0; i < timeline.length; i++) {
-    const current = timeline[i];
+  // Keep generating weeks until we reach the end date
+  while (currentDate <= normalizedEndDate) {
+    // Generate a standard week
+    const { startDate, endDate } = generateStandardWeek(currentDate, safeConfig);
     
-    // If there's a gap before this item, fill it with default weeks
-    if (currentDate < current.startDate) {
-      // Fill the gap with default weeks until we reach the start of the current custom week
-      while (currentDate < current.startDate) {
-        // Calculate end date for this default week
-        const daysToCheckout = ((checkOutDay - currentDate.getDay()) + 7) % 7;
-        let weekEnd = daysToCheckout === 0 ? 
-          addDays(currentDate, 7) : // If already on checkout day, go to next week
-          addDays(currentDate, daysToCheckout);
-          
-        // If this would extend beyond the current custom week, truncate it
-        if (weekEnd >= current.startDate) {
-          weekEnd = addDays(current.startDate, -1);
-          
-          // Calculate if this is a partial week (not exactly 7 days)
-          const daysDiff = Math.round((weekEnd.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-          const isPartial = daysDiff !== 7;
-          
-          console.log('[dates] Adding truncated default week before customization:', {
-            startDate: formatDateForDisplay(currentDate),
-            endDate: formatDateForDisplay(weekEnd),
-            daysDiff,
-            isPartial
-          });
-          
-          completeTimeline.push({
-            type: 'default',
-            startDate: new Date(currentDate),
-            endDate: new Date(weekEnd),
-            isPartialWeek: isPartial
-          });
-        } else {
-          console.log('[dates] Adding full default week before customization:', {
-            startDate: formatDateForDisplay(currentDate),
-            endDate: formatDateForDisplay(weekEnd)
-          });
-          
-          completeTimeline.push({
-            type: 'default',
-            startDate: new Date(currentDate),
-            endDate: new Date(weekEnd)
-          });
-        }
-        
-        // Move to the next check-in day
-        currentDate = addDays(weekEnd, 1);
-        if (currentDate.getDay() !== checkInDay) {
-          currentDate = adjustToCheckInDay(currentDate, checkInDay);
-        }
-        
-        // Safety check: if we're about to go past the customization start,
-        // just jump directly to it
-        if (currentDate >= current.startDate) {
-          currentDate = new Date(current.startDate);
-          break;
-        }
-      }
-    }
+    // Check if this week extends beyond the end date
+    const isPartial = endDate > normalizedEndDate;
+    const actualEndDate = isPartial ? normalizedEndDate : endDate;
     
-    // Add the customization to the complete timeline
-    console.log('[dates] Adding customization to timeline:', {
-      startDate: formatDateForDisplay(current.startDate),
-      endDate: formatDateForDisplay(current.endDate),
-      status: current.customization?.status || 'n/a'
-    });
-    
-    completeTimeline.push(current);
-    
-    // Move the current date pointer to after this customization
-    // Ensure we start on the day AFTER the customization ends
-    currentDate = addDays(current.endDate, 1);
-    
-    // Check if there's a gap between the end of this customization and the next check-in day
-    const nextCheckInDate = adjustToCheckInDay(currentDate, checkInDay);
-    
-    // If there's a gap between the current date and the next check-in day,
-    // create a partial week to fill this gap
-    if (currentDate < nextCheckInDate && 
-        (i === timeline.length - 1 || nextCheckInDate <= timeline[i + 1].startDate)) {
-      // Create a partial week from current date to the day before next check-in
-      const partialWeekEnd = addDays(nextCheckInDate, -1);
-      
-      console.log('[dates] Adding partial week to fill gap before next check-in day:', {
-        startDate: formatDateForDisplay(currentDate),
-        endDate: formatDateForDisplay(partialWeekEnd),
-        nextCheckIn: formatDateForDisplay(nextCheckInDate)
-      });
-      
-      completeTimeline.push({
-        type: 'default',
-        startDate: new Date(currentDate),
-        endDate: new Date(partialWeekEnd),
-        isPartialWeek: true
-      });
-    }
-    
-    // For consistent default weeks, adjust to next check-in day
-    if (i === timeline.length - 1 || currentDate < timeline[i + 1].startDate) {
-      // Only adjust if there's no immediate next customization
-      if (currentDate.getDay() !== checkInDay) {
-        currentDate = nextCheckInDate;
-      }
-    }
-  }
-  
-  // Fill any remaining gap after the last customization
-  if (currentDate <= normalizedEndDate) {
-    while (currentDate <= normalizedEndDate) {
-      // Calculate end date for this default week
-      const daysToCheckout = ((checkOutDay - currentDate.getDay()) + 7) % 7;
-      let weekEnd = daysToCheckout === 0 ? 
-        addDays(currentDate, 7) : // If already on checkout day, go to next week
-        addDays(currentDate, daysToCheckout);
-        
-      // For the last week, we have two options:
-      // 1. Create a partial week that ends exactly at normalizedEndDate
-      // 2. Create a full week that extends beyond normalizedEndDate
-      
-      // We'll create a full week if the remaining days are at least 4 days
-      // Otherwise, we'll create a partial week
-      const daysRemaining = Math.round((normalizedEndDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-      const shouldCreateFullWeek = daysRemaining >= 4;
-      
-      if (shouldCreateFullWeek) {
-        // Create a full week even if it extends beyond normalizedEndDate
-        console.log('[dates] Creating full week for final period:', {
-          startDate: formatDateForDisplay(currentDate),
-          endDate: formatDateForDisplay(weekEnd),
-          normalizedEndDate: formatDateForDisplay(normalizedEndDate),
-          daysRemaining,
-          isExtendingBeyondRange: weekEnd > normalizedEndDate
-        });
-      } else {
-        // Create a partial week that ends exactly at normalizedEndDate
-        if (weekEnd > normalizedEndDate) {
-          weekEnd = new Date(normalizedEndDate);
-        }
-        
-        console.log('[dates] Adding final partial week:', {
-          startDate: formatDateForDisplay(currentDate),
-          endDate: formatDateForDisplay(weekEnd),
-          daysRemaining
-        });
-      }
-      
-      completeTimeline.push({
-        type: 'default',
-        startDate: new Date(currentDate),
-        endDate: new Date(weekEnd),
-        isPartialWeek: weekEnd > normalizedEndDate ? false : (weekEnd.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24) + 1 !== 7
-      });
-      
-      // Move to the next week
-      currentDate = addDays(weekEnd, 1);
-      if (currentDate.getDay() !== checkInDay) {
-        currentDate = adjustToCheckInDay(currentDate, checkInDay);
-      }
-      
-      // If we've created a full week that extends beyond normalizedEndDate, we're done
-      if (weekEnd > normalizedEndDate) {
+    // Check if this week overlaps with any customization
+    let overlapsWithCustomization = false;
+    for (const customization of relevantCustomizations) {
+      if (doDateRangesOverlap(
+        startDate, actualEndDate,
+        customization.startDate, customization.endDate
+      )) {
+        overlapsWithCustomization = true;
         break;
       }
     }
+    
+    // Only add standard weeks that don't overlap with customizations
+    if (!overlapsWithCustomization) {
+      // Create a unique ID for this week
+      const weekId = generateUniqueWeekId(startDate, actualEndDate);
+      
+      // Only add this week if we haven't already added it
+      const weekStartDateStr = formatDateForDisplay(startDate);
+      if (!addedWeekStartDates.has(weekStartDateStr)) {
+        addedWeekStartDates.add(weekStartDateStr);
+        
+        timeline.push({
+          type: 'default',
+          startDate,
+          endDate: actualEndDate,
+          id: weekId,
+          isPartialWeek: isPartial
+        });
+      }
+    }
+    
+    // Move to the next week
+    currentDate = addDays(endDate, 1);
   }
   
-  console.log('[dates] Final timeline created:', completeTimeline.map(item => ({
-    type: item.type,
-    startDate: formatDateForDisplay(item.startDate),
-    endDate: formatDateForDisplay(item.endDate),
-    status: item.customization?.status || 'n/a',
-    duration: Math.floor((item.endDate.getTime() - item.startDate.getTime()) / (24 * 60 * 60 * 1000)) + 1
-  })));
+  // Sort timeline by start date again after adding all weeks
+  timeline.sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
+
+  // Convert timeline to Week objects, ensuring unique IDs
+  const result: Week[] = [];
+  const usedIds = new Set<string>();
   
-  // STEP 4: Convert the timeline to Week objects
-  const weeks = completeTimeline.map((item, index, array) => {
-    const isFirstWeek = index === 0;
-    const isLastWeek = index === array.length - 1;
-    const isEdgeWeek = isFirstWeek || isLastWeek;
-    
-    if (item.type === 'custom') {
-      return {
-        startDate: item.startDate,
-        endDate: item.endDate,
-        status: item.customization!.status,
-        name: item.customization!.name,
-        isCustom: true,
-        id: item.customization!.id,
-        isPartialWeek: item.isPartialWeek,
-        isEdgeWeek
-      };
-    } else {
-      return {
-        startDate: item.startDate,
-        endDate: item.endDate,
-        status: 'default',
-        name: undefined,
-        isCustom: false,
-        id: `default-${item.startDate.toISOString()}`,
-        isPartialWeek: item.isPartialWeek,
-        isEdgeWeek
-      };
+  timeline.forEach((item, index, array) => {
+    // Skip deleted weeks for non-admin users
+    if (!isAdminMode && item.type === 'custom' && item.customization!.status === 'deleted') {
+      return;
     }
+    
+    // Generate a base ID
+    let id = item.type === 'custom' 
+      ? item.customization!.id 
+      : generateUniqueWeekId(item.startDate, item.endDate);
+    
+    // If this ID is already used, make it unique by appending an index
+    if (usedIds.has(id)) {
+      id = `${id}-${index}`;
+    }
+    
+    // Mark this ID as used
+    usedIds.add(id);
+    
+    // Create the week object with the unique ID
+    result.push({
+      startDate: item.startDate,
+      endDate: item.endDate,
+      status: item.type === 'custom' ? item.customization!.status : 'default',
+      name: item.type === 'custom' ? (item.customization!.name || undefined) : undefined,
+      isCustom: item.type === 'custom',
+      id,
+      isPartialWeek: item.isPartialWeek,
+      isEdgeWeek: index === 0 || index === array.length - 1,
+      flexibleDates: item.type === 'custom' ? item.customization!.flexibleDates : undefined
+    });
   });
   
-  console.log('[dates] Generated weeks summary:', {
-    count: weeks.length,
-    statusCounts: weeks.reduce((acc, week) => {
-      acc[week.status] = (acc[week.status] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>),
-    firstWeek: weeks.length > 0 ? {
-      startDate: formatDateForDisplay(weeks[0].startDate),
-      endDate: formatDateForDisplay(weeks[0].endDate),
-      status: weeks[0].status,
-      duration: Math.floor((weeks[0].endDate.getTime() - weeks[0].startDate.getTime()) / (24 * 60 * 60 * 1000)) + 1
+  console.log('[generateWeeksWithCustomizations] Generated weeks:', {
+    count: result.length,
+    firstWeek: result.length > 0 ? {
+      startDate: formatDateForDisplay(result[0].startDate),
+      endDate: formatDateForDisplay(result[0].endDate),
+      status: result[0].status
     } : null,
-    lastWeek: weeks.length > 0 ? {
-      startDate: formatDateForDisplay(weeks[weeks.length-1].startDate),
-      endDate: formatDateForDisplay(weeks[weeks.length-1].endDate),
-      status: weeks[weeks.length-1].status,
-      duration: Math.floor((weeks[weeks.length-1].endDate.getTime() - weeks[weeks.length-1].startDate.getTime()) / (24 * 60 * 60 * 1000)) + 1
+    lastWeek: result.length > 0 ? {
+      startDate: formatDateForDisplay(result[result.length - 1].startDate),
+      endDate: formatDateForDisplay(result[result.length - 1].endDate),
+      status: result[result.length - 1].status
     } : null
   });
   
-  return weeks;
+  return result;
 }
 
-// Helper function to check if a date falls within a week
-export function isDateInWeek(date: Date, week: Week): boolean {
-  const startTime = week.startDate.getTime();
-  const endTime = week.endDate.getTime();
-  const dateTime = date.getTime();
-  return dateTime >= startTime && dateTime <= endTime;
-}
-
-// Helper function to format a week's date range for display
-export function formatWeekRange(week: Week): string {
-  return `${format(week.startDate, 'MMM d')} - ${format(week.endDate, 'MMM d')}`;
-}
-
-// Helper function to check if a week is selectable based on its status and date
+/**
+ * Check if a week is selectable based on its status and date
+ */
 export function isWeekSelectable(week: Week, isAdmin: boolean = false): boolean {
-  // Admins can select any week, including deleted ones
+  // Admins can select any week
   if (isAdmin) {
-    return true; // Allow admins to select any week
+    return true;
   }
   
-  // For normal users, check both status and start date (check-in date)
-  const today = startOfDay(new Date());
-  const weekStartDate = startOfDay(new Date(week.startDate));
+  // For normal users, check both status and start date
+  const today = normalizeToUTCDate(new Date());
+  const weekStartDate = normalizeToUTCDate(week.startDate);
   
   // Non-admin can't select weeks with check-in date in the past
   if (weekStartDate < today) {
     return false;
   }
   
-  // Regular status check
-  return week.status !== 'hidden' && week.status !== 'deleted';
+  // Non-admin can only select visible weeks
+  return week.status === 'visible' || week.status === 'default';
 }
 
-// Helper function to get the display name for a week
+/**
+ * Get a display name for a week
+ */
 export function getWeekDisplayName(week: Week): string {
   if (week.name) {
     return week.name;
   }
   
-  const start = formatDateForDisplay(week.startDate);
-  const end = formatDateForDisplay(week.endDate);
-  return `${start} - ${end}`;
+  return formatWeekRange(week);
+}
+
+export function normalizeToLocalDate(date: Date | string): Date {
+    const dateString = typeof date === 'string' ? date : format(date, 'yyyy-MM-dd');
+    return new Date(dateString + 'T00:00:00');
 }

@@ -35,8 +35,8 @@ export function useCalendar({ startDate, endDate, isAdminMode = false }: UseCale
     const normalizedEndDate = startOfDay(new Date(endDate));
 
     console.log('[useCalendar] Hook initialized:', {
-        startDate: normalizedStartDate.toISOString(),
-        endDate: normalizedEndDate.toISOString(),
+        startDate: startOfDay(new Date(startDate)),
+        endDate: startOfDay(new Date(endDate)),
         isAdminMode,
         dateRange: {
             diffMs: normalizedEndDate.getTime() - normalizedStartDate.getTime(),
@@ -152,31 +152,29 @@ export function useCalendar({ startDate, endDate, isAdminMode = false }: UseCale
     }, []);
 
     // Admin actions with state updates
-    const createCustomization = useCallback(async (customization: {
-        startDate: Date;
-        endDate: Date;
-        status: string;
-        name?: string | null;
-    }) => {
+    const createCustomization = useCallback(async (customization: Omit<WeekCustomization, 'id' | 'createdAt' | 'createdBy'>) => {
         console.log('[useCalendar] Creating customization:', {
             startDate: customization.startDate.toISOString(),
             endDate: customization.endDate.toISOString(),
             status: customization.status,
-            name: customization.name
+            name: customization.name,
+            flexibleDatesCount: customization.flexibleDates?.length
         });
 
         const result = await CalendarService.createCustomization({
             startDate: customization.startDate,
             endDate: customization.endDate,
             status: customization.status,
-            name: customization.name
+            name: customization.name || undefined,
+            flexibleDates: customization.flexibleDates
         });
         
         if (result) {
             console.log('[useCalendar] Customization created successfully:', {
                 id: result.id,
                 startDate: result.startDate.toISOString(),
-                status: result.status
+                status: result.status,
+                flexibleDatesCount: result.flexibleDates?.length
             });
             
             setCustomizations(prev => [...prev, result]);
@@ -237,10 +235,15 @@ export function useCalendar({ startDate, endDate, isAdminMode = false }: UseCale
 
     const updateConfig = useCallback(async (updates: Partial<Omit<CalendarConfig, 'id' | 'createdAt'>>) => {
         console.log('[useCalendar] Updating config:', updates);
-        const result = await CalendarService.updateConfig(updates);
+        if (typeof updates.checkInDay !== 'number' || typeof updates.checkOutDay !== 'number') {
+            throw new Error('Check-in and check-out days must be numbers');
+        }
+        const result = await CalendarService.updateConfig({
+            checkInDay: updates.checkInDay,
+            checkOutDay: updates.checkOutDay
+        });
         if (result) {
             setConfig(result);
-            // Force refresh to regenerate weeks
             setLastRefresh(Date.now());
         }
         return result;
