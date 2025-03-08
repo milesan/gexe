@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
-import { isSameWeek, addWeeks, isAfter, isBefore, startOfMonth, format, addMonths, subMonths, startOfDay, isSameDay, addDays } from 'date-fns';
+import { isSameWeek, addWeeks, isAfter, isBefore, startOfMonth, format, addMonths, subMonths, startOfDay, isSameDay, addDays, eachDayOfInterval } from 'date-fns';
 import { WeekSelector } from '../components/WeekSelector';
 import { formatDateForDisplay, normalizeToUTCDate, doDateRangesOverlap } from '../utils/dates';
 import { CabinSelector } from '../components/CabinSelector';
-import { BookingSummary } from '../components/BookingSummary';
+import { BookingSummary, SeasonBreakdown } from '../components/BookingSummary';
 import { MaxWeeksModal } from '../components/MaxWeeksModal';
 import { WeekCustomizationModal } from '../components/admin/WeekCustomizationModal';
 import { generateWeeksWithCustomizations, generateSquigglePath, getWeeksInRange } from '../utils/dates';
@@ -16,6 +16,7 @@ import { useCalendar } from '../hooks/useCalendar';
 import { Week, WeekStatus } from '../types/calendar';
 import { CalendarService } from '../services/CalendarService';
 import { CalendarConfigButton } from '../components/admin/CalendarConfigButton';
+import { getSeasonalDiscount } from '../utils/pricing';
 
 const DESKTOP_WEEKS = 16;
 const MOBILE_WEEKS = 12;
@@ -40,6 +41,7 @@ export function Book2Page() {
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [selectedWeekForCustomization, setSelectedWeekForCustomization] = useState<Week | null>(null);
   const [lastRefresh, setLastRefresh] = useState(Date.now());
+  const [seasonBreakdown, setSeasonBreakdown] = useState<SeasonBreakdown | undefined>(undefined);
 
   const session = useSession();
   const isAdmin = session?.user?.email === 'andre@thegarden.pt' || session?.user?.email === 'redis213@gmail.com';
@@ -247,6 +249,91 @@ export function Book2Page() {
 
   const isLoading = accommodationsLoading || calendarLoading;
 
+  // Calculate season breakdown for the selected weeks
+  const calculateSeasonBreakdown = useCallback((weeks: Week[]): SeasonBreakdown => {
+    if (weeks.length === 0) {
+      const discount = getSeasonalDiscount(currentMonth);
+      const seasonName = discount === 0 ? 'High Season' : 
+                         discount === 0.15 ? 'Shoulder Season' : 
+                         'Winter Season';
+      return { 
+        hasMultipleSeasons: false, 
+        seasons: [{ name: seasonName, discount, nights: 0 }] 
+      };
+    }
+
+    // Get all nights in the selected period
+    // A night is represented by its start date
+    let allNights: Date[] = [];
+    
+    weeks.forEach(week => {
+      const startDate = week.startDate || (week instanceof Date ? week : new Date());
+      const endDate = week.endDate || addDays(startDate, 6);
+      
+      if (isBefore(endDate, startDate)) {
+        return;
+      }
+      
+      // For nights, we include all days EXCEPT the last day
+      // e.g., for a stay from June 24 to July 7, we count nights of June 24, 25, ..., July 6
+      const nightsInWeek = eachDayOfInterval({ 
+        start: startDate, 
+        end: addDays(endDate, -1) // Exclude the checkout day
+      });
+      
+      allNights = [...allNights, ...nightsInWeek];
+    });
+    
+    if (allNights.length === 0) {
+      const discount = getSeasonalDiscount(currentMonth);
+      const seasonName = discount === 0 ? 'High Season' : 
+                         discount === 0.15 ? 'Shoulder Season' : 
+                         'Winter Season';
+      return { 
+        hasMultipleSeasons: false, 
+        seasons: [{ name: seasonName, discount, nights: 0 }] 
+      };
+    }
+    
+    // Group nights by season
+    const seasonMap: Record<string, { name: string, discount: number, nights: number }> = {};
+    
+    allNights.forEach(night => {
+      const discount = getSeasonalDiscount(night);
+      const seasonName = discount === 0 ? 'High Season' : 
+                         discount === 0.15 ? 'Shoulder Season' : 
+                         'Winter Season';
+      const key = `${seasonName}-${discount}`;
+      
+      if (!seasonMap[key]) {
+        seasonMap[key] = { name: seasonName, discount, nights: 0 };
+      }
+      
+      seasonMap[key].nights++;
+    });
+    
+    const seasons = Object.values(seasonMap).sort((a, b) => b.nights - a.nights);
+    const hasMultipleSeasons = seasons.length > 1;
+    
+    console.log('[Book2Page] Season breakdown:', { 
+      hasMultipleSeasons, 
+      seasons,
+      totalNights: allNights.length
+    });
+    
+    return { hasMultipleSeasons, seasons };
+  }, [currentMonth]);
+
+  // Update season breakdown when selected weeks change
+  useEffect(() => {
+    if (selectedWeeks.length > 0) {
+      const breakdown = calculateSeasonBreakdown(selectedWeeks);
+      setSeasonBreakdown(breakdown);
+    } else {
+      setSeasonBreakdown(undefined);
+    }
+  }, [selectedWeeks, calculateSeasonBreakdown]);
+
   return (
     <div 
       className="min-h-screen tree-pattern"
@@ -390,6 +477,7 @@ export function Book2Page() {
                     baseRate={BASE_RATE}
                     onClearWeeks={() => setSelectedWeeks([])}
                     onClearAccommodation={() => setSelectedAccommodation(null)}
+                    seasonBreakdown={seasonBreakdown}
                   />
                 ) : (
                   <div className="text-stone-600 text-sm">
