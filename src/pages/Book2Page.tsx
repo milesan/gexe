@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
-import { isSameWeek, addWeeks, isAfter, isBefore, startOfMonth, format, addMonths, subMonths, startOfDay } from 'date-fns';
+import { isSameWeek, addWeeks, isAfter, isBefore, startOfMonth, format, addMonths, subMonths, startOfDay, isSameDay, addDays } from 'date-fns';
 import { WeekSelector } from '../components/WeekSelector';
-import { formatDateForDisplay } from '../utils/dates';
+import { formatDateForDisplay, normalizeToUTCDate, doDateRangesOverlap } from '../utils/dates';
 import { CabinSelector } from '../components/CabinSelector';
 import { BookingSummary } from '../components/BookingSummary';
 import { MaxWeeksModal } from '../components/MaxWeeksModal';
@@ -147,78 +147,62 @@ export function Book2Page() {
            week.startDate.toISOString() === selectedWeeks[selectedWeeks.length - 1].startDate.toISOString();
   }, [selectedWeeks]);
 
+  /**
+   * Handle saving week customization changes
+   * 
+   * This function is called when a user saves changes in the WeekCustomizationModal.
+   * It delegates the actual update/create logic to the CalendarService, which handles
+   * all the complex overlap resolution.
+   */
   const handleSaveWeekCustomization = async (updates: {
     status: WeekStatus;
     name?: string;
     startDate?: Date;
     endDate?: Date;
+    flexibleDates?: Date[];
   }) => {
-    console.log('[Book2Page] Saving week customization:', {
-      weekStartDate: selectedWeekForCustomization ? formatDateForDisplay(selectedWeekForCustomization.startDate) : null,
-      updates: {
-        status: updates.status,
-        name: updates.name,
-        startDate: updates.startDate ? formatDateForDisplay(updates.startDate) : null,
-        endDate: updates.endDate ? formatDateForDisplay(updates.endDate) : null
-      },
-      existingCustomizations: customizations?.filter(c => 
-        c.startDate.toISOString().split('T')[0] === selectedWeekForCustomization.startDate.toISOString().split('T')[0] &&
-        c.endDate.toISOString().split('T')[0] === selectedWeekForCustomization.endDate.toISOString().split('T')[0]
-      )
-    });
-
-    if (!selectedWeekForCustomization) {
-      console.error('[Book2Page] No week selected for customization');
-      return;
-    }
-
-    // Ensure we have valid dates
-    const startDate = updates.startDate || selectedWeekForCustomization.startDate;
-    const endDate = updates.endDate || selectedWeekForCustomization.endDate;
-
-    // Find any existing customizations for this week - use EXACT date matching
-    const matchingCustomizations = customizations?.filter(c => 
-      c.startDate.toISOString().split('T')[0] === selectedWeekForCustomization.startDate.toISOString().split('T')[0] &&
-      c.endDate.toISOString().split('T')[0] === selectedWeekForCustomization.endDate.toISOString().split('T')[0]
-    ) || [];
+    if (!selectedWeekForCustomization) return;
 
     try {
-      let customizationResult = null;
-      
-      if (matchingCustomizations.length > 0) {
-        const mostRecent = matchingCustomizations[0];
-        
-        try {
-          customizationResult = await updateCustomization(mostRecent.id, {
-            startDate,
-            endDate,
-            status: updates.status,
-            name: updates.name
-          });
-        } catch (updateError) {
-          console.error('[Book2Page] Error updating customization:', updateError);
-          
-          customizationResult = await createCustomization({
-            startDate,
-            endDate,
-            status: updates.status,
-            name: updates.name
-          });
-        }
+      // Normalize all dates for consistent handling
+      const finalStartDate = normalizeToUTCDate(updates.startDate || selectedWeekForCustomization.startDate);
+      const finalEndDate = normalizeToUTCDate(updates.endDate || selectedWeekForCustomization.endDate);
+      const flexibleDates = updates.flexibleDates?.map(d => normalizeToUTCDate(d));
+
+      console.log('[Book2Page] Saving week customization:', {
+        weekId: selectedWeekForCustomization.id,
+        startDate: formatDateForDisplay(finalStartDate),
+        endDate: formatDateForDisplay(finalEndDate),
+        status: updates.status,
+        flexibleDatesCount: flexibleDates?.length || 0
+      });
+
+      // Check if this is an existing customization or a new one
+      if (selectedWeekForCustomization.isCustom && selectedWeekForCustomization.id) {
+        // Update existing customization
+        await CalendarService.updateCustomization(selectedWeekForCustomization.id, {
+          ...updates,
+          startDate: finalStartDate,
+          endDate: finalEndDate,
+          flexibleDates
+        });
       } else {
-        customizationResult = await createCustomization({
-          startDate,
-          endDate,
-          status: updates.status,
-          name: updates.name
+        // Create new customization
+        await CalendarService.createCustomization({
+                startDate: finalStartDate,
+                endDate: finalEndDate,
+                status: updates.status,
+                name: updates.name,
+          flexibleDates
         });
       }
       
-      setLastRefresh(Date.now());
-      setSelectedWeekForCustomization(null);
-      
+      // Refresh calendar data and close modal
+        setLastRefresh(Date.now());
+        setSelectedWeekForCustomization(null);
     } catch (error) {
-      console.error('[Book2Page] Failed to save week customization:', error);
+      console.error('[Book2Page] Error saving week customization:', error);
+      // Show error to user (you could add a toast notification here)
     }
   };
 
@@ -300,6 +284,33 @@ export function Book2Page() {
       setConfigError('Failed to save calendar configuration');
     } finally {
       setConfigSaving(false);
+    }
+  };
+
+  /**
+   * Handle deleting a week customization (resetting to default)
+   * 
+   * This function is called when a user clicks the "Reset to Default" button in the WeekCustomizationModal.
+   * It deletes the customization from the database, which effectively resets the week to its default state.
+   */
+  const handleDeleteWeekCustomization = async (weekId: string) => {
+    try {
+      console.log('[Book2Page] Deleting week customization:', { weekId });
+      
+      // Delete the customization
+      const success = await CalendarService.deleteCustomization(weekId);
+      
+      if (success) {
+        console.log('[Book2Page] Successfully deleted week customization');
+      } else {
+        console.error('[Book2Page] Failed to delete week customization');
+      }
+      
+      // Refresh calendar data and close modal
+      setLastRefresh(Date.now());
+      setSelectedWeekForCustomization(null);
+    } catch (error) {
+      console.error('[Book2Page] Error deleting week customization:', error);
     }
   };
 
@@ -477,6 +488,7 @@ export function Book2Page() {
           week={selectedWeekForCustomization}
           onClose={() => setSelectedWeekForCustomization(null)}
           onSave={handleSaveWeekCustomization}
+          onDelete={handleDeleteWeekCustomization}
         />
       )}
 

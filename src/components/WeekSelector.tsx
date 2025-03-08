@@ -3,9 +3,11 @@ import { isBefore, startOfToday, isSameDay } from 'date-fns';
 import { WeekBox } from './WeekBox';
 import clsx from 'clsx';
 import { Week } from '../types/calendar';
-import { isWeekSelectable, formatWeekRange, formatDateForDisplay } from '../utils/dates';
+import { isWeekSelectable, formatWeekRange, formatDateForDisplay, normalizeToUTCDate, generateWeekId } from '../utils/dates';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
+import { Calendar } from 'lucide-react';
+import { FlexibleCheckInModal } from './FlexibleCheckInModal';
 
 const MOBILE_WEEKS = 3;
 const DESKTOP_WEEKS = 4;
@@ -59,6 +61,8 @@ export function WeekSelector({
   const [squigglePaths] = useState(() => 
     Array.from({ length: isMobile ? MOBILE_WEEKS : DESKTOP_WEEKS }, () => generateSquigglePath())
   );
+  const [selectedFlexDate, setSelectedFlexDate] = useState<Date | null>(null);
+  const [flexModalWeek, setFlexModalWeek] = useState<Week | null>(null);
 
   const handleWeekClick = useCallback((week: Week) => {
     console.log('[WeekSelector] Week clicked:', getSimplifiedWeekInfo(week, isAdmin));
@@ -72,19 +76,41 @@ export function WeekSelector({
       return;
     }
 
-    onWeekSelect(week);
-  }, [onWeekSelect, isAdmin]);
+    // If we're in admin mode, always go directly to week customization
+    // Otherwise, if the week has flexible dates and it's being selected as the first week, show the modal
+    if (isAdmin) {
+      console.log('[WeekSelector] In admin mode, bypassing FlexibleCheckInModal and going directly to customization');
+      onWeekSelect(week);
+    } else if (week.flexibleDates?.length && selectedWeeks.length === 0) {
+      console.log('[WeekSelector] Showing FlexibleCheckInModal for week with flexible dates');
+      setFlexModalWeek(week);
+    } else {
+      console.log('[WeekSelector] Standard week selection');
+      onWeekSelect(week);
+    }
+  }, [onWeekSelect, isAdmin, selectedWeeks]);
 
-  const isWeekSelected = (week: Week) => {
-    const isSelected = selectedWeeks.some(w => 
-      isSameDay(w.startDate, week.startDate) && isSameDay(w.endDate, week.endDate)
+  const handleFlexDateSelect = useCallback((date: Date) => {
+    if (!flexModalWeek) return;
+    
+    // Create a new week object with the selected check-in date
+    const selectedWeek: Week = {
+      ...flexModalWeek,
+      startDate: date,
+      // Keep the same duration between original start and end dates
+      endDate: new Date(date.getTime() + (flexModalWeek.endDate.getTime() - flexModalWeek.startDate.getTime()))
+    };
+    
+    onWeekSelect(selectedWeek);
+    setFlexModalWeek(null);
+  }, [flexModalWeek, onWeekSelect]);
+
+  const isWeekSelected = useCallback((week: Week) => {
+    return selectedWeeks.some(selectedWeek => 
+      isSameDay(normalizeToUTCDate(selectedWeek.startDate), normalizeToUTCDate(week.startDate)) && 
+      isSameDay(normalizeToUTCDate(selectedWeek.endDate), normalizeToUTCDate(week.endDate))
     );
-    console.log('[WeekSelector] Checking week selection:', {
-      weekStartDate: formatDateForDisplay(week.startDate),
-      isSelected
-    });
-    return isSelected;
-  };
+  }, [selectedWeeks]);
 
   const getWeekClasses = useCallback((week: Week) => {
     const isSelected = selectedWeeks.some(w => 
@@ -119,6 +145,11 @@ export function WeekSelector({
         default:
           statusClasses = 'week-status-default';
       }
+    }
+
+    // Add flex dates indicator
+    if (week.flexibleDates?.length) {
+      statusClasses += ' border-indigo-300';
     }
 
     // Special handling for hidden weeks in admin mode
@@ -205,83 +236,99 @@ export function WeekSelector({
   }, [currentMonth, onMonthChange]);
 
   return (
-    <div className={clsx(
-      'grid gap-4',
-      isMobile ? 'grid-cols-3' : 'grid-cols-4'
-    )}>
-      {weeks.map((week, index) => (
-        <button
-          key={week.startDate.toISOString()}
-          onClick={() => handleWeekClick(week)}
-          className={getWeekClasses(week)}
-          disabled={!isWeekSelectable(week, isAdmin)}
-        >
-          <div className="text-center">
-            {week.name ? (
-              <>
-                <div className="text-sm font-bold">
-                  {week.name}
-                </div>
-                <div className="text-xs text-gray-500 mt-1 flex items-center justify-center gap-1">
-                  <span>{format(week.startDate, 'MMM d')}</span>
-                  <span>-</span>
-                  <span>{format(week.endDate, 'MMM d')}</span>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="text-sm font-medium">
-                  {format(week.startDate, 'MMM d')}
-                </div>
-                <div className="text-xs text-gray-500">
-                  {format(week.endDate, 'MMM d')}
-                </div>
-              </>
-            )}
-            {(() => {
-              const diffTime = week.endDate.getTime() - week.startDate.getTime();
-              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 because both start and end dates are inclusive
-              
-              // Only show day count for non-standard weeks that are not at the edge of the view
-              if (diffDays !== 7 && !week.isEdgeWeek) {
-                return (
-                  <div className="text-xs text-indigo-600 mt-1 font-medium">
-                    {diffDays} {diffDays === 1 ? 'day' : 'days'}
+    <>
+      <div className={clsx(
+        'grid gap-4',
+        isMobile ? 'grid-cols-3' : 'grid-cols-4'
+      )}>
+        {weeks.map((week, index) => (
+          <button
+            key={week.id || `week-${index}`}
+            onClick={() => handleWeekClick(week)}
+            className={getWeekClasses(week)}
+            disabled={!isWeekSelectable(week, isAdmin)}
+          >
+            <div className="text-center">
+              {week.name ? (
+                <>
+                  <div className="text-sm font-bold">
+                    {week.name}
                   </div>
-                );
-              }
-              return null;
-            })()}
-            {isAdmin && week.status !== 'default' && (
-              <div className={clsx(
-                'text-xs font-medium mt-1',
-                week.status === 'hidden' && 'text-yellow-600',
-                week.status === 'deleted' && 'text-red-600',
-                week.status === 'visible' && 'text-blue-600'
-              )}>
-                {week.status}
-              </div>
+                  <div className="text-xs text-gray-500 mt-1 flex items-center justify-center gap-1">
+                    <span>{format(week.startDate, 'MMM d')}</span>
+                    <span>-</span>
+                    <span>{format(week.endDate, 'MMM d')}</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="text-sm font-medium">
+                    {format(week.startDate, 'MMM d')}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {format(week.endDate, 'MMM d')}
+                  </div>
+                </>
+              )}
+              {/* Show flex dates indicator */}
+              {week.flexibleDates && week.flexibleDates.length > 0 && (
+                <div className="text-xs text-indigo-600 mt-1 font-medium flex items-center justify-center gap-1">
+                  <Calendar className="w-3 h-3" />
+                  <span>{week.flexibleDates.length} check-in {week.flexibleDates.length === 1 ? 'date' : 'dates'}</span>
+                </div>
+              )}
+              {(() => {
+                const diffTime = week.endDate.getTime() - week.startDate.getTime();
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 because both start and end dates are inclusive
+                
+                // Only show day count for non-standard weeks that are not at the edge of the view
+                if (diffDays !== 7 && !week.isEdgeWeek) {
+                  return (
+                    <div className="text-xs text-indigo-600 mt-1 font-medium">
+                      {diffDays} {diffDays === 1 ? 'day' : 'days'}
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+              {isAdmin && week.status !== 'default' && (
+                <div className={clsx(
+                  'text-xs font-medium mt-1',
+                  week.status === 'hidden' && 'text-yellow-600',
+                  week.status === 'deleted' && 'text-red-600',
+                  week.status === 'visible' && 'text-blue-600'
+                )}>
+                  {week.status}
+                </div>
+              )}
+            </div>
+            {isWeekSelected(week) && (
+              <motion.svg
+                className="absolute inset-0 w-full h-full pointer-events-none"
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ duration: 0.5 }}
+              >
+                <path
+                  d={squigglePaths[index]}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="text-emerald-500"
+                />
+              </motion.svg>
             )}
-          </div>
-          {isWeekSelected(week) && (
-            <motion.svg
-              className="absolute inset-0 w-full h-full pointer-events-none"
-              initial={{ pathLength: 0 }}
-              animate={{ pathLength: 1 }}
-              transition={{ duration: 0.5 }}
-            >
-              <path
-                d={squigglePaths[index]}
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                className="text-emerald-500"
-              />
-            </motion.svg>
-          )}
-        </button>
-      ))}
-    </div>
+          </button>
+        ))}
+      </div>
+
+      <FlexibleCheckInModal
+        week={flexModalWeek!}
+        isOpen={!!flexModalWeek}
+        onClose={() => setFlexModalWeek(null)}
+        onDateSelect={handleFlexDateSelect}
+      />
+    </>
   );
 }
 

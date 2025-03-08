@@ -12,7 +12,7 @@ export interface CalendarConfig {
     createdAt?: Date;
 }
 
-export type WeekStatus = 'visible' | 'hidden' | 'deleted';
+export type WeekStatus = 'default' | 'visible' | 'hidden' | 'deleted';
 
 export interface WeekCustomization {
     id: string;
@@ -22,17 +22,27 @@ export interface WeekCustomization {
     status: WeekStatus;
     createdBy: string;
     createdAt: Date;
+    flexibleDates?: Date[];
 }
 
 export interface Week {
+    id?: string;
     startDate: Date;
     endDate: Date;
     name?: string;
-    status: 'default' | WeekStatus;
-    isCustom: boolean;
-    id?: string;
+    status: WeekStatus;
+    isCustom?: boolean;
     isPartialWeek?: boolean;
     isEdgeWeek?: boolean;
+    flexibleDates?: Date[];
+}
+
+export interface FlexibleCheckin {
+    id: string;
+    weekCustomizationId: string;
+    allowedCheckinDate: Date;
+    createdBy?: string;
+    createdAt: Date;
 }
 
 // Type guards

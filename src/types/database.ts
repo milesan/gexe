@@ -47,37 +47,112 @@ export interface Database {
           id: string;
           user_id: string;
           accommodation_id: string;
-          check_in: string;
-          check_out: string;
-          total_price: number;
+          start_date: string;
+          end_date: string;
           status: string;
-          payment_intent_id: string | null;
           created_at: string;
           updated_at: string;
+          total_price: number;
+          stripe_session_id: string | null;
+          stripe_payment_intent_id: string | null;
         };
         Insert: {
           id?: string;
           user_id: string;
           accommodation_id: string;
-          check_in: string;
-          check_out: string;
-          total_price: number;
+          start_date: string;
+          end_date: string;
           status?: string;
-          payment_intent_id?: string | null;
           created_at?: string;
           updated_at?: string;
+          total_price: number;
+          stripe_session_id?: string | null;
+          stripe_payment_intent_id?: string | null;
         };
         Update: {
           id?: string;
           user_id?: string;
           accommodation_id?: string;
-          check_in?: string;
-          check_out?: string;
-          total_price?: number;
+          start_date?: string;
+          end_date?: string;
           status?: string;
-          payment_intent_id?: string | null;
           created_at?: string;
           updated_at?: string;
+          total_price?: number;
+          stripe_session_id?: string | null;
+          stripe_payment_intent_id?: string | null;
+        };
+      };
+      calendar_config: {
+        Row: {
+          id: string;
+          check_in_day: number;
+          check_out_day: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          check_in_day: number;
+          check_out_day: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          check_in_day?: number;
+          check_out_day?: number;
+          created_at?: string;
+        };
+      };
+      week_customizations: {
+        Row: {
+          id: string;
+          start_date: string;
+          end_date: string;
+          name: string | null;
+          status: string;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          start_date: string;
+          end_date: string;
+          name?: string | null;
+          status?: string;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          start_date?: string;
+          end_date?: string;
+          name?: string | null;
+          status?: string;
+          created_by?: string | null;
+          created_at?: string;
+        };
+      };
+      flexible_checkins: {
+        Row: {
+          id: string;
+          week_customization_id: string;
+          allowed_checkin_date: string;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          week_customization_id: string;
+          allowed_checkin_date: string;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          week_customization_id?: string;
+          allowed_checkin_date?: string;
+          created_by?: string | null;
+          created_at?: string;
         };
       };
       availability: {

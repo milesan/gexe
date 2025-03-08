@@ -1,5 +1,5 @@
 import { Database } from '../types/database';
-import { CalendarConfig, WeekCustomization } from '../types/calendar';
+import { CalendarConfig, WeekCustomization, WeekStatus } from '../types/calendar';
 
 type CalendarConfigRow = Database['public']['Tables']['calendar_config']['Row'];
 type WeekCustomizationRow = Database['public']['Tables']['week_customizations']['Row'];
@@ -31,7 +31,7 @@ export function mapCalendarConfigToRow(config: Partial<CalendarConfig>): Partial
     };
 }
 
-export function mapWeekCustomizationFromRow(row: WeekCustomizationRow): WeekCustomization {
+export function mapWeekCustomizationFromRow(row: WeekCustomizationRow & { flexible_checkins?: { allowed_checkin_date: string }[] }): WeekCustomization {
     const startDate = new Date(row.start_date);
     const endDate = new Date(row.end_date);
     
@@ -44,7 +44,8 @@ export function mapWeekCustomizationFromRow(row: WeekCustomizationRow): WeekCust
         status: row.status,
         durationDays: Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1,
         startDay: startDate.getDay(),
-        endDay: endDate.getDay()
+        endDay: endDate.getDay(),
+        flexibleDatesCount: row.flexible_checkins?.length
     });
     
     return {
@@ -52,9 +53,10 @@ export function mapWeekCustomizationFromRow(row: WeekCustomizationRow): WeekCust
         startDate: new Date(row.start_date),
         endDate: new Date(row.end_date),
         name: row.name,
-        status: row.status,
+        status: row.status as WeekStatus,
         createdAt: new Date(row.created_at),
-        createdBy: row.created_by || 'system'
+        createdBy: row.created_by || 'system',
+        flexibleDates: row.flexible_checkins?.map((fc: { allowed_checkin_date: string }) => new Date(fc.allowed_checkin_date)) || []
     };
 }
 
@@ -70,7 +72,8 @@ export function mapWeekCustomizationToRow(customization: Partial<WeekCustomizati
         status: customization.status,
         durationDays: customization.startDate && customization.endDate ? 
             Math.round((customization.endDate.getTime() - customization.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1 : 
-            undefined
+            undefined,
+        flexibleDatesCount: customization.flexibleDates?.length
     });
     
     return {

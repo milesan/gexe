@@ -1,15 +1,19 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X } from 'lucide-react';
+import { X, Calendar } from 'lucide-react';
 import { useSchedulingRules } from '../hooks/useSchedulingRules';
 import { getSeasonalDiscount, getDurationDiscount } from '../utils/pricing';
-import type { Accommodation, Week } from '../types';
-import { format, addDays, differenceInDays } from 'date-fns';
+import type { Week } from '../types/calendar';
+import type { Accommodation } from '../types/accommodation';
+import { format, addDays, differenceInDays, isSameDay } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { bookingService } from '../services/BookingService';
 import { supabase } from '../lib/supabase';
 import { StripeCheckoutForm } from './StripeCheckoutForm';
 import { useSession } from '../hooks/useSession';
+import { DayPicker } from 'react-day-picker';
+import type { DayPickerSingleProps } from 'react-day-picker';
+import 'react-day-picker/dist/style.css';
 
 interface BookingSummaryProps {
   selectedWeeks: Week[];
@@ -67,6 +71,37 @@ export function BookingSummary({
   console.log('[BookingSummary] useSession hook called');
   
   const isAdmin = session?.user?.email === 'andre@thegarden.pt' || session?.user?.email === 'redis213@gmail.com';
+
+  const [selectedCheckInDate, setSelectedCheckInDate] = useState<Date | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
+  // Get flexible dates from the first week if available
+  const flexibleDates = selectedWeeks[0]?.flexibleDates;
+  const hasFlexibleDates = flexibleDates && flexibleDates.length > 0;
+
+  // If no flexible dates are available, use the first week's start date
+  useEffect(() => {
+    if (selectedWeeks.length > 0) {
+      if (!hasFlexibleDates || !selectedCheckInDate) {
+        setSelectedCheckInDate(selectedWeeks[0].startDate);
+      }
+    } else {
+      setSelectedCheckInDate(null);
+    }
+  }, [selectedWeeks, hasFlexibleDates, selectedCheckInDate]);
+
+  // Validate that a check-in date is selected
+  const validateCheckInDate = useCallback(() => {
+    if (!selectedCheckInDate) {
+      setError('Please select a check-in date');
+      return false;
+    }
+    if (hasFlexibleDates && !flexibleDates?.some(date => isSameDay(date, selectedCheckInDate))) {
+      setError('Please select a valid check-in date from the available options');
+      return false;
+    }
+    return true;
+  }, [selectedCheckInDate, hasFlexibleDates, flexibleDates]);
 
   useEffect(() => {
     console.log('[BookingSummary] useEffect(getSession) called');
@@ -162,23 +197,24 @@ export function BookingSummary({
 
   const handleBookingSuccess = useCallback(async () => {
     try {
-      if (!selectedAccommodation || selectedWeeks.length === 0) {
+      if (!selectedAccommodation || selectedWeeks.length === 0 || !selectedCheckInDate) {
         throw new Error('Missing required booking information');
       }
 
-      // Get first week's check-in and last week's check-out
-      const checkIn = selectedWeeks[0].startDate;
-      const checkOut = selectedWeeks[selectedWeeks.length - 1].endDate;
+      // Calculate check-out date based on the selected check-in date
+      // Keep the same duration as originally selected
+      const totalDays = differenceInDays(
+        selectedWeeks[selectedWeeks.length - 1].endDate,
+        selectedWeeks[0].startDate
+      );
+      const checkOut = addDays(selectedCheckInDate, totalDays);
 
       console.log('[Booking Summary] Date debug:', {
         selectedWeeks,
         firstWeek: selectedWeeks[0],
-        checkIn,
+        selectedCheckIn: selectedCheckInDate,
         checkOut,
-        checkInType: typeof checkIn,
-        checkOutType: typeof checkOut,
-        isCheckInDate: checkIn instanceof Date,
-        isCheckOutDate: checkOut instanceof Date
+        totalDays
       });
 
       console.log('[Booking Summary] Starting booking process...');
@@ -188,14 +224,14 @@ export function BookingSummary({
       try {
         console.log('[Booking Summary] Creating booking:', {
           accommodationId: selectedAccommodation.id,
-          checkIn: checkIn.toISOString().split('T')[0],
+          checkIn: selectedCheckInDate.toISOString().split('T')[0],
           checkOut: checkOut.toISOString().split('T')[0],
           totalPrice: totalAmount
         });
 
         const booking = await bookingService.createBooking({
           accommodationId: selectedAccommodation.id,
-          checkIn: checkIn.toISOString().split('T')[0],
+          checkIn: selectedCheckInDate.toISOString().split('T')[0],
           checkOut: checkOut.toISOString().split('T')[0],
           totalPrice: totalAmount
         });
@@ -227,8 +263,8 @@ export function BookingSummary({
         navigate('/confirmation', {
           state: {
             booking: {
-              checkIn,
-              checkOut,
+              checkIn: selectedCheckInDate,
+              checkOut: checkOut,
               accommodation: selectedAccommodation.title,
               totalPrice: totalAmount,
               guests: 1
@@ -245,16 +281,18 @@ export function BookingSummary({
       console.error('[Booking Summary] Error in booking success:', err);
       setError(err instanceof Error ? err.message : 'Failed to create booking');
     }
-  }, [selectedAccommodation, selectedWeeks, totalAmount, onClearWeeks, onClearAccommodation, setShowStripeModal, navigate]);
+  }, [selectedAccommodation, selectedWeeks, totalAmount, onClearWeeks, onClearAccommodation, setShowStripeModal, navigate, selectedCheckInDate]);
   if (selectedWeeks.length === 0 && !selectedAccommodation) return null;
 
   const handleConfirmClick = async () => {
-    console.log('[Booking Summary] Confirm button clicked');
-    setError(null);
-    
     if (!authToken) {
       console.warn('[Booking Summary] No auth token available');
       setError('Authentication required');
+      return;
+    }
+
+    // Validate check-in date first
+    if (!validateCheckInDate()) {
       return;
     }
 
@@ -376,16 +414,67 @@ export function BookingSummary({
                   </button>
                 </div>
 
-                <div className="space-y-2 text-stone-600">
+                <div className="space-y-4 text-stone-600">
                   <div className="text-lg font-serif">
                     {formatDateRange(selectedWeeks[0])} → {formatDateRange(selectedWeeks[selectedWeeks.length - 1])}
                   </div>
-                  <div className="text-sm">
-                    Check-in {firstWeekDays?.arrival.charAt(0).toUpperCase() + firstWeekDays?.arrival.slice(1)} 3-6PM
-                  </div>
-                  <div className="text-sm">
-                    Check-out {lastWeekDays?.departure.charAt(0).toUpperCase() + lastWeekDays?.departure.slice(1)} 12PM
-                  </div>
+                
+                  {hasFlexibleDates ? (
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+                      <div className="flex items-start gap-3">
+                        <Calendar className="w-5 h-5 text-emerald-700 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <h4 className="font-medium text-emerald-900 mb-1">Flexible Check-in Available</h4>
+                          <p className="text-sm text-emerald-800 mb-2">
+                            This week offers multiple check-in dates. Please select your preferred date.
+                          </p>
+                          <button
+                            onClick={() => setShowDatePicker(prev => !prev)}
+                            className="text-sm font-medium text-emerald-700 hover:text-emerald-800 flex items-center gap-2"
+                          >
+                            {selectedCheckInDate ? (
+                              <>Selected: {format(selectedCheckInDate, 'EEEE, MMMM d')}</>
+                            ) : (
+                              <>Select check-in date</>
+                            )}
+                          </button>
+                          <AnimatePresence>
+                            {showDatePicker && (
+                              <motion.div
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                className="mt-3"
+                              >
+                                <DayPicker
+                                  mode="single"
+                                  selected={selectedCheckInDate || undefined}
+                                  onSelect={(date) => {
+                                    if (date) {
+                                      setSelectedCheckInDate(date);
+                                      setShowDatePicker(false);
+                                      setError(null);
+                                    }
+                                  }}
+                                  disabled={(date) => !flexibleDates?.some(d => isSameDay(d, date))}
+                                  defaultMonth={selectedWeeks[0]?.startDate || new Date()}
+                                  className="bg-white border border-emerald-200 rounded-lg p-2 shadow-sm"
+                                  modifiersClassNames={{
+                                    selected: 'bg-emerald-600 text-white hover:bg-emerald-500',
+                                    today: 'font-bold text-emerald-900'
+                                  }}
+                                />
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-stone-500">
+                      Check-in: {format(selectedWeeks[0].startDate, 'EEEE, MMMM d')}
+                    </div>
+                  )}
                 </div>
               </div>
 
