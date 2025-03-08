@@ -6,7 +6,7 @@ import type { Accommodation } from '../types';
 import { Week } from '../types/calendar';
 import { getSeasonalDiscount } from '../utils/pricing';
 import { useWeeklyAccommodations } from '../hooks/useWeeklyAccommodations';
-import { addDays, isDate } from 'date-fns';
+import { addDays, isDate, eachDayOfInterval, isBefore } from 'date-fns';
 
 interface Props {
   accommodations: Accommodation[];
@@ -69,6 +69,9 @@ export function CabinSelector({
     accommodationsCount: accommodations?.length,
     selectedAccommodationId,
     selectedWeeksCount: selectedWeeks?.length,
+    currentMonth: currentMonth.toISOString(),
+    currentMonthNumber: currentMonth.getMonth(),
+    currentMonthName: new Intl.DateTimeFormat('en-US', { month: 'long' }).format(currentMonth),
     selectedWeeks: selectedWeeks?.map(w => {
       if (!w || typeof w === 'string') return null;
       
@@ -101,7 +104,7 @@ export function CabinSelector({
     if (selectedWeeks.length > 0) {
       // Check availability for all accommodations when weeks are selected
       accommodations.forEach(acc => {
-        if (!acc.parent_accommodation_id) { // Only check parent accommodations
+        if (!(acc as any).parent_accommodation_id) { // Only check parent accommodations
           checkWeekAvailability(acc, selectedWeeks.map(w => w.startDate || w));
         }
       });
@@ -127,26 +130,198 @@ export function CabinSelector({
   // Filter accommodations based on season and type
   const visibleAccommodations = accommodations.filter(acc => {
     // Filter out individual bed entries
-    if (acc.parent_accommodation_id) return false;
+    if ((acc as any).parent_accommodation_id) return false;
     return true;
   });
 
   // Convert selectedWeeks to dates for comparison
   const selectedDates = selectedWeeks?.map(w => w.startDate || w) || [];
   
-  // Get month for filtering
+  // Get month for filtering - only used for display when no weeks are selected
   const month = currentMonth.getMonth();
   const year = currentMonth.getFullYear();
 
   // Check if it's tent season (April 15 - September 1)
-  const currentDate = selectedWeeks.length > 0 
+  // For tent season calculation, we'll use the first selected week's start date
+  // If no weeks are selected, we'll use the current month for display purposes
+  const firstSelectedDate = selectedWeeks.length > 0 
     ? (selectedWeeks[0].startDate || new Date()) 
     : new Date();
   
-  const isTentSeason = (month > 3 || (month === 3 && currentDate.getDate() >= 15)) && 
-                      (month < 8 || (month === 8 && currentDate.getDate() <= 1));
+  const isTentSeason = (() => {
+    if (selectedWeeks.length === 0) {
+      // If no weeks selected, use current month for display purposes
+      const m = currentMonth.getMonth();
+      return (m > 3 || (m === 3 && currentMonth.getDate() >= 15)) && 
+             (m < 8 || (m === 8 && currentMonth.getDate() <= 1));
+    }
+    
+    // For actual bookings, check if ALL of the selected days fall within tent season
+    const isInTentSeason = (date: Date) => {
+      const m = date.getMonth();
+      const d = date.getDate();
+      return (m > 3 || (m === 3 && d >= 15)) && (m < 8 || (m === 8 && d <= 1));
+    };
+    
+    // Get all days in the selected period (reusing logic from discount calculation)
+    let allDays: Date[] = [];
+    
+    selectedWeeks.forEach(week => {
+      const startDate = week.startDate || (week instanceof Date ? week : new Date());
+      const endDate = week.endDate || addDays(startDate, 6); // 6 days = 1 week (inclusive)
+      
+      if (isBefore(endDate, startDate)) {
+        console.warn('[CabinSelector] Invalid date range:', { startDate, endDate });
+        return;
+      }
+      
+      // Get all days in this week
+      const daysInWeek = eachDayOfInterval({ start: startDate, end: endDate });
+      allDays = [...allDays, ...daysInWeek];
+    });
+    
+    // Check if ALL days fall within tent season
+    return allDays.length > 0 && allDays.every(isInTentSeason);
+  })();
+  
+  console.log('[CabinSelector] Tent season calculation:', {
+    firstSelectedDate: firstSelectedDate.toISOString(),
+    isTentSeason: isTentSeason,
+    selectedWeeksCount: selectedWeeks.length,
+    tentSeasonRequirement: "ALL days must be within tent season (April 15 - September 1)"
+  });
 
-  const seasonalDiscount = getSeasonalDiscount(currentMonth);
+  // Calculate weighted seasonal discount based on all selected days
+  const calculateWeightedSeasonalDiscount = (weeks: Week[]): number => {
+    if (weeks.length === 0) {
+      // If no weeks selected, use current month for display purposes
+      return getSeasonalDiscount(currentMonth);
+    }
+
+    // Get all days in the selected period
+    let allDays: Date[] = [];
+    
+    weeks.forEach(week => {
+      const startDate = week.startDate || (week instanceof Date ? week : new Date());
+      const endDate = week.endDate || addDays(startDate, 6); // 6 days = 1 week (inclusive)
+      
+      if (isBefore(endDate, startDate)) {
+        console.warn('[CabinSelector] Invalid date range:', { startDate, endDate });
+        return;
+      }
+      
+      // Get all days in this week
+      const daysInWeek = eachDayOfInterval({ start: startDate, end: endDate });
+      allDays = [...allDays, ...daysInWeek];
+    });
+    
+    if (allDays.length === 0) {
+      return getSeasonalDiscount(currentMonth);
+    }
+    
+    // Calculate discount for each day
+    let totalDiscount = 0;
+    
+    allDays.forEach(day => {
+      totalDiscount += getSeasonalDiscount(day);
+    });
+    
+    // Calculate weighted average discount
+    const weightedDiscount = totalDiscount / allDays.length;
+    
+    console.log('[CabinSelector] Weighted seasonal discount calculation:', {
+      totalDays: allDays.length,
+      firstDay: allDays[0]?.toISOString(),
+      lastDay: allDays[allDays.length - 1]?.toISOString(),
+      weightedDiscount: weightedDiscount,
+      discountPercentage: `${(weightedDiscount * 100).toFixed(1)}%`
+    });
+    
+    return weightedDiscount;
+  };
+
+  // Determine if the booking spans multiple seasons with different discount rates
+  const getSeasonBreakdown = (weeks: Week[]): { hasMultipleSeasons: boolean, seasons: { name: string, discount: number, days: number }[] } => {
+    if (weeks.length === 0) {
+      const discount = getSeasonalDiscount(currentMonth);
+      const seasonName = discount === 0 ? 'High Season' : 
+                         discount === 0.15 ? 'Shoulder Season' : 
+                         'Winter Season';
+      return { 
+        hasMultipleSeasons: false, 
+        seasons: [{ name: seasonName, discount, days: 0 }] 
+      };
+    }
+
+    // Get all days in the selected period
+    let allDays: Date[] = [];
+    
+    weeks.forEach(week => {
+      const startDate = week.startDate || (week instanceof Date ? week : new Date());
+      const endDate = week.endDate || addDays(startDate, 6);
+      
+      if (isBefore(endDate, startDate)) {
+        return;
+      }
+      
+      const daysInWeek = eachDayOfInterval({ start: startDate, end: endDate });
+      allDays = [...allDays, ...daysInWeek];
+    });
+    
+    if (allDays.length === 0) {
+      const discount = getSeasonalDiscount(currentMonth);
+      const seasonName = discount === 0 ? 'High Season' : 
+                         discount === 0.15 ? 'Shoulder Season' : 
+                         'Winter Season';
+      return { 
+        hasMultipleSeasons: false, 
+        seasons: [{ name: seasonName, discount, days: 0 }] 
+      };
+    }
+    
+    // Group days by season
+    const seasonMap: Record<string, { name: string, discount: number, days: number }> = {};
+    
+    allDays.forEach(day => {
+      const discount = getSeasonalDiscount(day);
+      const seasonName = discount === 0 ? 'High Season' : 
+                         discount === 0.15 ? 'Shoulder Season' : 
+                         'Winter Season';
+      const key = `${seasonName}-${discount}`;
+      
+      if (!seasonMap[key]) {
+        seasonMap[key] = { name: seasonName, discount, days: 0 };
+      }
+      
+      seasonMap[key].days++;
+    });
+    
+    const seasons = Object.values(seasonMap).sort((a, b) => b.days - a.days);
+    const hasMultipleSeasons = seasons.length > 1;
+    
+    console.log('[CabinSelector] Season breakdown:', { 
+      hasMultipleSeasons, 
+      seasons,
+      totalDays: allDays.length
+    });
+    
+    return { hasMultipleSeasons, seasons };
+  };
+
+  const seasonalDiscount = calculateWeightedSeasonalDiscount(selectedWeeks);
+  const { hasMultipleSeasons, seasons } = getSeasonBreakdown(selectedWeeks);
+  
+  console.log('[CabinSelector] Seasonal discount calculation:', {
+    currentMonth: currentMonth.toISOString(),
+    month: month,
+    monthName: new Intl.DateTimeFormat('en-US', { month: 'long' }).format(currentMonth),
+    year: year,
+    seasonalDiscount: seasonalDiscount,
+    discountPercentage: `${(seasonalDiscount * 100).toFixed(1)}%`,
+    selectedWeeksCount: selectedWeeks.length,
+    hasMultipleSeasons: hasMultipleSeasons,
+    isTentSeason: isTentSeason
+  });
 
   return (
     <div className={clsx("grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6", isDisabled && "opacity-70")}>
@@ -158,6 +333,21 @@ export function CabinSelector({
         const isOutOfSeason = isTent && !isTentSeason && selectedWeeks.length > 0;
 
         const discountedPrice = Math.round(accommodation.base_price * (1 - seasonalDiscount));
+        
+        console.log(`[CabinSelector] Price calculation for ${accommodation.title}:`, {
+          basePrice: accommodation.base_price,
+          seasonalDiscount: seasonalDiscount,
+          discountPercentage: `${(seasonalDiscount * 100).toFixed(1)}%`,
+          discountAmount: Math.round(accommodation.base_price * seasonalDiscount),
+          discountedPrice: discountedPrice,
+          pricePerNight: Math.round(accommodation.base_price / 6), // Base price is for 6 nights
+          discountedPricePerNight: Math.round(discountedPrice / 6),
+          selectedWeeks: selectedWeeks.length > 0 ? 
+            selectedWeeks.map(w => ({
+              start: w.startDate?.toISOString() || 'unknown',
+              end: w.endDate?.toISOString() || 'unknown'
+            })) : 'none'
+        });
 
         return (
           <motion.button
@@ -249,6 +439,13 @@ export function CabinSelector({
                     <span className="text-sm">/week</span>
                   </div>
                 </div>
+
+                {/* Multiple Seasons Indicator */}
+                {hasMultipleSeasons && selectedWeeks.length > 0 && (
+                  <div className="mt-1 text-xs text-amber-600">
+                    <span>*Price varies by season</span>
+                  </div>
+                )}
 
                 {/* Status Messages */}
                 <div className="mt-auto">
