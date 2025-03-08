@@ -324,154 +324,216 @@ export function CabinSelector({
   });
 
   return (
-    <div className={clsx("grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6", isDisabled && "opacity-70")}>
-      {visibleAccommodations.map((accommodation) => {
-        const isAvailable = selectedWeeks.length === 0 || 
-          availabilityMap[accommodation.id]?.isAvailable;
-        const availableCapacity = availabilityMap[accommodation.id]?.availableCapacity;
-        const isTent = accommodation.type === 'tent';
-        const isOutOfSeason = isTent && !isTentSeason && selectedWeeks.length > 0;
-
-        const discountedPrice = Math.round(accommodation.base_price * (1 - seasonalDiscount));
-        
-        console.log(`[CabinSelector] Price calculation for ${accommodation.title}:`, {
-          basePrice: accommodation.base_price,
-          seasonalDiscount: seasonalDiscount,
-          discountPercentage: `${(seasonalDiscount * 100).toFixed(1)}%`,
-          discountAmount: Math.round(accommodation.base_price * seasonalDiscount),
-          discountedPrice: discountedPrice,
-          pricePerNight: Math.round(accommodation.base_price / 6), // Base price is for 6 nights
-          discountedPricePerNight: Math.round(discountedPrice / 6),
-          selectedWeeks: selectedWeeks.length > 0 ? 
-            selectedWeeks.map(w => ({
-              start: w.startDate?.toISOString() || 'unknown',
-              end: w.endDate?.toISOString() || 'unknown'
-            })) : 'none'
-        });
-
-        return (
-          <motion.button
-            key={accommodation.id}
-            onClick={() => handleSelectAccommodation(accommodation.id)}
-            className={clsx(
-              'relative w-full text-left rounded-xl overflow-hidden transition-all duration-200',
-              'focus:outline-none focus:ring-2 focus:ring-emerald-900 focus:ring-offset-2',
-              selectedAccommodationId === accommodation.id ? 'ring-2 ring-emerald-900 ring-offset-2' : 'hover:ring-2 hover:ring-emerald-900/50 hover:ring-offset-2',
-              (!isAvailable || isOutOfSeason || isDisabled) && 'opacity-50 cursor-not-allowed'
-            )}
-            disabled={!isAvailable || isOutOfSeason || isDisabled}
-            whileHover={{ y: -4 }}
-            whileTap={{ y: 0 }}
-          >
-            <div className="aspect-[4/3] bg-stone-100 relative">
-              {accommodation.image_url && (
-                <img
-                  src={accommodation.image_url}
-                  alt={accommodation.title}
-                  className="w-full h-full object-cover"
-                />
-              )}
-              {/* Amenities overlay */}
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent pt-12 pb-3 px-3">
-                <div className="flex items-center justify-end space-x-3 text-white">
-                  <div className="group/wifi">
-                    {hasWifi(accommodation.title) ? (
-                      <Wifi size={18} className="cursor-help transition-colors hover:text-emerald-400" />
-                    ) : (
-                      <WifiOff size={18} className="cursor-help transition-colors hover:text-stone-400" />
-                    )}
-                    <div className="absolute bottom-full right-0 mb-2 opacity-0 group-hover/wifi:opacity-100 transform translate-y-1 group-hover/wifi:translate-y-0 transition-all duration-200 pointer-events-none z-50">
-                      <div className="bg-stone-900 text-white text-xs px-3 py-2 rounded-lg shadow-lg whitespace-nowrap">
-                        {hasWifi(accommodation.title) ? 'WiFi Available' : 'No WiFi'}
-                        <div className="absolute bottom-0 right-6 translate-y-full border-4 border-transparent border-t-stone-900"></div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="group/electricity">
-                    {hasElectricity(accommodation.title) ? (
-                      <Zap size={18} className="cursor-help transition-colors hover:text-emerald-400" />
-                    ) : (
-                      <ZapOff size={18} className="cursor-help transition-colors hover:text-stone-400" />
-                    )}
-                    <div className="absolute bottom-full right-0 mb-2 opacity-0 group-hover/electricity:opacity-100 transform translate-y-1 group-hover/electricity:translate-y-0 transition-all duration-200 pointer-events-none z-50">
-                      <div className="bg-stone-900 text-white text-xs px-3 py-2 rounded-lg shadow-lg whitespace-nowrap">
-                        {hasElectricity(accommodation.title) ? 'Electricity Available' : 'No Electricity'}
-                        <div className="absolute bottom-0 right-6 translate-y-full border-4 border-transparent border-t-stone-900"></div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="group/bed">
-                    <BedDouble size={18} className="cursor-help transition-colors hover:text-emerald-400" />
-                    <div className="absolute bottom-full right-0 mb-2 opacity-0 group-hover/bed:opacity-100 transform translate-y-1 group-hover/bed:translate-y-0 transition-all duration-200 pointer-events-none z-50">
-                      <div className="bg-stone-900 text-white text-xs px-3 py-2 rounded-lg shadow-lg whitespace-nowrap">
-                        {BED_SIZES[accommodation.title as keyof typeof BED_SIZES]}
-                        <div className="absolute bottom-0 right-6 translate-y-full border-4 border-transparent border-t-stone-900"></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+    <div className="space-y-6">
+      {/* Filter options could be added here in the future */}
+      
+      {isLoading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="rounded-xl overflow-hidden animate-pulse">
+              <div className="aspect-[4/3] bg-stone-200"></div>
+              <div className="p-4 bg-white border border-t-0 border-stone-200 rounded-b-xl h-[140px]">
+                <div className="h-4 bg-stone-200 rounded w-3/4 mb-4"></div>
+                <div className="h-8 bg-stone-200 rounded w-1/2 mb-2"></div>
+                <div className="h-4 bg-stone-200 rounded w-1/4 mb-4"></div>
+                <div className="h-6 bg-stone-200 rounded w-2/3"></div>
               </div>
             </div>
-            
-            {/* Content Section */}
-            <div className="p-4 bg-white border border-t-0 border-stone-200 rounded-b-xl h-[140px]">
-              <div className="flex flex-col h-full">
-                {/* Title */}
-                <div className="relative h-[24px] mb-2">
-                  <h3 className="text-[16px] font-medium text-stone-900 absolute whitespace-nowrap"
-                    style={{
-                      transform: `scale(${Math.min(1, 280 / (accommodation.title.length * 9))})`,
-                      transformOrigin: 'left center'
-                    }}>
-                    {accommodation.title}
-                  </h3>
-                </div>
+          ))}
+        </div>
+      ) : accommodations.length === 0 ? (
+        <div className="text-center py-12 bg-stone-50 rounded-xl">
+          <h3 className="text-lg font-medium text-stone-800 mb-2">No accommodations available</h3>
+          <p className="text-stone-600">Please try different dates or check back later.</p>
+        </div>
+      ) : (
+        <>
+          {isDisabled && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+              <p className="text-sm text-amber-800">
+                Please select dates above to see availability for each accommodation.
+              </p>
+            </div>
+          )}
+          
+          <div className={clsx(
+            "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6", 
+            isDisabled && "opacity-70"
+          )}>
+            {visibleAccommodations.map((accommodation) => {
+              const isAvailable = selectedWeeks.length === 0 || 
+                availabilityMap[accommodation.id]?.isAvailable;
+              const availableCapacity = availabilityMap[accommodation.id]?.availableCapacity;
+              const isTent = accommodation.type === 'tent';
+              const isOutOfSeason = isTent && !isTentSeason && selectedWeeks.length > 0;
+              
+              // Determine status badge
+              let statusBadge = null;
+              if (!isAvailable && selectedWeeks.length > 0) {
+                statusBadge = {
+                  text: "Not available for selected dates",
+                  bgColor: "bg-rose-50",
+                  textColor: "text-rose-600"
+                };
+              } else if (availableCapacity !== null && availableCapacity !== undefined) {
+                statusBadge = {
+                  text: `${availableCapacity} ${availableCapacity === 1 ? 'spot' : 'spots'} available`,
+                  bgColor: "bg-emerald-50",
+                  textColor: "text-emerald-700"
+                };
+              }
 
-                {/* Price Section */}
-                <div className="flex items-baseline gap-2">
-                  <span className="text-[28px] font-light tracking-tight text-stone-900">€{discountedPrice}</span>
-                  <div className="flex items-baseline gap-2 text-stone-400">
-                    {seasonalDiscount > 0 && (
-                      <span className="text-sm line-through">€{accommodation.base_price}</span>
-                    )}
-                    <span className="text-sm">/week</span>
-                  </div>
-                </div>
-
-                {/* Multiple Seasons Indicator */}
-                {hasMultipleSeasons && selectedWeeks.length > 0 && (
-                  <div className="mt-1 text-xs text-amber-600">
-                    <span>*Price varies by season</span>
-                  </div>
-                )}
-
-                {/* Status Messages */}
-                <div className="mt-auto">
-                  {!isAvailable && selectedWeeks.length > 0 && (
-                    <div className="inline-flex items-center px-2 py-1 rounded-full bg-rose-50 text-rose-600 text-xs font-medium">
-                      Not available for selected dates
-                    </div>
+              return (
+                <motion.div
+                  key={accommodation.id}
+                  className={clsx(
+                    'relative rounded-xl overflow-hidden transition-all duration-200 h-full',
+                    'border border-stone-200 hover:border-emerald-200',
+                    'hover:shadow-md',
+                    (!isAvailable || isDisabled) && 'opacity-70',
+                    isOutOfSeason && 'opacity-85'
                   )}
-
+                  whileHover={{ y: -4, scale: 1.02 }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  {/* Out of season overlay for tents - more subtle */}
                   {isOutOfSeason && (
-                    <div className="inline-flex items-center px-2 py-1 rounded-full bg-amber-50 text-amber-600 text-xs font-medium">
-                      Available April 15 - September 1
+                    <div className="absolute inset-0 bg-amber-50/40 z-10 flex items-center justify-center">
+                      <div className="bg-amber-50 text-amber-800 px-3 py-1.5 rounded-md font-medium text-xs shadow-sm border border-amber-200">
+                        Seasonal: Apr 15 - Sep 1
+                      </div>
                     </div>
                   )}
                   
-                  {availableCapacity !== null && availableCapacity !== undefined && (
-                    <div className="inline-flex items-center px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium">
-                      {availableCapacity} {availableCapacity === 1 ? 'spot' : 'spots'} available
+                  {/* Selected indicator */}
+                  {selectedAccommodationId === accommodation.id && (
+                    <div className="absolute top-3 right-3 z-10">
+                      <div className="bg-emerald-600 text-white text-xs px-2 py-1 rounded-full shadow-md">
+                        Selected
+                      </div>
                     </div>
                   )}
-                </div>
-              </div>
-            </div>
-          </motion.button>
-        );
-      })}
+                  
+                  <button
+                    onClick={() => handleSelectAccommodation(accommodation.id)}
+                    className={clsx(
+                      'w-full h-full text-left focus:outline-none',
+                      selectedAccommodationId === accommodation.id ? 'ring-2 ring-emerald-600' : '',
+                      (!isAvailable || isOutOfSeason || isDisabled) && 'cursor-not-allowed'
+                    )}
+                    disabled={!isAvailable || isOutOfSeason || isDisabled}
+                  >
+                    <div className="aspect-[4/3] bg-stone-100 relative">
+                      {accommodation.image_url && (
+                        <img
+                          src={accommodation.image_url}
+                          alt={accommodation.title}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      )}
+                      
+                      {/* Amenities overlay */}
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent pt-16 pb-3 px-3">
+                        <div className="flex items-center justify-end space-x-3 text-white">
+                          {/* WiFi indicator */}
+                          <div className="group/wifi relative">
+                            {hasWifi(accommodation.title) ? (
+                              <Wifi size={18} className="text-emerald-300 hover:text-emerald-200" />
+                            ) : (
+                              <WifiOff size={18} className="text-stone-400 hover:text-stone-300" />
+                            )}
+                            <div className="absolute bottom-full right-0 mb-2 opacity-0 group-hover/wifi:opacity-100 transform translate-y-1 group-hover/wifi:translate-y-0 transition-all duration-200 pointer-events-none z-50">
+                              <div className="bg-stone-900 text-white text-xs px-3 py-2 rounded-lg shadow-lg whitespace-nowrap">
+                                {hasWifi(accommodation.title) ? 'WiFi Available' : 'No WiFi'}
+                                <div className="absolute bottom-0 right-6 translate-y-full border-4 border-transparent border-t-stone-900"></div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Electricity indicator */}
+                          <div className="group/electricity relative">
+                            {hasElectricity(accommodation.title) ? (
+                              <Zap size={18} className="text-emerald-300 hover:text-emerald-200" />
+                            ) : (
+                              <ZapOff size={18} className="text-stone-400 hover:text-stone-300" />
+                            )}
+                            <div className="absolute bottom-full right-0 mb-2 opacity-0 group-hover/electricity:opacity-100 transform translate-y-1 group-hover/electricity:translate-y-0 transition-all duration-200 pointer-events-none z-50">
+                              <div className="bg-stone-900 text-white text-xs px-3 py-2 rounded-lg shadow-lg whitespace-nowrap">
+                                {hasElectricity(accommodation.title) ? 'Electricity Available' : 'No Electricity'}
+                                <div className="absolute bottom-0 right-6 translate-y-full border-4 border-transparent border-t-stone-900"></div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Bed size indicator */}
+                          <div className="group/bed relative">
+                            <BedDouble size={18} className="text-emerald-300 hover:text-emerald-200" />
+                            <div className="absolute bottom-full right-0 mb-2 opacity-0 group-hover/bed:opacity-100 transform translate-y-1 group-hover/bed:translate-y-0 transition-all duration-200 pointer-events-none z-50">
+                              <div className="bg-stone-900 text-white text-xs px-3 py-2 rounded-lg shadow-lg whitespace-nowrap">
+                                {BED_SIZES[accommodation.title as keyof typeof BED_SIZES]}
+                                <div className="absolute bottom-0 right-6 translate-y-full border-4 border-transparent border-t-stone-900"></div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Content Section */}
+                    <div className="p-4 bg-white">
+                      <div className="flex flex-col h-full">
+                        {/* Title */}
+                        <h3 className="text-base font-medium text-stone-900 mb-2 line-clamp-1" title={accommodation.title}>
+                          {accommodation.title}
+                        </h3>
+
+                        {/* Price Section - Show base price with discount indicator */}
+                        <div className="flex flex-col mb-3">
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-2xl font-light tracking-tight text-stone-900">€{accommodation.base_price}</span>
+                            <span className="text-sm text-stone-500">/week</span>
+                          </div>
+                          
+                          {/* Discount indicator - only show for available, non-free accommodations and during tent season for tents */}
+                          {selectedWeeks.length > 0 && 
+                           seasonalDiscount > 0 && 
+                           accommodation.base_price > 0 && 
+                           isAvailable &&
+                           (!isTent || (isTent && isTentSeason)) && (
+                            <div className="mt-1">
+                              {hasMultipleSeasons ? (
+                                <span className="text-xs px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full">
+                                  Seasonal discounts available
+                                </span>
+                              ) : (
+                                <span className="text-xs px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full">
+                                  {Math.round(seasonalDiscount * 100)}% off
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Status Badge - don't show "Available Apr 15..." for tents when we already have the overlay */}
+                        {statusBadge && !isOutOfSeason && (
+                          <div className="mt-auto">
+                            <div className={`inline-flex items-center px-2 py-1 rounded-full ${statusBadge.bgColor} ${statusBadge.textColor} text-xs font-medium`}>
+                              {statusBadge.text}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                </motion.div>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 }
