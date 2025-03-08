@@ -159,15 +159,25 @@ export function BookingSummary({
     }
   };
 
-  // Calculate total nights based on actual week lengths
-  const totalNights = selectedWeeks.reduce((total, week) => {
-    const nights = differenceInDays(week.endDate, week.startDate) + 1;
-    return total + nights;
-  }, 0);
+  // Calculate total nights based on overall date range
+  const totalNights = selectedWeeks.length > 0 
+    ? differenceInDays(
+        selectedWeeks[selectedWeeks.length - 1].endDate,
+        selectedWeeks[0].startDate
+      )
+    : 0;
 
   // Format date ranges for display
   const formatDateRange = (week: Week) => {
     return `${format(week.startDate, 'MMM d')} - ${format(week.endDate, 'MMM d')}`;
+  };
+
+  // Simplified date range display for the overall booking period
+  const formatOverallDateRange = () => {
+    if (selectedWeeks.length === 0) return '';
+    const firstDate = selectedWeeks[0].startDate;
+    const lastDate = selectedWeeks[selectedWeeks.length - 1].endDate;
+    return `${format(firstDate, 'MMM d')} → ${format(lastDate, 'MMM d')}`;
   };
 
   const baseAccommodationRate = selectedAccommodation?.price || 0;
@@ -416,7 +426,7 @@ export function BookingSummary({
 
                 <div className="space-y-4 text-stone-600">
                   <div className="text-lg font-serif">
-                    {formatDateRange(selectedWeeks[0])} → {formatDateRange(selectedWeeks[selectedWeeks.length - 1])}
+                    {formatOverallDateRange()}
                   </div>
                 
                   {hasFlexibleDates ? (
