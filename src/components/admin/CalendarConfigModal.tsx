@@ -33,19 +33,25 @@ export function CalendarConfigModal({ isOpen, onClose, onSaved }: Props) {
         try {
           setLoading(true);
           setError(null);
+          
           const config = await CalendarService.getConfig();
           
           if (config) {
-            setCheckInDay(config.checkInDay);
-            setCheckOutDay(config.checkOutDay);
-            console.log('[CalendarConfigModal] Loaded current config:', { 
-              checkInDay: config.checkInDay, 
-              checkOutDay: config.checkOutDay 
-            });
+            console.log('[CalendarConfigModal] Loaded config:', config);
+            setCheckInDay(config.checkInDay || 0);
+            setCheckOutDay(config.checkOutDay || 6);
+          } else {
+            console.log('[CalendarConfigModal] No config found, using defaults');
+            setCheckInDay(0); // Default to Sunday
+            setCheckOutDay(6); // Default to Saturday
           }
         } catch (err) {
           console.error('[CalendarConfigModal] Error loading config:', err);
-          setError('Failed to load calendar configuration');
+          setError('Failed to load calendar configuration. Using defaults.');
+          
+          // Set defaults even on error
+          setCheckInDay(0);
+          setCheckOutDay(6);
         } finally {
           setLoading(false);
         }
@@ -61,22 +67,19 @@ export function CalendarConfigModal({ isOpen, onClose, onSaved }: Props) {
       setError(null);
       setSuccessMessage(null);
       
-      console.log('[CalendarConfigModal] Saving config:', { checkInDay, checkOutDay });
-      
       await CalendarService.updateConfig({
         checkInDay,
         checkOutDay
       });
       
       setSuccessMessage('Calendar configuration saved successfully');
-      console.log('[CalendarConfigModal] Config saved successfully');
       
       // Notify parent component
       if (onSaved) {
         onSaved();
       }
       
-      // Auto-close after success (optional)
+      // Close modal after a delay
       setTimeout(() => {
         onClose();
       }, 1500);

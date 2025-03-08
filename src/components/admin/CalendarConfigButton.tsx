@@ -13,10 +13,10 @@ export function CalendarConfigButton({ onConfigChanged }: Props) {
     <>
       <button
         onClick={() => setIsModalOpen(true)}
-        className="flex items-center px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+        className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm rounded-lg hover:bg-emerald-700 transition-colors font-medium"
         title="Calendar Settings"
       >
-        <Settings className="h-4 w-4 mr-1.5" />
+        <Settings className="h-5 w-5" />
         <span>Calendar Settings</span>
       </button>
       

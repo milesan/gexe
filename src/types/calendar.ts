@@ -6,7 +6,7 @@ type WeekCustomizationRow = Database['public']['Tables']['week_customizations'][
 
 // Domain types
 export interface CalendarConfig {
-    id?: string;
+    id: string;
     checkInDay: number;
     checkOutDay: number;
     createdAt?: Date;
