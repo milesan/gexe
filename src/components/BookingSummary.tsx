@@ -180,7 +180,7 @@ export function BookingSummary({
     return `${format(firstDate, 'MMM d')} → ${format(lastDate, 'MMM d')}`;
   };
 
-  const baseAccommodationRate = selectedAccommodation?.price || 0;
+  const baseAccommodationRate = selectedAccommodation?.base_price || 0;
   
   // Calculate seasonal discount
   const seasonalDiscount = selectedWeeks.length > 0 ? 
@@ -192,6 +192,9 @@ export function BookingSummary({
   
   // Apply seasonal discount to accommodation rate
   const accommodationRate = baseAccommodationRate * (1 - seasonalDiscount);
+  
+  // Calculate nightly accommodation rate (base_price is for 6 nights)
+  const nightlyAccommodationRate = accommodationRate / 6;
 
   // Special December 2024 rate for food & facilities
   const effectiveBaseRate = selectedWeeks.some(week => {
@@ -200,7 +203,7 @@ export function BookingSummary({
     return month === 11 && year === 2024;
   }) ? 190 : baseRate;
 
-  const nightlyRate = effectiveBaseRate + Math.round(accommodationRate);
+  const nightlyRate = effectiveBaseRate + Math.round(nightlyAccommodationRate);
   const subtotal = nightlyRate * totalNights;
   const durationDiscountAmount = Math.round(subtotal * durationDiscount);
   const totalAmount = Math.round(subtotal - durationDiscountAmount);
@@ -506,7 +509,7 @@ export function BookingSummary({
                 <div className="text-right">€{effectiveBaseRate}</div>
                 <div className="text-center text-stone-400">+</div>
                 <div>
-                  {selectedAccommodation?.price === 0 ? 'Free' : `€${Math.round(accommodationRate)}`}
+                  {selectedAccommodation?.base_price === 0 ? 'Free' : `€${Math.round(nightlyAccommodationRate)}`}
                 </div>
                 <div className="text-right text-stone-500">food & facilities</div>
                 <div></div>
