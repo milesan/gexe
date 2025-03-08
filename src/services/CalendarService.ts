@@ -55,6 +55,7 @@ export class CalendarService {
     }
 
     return data ? {
+      id: data.id,
       checkInDay: data.check_in_day,
       checkOutDay: data.check_out_day
     } : null;
@@ -67,21 +68,55 @@ export class CalendarService {
    */
   static async updateConfig(config: { checkInDay: number; checkOutDay: number }) {
     console.log('[CalendarService] Updating calendar config:', config);
-    const { data, error } = await supabase
-      .from('calendar_config')
-      .insert({
-        check_in_day: config.checkInDay,
-        check_out_day: config.checkOutDay
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('[CalendarService] Error updating calendar config:', error);
-      throw error;
+    
+    try {
+      // First, get the existing config to get its ID
+      const existingConfig = await this.getConfig();
+      
+      if (!existingConfig || !existingConfig.id) {
+        console.error('[CalendarService] No existing config found to update or missing ID');
+        
+        // If no config exists, create a new one
+        const { data: insertData, error: insertError } = await supabase
+          .from('calendar_config')
+          .insert({
+            check_in_day: config.checkInDay,
+            check_out_day: config.checkOutDay
+          })
+          .select()
+          .single();
+          
+        if (insertError) {
+          console.error('[CalendarService] Error creating new calendar config:', insertError);
+          throw insertError;
+        }
+        
+        return insertData;
+      }
+      
+      console.log('[CalendarService] Updating existing config with ID:', existingConfig.id);
+      
+      // Now update the existing row using its ID
+      const { data, error } = await supabase
+        .from('calendar_config')
+        .update({
+          check_in_day: config.checkInDay,
+          check_out_day: config.checkOutDay
+        })
+        .eq('id', existingConfig.id)
+        .select()
+        .single();
+  
+      if (error) {
+        console.error('[CalendarService] Error updating calendar config:', error);
+        throw error;
+      }
+  
+      return data;
+    } catch (err) {
+      console.error('[CalendarService] Error in updateConfig:', err);
+      throw err;
     }
-
-    return data;
   }
 
   /**
