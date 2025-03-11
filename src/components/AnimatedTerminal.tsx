@@ -128,18 +128,25 @@ export function AnimatedTerminal({ onComplete }: Props) {
     setError(null);
     setSuccess(null);
     setIsLoading(true);
-    
+  
+    // Determine the base URL based on environment
+    const isNetlify = !!process.env.NETLIFY; // True if running on Netlify
+    const baseUrl = isNetlify
+      ? (process.env.DEPLOY_URL || process.env.APP_URL || window.location.origin) // Netlify preview or production
+      : (import.meta.env.VITE_APP_URL || window.location.origin); // Local dev fallback
+  
+    const redirectUrl = `${baseUrl}/auth/callback`;
+  
     try {
-      console.log('Sending magic link to:', email);
+      console.log('Sending magic link to:', email, 'Redirecting to:', redirectUrl);
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-          // Include user_metadata if needed
+          emailRedirectTo: redirectUrl,
           data: {
-            has_applied: false
-          }
-        }
+            has_applied: false,
+          },
+        },
       });
       if (error) throw error;
       setSuccess('Check your email for the magic link');
