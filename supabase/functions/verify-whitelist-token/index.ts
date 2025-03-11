@@ -107,7 +107,14 @@ serve(async (req) => {
     const { data: signInData, error: signInError } = await supabaseClient.auth.admin.generateLink({
       type: 'magiclink',
       email,
-      redirectTo: `${Deno.env.get('FRONTEND_URL') || 'http://localhost:5173'}/`
+      options: {
+        data: {
+          is_whitelisted: true,
+          has_completed_whitelist_signup: false,
+          has_applied: false // Ensure they don't go through application flow
+        }
+      },
+      redirectTo: `${Deno.env.get('FRONTEND_URL') || 'http://localhost:5173'}/whitelist-signup`
     })
 
     if (signInError) {

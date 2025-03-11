@@ -219,11 +219,37 @@ export function generateStandardWeek(
   if (config.checkOutDay >= config.checkInDay) {
     // Simple case: check-out is later in the week than check-in
     const daysToAdd = config.checkOutDay - config.checkInDay;
-    endDate = addDays(adjustedStart, daysToAdd);
+    
+    // If the week would be less than 3 days, extend to next week's check-out day
+    if (daysToAdd < 2) {
+      // Add a full week plus the days to the check-out day
+      const extendedDaysToAdd = 7 + daysToAdd;
+      endDate = addDays(adjustedStart, extendedDaysToAdd);
+      console.log('[generateStandardWeek] Extended short week to next week:', {
+        startDate: formatDateForDisplay(adjustedStart),
+        endDate: formatDateForDisplay(endDate),
+        daysInWeek: extendedDaysToAdd + 1
+      });
+    } else {
+      endDate = addDays(adjustedStart, daysToAdd);
+    }
   } else {
     // Complex case: check-out is earlier in the week than check-in (wraps to next week)
     const daysToAdd = 7 - (config.checkInDay - config.checkOutDay);
-    endDate = addDays(adjustedStart, daysToAdd);
+    
+    // If the week would be less than 3 days, extend to next week's check-out day
+    if (daysToAdd < 2) {
+      // Add another full week
+      const extendedDaysToAdd = 7 + daysToAdd;
+      endDate = addDays(adjustedStart, extendedDaysToAdd);
+      console.log('[generateStandardWeek] Extended short wrapped week to next week:', {
+        startDate: formatDateForDisplay(adjustedStart),
+        endDate: formatDateForDisplay(endDate),
+        daysInWeek: extendedDaysToAdd + 1
+      });
+    } else {
+      endDate = addDays(adjustedStart, daysToAdd);
+    }
   }
   
   return { startDate: adjustedStart, endDate };
@@ -417,7 +443,7 @@ export function generateWeeksWithCustomizations(
 /**
  * Check if a week is selectable based on its status and date
  */
-export function isWeekSelectable(week: Week, isAdmin: boolean = false): boolean {
+export function isWeekSelectable(week: Week, isAdmin: boolean = false, selectedWeeks: Week[] = []): boolean {
   // Admins can select any week
   if (isAdmin) {
     return true;
@@ -433,7 +459,31 @@ export function isWeekSelectable(week: Week, isAdmin: boolean = false): boolean 
   }
   
   // Non-admin can only select visible weeks
-  return week.status === 'visible' || week.status === 'default';
+  if (week.status !== 'visible' && week.status !== 'default') {
+    return false;
+  }
+
+  // If this is the currently selected arrival week, allow deselecting it
+  if (selectedWeeks.length > 0 && isSameDay(selectedWeeks[0].startDate, week.startDate)) {
+    return true;
+  }
+
+  // If no weeks are selected yet, this will be an arrival week
+  // Only allow arrivals on even-numbered weeks (0-based)
+  if (selectedWeeks.length === 0) {
+    // Get the week number since the epoch
+    const weeksSinceEpoch = Math.floor(weekStartDate.getTime() / (7 * 24 * 60 * 60 * 1000));
+    return weeksSinceEpoch % 2 === 0; // Only allow even-numbered weeks for arrivals
+  }
+
+  // If we already have selected weeks, this could be a departure week
+  // Allow any week after the arrival week for departure
+  if (selectedWeeks.length > 0) {
+    const arrivalWeek = selectedWeeks[0];
+    return weekStartDate > arrivalWeek.startDate;
+  }
+
+  return true;
 }
 
 /**

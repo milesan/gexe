@@ -11,12 +11,15 @@ import { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
 import { useSession } from './hooks/useSession';
 import { AcceptInvitePage } from './pages/AcceptInvitePage';
+import { WhitelistSignupPage } from './pages/WhitelistSignupPage';
+import { normalizeToUTCDate } from './utils/dates';
 
 export default function App() {
   const session = useSession();
   const [loading, setLoading] = useState(true);
   const [isWhitelisted, setIsWhitelisted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentDate, setCurrentDate] = useState(() => normalizeToUTCDate(new Date()));
 
   useEffect(() => {
     // Handle auth callback from URL
@@ -73,9 +76,9 @@ export default function App() {
           .rpc('is_whitelisted', { user_email: session.user.email })
         console.log('User email:', session.user.email)
         
-        // Check if the user has applied by looking at their user metadata
-        const hasApplied = session.user.user_metadata?.has_applied === true;
-        console.log('App: User application status:', { hasApplied });
+        // Check if the user has completed whitelist signup
+        const hasCompletedSignup = session.user.user_metadata?.has_completed_whitelist_signup === true;
+        console.log('App: User whitelist status:', { isWhitelisted, hasCompletedSignup });
         
         setIsWhitelisted(!!isWhitelisted);
       } catch (err) {
@@ -105,18 +108,9 @@ export default function App() {
         <ThemeProvider>
           <Router>
             <Routes>
-              <Route path="/accept" element={
-                <>
-                  {console.log('App: Rendering AcceptInvitePage route')}
-                  <AcceptInvitePage />
-                </>
-              } />
-              <Route path="/accept-invite" element={
-                <>
-                  {console.log('App: Rendering AcceptInvitePage route for whitelist')}
-                  <AcceptInvitePage isWhitelist={true} />
-                </>
-              } />
+              <Route path="/accept" element={<AcceptInvitePage />} />
+              <Route path="/accept-invite" element={<AcceptInvitePage isWhitelist={true} />} />
+              <Route path="/whitelist-signup" element={<WhitelistSignupPage />} />
               <Route path="/" element={<LandingPage />} />
               <Route path="/pending" element={<PendingPage />} />
               <Route path="/confirmation" element={<ConfirmationPage />} />
@@ -135,23 +129,63 @@ export default function App() {
   // Get user metadata with proper type checking
   const isAdmin = session?.user?.email === 'andre@thegarden.pt' || session?.user?.email === 'redis213@gmail.com';
   const hasApplied = session?.user?.user_metadata?.has_applied === true;
-  console.log('App: Checking whitelist status:', { isWhitelisted, hasApplied });
+  const isWhitelistedUser = session?.user?.user_metadata?.is_whitelisted === true;
+  const hasCompletedWhitelistSignup = session?.user?.user_metadata?.has_completed_whitelist_signup === true;
+  
+  console.log('App: Checking user status:', { 
+    isWhitelisted, 
+    isWhitelistedUser,
+    hasApplied, 
+    hasCompletedWhitelistSignup,
+    isAdmin 
+  });
 
-  // If user is admin or whitelisted, show full app
-  if (isAdmin || isWhitelisted) {
-    console.log('App: Rendering admin/whitelisted view', { isAdmin, isWhitelisted });
+  // If user is admin, show full app immediately
+  if (isAdmin) {
+    console.log('App: User is admin, showing full app');
     return (
       <ErrorBoundary>
         <ThemeProvider>
           <Router>
             <Routes>
               <Route path="/accept" element={<AcceptInvitePage />} />
-              <Route path="/accept-invite" element={
-                <>
-                  {console.log('App: Rendering AcceptInvitePage route for whitelist')}
-                  <AcceptInvitePage isWhitelist={true} />
-                </>
-              } />
+              <Route path="/accept-invite" element={<AcceptInvitePage isWhitelist={true} />} />
+              <Route path="/*" element={<AuthenticatedApp />} />
+              <Route path="/confirmation" element={<ConfirmationPage />} />
+            </Routes>
+          </Router>
+        </ThemeProvider>
+      </ErrorBoundary>
+    );
+  }
+
+  // If user is whitelisted but hasn't completed signup, show signup page
+  if ((isWhitelisted || isWhitelistedUser) && !hasCompletedWhitelistSignup) {
+    console.log('App: Showing whitelist signup page');
+    return (
+      <ErrorBoundary>
+        <ThemeProvider>
+          <Router>
+            <Routes>
+              <Route path="/whitelist-signup" element={<WhitelistSignupPage />} />
+              <Route path="/*" element={<Navigate to="/whitelist-signup" replace />} />
+            </Routes>
+          </Router>
+        </ThemeProvider>
+      </ErrorBoundary>
+    );
+  }
+
+  // If user is whitelisted and has completed signup, show full app
+  if ((isWhitelisted || isWhitelistedUser) && hasCompletedWhitelistSignup) {
+    console.log('App: Rendering whitelisted view');
+    return (
+      <ErrorBoundary>
+        <ThemeProvider>
+          <Router>
+            <Routes>
+              <Route path="/accept" element={<AcceptInvitePage />} />
+              <Route path="/accept-invite" element={<AcceptInvitePage isWhitelist={true} />} />
               <Route path="/*" element={<AuthenticatedApp />} />
               <Route path="/confirmation" element={<ConfirmationPage />} />
             </Routes>
