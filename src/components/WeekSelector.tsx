@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { isBefore, startOfToday, isSameDay } from 'date-fns';
 import { WeekBox } from './WeekBox';
 import clsx from 'clsx';
@@ -13,14 +13,14 @@ const MOBILE_WEEKS = 3;
 const DESKTOP_WEEKS = 4;
 
 // Helper function to log week dates consistently without timezone confusion
-const getSimplifiedWeekInfo = (week: Week, isAdmin: boolean = false) => {
+const getSimplifiedWeekInfo = (week: Week, isAdmin: boolean = false, selectedWeeks: Week[] = []) => {
   return {
     weekStartDate: formatDateForDisplay(week.startDate),
     weekEndDate: formatDateForDisplay(week.endDate),
     weekStatus: week.status,
     weekName: week.name,
     isCustom: week.isCustom,
-    isSelectable: isWeekSelectable(week, isAdmin),
+    isSelectable: isWeekSelectable(week, isAdmin, selectedWeeks),
     isEdgeWeek: week.isEdgeWeek
   };
 };
@@ -46,28 +46,49 @@ export function WeekSelector({
   isLoading = false,
   onMonthChange,
 }: WeekSelectorProps) {
-  console.log('[WeekSelector] Rendering weeks:', weeks?.map(w => getSimplifiedWeekInfo(w, isAdmin)));
+  console.log('[WeekSelector] Rendering weeks:', weeks?.map(w => getSimplifiedWeekInfo(w, isAdmin, selectedWeeks)));
+
+  // Filter out partial weeks at the edges of the date range
+  const filteredWeeks = weeks.filter(week => {
+    // If it's an edge week (first or last in the range)
+    if (week.isEdgeWeek) {
+      // Check if it's a partial week (not a full 7 days)
+      const diffTime = week.endDate.getTime() - week.startDate.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 because both start and end dates are inclusive
+      
+      // If it's a partial week at the edge, filter it out
+      if (diffDays !== 7) {
+        console.log('[WeekSelector] Filtering out partial edge week:', getSimplifiedWeekInfo(week, isAdmin, selectedWeeks));
+        return false;
+      }
+    }
+    return true;
+  });
 
   console.log('[WeekSelector] Rendering with props:', {
     weeksCount: weeks?.length,
+    filteredWeeksCount: filteredWeeks.length,
     selectedWeeksCount: selectedWeeks?.length,
     isAdmin,
     isLoading,
     currentMonth: currentMonth ? formatDateForDisplay(currentMonth) : undefined,
     isMobile,
-    weeks: weeks?.map(w => getSimplifiedWeekInfo(w, isAdmin))
+    weeks: filteredWeeks?.map(w => getSimplifiedWeekInfo(w, isAdmin, selectedWeeks))
   });
 
-  const [squigglePaths] = useState(() => 
-    Array.from({ length: isMobile ? MOBILE_WEEKS : DESKTOP_WEEKS }, () => generateSquigglePath())
-  );
+  // Generate squiggle paths for visible weeks only
+  const squigglePaths = useMemo(() => {
+    const visibleWeeksCount = filteredWeeks.length;
+    return Array.from({ length: visibleWeeksCount }, () => generateSquigglePath());
+  }, [filteredWeeks.length]);
+  
   const [selectedFlexDate, setSelectedFlexDate] = useState<Date | null>(null);
   const [flexModalWeek, setFlexModalWeek] = useState<Week | null>(null);
 
   const handleWeekClick = useCallback((week: Week) => {
-    console.log('[WeekSelector] Week clicked:', getSimplifiedWeekInfo(week, isAdmin));
+    console.log('[WeekSelector] Week clicked:', getSimplifiedWeekInfo(week, isAdmin, selectedWeeks));
     
-    if (!isWeekSelectable(week, isAdmin)) {
+    if (!isWeekSelectable(week, isAdmin, selectedWeeks)) {
       console.log('[WeekSelector] Week not selectable:', {
         isAdmin,
         weekStatus: week.status,
@@ -157,7 +178,7 @@ export function WeekSelector({
     const isDeletedAndAdmin = isAdmin && week.status === 'deleted';
     
     // Determine if the week is selectable
-    const canSelect = isWeekSelectable(week, isAdmin);
+    const canSelect = isWeekSelectable(week, isAdmin, selectedWeeks);
     
     // Choose the appropriate class based on selection and selectability
     let stateClass = '';
@@ -192,13 +213,13 @@ export function WeekSelector({
     const classes = `${baseClasses} ${stateClass} ${statusClasses}`;
 
     console.log('[WeekSelector] Week classes:', {
-      weekInfo: getSimplifiedWeekInfo(week, isAdmin),
+      weekInfo: getSimplifiedWeekInfo(week, isAdmin, selectedWeeks),
       classes,
       states: {
         isSelected,
         isFirstSelected,
         isLastSelected,
-        isSelectable: isWeekSelectable(week, isAdmin),
+        isSelectable: isWeekSelectable(week, isAdmin, selectedWeeks),
         isHiddenButEditableByAdmin,
         isDeletedAndAdmin
       }
@@ -241,12 +262,12 @@ export function WeekSelector({
         'grid gap-4',
         isMobile ? 'grid-cols-3' : 'grid-cols-4'
       )}>
-        {weeks.map((week, index) => (
+        {filteredWeeks.map((week, index) => (
           <button
             key={week.id || `week-${index}`}
             onClick={() => handleWeekClick(week)}
             className={getWeekClasses(week)}
-            disabled={!isWeekSelectable(week, isAdmin)}
+            disabled={!isWeekSelectable(week, isAdmin, selectedWeeks)}
           >
             <div className="text-center">
               {week.name ? (

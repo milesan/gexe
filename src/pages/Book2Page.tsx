@@ -467,7 +467,6 @@ export function Book2Page() {
           <div>
             <div className="sticky top-8">
               <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-                <h2 className="text-xl font-semibold mb-4 text-stone-800">Your Stay</h2>
                 {selectedWeeks.length > 0 ? (
                   <BookingSummary 
                     selectedWeeks={selectedWeeks}

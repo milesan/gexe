@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar } from 'lucide-react';
+import { X, Calendar, Clock, ArrowRight, LogOut, Sun, Moon, Home, Bed, ChevronDown, ChevronUp, Percent } from 'lucide-react';
 import { useSchedulingRules } from '../hooks/useSchedulingRules';
 import { getSeasonalDiscount, getDurationDiscount, getSeasonName } from '../utils/pricing';
 import type { Week } from '../types/calendar';
@@ -45,6 +45,15 @@ const calculateTotalNights = (selectedWeeks: Week[]): number => {
   
   // differenceInDays gives us the exact number of nights
   return differenceInDays(lastDate, firstDate);
+};
+
+// Helper function to format numbers without decimal points when they're integers
+const formatNumber = (num: number, decimals: number = 1): string => {
+  // Check if the number is an integer
+  if (Number.isInteger(num)) {
+    return num.toString();
+  }
+  return num.toFixed(decimals);
 };
 
 // Helper function to calculate pricing details
@@ -103,7 +112,7 @@ const calculatePricing = (
   const seasonName = seasonBreakdown?.hasMultipleSeasons 
     ? "Multiple Seasons" 
     : seasonalDiscount === 0 
-      ? 'High Season' 
+      ? 'Summer Season' 
       : seasonalDiscount === 0.15 
         ? 'Shoulder Season' 
         : 'Winter Season';
@@ -117,7 +126,7 @@ const calculatePricing = (
   console.log('[BookingSummary] Accommodation rate calculation:', {
     baseAccommodationRate,
     seasonalDiscount,
-    discountPercentage: `${(seasonalDiscount * 100).toFixed(1)}%`,
+    discountPercentage: `${formatNumber(seasonalDiscount * 100)}%`,
     discountAmount: +(baseAccommodationRate * seasonalDiscount).toFixed(2),
     accommodationRate,
     seasonName,
@@ -264,6 +273,18 @@ const formatOverallDateRange = (selectedWeeks: Week[]): string => {
   return `${format(firstDate, 'MMM d')} → ${format(lastDate, 'MMM d')}`;
 };
 
+// Helper function to format date with day of week
+const formatDateWithDay = (date: Date): string => {
+  return format(date, 'EEEE, MMMM d');
+};
+
+// Helper function to add ordinal suffix to day of month
+const formatDateWithOrdinal = (date: Date): string => {
+  const day = date.getDate();
+  const suffix = ['th', 'st', 'nd', 'rd'][day % 10 > 3 ? 0 : (day % 100 - day % 10 !== 10 ? day % 10 : 0)];
+  return format(date, 'EEEE, MMMM ') + day + suffix;
+};
+
 export function BookingSummary({
   selectedWeeks,
   selectedAccommodation,
@@ -306,6 +327,7 @@ export function BookingSummary({
   
   // New state for food and facilities contribution
   const [foodContribution, setFoodContribution] = useState<number | null>(null);
+  const [showDiscountDetails, setShowDiscountDetails] = useState(false);
 
   // Hooks
   const { getArrivalDepartureForDate } = useSchedulingRules();
@@ -434,20 +456,11 @@ export function BookingSummary({
       }
 
       // Calculate check-out date based on the selected check-in date
-      // Keep the same duration as originally selected
       const totalDays = differenceInDays(
         selectedWeeks[selectedWeeks.length - 1].endDate,
         selectedWeeks[0].startDate
       );
       const checkOut = addDays(selectedCheckInDate, totalDays);
-
-      console.log('[Booking Summary] Date debug:', {
-        selectedWeeks,
-        firstWeek: selectedWeeks[0],
-        selectedCheckIn: selectedCheckInDate,
-        checkOut,
-        totalDays
-      });
 
       console.log('[Booking Summary] Starting booking process...');
       setIsBooking(true);
@@ -458,20 +471,31 @@ export function BookingSummary({
           accommodationId: selectedAccommodation.id,
           checkIn: selectedCheckInDate.toISOString().split('T')[0],
           checkOut: checkOut.toISOString().split('T')[0],
-          totalPrice: pricing.totalAmountInCents // Use cents as integer
+          totalPrice: pricing.totalAmount
         });
 
         const booking = await bookingService.createBooking({
           accommodationId: selectedAccommodation.id,
           checkIn: selectedCheckInDate.toISOString().split('T')[0],
           checkOut: checkOut.toISOString().split('T')[0],
-          totalPrice: pricing.totalAmountInCents // Use cents as integer
+          totalPrice: pricing.totalAmount
         });
 
         console.log('[Booking Summary] Booking created:', booking);
         
-        // Navigate to success page
-        navigate(`/booking-success/${booking.id}`);
+        // Updated navigation to match the route in AuthenticatedApp.tsx
+        navigate('/confirmation', { 
+          state: { 
+            booking: {
+              ...booking,
+              accommodation: selectedAccommodation.title,
+              guests: selectedAccommodation.capacity,
+              totalPrice: pricing.totalAmount,
+              checkIn: selectedCheckInDate,
+              checkOut: checkOut
+            }
+          } 
+        });
       } catch (err) {
         console.error('[Booking Summary] Error creating booking:', err);
         setError('Failed to create booking. Please try again.');
@@ -482,7 +506,7 @@ export function BookingSummary({
       setError('An error occurred. Please try again.');
       setIsBooking(false);
     }
-  }, [selectedAccommodation, selectedWeeks, selectedCheckInDate, navigate, pricing.totalAmountInCents]);
+  }, [selectedAccommodation, selectedWeeks, selectedCheckInDate, navigate, pricing.totalAmount]);
 
   const handleConfirmClick = async () => {
     console.log('[Booking Summary] Confirm button clicked');
@@ -606,173 +630,275 @@ export function BookingSummary({
           {selectedWeeks.length > 0 && (
             <div className="space-y-6">
               {/* Stay Details Section */}
-              <div className="bg-stone-50 p-4 rounded-lg">
-                <div className="flex justify-between items-center mb-3">
-                  <h3 className="font-medium text-stone-800">Stay Details</h3>
+              <div className="bg-white p-5 rounded-xl border border-stone-200 shadow-sm pixel-corners overflow-hidden">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-serif text-lg text-stone-800 flex items-center">
+                    <Calendar className="w-4 h-4 mr-2 text-emerald-600" />
+                    Stay Details
+                  </h3>
                   <button
                     onClick={onClearWeeks}
-                    className="text-stone-400 hover:text-stone-600"
+                    className="text-stone-400 hover:text-stone-600 transition-colors"
                     title="Clear selected dates"
                   >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
 
-                <div className="space-y-3">
-                  {/* Date Range */}
-                  <div className="flex justify-between items-center">
-                    <span className="text-stone-600">Dates</span>
-                    <span className="text-stone-800 font-medium">{formatOverallDateRange(selectedWeeks)}</span>
+                <div className="space-y-4">
+                  {/* Timeline visualization - just dots */}
+                  <div className="relative h-1 bg-stone-100 rounded-full mx-4 mb-6">
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-emerald-600 border-2 border-white shadow-sm"></div>
+                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-stone-400 border-2 border-white shadow-sm"></div>
                   </div>
-                  
-                  {/* Nights */}
-                  <div className="flex justify-between items-center">
-                    <span className="text-stone-600">Duration</span>
-                    <span className="text-stone-800 font-medium">{pricing.totalNights} nights</span>
-                  </div>
-                  
-                  {/* Check-in Date */}
-                  {hasFlexibleDates ? (
-                    <div className="mt-2">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-stone-600">Check-in</span>
-                        <span className="text-stone-800 font-medium">
-                          {selectedCheckInDate ? format(selectedCheckInDate, 'EEE, MMM d') : 'Select a date'}
-                        </span>
+                
+                  {/* Arrival Information */}
+                  <motion.div 
+                    className="bg-white p-4 rounded-lg border border-emerald-200 shadow-sm"
+                    initial={{ y: 10, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <div className="flex items-center mb-3">
+                      <div className="bg-emerald-100 p-2 rounded-lg mr-3 shadow-sm">
+                        <ArrowRight className="w-4 h-4 text-emerald-700" />
                       </div>
-                      
-                      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 mt-2">
-                        <div className="flex items-start gap-2">
-                          <Calendar className="w-4 h-4 text-emerald-700 mt-0.5 flex-shrink-0" />
-                          <div>
-                            <p className="text-xs text-emerald-800 mb-1">
-                              Flexible check-in available for this period.
-                            </p>
-                            <button
-                              onClick={() => setShowDatePicker(prev => !prev)}
-                              className="text-xs font-medium text-emerald-700 hover:text-emerald-800 flex items-center gap-1"
-                            >
-                              {showDatePicker ? 'Hide options' : 'Choose check-in date'}
-                            </button>
-                            <AnimatePresence>
-                              {showDatePicker && (
-                                <motion.div
-                                  initial={{ opacity: 0, y: -10 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  exit={{ opacity: 0, y: -10 }}
-                                  className="mt-2"
-                                >
-                                  <DayPicker
-                                    mode="single"
-                                    selected={selectedCheckInDate || undefined}
-                                    onSelect={(date) => {
-                                      if (date) {
-                                        setSelectedCheckInDate(date);
-                                        setShowDatePicker(false);
-                                        setError(null);
-                                      }
-                                    }}
-                                    disabled={(date) => !flexibleDates?.some(d => isSameDay(d, date))}
-                                    defaultMonth={selectedWeeks[0]?.startDate || new Date()}
-                                    className="bg-white border border-emerald-200 rounded-lg p-2 shadow-sm"
-                                    modifiersClassNames={{
-                                      selected: 'bg-emerald-600 text-white hover:bg-emerald-500',
-                                      today: 'font-bold text-emerald-900'
-                                    }}
-                                  />
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          </div>
+                      <div>
+                        <h4 className="font-medium text-stone-800">Arrival</h4>
+                        <p className="text-emerald-700 text-sm">{formatDateWithDay(selectedWeeks[0].startDate)}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="ml-11 mt-3 bg-stone-50 p-3 rounded-lg border border-stone-100">
+                      <div className="flex items-center">
+                        <Clock className="w-4 h-4 text-emerald-600 mr-2" />
+                        <div>
+                          <span className="text-stone-800 font-medium">Check-in Time</span>
+                          <p className="text-stone-600 text-sm">3PM-8PM</p>
                         </div>
                       </div>
                     </div>
-                  ) : (
-                    <div className="flex justify-between items-center">
-                      <span className="text-stone-600">Check-in</span>
-                      <span className="text-stone-800 font-medium">{format(selectedWeeks[0].startDate, 'EEE, MMM d')}</span>
+                  </motion.div>
+                  
+                  {/* Container Message */}
+                  <div className="bg-amber-50 p-3 rounded-lg border border-amber-100 text-center">
+                    <p className="text-amber-800 text-sm">
+                      To ensure a smooth arrival, please respect the check-in window (3PM-8PM) and check-out time (12PM)
+                    </p>
+                  </div>
+                  
+                  {/* Departure Information */}
+                  <motion.div 
+                    className="bg-white p-4 rounded-lg border border-stone-200 shadow-sm"
+                    initial={{ y: 10, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ duration: 0.3, delay: 0.1 }}
+                  >
+                    <div className="flex items-center mb-3">
+                      <div className="bg-stone-100 p-2 rounded-lg mr-3 shadow-sm">
+                        <LogOut className="w-4 h-4 text-stone-700" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-stone-800">Departure</h4>
+                        <p className="text-stone-600 text-sm">{formatDateWithOrdinal(selectedWeeks[selectedWeeks.length - 1].endDate)}</p>
+                      </div>
                     </div>
-                  )}
+                    
+                    <div className="ml-11 mt-3 bg-stone-50 p-3 rounded-lg border border-stone-100">
+                      <div className="flex items-center">
+                        <Clock className="w-4 h-4 text-stone-600 mr-2" />
+                        <div>
+                          <span className="text-stone-800 font-medium">Check-out Time</span>
+                          <p className="text-stone-600 text-sm">12:00PM Noon</p>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                  
+                  {/* Duration */}
+                  <div className="flex justify-between items-center bg-emerald-50 p-3 rounded-lg border border-emerald-100 mt-3">
+                    <div className="flex items-center">
+                      <Home className="w-4 h-4 text-emerald-600 mr-2" />
+                      <span className="text-emerald-800 font-medium">Total Stay</span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="bg-white text-emerald-800 font-medium px-3 py-1 rounded-full border border-emerald-200">
+                        {pricing.totalNights} nights
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
               {/* Accommodation Section */}
               {selectedAccommodation && (
-                <div className="bg-stone-50 p-4 rounded-lg">
+                <motion.div 
+                  className="bg-white p-4 rounded-lg border border-stone-200 shadow-sm"
+                  initial={{ y: 10, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ duration: 0.3 }}
+                >
                   <div className="flex justify-between items-center mb-3">
-                    <h3 className="font-medium text-stone-800">Accommodation</h3>
+                    <h3 className="font-serif text-lg text-stone-800 flex items-center">
+                      <Bed className="w-4 h-4 mr-2 text-emerald-600" />
+                      Accommodation
+                    </h3>
                     <button
                       onClick={onClearAccommodation}
-                      className="text-stone-400 hover:text-stone-600"
+                      className="text-stone-400 hover:text-stone-600 transition-colors"
                       title="Clear selected accommodation"
                     >
                       <X className="w-4 h-4" />
                     </button>
                   </div>
                   
-                  <div className="flex justify-between items-center">
-                    <span className="text-stone-600">Selected</span>
-                    <span className="text-stone-800 font-medium">{selectedAccommodation.title}</span>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-stone-600">Selected</span>
+                      <span className="text-stone-800 font-medium">{selectedAccommodation.title}</span>
+                    </div>
+                    
+                    <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-100">
+                      <div className="text-center">
+                        <span className="text-emerald-800 font-serif">
+                          Sleeping in {selectedAccommodation.title === 'Van Parking' || 
+                                     selectedAccommodation.title === 'Your Own Tent' || 
+                                     selectedAccommodation.title === '+1 Accommodation' || 
+                                     selectedAccommodation.title === 'The Hearth' 
+                                     ? '' : "the '"}{selectedAccommodation.title}
+                          {selectedAccommodation.title === 'Van Parking' || 
+                           selectedAccommodation.title === 'Your Own Tent' || 
+                           selectedAccommodation.title === '+1 Accommodation' || 
+                           selectedAccommodation.title === 'The Hearth' 
+                           ? '' : "'"}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                </motion.div>
               )}
 
-              {/* Season Information - only show for non-free accommodations */}
-              {selectedAccommodation && selectedAccommodation.base_price > 0 && (
-                seasonBreakdown?.hasMultipleSeasons ? (
-                  <div className="bg-amber-50 p-4 rounded-lg">
-                    <h3 className="font-medium text-amber-800 mb-2">Seasonal Pricing</h3>
-                    <div className="space-y-2">
-                      {seasonBreakdown.seasons.map((season, index) => (
-                        <div key={index} className="flex justify-between items-center text-sm">
-                          <div className="flex items-center">
-                            <div className={`w-2 h-2 rounded-full mr-2 ${
-                              season.name === 'High Season' ? 'bg-amber-500' : 
-                              season.name === 'Shoulder Season' ? 'bg-amber-300' : 'bg-amber-200'
-                            }`}></div>
-                            <span className="text-amber-800">{season.name}</span>
-                          </div>
-                          <div className="text-amber-800">
-                            <span className="font-medium">{season.nights} {season.nights === 1 ? 'night' : 'nights'}</span>
-                            {season.discount > 0 && (
-                              <span className="ml-1 text-xs">({Math.round(season.discount * 100)}% off)</span>
-                            )}
+              {/* Consolidated Discounts Section */}
+              {(pricing.seasonalDiscount > 0 || pricing.durationDiscountAmount > 0 || seasonBreakdown?.hasMultipleSeasons) && (
+                <div className="bg-white p-4 rounded-lg border border-emerald-200 shadow-sm">
+                  <button 
+                    onClick={() => setShowDiscountDetails(!showDiscountDetails)}
+                    className="w-full flex justify-between items-center"
+                  >
+                    <div className="flex items-center">
+                      <div className="bg-emerald-100 p-1.5 rounded-lg mr-2">
+                        <Percent className="w-4 h-4 text-emerald-700" />
+                      </div>
+                      <h3 className="font-medium text-stone-800">Your Discounts</h3>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="text-emerald-700 font-medium mr-2">
+                        {seasonBreakdown?.hasMultipleSeasons 
+                          ? 'Multiple Seasons' 
+                          : pricing.seasonalDiscount > 0 && pricing.durationDiscountAmount > 0 
+                            ? 'Multiple Savings' 
+                            : pricing.seasonalDiscount > 0 
+                              ? `${Math.round(pricing.seasonalDiscount * 100)}% Seasonal` 
+                              : `${formatNumber(pricing.durationDiscountPercent)}% Duration`}
+                      </span>
+                      {showDiscountDetails ? (
+                        <ChevronUp className="w-4 h-4 text-stone-500" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4 text-stone-500" />
+                      )}
+                    </div>
+                  </button>
+                  
+                  <AnimatePresence>
+                    {showDiscountDetails && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="pt-3 mt-3 border-t border-stone-100 space-y-3">
+                          {/* Multiple Seasons Breakdown */}
+                          {seasonBreakdown?.hasMultipleSeasons && (
+                            <div className="bg-amber-50 p-3 rounded-lg">
+                              <h4 className="font-medium text-amber-800 text-sm mb-2">Seasonal Pricing</h4>
+                              <div className="space-y-2">
+                                {seasonBreakdown.seasons
+                                  .slice()
+                                  .sort((a, b) => {
+                                    // Sort in chronological order: Winter -> Shoulder -> Summer
+                                    const getSeasonOrder = (season: {name: string, discount: number}) => {
+                                      if (season.name === 'Winter Season' || (season.name === 'High Season' && season.discount === 0.40)) return 1;
+                                      if (season.name === 'Shoulder Season' || (season.name === 'High Season' && season.discount === 0.15)) return 2;
+                                      return 3; // Summer/High Season
+                                    };
+                                    return getSeasonOrder(a) - getSeasonOrder(b);
+                                  })
+                                  .map((season, index) => (
+                                    <div key={index} className="flex justify-between items-center text-sm">
+                                      <div className="flex items-center">
+                                        <div className={`w-2 h-2 rounded-full mr-2 ${
+                                          season.name === 'High Season' ? 'bg-amber-500' : 
+                                          season.name === 'Shoulder Season' ? 'bg-amber-300' : 'bg-amber-200'
+                                        }`}></div>
+                                        <span className="text-amber-800">{season.name === 'High Season' ? 'Summer Season' : season.name}</span>
+                                      </div>
+                                      <div className="text-amber-800">
+                                        <span className="font-medium">{season.nights} {season.nights === 1 ? 'night' : 'nights'}</span>
+                                        {season.discount > 0 && (
+                                          <span className="ml-1 text-xs">({Math.round(season.discount * 100)}% off)</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                              </div>
+                            </div>
+                          )}
+                        
+                          {/* Seasonal Discount - only show if not multiple seasons */}
+                          {!seasonBreakdown?.hasMultipleSeasons && pricing.seasonalDiscount > 0 && selectedAccommodation && selectedAccommodation.base_price > 0 && (
+                            <div className="bg-emerald-50 p-3 rounded-lg">
+                              <div className="flex justify-between items-center">
+                                <h4 className="font-medium text-emerald-800 text-sm">Seasonal Discount</h4>
+                                <span className="text-emerald-800 font-medium text-sm">{Math.round(pricing.seasonalDiscount * 100)}% off</span>
+                              </div>
+                              <p className="text-xs text-emerald-700 mt-1">
+                                You're booking during {pricing.seasonName}, which offers a discount on accommodation.
+                              </p>
+                            </div>
+                          )}
+                          
+                          {/* Duration Discount */}
+                          {pricing.durationDiscountAmount > 0 && (
+                            <div className="bg-blue-50 p-3 rounded-lg">
+                              <div className="flex justify-between items-center">
+                                <h4 className="font-medium text-blue-800 text-sm">Duration Discount</h4>
+                                <span className="text-blue-800 font-medium text-sm">
+                                  {formatNumber(pricing.durationDiscountPercent)}% off
+                                </span>
+                              </div>
+                              <p className="text-xs text-blue-700 mt-1">
+                                {pricing.weeksStaying >= 3 && pricing.weeksStaying <= 10 ? (
+                                  <>You're booking for {formatNumber(pricing.weeksStaying)} weeks, which gives you a {formatNumber(pricing.durationDiscountPercent)}% discount.</>
+                                ) : pricing.weeksStaying > 10 ? (
+                                  <>You're booking for {formatNumber(pricing.weeksStaying)} weeks, which gives you our maximum 20% discount.</>
+                                ) : null}
+                              </p>
+                            </div>
+                          )}
+                          
+                          {/* Total Savings */}
+                          <div className="flex justify-between items-center px-2">
+                            <span className="text-stone-600 text-sm">Total savings</span>
+                            <span className="text-emerald-700 font-medium">
+                              €{(pricing.accommodationDiscountAmount + pricing.durationDiscountAmount).toFixed(2)}
+                            </span>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  pricing.seasonalDiscount > 0 && selectedAccommodation && selectedAccommodation.base_price > 0 && (
-                    <div className="bg-emerald-50 p-4 rounded-lg">
-                      <div className="flex justify-between items-center">
-                        <h3 className="font-medium text-emerald-800">Seasonal Discount</h3>
-                        <span className="text-emerald-800 font-medium">{Math.round(pricing.seasonalDiscount * 100)}% off</span>
-                      </div>
-                      <p className="text-xs text-emerald-700 mt-1">
-                        You're booking during {pricing.seasonName}, which offers a discount on accommodation.
-                      </p>
-                    </div>
-                  )
-                )
-              )}
-
-              {/* Duration Discount Information - Simplified */}
-              {pricing.durationDiscountAmount > 0 && (
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <div className="flex justify-between items-center">
-                    <h3 className="font-medium text-blue-800">Duration Discount</h3>
-                    <span className="text-blue-800 font-medium">
-                      {pricing.durationDiscountPercent.toFixed(1)}% off
-                    </span>
-                  </div>
-                  <p className="text-xs text-blue-700 mt-2">
-                    {pricing.weeksStaying >= 3 && pricing.weeksStaying <= 10 ? (
-                      <>You're booking for {pricing.weeksStaying.toFixed(1)} weeks, which gives you a {pricing.durationDiscountPercent.toFixed(1)}% discount on your entire stay.</>
-                    ) : pricing.weeksStaying > 10 ? (
-                      <>You're booking for {pricing.weeksStaying.toFixed(1)} weeks, which gives you our maximum 20% discount on your entire stay.</>
-                    ) : null}
-                  </p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               )}
 
@@ -888,27 +1014,13 @@ export function BookingSummary({
                             <ul className="list-disc list-inside space-y-1.5 pl-0 mb-3">
                               <li>Provide meals during your stay</li>
                               <li>Maintain our community spaces</li>
-                              <li>Cover operational costs</li>
+                              <li>Ongoing Technical & Wellness Upgrades</li>
                             </ul>
-                            
-                            <div className="pt-2 border-t border-stone-200">
-                              <p className="mt-2 font-medium">Total for your stay: <span className="text-emerald-700">€{pricing.totalFoodAndFacilitiesCost.toFixed(2)}</span></p>
-                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                  
-                  {/* Duration Discount in price breakdown - Improved alignment */}
-                  {pricing.durationDiscountAmount > 0 && (
-                    <div className="grid grid-cols-2 text-stone-600 py-2">
-                      <span className="col-span-1">Duration Discount ({pricing.weeksStaying.toFixed(1)} weeks)</span>
-                      <span className="col-span-1 text-right text-blue-600 font-medium whitespace-nowrap">
-                        -{pricing.durationDiscountPercent.toFixed(1)}% (€{pricing.durationDiscountAmount.toFixed(2)})
-                      </span>
-                    </div>
-                  )}
                   
                   <div className="grid grid-cols-2 font-medium text-stone-800 border-t border-stone-200 pt-3 mt-2">
                     <span className="col-span-1">Total</span>
@@ -918,26 +1030,46 @@ export function BookingSummary({
               </div>
 
               {/* Action Buttons */}
-              <div className="space-y-3 pt-2">
+              <div className="space-y-3 pt-4">
                 <motion.button
                   onClick={handleConfirmClick}
                   disabled={!selectedAccommodation || isBooking}
-                  className="w-full bg-emerald-900 text-white py-3 rounded-lg hover:bg-emerald-800 transition-colors disabled:bg-stone-300 disabled:cursor-not-allowed font-serif text-lg pixel-corners"
-                  whileHover={{ scale: 1.02 }}
+                  className="w-full bg-emerald-600 text-white py-3 rounded-lg hover:bg-emerald-700 transition-all disabled:bg-stone-200 disabled:text-stone-400 disabled:cursor-not-allowed font-serif text-lg pixel-corners shadow-sm flex items-center justify-center"
+                  whileHover={{ scale: 1.02, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)" }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  {isBooking ? 'Processing...' : 'Confirm Booking'}
+                  {isBooking ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Processing...
+                    </>
+                  ) : (
+                    'Confirm Booking'
+                  )}
                 </motion.button>
 
                 {isAdmin && (
                   <motion.button
                     onClick={handleAdminConfirm}
                     disabled={!selectedAccommodation || isBooking}
-                    className="w-full bg-rose-600 text-white py-3 rounded-lg hover:bg-rose-700 transition-colors disabled:bg-stone-300 disabled:cursor-not-allowed font-serif text-lg pixel-corners"
-                    whileHover={{ scale: 1.02 }}
+                    className="w-full bg-white border-2 border-emerald-600 text-emerald-700 py-3 rounded-lg hover:bg-emerald-50 transition-all disabled:bg-stone-100 disabled:border-stone-200 disabled:text-stone-400 disabled:cursor-not-allowed font-serif text-lg pixel-corners shadow-sm flex items-center justify-center"
+                    whileHover={{ scale: 1.02, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)" }}
                     whileTap={{ scale: 0.98 }}
                   >
-                    {isBooking ? 'Processing...' : 'Admin Confirm (No Payment)'}
+                    {isBooking ? (
+                      <>
+                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-emerald-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Processing...
+                      </>
+                    ) : (
+                      'Admin Confirm (No Payment)'
+                    )}
                   </motion.button>
                 )}
               </div>

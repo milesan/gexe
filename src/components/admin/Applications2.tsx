@@ -91,9 +91,23 @@ export function Applications2() {
           console.log('Applications2: Email sending result', { emailError });
         }
       } else if (status === 'rejected') {
+        const application = applications.find(app => app.id === id);
+        console.log('Applications2: Rejecting application', { id, email: application?.user_email });
         const { error } = await supabase.rpc('reject_application', {
           p_application_id: id
         });
+        
+        if (!error && application?.user_email) {
+          // Send rejection email
+          const { error: emailError } = await supabase.functions.invoke('send-rejection-email', {
+            body: { 
+              email: application.user_email,
+              applicationId: id
+            }
+          });
+          console.log('Applications2: Email sending result', { emailError });
+        }
+        
         if (error) throw error;
       }
       await loadApplications();

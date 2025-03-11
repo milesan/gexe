@@ -40,8 +40,10 @@ export function Retro2Page() {
         });
       }
       
-      console.log('✅ Questions loaded:', data);
-      setQuestions(data || []);
+      // Filter out the muse question (ID 9)
+      const filteredQuestions = data?.filter(q => q.id !== 9) || [];
+      console.log('✅ Questions loaded (muse question filtered):', filteredQuestions);
+      setQuestions(filteredQuestions);
     } catch (err) {
       console.error('❌ Error loading questions:', err);
       setError(err instanceof Error ? err.message : 'Failed to load questions');
@@ -94,13 +96,7 @@ export function Retro2Page() {
       if (profileError) throw profileError;
       console.log('✅ Profile created/updated:', profileData);
 
-      // Check if this is a linked application
-      const isLinkedApplication = data[9]?.answer === "Yes";
-      const linkedName = isLinkedApplication ? data[9].partnerName : null;
-      const linkedEmail = isLinkedApplication ? data[9].partnerEmail : null;
-      console.log('🔗 Linked application info:', { isLinkedApplication, linkedName, linkedEmail });
-
-      // Submit the application
+      // Remove muse-related logic since the question is hidden
       console.log('📤 Submitting application...');
       const { data: application, error: applicationError } = await supabase
         .from('applications')
@@ -114,23 +110,6 @@ export function Retro2Page() {
 
       if (applicationError) throw applicationError;
       console.log('✅ Application submitted:', application);
-
-      // If there's a linked application, create the link
-      if (isLinkedApplication && linkedName && linkedEmail && application) {
-        console.log('🔗 Creating linked application...');
-        const { data: linkedData, error: linkError } = await supabase
-          .from('linked_applications')
-          .insert({
-            primary_application_id: application.id,
-            linked_name: linkedName,
-            linked_email: linkedEmail
-          })
-          .select()
-          .single();
-
-        if (linkError) throw linkError;
-        console.log('✅ Linked application created:', linkedData);
-      }
 
       // Update user metadata
       console.log('🔄 Updating user metadata...');

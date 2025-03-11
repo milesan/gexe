@@ -66,7 +66,7 @@ export function ConfirmationPage() {
                 {format(new Date(booking.checkIn), 'EEEE, MMMM d')}
               </p>
               <p className="text-sm text-emerald-600">
-                Available from 3-6PM
+                Available from 3-8PM
               </p>
             </div>
 
@@ -99,7 +99,7 @@ export function ConfirmationPage() {
                 <span className="text-sm">Guests</span>
               </div>
               <p className="font-display text-xl">
-                {booking.guests} {booking.guests === 1 ? 'Person' : 'People'}
+                1 Person
               </p>
             </div>
           </div>
