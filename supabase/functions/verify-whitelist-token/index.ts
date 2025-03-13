@@ -54,7 +54,7 @@ serve(async (req) => {
     const now = new Date()
     const { data: tokenData, error: tokenError } = await supabaseClient.rpc('verify_and_use_whitelist_token', {
       p_token: token,
-      p_current_time: now.toISOString()
+      p_current_time: now.toISOString()  // Still needed for used_at timestamp
     })
 
     if (tokenError) {
@@ -71,7 +71,7 @@ serve(async (req) => {
     if (!tokenData || !Array.isArray(tokenData) || tokenData.length === 0) {
       console.error('Token not found or invalid')
       return new Response(
-        JSON.stringify({ error: 'Invalid or expired token' }),
+        JSON.stringify({ error: 'Invalid token' }),
         { 
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -83,8 +83,7 @@ serve(async (req) => {
     console.log('Token verified:', {
       tokenId: tokenRecord.token_id,
       whitelistId: tokenRecord.whitelist_id,
-      email: tokenRecord.email,
-      expiresAt: tokenRecord.expires_at
+      email: tokenRecord.email
     })
 
     // Check if user already exists

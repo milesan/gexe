@@ -61,18 +61,13 @@ serve(async (req) => {
     const token = crypto.randomUUID()
     console.log('Generated token:', token)
 
-    const expiresAt = new Date()
-    expiresAt.setDate(expiresAt.getDate() + 7) // Token expires in 7 days
-    console.log('Token will expire at:', expiresAt.toISOString())
-
     console.log('Attempting to store token in database...')
     // Store the token
     const { error: insertError } = await supabaseClient
       .from('whitelist_tokens')
       .insert({
         whitelist_id: whitelistId,
-        token: token,
-        expires_at: expiresAt.toISOString()
+        token: token
       })
 
     if (insertError) {
