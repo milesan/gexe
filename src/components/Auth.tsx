@@ -20,7 +20,7 @@ export function Auth() {
       : (import.meta.env.VITE_APP_URL || window.location.origin); // Local dev fallback
   
     const redirectUrl = `${baseUrl}/auth/callback`;
-  
+    console.log('Redirecting to:', redirectUrl);
     try {
       console.log('Sending magic link to:', email, 'Redirecting to:', redirectUrl);
       const { error } = await supabase.auth.signInWithOtp({
