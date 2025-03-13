@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Plus, Trash2, Upload, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getFrontendUrl } from '../../lib/environment';
 
 interface WhitelistEntry {
   id: string;
@@ -116,7 +117,8 @@ export function Whitelist() {
       const { error: emailError } = await supabase.functions.invoke('send-whitelist-email', {
         body: { 
           email: newEmail,
-          whitelistId: data.id
+          whitelistId: data.id,
+          frontendUrl: getFrontendUrl()
         }
       });
 
@@ -209,7 +211,8 @@ export function Whitelist() {
         const { error: emailError } = await supabase.functions.invoke('send-whitelist-email', {
           body: { 
             email: entry.email,
-            whitelistId: entry.id
+            whitelistId: entry.id,
+            frontendUrl: getFrontendUrl()
           }
         });
         if (emailError) {

@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { Eye, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { ApplicationDetails } from './ApplicationDetails';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getFrontendUrl } from '../../lib/environment';
 
 interface Application {
   id: string;
@@ -85,7 +86,8 @@ export function Applications2() {
           const { error: emailError } = await supabase.functions.invoke('send-approval-email', {
             body: { 
               email: application.user_email,
-              applicationId: id
+              applicationId: id,
+              frontendUrl: getFrontendUrl()
             }
           });
           console.log('Applications2: Email sending result', { emailError });

@@ -22,7 +22,7 @@ export function Auth() {
     const redirectUrl = `${baseUrl}/auth/callback`;
     console.log('Redirecting to:', redirectUrl);
     try {
-      console.log('Sending magic link to:', email, 'Redirecting to:', redirectUrl);
+      console.log('[Auth] Sending magic link to:', email, 'Redirecting to:', redirectUrl);
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {

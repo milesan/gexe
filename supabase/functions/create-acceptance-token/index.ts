@@ -44,7 +44,7 @@ serve(async (req) => {
     console.log('Generated token:', token)
 
     const expiresAt = new Date()
-    expiresAt.setDate(expiresAt.getDate() + 7) // Token expires in 7 days
+    expiresAt.setDate(expiresAt.getDate() + 14) // Token expires in 14 days
     console.log('Token will expire at:', expiresAt.toISOString())
 
     console.log('Attempting to store token in database...')

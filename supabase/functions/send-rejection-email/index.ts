@@ -38,6 +38,39 @@ serve(async (req) => {
       })
       throw new Error('Missing required environment variables')
     }
+
+    const supabase = createClient(supabaseUrl, serviceRoleKey)
+    
+    // First, fetch the question mapping
+    const { data: questions, error: questionsError } = await supabase
+      .from('application_questions')
+      .select('order_number, text')
+      .eq('text', 'First Name')
+      .single()
+
+    if (questionsError) {
+      console.error('Error fetching question mapping:', questionsError)
+      throw questionsError
+    }
+
+    // Then fetch application data
+    const { data: application, error: fetchError } = await supabase
+      .from('applications')
+      .select('data')
+      .eq('id', applicationId)
+      .single()
+
+    if (fetchError) {
+      console.error('Error fetching application:', fetchError)
+      throw fetchError
+    }
+
+    // Extract first name using the question order number
+    const firstName = application?.data?.[questions.order_number * 1000] || ''
+    console.log('Found first name:', firstName)
+    
+    // Get current year
+    const currentYear = new Date().getFullYear()
     
     const resendClient = new resend.Resend(resendApiKey)
     
@@ -45,16 +78,13 @@ serve(async (req) => {
     
     // Send email using Resend
     const { error } = await resendClient.emails.send({
-      from: 'Garden Team <echo@echo.thegarden.pt>', // Replace with your verified domain
+      from: 'Harvard College Admissions <echo@echo.thegarden.pt>', // Playful sender name
       to: email,
-      subject: 'Update on Your Garden Application',
+      subject: 'Your Application to H̶a̶r̶v̶a̶r̶d̶ ̶C̶o̶l̶l̶e̶g̶e̶ The Garden',
       html: `
-        <h2>Thank you for Your Interest in Garden</h2>
-        <p>We appreciate the time and effort you put into your application to join Garden.</p>
-        <p>After careful consideration, we regret to inform you that we will not be moving forward with your application at this time.</p>
-        <p>While we were impressed by many aspects of your application, we have to make difficult decisions based on our current community needs and capacity.</p>
-        <p>We encourage you to stay connected with Garden and consider applying again in the future as our community evolves.</p>
-        <p>We wish you all the best in your future endeavors.</p>
+        <p>Dear ${firstName || ''},</p>
+        <p>The Committee on Admissions has completed its Regular Decision meetings, and I am very sorry to inform you that we cannot offer you admission to <s>Harvard</s> <s>The Garden Class</s> Residencies of ${currentYear}.</p>
+        <p>I wish that a different decision had been possible, but I hope that receiving our final decision now will be helpful to you as you make your <s>college plans</s> life plans.</p>
         <p>Best regards,<br>The Garden Team</p>
       `
     })

@@ -6,6 +6,7 @@ import * as resend from 'https://esm.sh/resend@2.0.0'
 interface EmailPayload {
   email: string;
   applicationId: string;
+  frontendUrl?: string; // Optional, will fallback to env vars if not provided
 }
 
 serve(async (req) => {
@@ -22,14 +23,25 @@ serve(async (req) => {
       throw new Error('Email and applicationId are required')
     }
     
-    const { email, applicationId } = body
+    const { email, applicationId, frontendUrl: requestUrl } = body
     console.log('Received request to send email to:', email)
 
     // Create a Supabase client with service role key
     const supabaseUrl = Deno.env.get('BACKEND_URL')
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
     const resendApiKey = Deno.env.get('RESEND_API_KEY')
-    const frontendUrl = Deno.env.get('FRONTEND_URL')
+    
+    // Get frontend URL with priority:
+    // 1. URL passed in request (most reliable, comes from window.location.origin)
+    // 2. Environment variables (fallback for backward compatibility)
+    // 3. Production URL (last resort fallback)
+    const frontendUrl = requestUrl || 
+                       Deno.env.get('FRONTEND_URL') || 
+                       Deno.env.get('DEPLOY_URL') || 
+                       Deno.env.get('APP_URL') || 
+                       'https://in.thegarden.pt' // Production fallback
+    
+    console.log('Using frontend URL:', frontendUrl, '(source: ' + (requestUrl ? 'request' : 'environment') + ')')
     
     if (!supabaseUrl || !serviceRoleKey || !resendApiKey || !frontendUrl) {
       console.error('Missing environment variables:', {
@@ -62,22 +74,22 @@ serve(async (req) => {
     
     // Send email using Resend
     const { error } = await resendClient.emails.send({
-      from: 'Garden Team <echo@echo.thegarden.pt>', // Replace with your verified domain
+      from: 'Garden Team <echo@echo.thegarden.pt>',
       to: email,
-      subject: 'Your Garden Application Has Been Approved!',
+      subject: 'Garden Application Status',
       html: `
-        <h2>Congratulations!</h2>
-        <p>We're excited to inform you that your application to join Garden has been approved!</p>
-        <p>To complete your registration and join our community, please click the button below:</p>
-        <div style="text-align: center; margin: 30px 0;">
+        <p>Callooh, callay! O frabjous day!</p>
+        <p>Your application has been approved.</p>
+        <p>To complete your registration and frolic in the forest, please click the button below:</p>
+        <div style="margin: 30px 0;">
           <a href="${acceptanceUrl}" style="background-color: #064e3b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
             Accept Invitation
           </a>
         </div>
-        <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
+        <p>If the button doesn't work, copy and paste this link into your browser:</p>
         <p>${acceptanceUrl}</p>
-        <p>This invitation link will expire in 7 days.</p>
-        <p>Welcome to Garden!</p>
+        <p>This invitation link will expire in 14 days.</p>
+        <p>Welcome aboard, sailors, scientists, and sirens of the seas</p>
       `
     })
 

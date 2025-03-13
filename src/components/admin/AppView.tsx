@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle, XCircle, X } from 'lucide-react';
 import { Housekeeping } from './Housekeeping';
 import { ImageModal } from '../shared/ImageModal';
+import { getFrontendUrl } from '../../lib/environment';
 
 interface Application {
   id: string;
@@ -184,7 +185,8 @@ export function AppView() {
           const { error: emailError } = await supabase.functions.invoke('send-approval-email', {
             body: { 
               email: application.user_email,
-              applicationId: id
+              applicationId: id,
+              frontendUrl: getFrontendUrl()
             }
           });
           console.log('AppView: Email sending result', { emailError });

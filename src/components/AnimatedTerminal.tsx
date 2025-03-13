@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
+import { getFrontendUrl } from '../lib/environment';
 
 interface Props {
   onComplete: () => void;
@@ -129,16 +130,10 @@ export function AnimatedTerminal({ onComplete }: Props) {
     setSuccess(null);
     setIsLoading(true);
   
-    // Determine the base URL based on environment
-    const isNetlify = !!process.env.NETLIFY; // True if running on Netlify
-    const baseUrl = isNetlify
-      ? (process.env.DEPLOY_URL || process.env.APP_URL || window.location.origin) // Netlify preview or production
-      : (import.meta.env.VITE_APP_URL || window.location.origin); // Local dev fallback
-  
-    const redirectUrl = `${baseUrl}/auth/callback`;
+    const redirectUrl = `${getFrontendUrl()}/auth/callback`;
   
     try {
-      console.log('Sending magic link to:', email, 'Redirecting to:', redirectUrl);
+      console.log('[AnimatedTerminal] Sending magic link to:', email, 'Redirecting to:', redirectUrl);
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
