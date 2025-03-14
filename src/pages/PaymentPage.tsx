@@ -110,7 +110,7 @@ export function PaymentPage() {
                 <span className="text-sm">Check-out</span>
               </div>
               <p className="font-display text-xl">
-                {checkOutDateString}
+              {checkOutDateString}
               </p>
               <p className="text-sm text-emerald-600">
                 By 12PM Noon

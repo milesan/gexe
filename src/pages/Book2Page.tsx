@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
-import { isSameWeek, addWeeks, isAfter, isBefore, startOfMonth, format, addMonths, subMonths, startOfDay, isSameDay, addDays, eachDayOfInterval } from 'date-fns';
+import { isSameWeek, addWeeks, isAfter, isBefore, startOfMonth, format, addMonths, subMonths, startOfDay, isSameDay, addDays, eachDayOfInterval, differenceInDays } from 'date-fns';
 import { WeekSelector } from '../components/WeekSelector';
 import { formatDateForDisplay, normalizeToUTCDate, doDateRangesOverlap } from '../utils/dates';
 import { CabinSelector } from '../components/CabinSelector';
@@ -262,44 +262,30 @@ export function Book2Page() {
       };
     }
 
-    // Get all nights in the selected period
-    // A night is represented by its start date
-    let allNights: Date[] = [];
+    // Sort the weeks to ensure we're processing dates in chronological order
+    const sortedWeeks = [...weeks].sort((a, b) => 
+      a.startDate.getTime() - b.startDate.getTime()
+    );
     
-    weeks.forEach(week => {
-      const startDate = week.startDate || (week instanceof Date ? week : new Date());
-      const endDate = week.endDate || addDays(startDate, 6);
-      
-      if (isBefore(endDate, startDate)) {
-        return;
-      }
-      
-      // For nights, we include all days EXCEPT the last day
-      // e.g., for a stay from June 24 to July 7, we count nights of June 24, 25, ..., July 6
-      const nightsInWeek = eachDayOfInterval({ 
-        start: startDate, 
-        end: addDays(endDate, -1) // Exclude the checkout day
-      });
-      
-      allNights = [...allNights, ...nightsInWeek];
-    });
+    // Get the overall stay period
+    const startDate = sortedWeeks[0].startDate;
+    const endDate = sortedWeeks[sortedWeeks.length - 1].endDate;
     
-    if (allNights.length === 0) {
-      const discount = getSeasonalDiscount(currentMonth);
-      const seasonName = discount === 0 ? 'High Season' : 
-                         discount === 0.15 ? 'Shoulder Season' : 
-                         'Winter Season';
-      return { 
-        hasMultipleSeasons: false, 
-        seasons: [{ name: seasonName, discount, nights: 0 }] 
-      };
-    }
+    // Calculate total nights - simple end date minus start date
+    const totalNights = differenceInDays(endDate, startDate);
     
     // Group nights by season
-    const seasonMap: Record<string, { name: string, discount: number, nights: number }> = {};
+    const seasonMap: Record<string, { name: string; discount: number; nights: number }> = {};
     
-    allNights.forEach(night => {
-      const discount = getSeasonalDiscount(night);
+    // Get all dates in the stay (excluding checkout day)
+    const allDates = eachDayOfInterval({
+      start: startDate,
+      end: addDays(endDate, -1) // Exclude checkout day
+    });
+    
+    // Count the nights per season using the date of each night
+    allDates.forEach(date => {
+      const discount = getSeasonalDiscount(date);
       const seasonName = discount === 0 ? 'High Season' : 
                          discount === 0.15 ? 'Shoulder Season' : 
                          'Winter Season';
@@ -312,13 +298,24 @@ export function Book2Page() {
       seasonMap[key].nights++;
     });
     
+    // Validate our calculations
+    const totalCalculatedNights = Object.values(seasonMap).reduce(
+      (sum, season) => sum + season.nights, 0
+    );
+    
+    if (totalCalculatedNights !== totalNights) {
+      console.warn(`[Book2Page] Night calculation mismatch: ${totalCalculatedNights} vs expected ${totalNights}`);
+    }
+    
     const seasons = Object.values(seasonMap).sort((a, b) => b.nights - a.nights);
     const hasMultipleSeasons = seasons.length > 1;
     
     console.log('[Book2Page] Season breakdown:', { 
       hasMultipleSeasons, 
       seasons,
-      totalNights: allNights.length
+      totalNights,
+      dateRange: `${format(startDate, 'MMM dd')} - ${format(endDate, 'MMM dd')}`,
+      allDates: allDates.map(d => format(d, 'MMM dd')),
     });
     
     return { hasMultipleSeasons, seasons };

@@ -170,6 +170,10 @@ CREATE POLICY "Users can create bookings"
   ON bookings FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+CREATE POLICY "Admin full access to bookings"
+  ON bookings FOR ALL
+  USING (public.is_admin());
+
 CREATE POLICY "Users can view their own holds"
   ON availability_holds FOR SELECT
   USING (auth.uid() = user_id);

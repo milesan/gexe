@@ -5,7 +5,6 @@ import { Calendar, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { StatusModal } from './StatusModal';
 import type { AvailabilityStatus } from '../types/availability';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ManualBookingModal } from './ManualBookingModal';
 
 interface Props {
   onClose: () => void;
@@ -38,7 +37,6 @@ export function InventoryCalendar({ onClose }: Props) {
   const [accommodations, setAccommodations] = useState<any[]>([]);
   const [selectedAccommodation, setSelectedAccommodation] = useState<string>('all');
   const [showStatusModal, setShowStatusModal] = useState(false);
-  const [showManualBooking, setShowManualBooking] = useState(false);
   const [selectedDates, setSelectedDates] = useState<{ start: Date; end: Date } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -303,13 +301,6 @@ export function InventoryCalendar({ onClose }: Props) {
               </div>
 
               <div className="flex items-center gap-4">
-                <button
-                  onClick={() => setShowManualBooking(true)}
-                  className="bg-emerald-900 text-white px-4 py-2 rounded-lg hover:bg-emerald-800"
-                >
-                  Add Manual Booking
-                </button>
-
                 <div className="flex items-center gap-4 text-sm">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
@@ -447,17 +438,6 @@ export function InventoryCalendar({ onClose }: Props) {
               setError(err instanceof Error ? err.message : 'Failed to create booking');
             }
           }}
-        />
-      )}
-
-      {showManualBooking && (
-        <ManualBookingModal
-          onClose={() => setShowManualBooking(false)}
-          onSuccess={() => {
-            setShowManualBooking(false);
-            loadData();
-          }}
-          accommodations={accommodations}
         />
       )}
     </AnimatePresence>

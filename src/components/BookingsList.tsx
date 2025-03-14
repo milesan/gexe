@@ -40,39 +40,65 @@ export function BookingsList() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
+      console.log('Current user:', user.id);
+      console.log('User metadata:', user.user_metadata);
+      console.log('Is admin:', user.user_metadata?.is_admin);
 
       // First get the bookings
-      const { data: bookingsData, error: bookingsError } = await supabase
-        .from('bookings')
+      console.log('Fetching all bookings...');
+      
+      // Try a direct query first
+      const { data: directBookings, error: directError } = await supabase
+        .from('bookings_with_emails')
         .select('*')
-        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      
+      console.log('Direct query results:', directBookings?.length || 0, 'bookings');
+      
+      // Then try with count
+      const { data: bookingsData, error: bookingsError, count } = await supabase
+        .from('bookings_with_emails')
+        .select('*', { count: 'exact' })
         .order('created_at', { ascending: false });
 
-      if (bookingsError) throw bookingsError;
-
+      if (bookingsError) {
+        console.error('Error fetching bookings:', bookingsError);
+        throw bookingsError;
+      }
+      
+      console.log(`Retrieved ${bookingsData?.length || 0} bookings out of ${count || 0} total`);
+      console.log('Booking IDs:', bookingsData?.map(b => b.id));
+      
       // Then fetch the related data
+      console.log('Enriching bookings with accommodation details...');
       const enrichedBookings = await Promise.all((bookingsData || []).map(async (booking) => {
-        // Get accommodation details
-        const { data: accomData } = await supabase
-          .from('accommodations')
-          .select('title')
-          .eq('id', booking.accommodation_id)
-          .single();
+        try {
+          // Get accommodation details
+          const { data: accomData, error: accomError } = await supabase
+            .from('accommodations')
+            .select('title')
+            .eq('id', booking.accommodation_id)
+            .single();
+            
+          if (accomError) {
+            console.error(`Error fetching accommodation ${booking.accommodation_id}:`, accomError);
+          }
 
-        // Get user details
-        const { data: userData } = await supabase
-          .from('profiles')
-          .select('email')
-          .eq('id', booking.user_id)
-          .single();
-
-        return {
-          ...booking,
-          accommodation_title: accomData?.title || 'N/A',
-          user_email: userData?.email || 'N/A'
-        };
+          return {
+            ...booking,
+            accommodation_title: accomData?.title || 'N/A'
+          };
+        } catch (enrichError) {
+          console.error(`Error enriching booking ${booking.id}:`, enrichError);
+          // Return the booking with placeholder data rather than failing the whole process
+          return {
+            ...booking,
+            accommodation_title: 'Error loading'
+          };
+        }
       }));
 
+      console.log('Setting bookings state with enriched data:', enrichedBookings);
       setBookings(enrichedBookings);
     } catch (err) {
       console.error('Error loading bookings:', err);
@@ -119,6 +145,9 @@ export function BookingsList() {
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Status
             </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Created At
+            </th>
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
@@ -153,6 +182,9 @@ export function BookingsList() {
                 }`}>
                   {booking.status}
                 </span>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                {format(new Date(booking.created_at), 'PPp')}
               </td>
             </tr>
           ))}

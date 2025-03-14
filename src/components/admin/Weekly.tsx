@@ -6,7 +6,6 @@ import { CalendarService } from '../../services/CalendarService';
 import { formatDateForDisplay } from '../../utils/dates';
 import { bookingService } from '../../services/BookingService';
 import { Booking } from '../../types';
-import { CalendarConfigButton } from './CalendarConfigButton';
 
 interface Props {
   onClose: () => void;
@@ -346,12 +345,7 @@ export function Weekly({ onClose }: Props) {
           
           {/* Add the Calendar Config Button here */}
           <div className="flex items-center space-x-3">
-            <CalendarConfigButton 
-              onConfigChanged={() => {
-                // Reload calendar config when settings change
-                fetchCalendarConfig();
-              }} 
-            />
+
             <button
               onClick={onClose}
               className="text-gray-500 hover:text-gray-700"
