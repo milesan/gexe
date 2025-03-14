@@ -13,6 +13,7 @@ import { useSession } from './hooks/useSession';
 import { AcceptInvitePage } from './pages/AcceptInvitePage';
 import { WhitelistSignupPage } from './pages/WhitelistSignupPage';
 import { normalizeToUTCDate } from './utils/dates';
+import { WhitelistWelcomeModal } from './components/WhitelistWelcomeModal';
 
 export default function App() {
   const session = useSession();
@@ -20,6 +21,7 @@ export default function App() {
   const [isWhitelisted, setIsWhitelisted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(() => normalizeToUTCDate(new Date()));
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 
   useEffect(() => {
     // Handle auth callback from URL
@@ -78,9 +80,24 @@ export default function App() {
         
         // Check if the user has completed whitelist signup
         const hasCompletedSignup = session.user.user_metadata?.has_completed_whitelist_signup === true;
-        console.log('App: User whitelist status:', { isWhitelisted, hasCompletedSignup });
+        const hasSeenWelcome = session.user.user_metadata?.has_seen_welcome === true;
+        const isApproved = session.user.user_metadata?.approved === true || 
+                          session.user.user_metadata?.application_status === 'approved';
         
-        setIsWhitelisted(!!isWhitelisted);
+        console.log('App: User whitelist status:', { 
+          isWhitelisted, 
+          hasCompletedSignup,
+          isApproved,
+          hasSeenWelcome,
+          metadata: session.user.user_metadata 
+        });
+        
+        // Show welcome modal for approved users who haven't seen it yet
+        if (isApproved && !hasSeenWelcome) {
+          setShowWelcomeModal(true);
+        }
+        
+        setIsWhitelisted(!!isWhitelisted || isApproved);
       } catch (err) {
         console.error('Error checking user status:', err);
       } finally {
@@ -94,6 +111,27 @@ export default function App() {
       mounted = false;
     };
   }, [session]);
+
+  const handleCloseWelcomeModal = async () => {
+    setShowWelcomeModal(false);
+    
+    // Update user metadata to mark welcome modal as seen
+    if (session?.user) {
+      try {
+        const { error } = await supabase.auth.updateUser({
+          data: { has_seen_welcome: true }
+        });
+        
+        if (error) {
+          console.error('Error updating user metadata:', error);
+        } else {
+          console.log('Successfully updated has_seen_welcome to true');
+        }
+      } catch (err) {
+        console.error('Error in handleCloseWelcomeModal:', err);
+      }
+    }
+  };
 
   if (isLoading) {
     console.log('App: Loading state');
@@ -131,13 +169,17 @@ export default function App() {
   const hasApplied = session?.user?.user_metadata?.has_applied === true;
   const isWhitelistedUser = session?.user?.user_metadata?.is_whitelisted === true;
   const hasCompletedWhitelistSignup = session?.user?.user_metadata?.has_completed_whitelist_signup === true;
+  const isApproved = session?.user?.user_metadata?.approved === true || 
+                     session?.user?.user_metadata?.application_status === 'approved';
   
   console.log('App: Checking user status:', { 
     isWhitelisted, 
     isWhitelistedUser,
+    isApproved,
     hasApplied, 
     hasCompletedWhitelistSignup,
-    isAdmin 
+    isAdmin,
+    metadata: session?.user?.user_metadata
   });
 
   // If user is admin, show full app immediately
@@ -147,6 +189,27 @@ export default function App() {
       <ErrorBoundary>
         <ThemeProvider>
           <Router>
+            <Routes>
+              <Route path="/accept" element={<AcceptInvitePage />} />
+              <Route path="/accept-invite" element={<AcceptInvitePage isWhitelist={true} />} />
+              <Route path="/*" element={<AuthenticatedApp />} />
+              <Route path="/confirmation" element={<ConfirmationPage />} />
+            </Routes>
+          </Router>
+        </ThemeProvider>
+      </ErrorBoundary>
+    );
+  }
+
+  // If user is approved, treat them as whitelisted
+  if (isApproved) {
+    console.log('App: User is approved, treating as whitelisted');
+    
+    return (
+      <ErrorBoundary>
+        <ThemeProvider>
+          <Router>
+            <WhitelistWelcomeModal isOpen={showWelcomeModal} onClose={handleCloseWelcomeModal} />
             <Routes>
               <Route path="/accept" element={<AcceptInvitePage />} />
               <Route path="/accept-invite" element={<AcceptInvitePage isWhitelist={true} />} />
@@ -183,6 +246,7 @@ export default function App() {
       <ErrorBoundary>
         <ThemeProvider>
           <Router>
+            <WhitelistWelcomeModal isOpen={showWelcomeModal} onClose={handleCloseWelcomeModal} />
             <Routes>
               <Route path="/accept" element={<AcceptInvitePage />} />
               <Route path="/accept-invite" element={<AcceptInvitePage isWhitelist={true} />} />

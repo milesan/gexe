@@ -36,14 +36,6 @@ export function AcceptInvitePage({ isWhitelist = false }: AcceptInvitePageProps)
         const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${isWhitelist ? 'verify-whitelist-token' : 'verify-acceptance-token'}`;
         console.log('AcceptInvitePage: Sending request to:', url, { token, isWhitelist });
         console.log('AcceptInvitePage: Processing token', { token });
-        console.log('Sending request with payload:', {
-          url: 'https://guquxpxxycfmmlqajdyw.supabase.co/functions/v1/verify-whitelist-token',
-          method: 'POST',
-          body: JSON.stringify({ token }),
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
         const response = await fetch(url, {
           method: 'POST',
           mode: 'cors',
@@ -83,15 +75,38 @@ export function AcceptInvitePage({ isWhitelist = false }: AcceptInvitePageProps)
           return;
         }
 
-        
-
-        // Check for magic link
+        // Check for magic link (whitelist flow)
         if (responseData.data?.properties?.action_link) {
           console.log('AcceptInvitePage: Redirecting to magic link');
           window.location.href = responseData.data.properties.action_link;
           return;
         }
+        
+        // Check for session (acceptance flow)
+        if (responseData.session) {
+          console.log('AcceptInvitePage: Session received, setting in Supabase');
+          
+          // Set the session in Supabase client
+          const { error: setSessionError } = await supabase.auth.setSession({
+            access_token: responseData.session.access_token,
+            refresh_token: responseData.session.refresh_token
+          });
+          
+          if (setSessionError) {
+            console.error('AcceptInvitePage: Failed to set session', setSessionError);
+            setStatus('error');
+            setErrorMessage('Failed to set user session');
+            return;
+          }
+          
+          console.log('AcceptInvitePage: Session set successfully, redirecting to dashboard');
+          // Redirect to dashboard or home page
+          window.location.href = '/dashboard';
+          return;
+        }
 
+        // If we get here, neither a magic link nor a session was found
+        console.error('AcceptInvitePage: No magic link or session found in response');
         setStatus('error');
         setErrorMessage('Failed to get sign in link');
       } catch (error) {
