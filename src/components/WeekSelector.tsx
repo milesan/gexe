@@ -85,8 +85,36 @@ export function WeekSelector({
   const [selectedFlexDate, setSelectedFlexDate] = useState<Date | null>(null);
   const [flexModalWeek, setFlexModalWeek] = useState<Week | null>(null);
 
+  // Check if a week can be used as a valid first week (arrival)
+  const isValidFirstWeek = useCallback((week: Week): boolean => {
+    if (isAdmin) return true; // Admins can select any week
+    
+    const weekStartDate = normalizeToUTCDate(week.startDate);
+    const weeksSinceEpoch = Math.floor(weekStartDate.getTime() / (7 * 24 * 60 * 60 * 1000));
+    return weeksSinceEpoch % 2 === 0; // Only even-numbered weeks can be arrival weeks
+  }, [isAdmin]);
+
   const handleWeekClick = useCallback((week: Week) => {
     console.log('[WeekSelector] Week clicked:', getSimplifiedWeekInfo(week, isAdmin, selectedWeeks));
+    
+    // Check if this week is already the first selected week
+    const isFirstSelectedWeek = selectedWeeks.length > 0 && 
+                               isSameDay(normalizeToUTCDate(selectedWeeks[0].startDate), 
+                                        normalizeToUTCDate(week.startDate));
+    
+    // If the user is clicking on the first selected week (to deselect it) and there are multiple weeks selected
+    if (isFirstSelectedWeek && selectedWeeks.length > 1) {
+      // Check if the second week would be valid as a first week
+      const potentialNewFirstWeek = selectedWeeks[1];
+      
+      // If the second week wouldn't be valid as a first week and we're not in admin mode,
+      // prevent the deselection completely
+      if (!isValidFirstWeek(potentialNewFirstWeek) && !isAdmin) {
+        console.log('[WeekSelector] Cannot deselect first week - second week would violate every-other-week rule');
+        console.error('Cannot deselect this week. Please deselect your departure week first.');
+        return;
+      }
+    }
     
     if (!isWeekSelectable(week, isAdmin, selectedWeeks)) {
       console.log('[WeekSelector] Week not selectable:', {
@@ -109,7 +137,7 @@ export function WeekSelector({
       console.log('[WeekSelector] Standard week selection');
       onWeekSelect(week);
     }
-  }, [onWeekSelect, isAdmin, selectedWeeks]);
+  }, [onWeekSelect, isAdmin, selectedWeeks, isValidFirstWeek]);
 
   const handleFlexDateSelect = useCallback((date: Date) => {
     if (!flexModalWeek) return;

@@ -2,7 +2,8 @@ import { supabase } from '../lib/supabase';
 import type { Accommodation, Booking } from '../types';
 import type { AvailabilityResult } from '../types/availability';
 import type { Database } from '../types/database';
-import { addDays, startOfWeek, endOfWeek } from 'date-fns';
+import { addDays, startOfWeek, endOfWeek, isBefore, isEqual } from 'date-fns';
+import { normalizeToUTCDate, safeParseDate, formatDateOnly } from '../utils/dates';
 import { convertToUTC1 } from '../utils/timezone';
 
 type AccommodationType = Database['public']['Tables']['accommodations']['Row'];
@@ -74,7 +75,11 @@ class BookingService {
       checkOut: checkOut.toISOString()
     });
 
-    const availability = await this.getAvailability(checkIn, checkOut);
+    // Normalize dates to UTC
+    const normalizedCheckIn = normalizeToUTCDate(checkIn);
+    const normalizedCheckOut = normalizeToUTCDate(checkOut);
+
+    const availability = await this.getAvailability(normalizedCheckIn, normalizedCheckOut);
     const result = availability.find(a => a.accommodation_id === accommodationId);
 
     console.log('[BookingService] Specific availability result:', {
@@ -94,8 +99,8 @@ class BookingService {
 
     const { data, error } = await supabase
       .rpc('get_accommodation_availability', {
-        check_in_date: startDate.toISOString().split('T')[0],
-        check_out_date: endDate.toISOString().split('T')[0]
+        check_in_date: formatDateOnly(startDate),
+        check_out_date: formatDateOnly(endDate)
       });
 
     if (error) {
@@ -122,8 +127,10 @@ class BookingService {
     }
     
     // Get the earliest and latest dates from the weeks array
-    const startDate = weeks[0];
-    const endDate = addDays(weeks[weeks.length - 1], 7);
+    // Normalize the week dates to UTC
+    const normalizedWeeks = weeks.map(w => normalizeToUTCDate(w));
+    const startDate = normalizedWeeks[0];
+    const endDate = addDays(normalizedWeeks[normalizedWeeks.length - 1], 7);
     
     const availability = await this.getAvailability(startDate, endDate);
     const result = availability.find(a => a.accommodation_id === accommodationId);
@@ -164,8 +171,12 @@ class BookingService {
     }
 
     if (filters.startDate && filters.endDate) {
+      // Normalize dates and format properly for the query
+      const formattedStartDate = formatDateOnly(normalizeToUTCDate(filters.startDate));
+      const formattedEndDate = formatDateOnly(normalizeToUTCDate(filters.endDate));
+      
       query = query.or(
-        `check_in.lte.${filters.endDate.toISOString()},check_out.gt.${filters.startDate.toISOString()}`
+        `check_in.lte.${formattedEndDate},check_out.gt.${formattedStartDate}`
       );
     }
 
@@ -207,13 +218,18 @@ class BookingService {
     }
 
     try {
-      // Convert dates to just date strings without time or timezone
-      const checkInDate = booking.checkIn instanceof Date ? booking.checkIn : new Date(booking.checkIn);
-      const checkOutDate = booking.checkOut instanceof Date ? booking.checkOut : new Date(booking.checkOut);
+      // Safely parse and normalize dates
+      const checkInDate = booking.checkIn instanceof Date 
+        ? normalizeToUTCDate(booking.checkIn) 
+        : safeParseDate(booking.checkIn as string);
       
-      // Format as YYYY-MM-DD to remove time and timezone components
-      const checkInISO = checkInDate.toISOString().split('T')[0];
-      const checkOutISO = checkOutDate.toISOString().split('T')[0];
+      const checkOutDate = booking.checkOut instanceof Date 
+        ? normalizeToUTCDate(booking.checkOut) 
+        : safeParseDate(booking.checkOut as string);
+      
+      // Format as YYYY-MM-DD
+      const checkInISO = formatDateOnly(checkInDate);
+      const checkOutISO = formatDateOnly(checkOutDate);
       
       console.log('[BookingService] Inserting booking with processed dates:', {
         originalCheckIn: booking.checkIn instanceof Date ? booking.checkIn.toISOString() : booking.checkIn,
@@ -307,16 +323,18 @@ class BookingService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    const firstWeek = weeks[0];
-    const lastWeek = weeks[weeks.length - 1];
+    // Normalize dates to UTC
+    const normalizedWeeks = weeks.map(w => normalizeToUTCDate(w));
+    const firstWeek = normalizedWeeks[0];
+    const lastWeek = normalizedWeeks[normalizedWeeks.length - 1];
     
-    // Format as YYYY-MM-DD to remove time and timezone components
-    const checkIn = startOfWeek(firstWeek).toISOString().split('T')[0];
-    const checkOut = addDays(endOfWeek(lastWeek), 1).toISOString().split('T')[0];
+    // Format as YYYY-MM-DD
+    const checkIn = formatDateOnly(startOfWeek(firstWeek));
+    const checkOut = formatDateOnly(addDays(endOfWeek(lastWeek), 1));
 
     console.log('[BookingService] Creating weekly booking:', {
       accommodationId,
-      weeksCount: weeks.length,
+      weeksCount: normalizedWeeks.length,
       checkIn,
       checkOut,
       totalPrice
@@ -347,10 +365,11 @@ class BookingService {
 
       // Mark dates as booked in availability
       const dates = [];
-      let currentDate = new Date(checkIn);
-      const endDate = new Date(checkOut);
-      while (currentDate < endDate) {
-        dates.push(currentDate.toISOString().split('T')[0]);
+      let currentDate = safeParseDate(checkIn);
+      const endDate = safeParseDate(checkOut);
+      
+      while (isBefore(currentDate, endDate)) {
+        dates.push(formatDateOnly(currentDate));
         currentDate = addDays(currentDate, 1);
       }
 
@@ -375,8 +394,13 @@ class BookingService {
 
   async updateBooking(id: string, updates: Partial<Booking>) {
     // Validate check_out is after check_in if both are being updated
-    if (updates.check_in && updates.check_out && new Date(updates.check_out) <= new Date(updates.check_in)) {
-      throw new Error('Check-out date must be after check-in date');
+    if (updates.check_in && updates.check_out) {
+      const checkInDate = safeParseDate(updates.check_in);
+      const checkOutDate = safeParseDate(updates.check_out);
+      
+      if (isEqual(checkInDate, checkOutDate) || isBefore(checkOutDate, checkInDate)) {
+        throw new Error('Check-out date must be after check-in date');
+      }
     }
 
     // Validate total_price is non-negative if being updated

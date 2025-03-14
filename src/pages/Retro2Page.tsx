@@ -41,7 +41,7 @@ export function Retro2Page() {
       }
       
       // Filter out the muse question (ID 9)
-      const filteredQuestions = data?.filter(q => q.id !== 9) || [];
+      const filteredQuestions = data?.filter(q => q.order_number !== 8000) || [];
       console.log('✅ Questions loaded (muse question filtered):', filteredQuestions);
       setQuestions(filteredQuestions);
     } catch (err) {

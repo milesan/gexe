@@ -211,7 +211,7 @@ export function WhitelistSignupPage() {
                       type: e.target.value as any
                     }
                   }))}
-                  className="bg-white/5 border border-[#FFBF00]/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#FFBF00]/40"
+                  className="bg-white/5 border border-[#FFBF00]/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#FFBF00]/40 [&>option]:bg-zinc-900 [&>option]:text-white"
                 >
                   <option value="whatsapp">WhatsApp</option>
                   <option value="telegram">Telegram</option>
@@ -265,7 +265,7 @@ export function WhitelistSignupPage() {
                 className="w-4 h-4 rounded border-[#FFBF00]/20 bg-white/5"
               />
               <label className="text-sm text-[#FFBF00]/60">
-                We value data privacy. By checking this box, you consent to The Garden storing and reviewing your data for this residency.
+                We value data privacy. By checking this box, you consent to The Garden storing your data for this residency.
               </label>
             </div>
 

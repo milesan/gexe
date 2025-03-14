@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { ExternalLink } from 'lucide-react';
 import { useSession } from '../hooks/useSession';
 import type { Booking } from '../types';
+import { apiDateToUTC } from '../utils/timezone';
 
 export function MyBookings() {
   const [bookings, setBookings] = React.useState<Booking[]>([]);
@@ -76,19 +77,16 @@ export function MyBookings() {
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="text-xl font-display font-light mb-2">
-                    {booking.accommodations?.title || booking.accommodation_title || 'Accommodation'}
+                    {booking.accommodation?.title || 'Accommodation'}
                   </h3>
-                  <p className="text-stone-600 mb-4">
-                    {booking.accommodations?.location || booking.accommodation_location || 'The Garden'}
-                  </p>
                   <div className="space-y-1 text-sm">
                     <p>
                       <span className="text-stone-500">Check-in:</span>{' '}
-                      {format(new Date(booking.check_in), 'PPP')}
+                      {format(apiDateToUTC(booking.check_in), 'PPP')}
                     </p>
                     <p>
                       <span className="text-stone-500">Check-out:</span>{' '}
-                      {format(new Date(booking.check_out), 'PPP')}
+                      {format(apiDateToUTC(booking.check_out), 'PPP')}
                     </p>
                     <p>
                       <span className="text-stone-500">Total Price:</span>{' '}
@@ -105,10 +103,10 @@ export function MyBookings() {
                     </a>
                   </div>
                 </div>
-                {(booking.accommodations?.image_url || booking.accommodation_image) && (
+                {booking.accommodation?.image_url && (
                   <img
-                    src={booking.accommodations?.image_url || booking.accommodation_image}
-                    alt={booking.accommodations?.title || booking.accommodation_title}
+                    src={booking.accommodation.image_url}
+                    alt={booking.accommodation.title}
                     className="w-32 h-32 object-cover rounded-lg"
                   />
                 )}
