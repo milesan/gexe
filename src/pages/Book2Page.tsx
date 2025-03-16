@@ -82,6 +82,54 @@ export function Book2Page() {
     isLoading: calendarLoading
   });
 
+  // Helper functions
+  const isFirstOrLastSelected = useCallback((week: Week) => {
+    if (selectedWeeks.length === 0) return false;
+    
+    // For a single selected week, check all possible matching methods
+    if (selectedWeeks.length === 1) {
+      const matchingWeek = selectedWeeks[0];
+      // Check exact date match with normalized dates to avoid timezone issues
+      const dateMatch = isSameDay(normalizeToUTCDate(week.startDate), normalizeToUTCDate(matchingWeek.startDate));
+      // Check ID match for flexible dates
+      const idMatch = Boolean(week.id && matchingWeek.id && week.id === matchingWeek.id);
+      // Check if this is a flexible date within the same week
+      const isFlexibleDateMatch = Boolean(week.flexibleDates?.some(flexDate => 
+        matchingWeek.startDate && isSameDay(normalizeToUTCDate(flexDate), normalizeToUTCDate(matchingWeek.startDate))
+      ));
+      
+      return dateMatch || idMatch || isFlexibleDateMatch;
+    }
+    
+    // For multiple weeks, check if it's the first or last week
+    const firstWeek = selectedWeeks[0];
+    const lastWeek = selectedWeeks[selectedWeeks.length - 1];
+    
+    // Check first week with all matching methods
+    const isFirstMatch = (() => {
+      const dateMatch = isSameDay(normalizeToUTCDate(week.startDate), normalizeToUTCDate(firstWeek.startDate));
+      const idMatch = Boolean(week.id && firstWeek.id && week.id === firstWeek.id);
+      const isFlexibleDateMatch = Boolean(week.flexibleDates?.some(flexDate => 
+        firstWeek.startDate && isSameDay(normalizeToUTCDate(flexDate), normalizeToUTCDate(firstWeek.startDate))
+      ));
+      
+      return dateMatch || idMatch || isFlexibleDateMatch;
+    })();
+    
+    // Check last week with all matching methods
+    const isLastMatch = (() => {
+      const dateMatch = isSameDay(normalizeToUTCDate(week.startDate), normalizeToUTCDate(lastWeek.startDate));
+      const idMatch = Boolean(week.id && lastWeek.id && week.id === lastWeek.id);
+      const isFlexibleDateMatch = Boolean(week.flexibleDates?.some(flexDate => 
+        lastWeek.startDate && isSameDay(normalizeToUTCDate(flexDate), normalizeToUTCDate(lastWeek.startDate))
+      ));
+      
+      return dateMatch || idMatch || isFlexibleDateMatch;
+    })();
+    
+    return isFirstMatch || isLastMatch;
+  }, [selectedWeeks]);
+
   // Handle week selection
   const handleWeekSelect = useCallback((week: Week) => {
     console.log('[Book2Page] Week selected:', {
@@ -97,14 +145,54 @@ export function Book2Page() {
     }
 
     setSelectedWeeks(prev => {
-      const isSelected = prev.some(w => w.startDate.toISOString() === week.startDate.toISOString());
+      // Check if the week is already selected using comprehensive matching
+      const isSelected = prev.some(selectedWeek => {
+        // Check by exact date match (standard case)
+        const dateMatch = isSameDay(normalizeToUTCDate(selectedWeek.startDate), normalizeToUTCDate(week.startDate)) && 
+                         isSameDay(normalizeToUTCDate(selectedWeek.endDate), normalizeToUTCDate(week.endDate));
+        
+        // Check if the ID matches (for custom or flexible dates)
+        const idMatch = Boolean(week.id && selectedWeek.id && week.id === selectedWeek.id);
+        
+        // For flexible dates, we also need to check if the selected week's start date
+        // is one of this week's flexible check-in dates
+        let flexDateMatch = false;
+        
+        if (week.flexibleDates && week.flexibleDates.length > 0 && selectedWeek.startDate) {
+          // Normalize to prevent timezone issues
+          const normalizedSelectedStart = normalizeToUTCDate(selectedWeek.startDate);
+          
+          // Check if the selected week's start date is one of this week's flexible dates
+          flexDateMatch = week.flexibleDates.some(flexDate => 
+            isSameDay(normalizeToUTCDate(flexDate), normalizedSelectedStart)
+          );
+        }
+        
+        return dateMatch || idMatch || flexDateMatch;
+      });
       
       if (isSelected && !isFirstOrLastSelected(week)) {
         return prev;
       }
       
       if (isSelected) {
-        return prev.filter(w => w.startDate.toISOString() !== week.startDate.toISOString());
+        // Remove the week from selection, using the same matching logic
+        return prev.filter(selectedWeek => {
+          const dateMatch = isSameDay(normalizeToUTCDate(selectedWeek.startDate), normalizeToUTCDate(week.startDate)) && 
+                           isSameDay(normalizeToUTCDate(selectedWeek.endDate), normalizeToUTCDate(week.endDate));
+          
+          const idMatch = Boolean(week.id && selectedWeek.id && week.id === selectedWeek.id);
+          
+          let flexDateMatch = false;
+          if (week.flexibleDates && week.flexibleDates.length > 0 && selectedWeek.startDate) {
+            const normalizedSelectedStart = normalizeToUTCDate(selectedWeek.startDate);
+            flexDateMatch = week.flexibleDates.some(flexDate => 
+              isSameDay(normalizeToUTCDate(flexDate), normalizedSelectedStart)
+            );
+          }
+          
+          return !(dateMatch || idMatch || flexDateMatch);
+        });
       }
       
       if (prev.length === 0) {
@@ -116,13 +204,23 @@ export function Book2Page() {
 
       let newWeeks: Week[];
       if (isBefore(week.startDate, earliestDate)) {
-        newWeeks = weeks.filter(w => 
-          w.startDate >= week.startDate && w.startDate <= latestDate
-        );
+        // Get all weeks between the new selection and the current earliest date
+        newWeeks = weeks.filter(w => {
+          // Check if week is between the selected week and the latest selected week
+          return (w.startDate >= week.startDate && w.startDate <= latestDate) || 
+                 // Also include flexible dates that may not match by exact date comparison
+                 (w.id === week.id) || 
+                 prev.some(selectedWeek => selectedWeek.id === w.id);
+        });
       } else if (isAfter(week.startDate, latestDate)) {
-        newWeeks = weeks.filter(w => 
-          w.startDate >= earliestDate && w.startDate <= week.startDate
-        );
+        // Get all weeks between the current latest date and the new selection
+        newWeeks = weeks.filter(w => {
+          // Check if week is between the earliest selected week and the newly selected week
+          return (w.startDate >= earliestDate && w.startDate <= week.startDate) || 
+                 // Also include flexible dates that may not match by exact date comparison
+                 (w.id === week.id) || 
+                 prev.some(selectedWeek => selectedWeek.id === w.id);
+        });
       } else {
         return prev;
       }
@@ -134,14 +232,7 @@ export function Book2Page() {
 
       return newWeeks;
     });
-  }, [isAdminMode, weeks, selectedWeeks]);
-
-  // Helper functions
-  const isFirstOrLastSelected = useCallback((week: Week) => {
-    if (selectedWeeks.length === 0) return false;
-    return week.startDate.toISOString() === selectedWeeks[0].startDate.toISOString() || 
-           week.startDate.toISOString() === selectedWeeks[selectedWeeks.length - 1].startDate.toISOString();
-  }, [selectedWeeks]);
+  }, [isAdminMode, weeks, selectedWeeks, isFirstOrLastSelected]);
 
   /**
    * Handle saving week customization changes
@@ -343,9 +434,9 @@ export function Book2Page() {
       <div className="container mx-auto py-8 px-4">
         <h1 className="text-3xl font-bold mb-8 text-stone-800">Book Your Stay</h1>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Left Column - Calendar */}
-          <div className="md:col-span-2">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column - Calendar and Cabin Selector */}
+          <div className="lg:col-span-2">
             {/* Move admin controls here - above the calendar white box */}
             {isAdmin && (
               <div className="flex justify-end mb-4">
@@ -421,13 +512,6 @@ export function Book2Page() {
                 </div>
               </div>
               
-              <div className="mb-4">
-                <div className="flex items-center text-sm text-stone-600">
-                  <Calendar className="w-4 h-4 mr-1" />
-                  <span>{format(currentMonth, 'MMMM yyyy')}</span>
-                </div>
-              </div>
-              
               {isLoading ? (
                 <div className="h-64 flex items-center justify-center">
                   <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-green-800"></div>
@@ -442,7 +526,7 @@ export function Book2Page() {
               )}
             </div>
             
-            {/* Cabin Selector - Now under the calendar */}
+            {/* Cabin Selector - Under the calendar */}
             <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
               <h2 className="text-xl font-semibold mb-4 text-stone-800">Select Accommodation</h2>
               <CabinSelector 
@@ -460,9 +544,10 @@ export function Book2Page() {
             </div>
           </div>
 
-          {/* Right Column - Booking Summary */}
+          {/* Right Column - Booking Summary (becomes a bottom column on mobile/tablet) */}
           <div>
-            <div className="sticky top-8">
+            {/* Use regular position on small screens and sticky on large screens */}
+            <div className="lg:sticky lg:top-8">
               <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
                 {selectedWeeks.length > 0 ? (
                   <BookingSummary 

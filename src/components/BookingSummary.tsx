@@ -612,9 +612,10 @@ export function BookingSummary({
         )}
       </AnimatePresence>
 
-      <div className="sticky top-4">
-        <div className="bg-white p-8 pixel-corners">
-          <h2 className="text-2xl font-serif font-light text-stone-900 mb-4">
+      {/* Summary of Stay section - Changes from sticky right positioning on mobile to regular flow */}
+      <div className="lg:sticky lg:top-4">
+        <div className="bg-white p-6 lg:p-8 pixel-corners">
+          <h2 className="text-xl lg:text-2xl font-serif font-light text-stone-900 mb-4">
             Summary of Stay
           </h2>
 
@@ -645,22 +646,11 @@ export function BookingSummary({
                   </button>
                 </div>
 
-                <div className="space-y-4">
-                  {/* Timeline visualization - just dots */}
-                  <div className="relative h-1 bg-stone-100 rounded-full mx-4 mb-6">
-                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-emerald-600 border-2 border-white shadow-sm"></div>
-                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-stone-400 border-2 border-white shadow-sm"></div>
-                  </div>
-                
-                  {/* Arrival Information */}
-                  <motion.div 
-                    className="bg-white p-4 rounded-lg border border-emerald-200 shadow-sm"
-                    initial={{ y: 10, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <div className="flex items-center mb-3">
-                      <div className="bg-emerald-100 p-2 rounded-lg mr-3 shadow-sm">
+                <div className="space-y-5">
+                  {/* Arrival Information - Simplified */}
+                  <div className="bg-white border border-emerald-200 rounded-lg shadow-sm">
+                    <div className="p-4 border-b border-emerald-100 flex items-center">
+                      <div className="bg-emerald-100 p-2 rounded-lg mr-3">
                         <ArrowRight className="w-4 h-4 text-emerald-700" />
                       </div>
                       <div>
@@ -669,33 +659,23 @@ export function BookingSummary({
                       </div>
                     </div>
                     
-                    <div className="ml-11 mt-3 bg-stone-50 p-3 rounded-lg border border-stone-100">
+                    <div className="p-4 bg-stone-50">
                       <div className="flex items-center">
-                        <Clock className="w-4 h-4 text-emerald-600 mr-2" />
+                        <div className="bg-emerald-100 p-2 rounded-lg mr-3">
+                          <Clock className="w-4 h-4 text-emerald-600" />
+                        </div>
                         <div>
-                          <span className="text-stone-800 font-medium">Check-in Time</span>
-                          <p className="text-stone-600 text-sm">3PM-8PM</p>
+                          <h4 className="font-medium text-stone-800">Arrival between</h4>
+                          <p className="text-emerald-700 text-sm">3PM-8PM</p>
                         </div>
                       </div>
                     </div>
-                  </motion.div>
-                  
-                  {/* Container Message */}
-                  <div className="bg-amber-50 p-3 rounded-lg border border-amber-100 text-center">
-                    <p className="text-amber-800 text-sm">
-                      To ensure a smooth arrival, please respect the check-in window (3PM-8PM) and check-out time (12PM)
-                    </p>
                   </div>
                   
-                  {/* Departure Information */}
-                  <motion.div 
-                    className="bg-white p-4 rounded-lg border border-stone-200 shadow-sm"
-                    initial={{ y: 10, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ duration: 0.3, delay: 0.1 }}
-                  >
-                    <div className="flex items-center mb-3">
-                      <div className="bg-stone-100 p-2 rounded-lg mr-3 shadow-sm">
+                  {/* Departure Information - Simplified */}
+                  <div className="bg-white border border-stone-200 rounded-lg shadow-sm">
+                    <div className="p-4 border-b border-stone-100 flex items-center">
+                      <div className="bg-stone-100 p-2 rounded-lg mr-3">
                         <LogOut className="w-4 h-4 text-stone-700" />
                       </div>
                       <div>
@@ -704,27 +684,45 @@ export function BookingSummary({
                       </div>
                     </div>
                     
-                    <div className="ml-11 mt-3 bg-stone-50 p-3 rounded-lg border border-stone-100">
+                    <div className="p-4 bg-stone-50">
                       <div className="flex items-center">
-                        <Clock className="w-4 h-4 text-stone-600 mr-2" />
+                        <div className="bg-stone-100 p-2 rounded-lg mr-3">
+                          <Clock className="w-4 h-4 text-stone-600" />
+                        </div>
                         <div>
-                          <span className="text-stone-800 font-medium">Check-out Time</span>
+                          <h4 className="font-medium text-stone-800">Begone by</h4>
                           <p className="text-stone-600 text-sm">12:00PM Noon</p>
                         </div>
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
                   
-                  {/* Duration */}
-                  <div className="flex justify-between items-center bg-emerald-50 p-3 rounded-lg border border-emerald-100 mt-3">
-                    <div className="flex items-center">
-                      <Home className="w-4 h-4 text-emerald-600 mr-2" />
-                      <span className="text-emerald-800 font-medium">Total Stay</span>
+                  {/* Duration - Simplified */}
+                  <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-100">
+                    {/* On larger screens, display horizontally */}
+                    <div className="hidden xl:flex xl:justify-between xl:items-center">
+                      <div className="flex items-center">
+                        <div className="bg-emerald-100 p-2 rounded-lg mr-3">
+                          <Home className="w-4 h-4 text-emerald-600" />
+                        </div>
+                        <h4 className="font-medium text-stone-800">Total Stay</h4>
+                      </div>
+                      <div>
+                        <span className="text-emerald-800 font-medium">
+                          {pricing.totalNights} nights
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center">
-                      <span className="bg-white text-emerald-800 font-medium px-3 py-1 rounded-full border border-emerald-200">
-                        {pricing.totalNights} nights
-                      </span>
+                    
+                    {/* On smaller screens, display vertically */}
+                    <div className="flex items-center xl:hidden">
+                      <div className="bg-emerald-100 p-2 rounded-lg mr-3 flex-shrink-0 self-start mt-1">
+                        <Home className="w-4 h-4 text-emerald-600" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-stone-800">Total Stay</h4>
+                        <p className="text-emerald-700 text-sm">{pricing.totalNights} nights</p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -789,22 +787,23 @@ export function BookingSummary({
                       <div className="bg-emerald-100 p-1.5 rounded-lg mr-2">
                         <Percent className="w-4 h-4 text-emerald-700" />
                       </div>
-                      <h3 className="font-medium text-stone-800">Your Discounts</h3>
+                      <h3 className="font-medium text-stone-800">Discounts</h3>
                     </div>
-                    <div className="flex items-center">
-                      <span className="text-emerald-700 font-medium mr-2">
+                    <div className="flex items-center ml-2">
+                      {/* Only show descriptive text on screens >= 1280px */}
+                      <span className="hidden xl:inline text-emerald-700 font-medium mr-2 text-right">
                         {seasonBreakdown?.hasMultipleSeasons 
-                          ? 'Multiple Seasons' 
+                          ? 'Seasonal' 
                           : pricing.seasonalDiscount > 0 && pricing.durationDiscountAmount > 0 
-                            ? 'Multiple Savings' 
+                            ? 'Multiple' 
                             : pricing.seasonalDiscount > 0 
-                              ? `${Math.round(pricing.seasonalDiscount * 100)}% Seasonal` 
-                              : `${formatNumber(pricing.durationDiscountPercent)}% Duration`}
+                              ? `${Math.round(pricing.seasonalDiscount * 100)}%` 
+                              : `${formatNumber(pricing.durationDiscountPercent)}%`}
                       </span>
                       {showDiscountDetails ? (
-                        <ChevronUp className="w-4 h-4 text-stone-500" />
+                        <ChevronUp className="w-4 h-4 text-stone-500 flex-shrink-0" />
                       ) : (
-                        <ChevronDown className="w-4 h-4 text-stone-500" />
+                        <ChevronDown className="w-4 h-4 text-stone-500 flex-shrink-0" />
                       )}
                     </div>
                   </button>
@@ -836,15 +835,15 @@ export function BookingSummary({
                                     return getSeasonOrder(a) - getSeasonOrder(b);
                                   })
                                   .map((season, index) => (
-                                    <div key={index} className="flex justify-between items-center text-sm">
+                                    <div key={index} className="xl:flex xl:justify-between xl:items-center">
                                       <div className="flex items-center">
-                                        <div className={`w-2 h-2 rounded-full mr-2 ${
+                                        <div className={`w-2 h-2 rounded-full mr-2 flex-shrink-0 ${
                                           season.name === 'High Season' ? 'bg-amber-500' : 
                                           season.name === 'Shoulder Season' ? 'bg-amber-300' : 'bg-amber-200'
                                         }`}></div>
-                                        <span className="text-amber-800">{season.name === 'High Season' ? 'Summer Season' : season.name}</span>
+                                        <span className="text-amber-800 text-sm">{season.name === 'High Season' ? 'Summer Season' : season.name}</span>
                                       </div>
-                                      <div className="text-amber-800">
+                                      <div className="text-amber-800 text-sm xl:text-right mt-1 xl:mt-0 ml-4 xl:ml-0">
                                         <span className="font-medium">{season.nights} {season.nights === 1 ? 'night' : 'nights'}</span>
                                         {season.discount > 0 && (
                                           <span className="ml-1 text-xs">({Math.round(season.discount * 100)}% off)</span>
@@ -859,9 +858,9 @@ export function BookingSummary({
                           {/* Seasonal Discount - only show if not multiple seasons */}
                           {!seasonBreakdown?.hasMultipleSeasons && pricing.seasonalDiscount > 0 && selectedAccommodation && selectedAccommodation.base_price > 0 && (
                             <div className="bg-emerald-50 p-3 rounded-lg">
-                              <div className="flex justify-between items-center">
+                              <div className="xl:flex xl:justify-between xl:items-center">
                                 <h4 className="font-medium text-emerald-800 text-sm">Seasonal Discount</h4>
-                                <span className="text-emerald-800 font-medium text-sm">{Math.round(pricing.seasonalDiscount * 100)}% off</span>
+                                <span className="text-emerald-800 font-medium text-sm block xl:inline-block mt-1 xl:mt-0">{Math.round(pricing.seasonalDiscount * 100)}% off</span>
                               </div>
                               <p className="text-xs text-emerald-700 mt-1">
                                 You're booking during {pricing.seasonName}, which offers a discount on accommodation.
@@ -872,9 +871,9 @@ export function BookingSummary({
                           {/* Duration Discount */}
                           {pricing.durationDiscountAmount > 0 && (
                             <div className="bg-blue-50 p-3 rounded-lg">
-                              <div className="flex justify-between items-center">
+                              <div className="xl:flex xl:justify-between xl:items-center">
                                 <h4 className="font-medium text-blue-800 text-sm">Duration Discount</h4>
-                                <span className="text-blue-800 font-medium text-sm">
+                                <span className="text-blue-800 font-medium text-sm block xl:inline-block mt-1 xl:mt-0">
                                   {formatNumber(pricing.durationDiscountPercent)}% off
                                 </span>
                               </div>
@@ -889,9 +888,9 @@ export function BookingSummary({
                           )}
                           
                           {/* Total Savings */}
-                          <div className="flex justify-between items-center px-2">
+                          <div className="xl:flex xl:justify-between xl:items-center px-2">
                             <span className="text-stone-600 text-sm">Total savings</span>
-                            <span className="text-emerald-700 font-medium">
+                            <span className="text-emerald-700 font-medium block xl:inline-block mt-1 xl:mt-0">
                               €{(pricing.accommodationDiscountAmount + pricing.durationDiscountAmount).toFixed(2)}
                             </span>
                           </div>
@@ -941,7 +940,6 @@ export function BookingSummary({
                         {/* Simple slider with labels */}
                         <div className="flex justify-between text-xs text-stone-600 mb-2">
                           <span>€{pricing.totalNights <= 6 ? '345' : '240'}</span>
-                          <span>€{pricing.totalNights <= 6 ? '368' : '315'}</span>
                           <span>€390</span>
                         </div>
                         
@@ -960,46 +958,11 @@ export function BookingSummary({
                           className="w-full h-2 bg-emerald-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
                         />
                         
-                        {/* Labels for the preset options */}
+                        {/* Display only the min/max values */}
                         <div className="flex justify-between text-xs text-stone-600 mt-2">
-                          <span>Subsidized</span>
-                          <span>Standard</span>
-                          <span>Supporter</span>
+                          <span>€{pricing.totalNights <= 6 ? '345' : '240'}</span>
+                          <span>€390</span>
                         </div>
-                      </div>
-                      
-                      {/* Quick selection buttons */}
-                      <div className="flex justify-between gap-2 mb-4">
-                        <button 
-                          onClick={() => setFoodContribution(pricing.totalNights <= 6 ? 345 : 240)}
-                          className={`text-xs py-1.5 rounded-full transition-colors flex-1 ${
-                            foodContribution === (pricing.totalNights <= 6 ? 345 : 240) 
-                              ? 'bg-emerald-600 text-white' 
-                              : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
-                          }`}
-                        >
-                          Subsidized
-                        </button>
-                        <button 
-                          onClick={() => setFoodContribution(pricing.totalNights <= 6 ? 368 : 315)}
-                          className={`text-xs py-1.5 rounded-full transition-colors flex-1 ${
-                            foodContribution === (pricing.totalNights <= 6 ? 368 : 315) 
-                              ? 'bg-emerald-600 text-white' 
-                              : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
-                          }`}
-                        >
-                          Standard
-                        </button>
-                        <button 
-                          onClick={() => setFoodContribution(390)}
-                          className={`text-xs py-1.5 rounded-full transition-colors flex-1 ${
-                            foodContribution === 390 
-                              ? 'bg-emerald-600 text-white' 
-                              : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
-                          }`}
-                        >
-                          Supporter
-                        </button>
                       </div>
                       
                       <div className="text-xs text-stone-600 bg-stone-100 p-4 rounded-lg border border-stone-200">

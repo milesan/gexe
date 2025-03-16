@@ -104,6 +104,13 @@ export function ConfirmationPage() {
             </div>
           </div>
 
+          <div className="bg-amber-50 p-4 rounded-lg border border-amber-100 my-6">
+            <p className="text-amber-800 text-center flex items-center justify-center">
+              <Calendar className="w-4 h-4 mr-2 flex-shrink-0" />
+              To ensure a smooth arrival, please respect the check-in window (3PM-8PM) and check-out time (12PM)
+            </p>
+          </div>
+
           <div className="border-t border-stone-200 pt-6">
             <div className="flex justify-between items-center text-lg font-display">
               <span>Total Amount Paid</span>
