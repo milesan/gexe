@@ -29,7 +29,10 @@ export function FlexibleCheckInModal({ week, isOpen, onClose, onDateSelect }: Pr
   if (!isOpen || !week.flexibleDates?.length) return null;
 
   // Normalize dates once at the component level
-  const normalizedFlexDates = week.flexibleDates.map(date => normalizeToUTCDate(date));
+  const normalizedFlexDates = week.flexibleDates
+    .map(date => normalizeToUTCDate(date))
+    // Sort the dates chronologically 
+    .sort((a, b) => a.getTime() - b.getTime());
 
   const handleDateSelect = (date: Date) => {
     const normalizedDate = normalizeToUTCDate(date);
