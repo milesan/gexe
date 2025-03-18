@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Home } from 'lucide-react';
 import { isSameWeek, addWeeks, isAfter, isBefore, startOfMonth, format, addMonths, subMonths, startOfDay, isSameDay, addDays, eachDayOfInterval, differenceInDays } from 'date-fns';
 import { WeekSelector } from '../components/WeekSelector';
 import { formatDateForDisplay, normalizeToUTCDate, doDateRangesOverlap } from '../utils/dates';
@@ -17,6 +17,7 @@ import { Week, WeekStatus } from '../types/calendar';
 import { CalendarService } from '../services/CalendarService';
 import { CalendarConfigButton } from '../components/admin/CalendarConfigButton';
 import { getSeasonalDiscount } from '../utils/pricing';
+import { areSameWeeks } from '../utils/dates';
 
 const DESKTOP_WEEKS = 16;
 const MOBILE_WEEKS = 12;
@@ -44,7 +45,11 @@ export function Book2Page() {
   const [seasonBreakdown, setSeasonBreakdown] = useState<SeasonBreakdown | undefined>(undefined);
 
   const session = useSession();
-  const isAdmin = session?.user?.email === 'andre@thegarden.pt' || session?.user?.email === 'redis213@gmail.com';
+  const isAdmin = session?.user?.email === 'andre@thegarden.pt' ||
+    session?.user?.email === 'redis213@gmail.com' ||
+    session?.user?.email === 'dawn@thegarden.pt' ||
+    session?.user?.email === 'simone@thegarden.pt' ||
+    session?.user?.email === 'samjlloa@gmail.com';
   const isMobile = window.innerWidth < 768;
 
   // Calculate end date based on current month and device type
@@ -83,60 +88,32 @@ export function Book2Page() {
   });
 
   // Helper functions
+  const isFirstOrLastSelectedHelper = useCallback((week: Week, currentSelection: Week[]) => {
+    if (!currentSelection || currentSelection.length === 0) return false;
+    
+    // Get first and last selected weeks
+    const firstWeek = currentSelection[0];
+    const lastWeek = currentSelection[currentSelection.length - 1];
+    
+    // Use our consistent comparison helper
+    return areSameWeeks(week, firstWeek) || areSameWeeks(week, lastWeek);
+  }, []);
+  
+  // Original isFirstOrLastSelected function that uses the helper
   const isFirstOrLastSelected = useCallback((week: Week) => {
-    if (selectedWeeks.length === 0) return false;
-    
-    // For a single selected week, check all possible matching methods
-    if (selectedWeeks.length === 1) {
-      const matchingWeek = selectedWeeks[0];
-      // Check exact date match with normalized dates to avoid timezone issues
-      const dateMatch = isSameDay(normalizeToUTCDate(week.startDate), normalizeToUTCDate(matchingWeek.startDate));
-      // Check ID match for flexible dates
-      const idMatch = Boolean(week.id && matchingWeek.id && week.id === matchingWeek.id);
-      // Check if this is a flexible date within the same week
-      const isFlexibleDateMatch = Boolean(week.flexibleDates?.some(flexDate => 
-        matchingWeek.startDate && isSameDay(normalizeToUTCDate(flexDate), normalizeToUTCDate(matchingWeek.startDate))
-      ));
-      
-      return dateMatch || idMatch || isFlexibleDateMatch;
-    }
-    
-    // For multiple weeks, check if it's the first or last week
-    const firstWeek = selectedWeeks[0];
-    const lastWeek = selectedWeeks[selectedWeeks.length - 1];
-    
-    // Check first week with all matching methods
-    const isFirstMatch = (() => {
-      const dateMatch = isSameDay(normalizeToUTCDate(week.startDate), normalizeToUTCDate(firstWeek.startDate));
-      const idMatch = Boolean(week.id && firstWeek.id && week.id === firstWeek.id);
-      const isFlexibleDateMatch = Boolean(week.flexibleDates?.some(flexDate => 
-        firstWeek.startDate && isSameDay(normalizeToUTCDate(flexDate), normalizeToUTCDate(firstWeek.startDate))
-      ));
-      
-      return dateMatch || idMatch || isFlexibleDateMatch;
-    })();
-    
-    // Check last week with all matching methods
-    const isLastMatch = (() => {
-      const dateMatch = isSameDay(normalizeToUTCDate(week.startDate), normalizeToUTCDate(lastWeek.startDate));
-      const idMatch = Boolean(week.id && lastWeek.id && week.id === lastWeek.id);
-      const isFlexibleDateMatch = Boolean(week.flexibleDates?.some(flexDate => 
-        lastWeek.startDate && isSameDay(normalizeToUTCDate(flexDate), normalizeToUTCDate(lastWeek.startDate))
-      ));
-      
-      return dateMatch || idMatch || isFlexibleDateMatch;
-    })();
-    
-    return isFirstMatch || isLastMatch;
-  }, [selectedWeeks]);
+    return isFirstOrLastSelectedHelper(week, selectedWeeks);
+  }, [selectedWeeks, isFirstOrLastSelectedHelper]);
 
-  // Handle week selection
+  // Main handleWeekSelect function simplified
   const handleWeekSelect = useCallback((week: Week) => {
-    console.log('[Book2Page] Week selected:', {
-      weekStartDate: formatDateForDisplay(week.startDate),
-      weekEndDate: formatDateForDisplay(week.endDate),
-      isAdminMode,
-      currentSelectedWeeks: selectedWeeks.length
+    console.log('[Book2Page] Handling week selection:', {
+      weekId: week.id,
+      weekStart: formatDateForDisplay(week.startDate),
+      weekEnd: formatDateForDisplay(week.endDate),
+      isCustom: week.isCustom,
+      selectedWeeksCount: selectedWeeks?.length || 0,
+      hasFlexDate: !!week.selectedFlexDate,
+      flexDate: week.selectedFlexDate ? formatDateForDisplay(week.selectedFlexDate) : null
     });
 
     if (isAdminMode) {
@@ -145,94 +122,182 @@ export function Book2Page() {
     }
 
     setSelectedWeeks(prev => {
-      // Check if the week is already selected using comprehensive matching
-      const isSelected = prev.some(selectedWeek => {
-        // Check by exact date match (standard case)
-        const dateMatch = isSameDay(normalizeToUTCDate(selectedWeek.startDate), normalizeToUTCDate(week.startDate)) && 
-                         isSameDay(normalizeToUTCDate(selectedWeek.endDate), normalizeToUTCDate(week.endDate));
-        
-        // Check if the ID matches (for custom or flexible dates)
-        const idMatch = Boolean(week.id && selectedWeek.id && week.id === selectedWeek.id);
-        
-        // For flexible dates, we also need to check if the selected week's start date
-        // is one of this week's flexible check-in dates
-        let flexDateMatch = false;
-        
-        if (week.flexibleDates && week.flexibleDates.length > 0 && selectedWeek.startDate) {
-          // Normalize to prevent timezone issues
-          const normalizedSelectedStart = normalizeToUTCDate(selectedWeek.startDate);
-          
-          // Check if the selected week's start date is one of this week's flexible dates
-          flexDateMatch = week.flexibleDates.some(flexDate => 
-            isSameDay(normalizeToUTCDate(flexDate), normalizedSelectedStart)
-          );
-        }
-        
-        return dateMatch || idMatch || flexDateMatch;
-      });
+      // Safety check - if prev is undefined, initialize as empty array
+      const currentSelection = prev || [];
       
-      if (isSelected && !isFirstOrLastSelected(week)) {
-        return prev;
+      // Add detailed logging to show current selection state
+      if (currentSelection.length > 0) {
+        console.log('[Book2Page] Current selection details:', currentSelection.map((w, idx) => ({
+          position: idx,
+          id: w.id,
+          start: formatDateForDisplay(w.startDate),
+          end: formatDateForDisplay(w.endDate),
+          hasFlexDate: !!w.selectedFlexDate,
+          flexDate: w.selectedFlexDate ? formatDateForDisplay(w.selectedFlexDate) : null
+        })));
       }
       
+      // Check if already selected using our consistent helper
+      const isSelected = currentSelection.some(selectedWeek => 
+        areSameWeeks(week, selectedWeek)
+      );
+      
+      // If selected and not first/last, do nothing
+      if (isSelected && !isFirstOrLastSelectedHelper(week, currentSelection)) {
+        return currentSelection;
+      }
+      
+      // If selected, remove it
       if (isSelected) {
-        // Remove the week from selection, using the same matching logic
-        return prev.filter(selectedWeek => {
-          const dateMatch = isSameDay(normalizeToUTCDate(selectedWeek.startDate), normalizeToUTCDate(week.startDate)) && 
-                           isSameDay(normalizeToUTCDate(selectedWeek.endDate), normalizeToUTCDate(week.endDate));
-          
-          const idMatch = Boolean(week.id && selectedWeek.id && week.id === selectedWeek.id);
-          
-          let flexDateMatch = false;
-          if (week.flexibleDates && week.flexibleDates.length > 0 && selectedWeek.startDate) {
-            const normalizedSelectedStart = normalizeToUTCDate(selectedWeek.startDate);
-            flexDateMatch = week.flexibleDates.some(flexDate => 
-              isSameDay(normalizeToUTCDate(flexDate), normalizedSelectedStart)
-            );
-          }
-          
-          return !(dateMatch || idMatch || flexDateMatch);
-        });
+        return currentSelection.filter(selectedWeek => 
+          !areSameWeeks(week, selectedWeek)
+        );
       }
       
-      if (prev.length === 0) {
+      // If first selection, just return the new week
+      if (currentSelection.length === 0) {
         return [week];
       }
 
-      const earliestDate = prev[0].startDate;
-      const latestDate = prev[prev.length - 1].startDate;
+      // Handle range selection - get earliest and latest dates
+      const earliestDate = currentSelection[0].startDate;
+      const latestDate = currentSelection[currentSelection.length - 1].startDate;
 
       let newWeeks: Week[];
+      
+      // If selecting a week before the earliest selected week
       if (isBefore(week.startDate, earliestDate)) {
-        // Get all weeks between the new selection and the current earliest date
-        newWeeks = weeks.filter(w => {
-          // Check if week is between the selected week and the latest selected week
-          return (w.startDate >= week.startDate && w.startDate <= latestDate) || 
-                 // Also include flexible dates that may not match by exact date comparison
-                 (w.id === week.id) || 
-                 prev.some(selectedWeek => selectedWeek.id === w.id);
+        // First, get all weeks in the range
+        const weeksInRange = weeks.filter(w => 
+          (w.startDate >= week.startDate && w.startDate <= latestDate) || 
+          areSameWeeks(w, week) ||
+          currentSelection.some(sw => areSameWeeks(w, sw))
+        );
+        
+        // Then, build a new array using current selection for already selected weeks
+        newWeeks = weeksInRange.map(w => {
+          // For newly selected weeks that aren't the current week, just use them as-is
+          if (!areSameWeeks(w, week) && !currentSelection.some(sw => areSameWeeks(w, sw))) {
+            return w;
+          }
+          
+          // For the newly clicked week, use the week parameter directly
+          if (areSameWeeks(w, week)) {
+            return week;
+          }
+          
+          // For already selected weeks, return the exact same object from current selection
+          // to preserve any properties like selectedFlexDate
+          const matchingWeek = currentSelection.find(sw => areSameWeeks(w, sw));
+          if (matchingWeek) {
+            return matchingWeek;
+          }
+          
+          // Fallback (shouldn't happen)
+          return w;
         });
-      } else if (isAfter(week.startDate, latestDate)) {
-        // Get all weeks between the current latest date and the new selection
-        newWeeks = weeks.filter(w => {
-          // Check if week is between the earliest selected week and the newly selected week
-          return (w.startDate >= earliestDate && w.startDate <= week.startDate) || 
-                 // Also include flexible dates that may not match by exact date comparison
-                 (w.id === week.id) || 
-                 prev.some(selectedWeek => selectedWeek.id === w.id);
+      } 
+      // If selecting a week after the latest selected week
+      else if (isAfter(week.startDate, latestDate)) {
+        // First, get all weeks in the range
+        const weeksInRange = weeks.filter(w => 
+          (w.startDate >= earliestDate && w.startDate <= week.startDate) || 
+          areSameWeeks(w, week) ||
+          currentSelection.some(sw => areSameWeeks(w, sw))
+        );
+        
+        // Then, build a new array using current selection for already selected weeks
+        newWeeks = weeksInRange.map(w => {
+          // For newly selected weeks that aren't the current week, just use them as-is
+          if (!areSameWeeks(w, week) && !currentSelection.some(sw => areSameWeeks(w, sw))) {
+            return w;
+          }
+          
+          // For the newly clicked week, use the week parameter directly
+          if (areSameWeeks(w, week)) {
+            return week;
+          }
+          
+          // For already selected weeks, return the exact same object from current selection
+          // to preserve any properties like selectedFlexDate
+          const matchingWeek = currentSelection.find(sw => areSameWeeks(w, sw));
+          if (matchingWeek) {
+            return matchingWeek;
+          }
+          
+          // Fallback (shouldn't happen)
+          return w;
         });
-      } else {
-        return prev;
+      } 
+      // If selecting a week in the middle, don't change the selection
+      else {
+        return currentSelection;
       }
 
+      // Add detailed logging to show new selection
+      console.log('[Book2Page] New selection details:', newWeeks.map((w, idx) => ({
+        position: idx,
+        id: w.id,
+        start: formatDateForDisplay(w.startDate),
+        end: formatDateForDisplay(w.endDate),
+        hasFlexDate: !!w.selectedFlexDate,
+        flexDate: w.selectedFlexDate ? formatDateForDisplay(w.selectedFlexDate) : null
+      })));
+
+      // Check if we've exceeded the maximum number of allowed weeks
       if (newWeeks.length > 12) {
         setShowMaxWeeksModal(true);
-        return prev;
+        return currentSelection;
       }
 
       return newWeeks;
     });
-  }, [isAdminMode, weeks, selectedWeeks, isFirstOrLastSelected]);
+  }, [isAdminMode, weeks, isFirstOrLastSelectedHelper, selectedWeeks]);
+
+  // New handler for deselecting multiple weeks at once
+  const handleWeeksDeselect = useCallback((weeksToDeselect: Week[]) => {
+    console.log('[Book2Page] Handling batch week deselection:', {
+      count: weeksToDeselect.length,
+      weeks: weeksToDeselect.map(w => ({
+        id: w.id,
+        start: formatDateForDisplay(w.startDate),
+        end: formatDateForDisplay(w.endDate)
+      }))
+    });
+
+    // Filter out all the weeks to deselect in one batch operation
+    setSelectedWeeks(prev => {
+      // Safety check - if prev is undefined, initialize as empty array
+      const currentSelection = prev || [];
+      
+      // If nothing to deselect, return unchanged
+      if (weeksToDeselect.length === 0) return currentSelection;
+      
+      // Filter out all weeks that should be deselected
+      return currentSelection.filter(selectedWeek => 
+        !weeksToDeselect.some(weekToDeselect => 
+          areSameWeeks(weekToDeselect, selectedWeek)
+        )
+      );
+    });
+  }, [setSelectedWeeks]);
+
+  /**
+   * Handle clearing all selected weeks at once
+   * 
+   * This leverages the existing handleWeeksDeselect function to clear everything in one operation.
+   * It's attached to the Clear Selection button in the WeekSelector component.
+   */
+  const handleClearSelection = useCallback(() => {
+    console.log('[Book2Page] Clearing all selected weeks:', {
+      count: selectedWeeks.length
+    });
+    
+    // Simply pass all selected weeks to our existing deselection handler
+    if (selectedWeeks.length > 0) {
+      handleWeeksDeselect(selectedWeeks);
+    }
+  }, [handleWeeksDeselect, selectedWeeks]);
 
   /**
    * Handle saving week customization changes
@@ -422,6 +487,60 @@ export function Book2Page() {
     }
   }, [selectedWeeks, calculateSeasonBreakdown]);
 
+  // Fix the isWeekSelected function to safely handle undefined selectedWeeks
+  const isWeekSelected = useCallback((week: Week) => {
+    if (!selectedWeeks || selectedWeeks.length === 0) return false;
+    
+    return selectedWeeks.some(selectedWeek => areSameWeeks(week, selectedWeek));
+  }, [selectedWeeks]);
+
+  // FlexibleCheckInModal needs to pass both the week and the selected date
+  const handleFlexDateSelect = useCallback((date: Date, week: Week) => {
+    console.log('[Book2Page] handleFlexDateSelect called with:', {
+      date: formatDateForDisplay(date),
+      weekId: week?.id,
+      weekStart: week ? formatDateForDisplay(week.startDate) : null,
+      weekEnd: week ? formatDateForDisplay(week.endDate) : null
+    });
+    
+    if (!week) {
+      console.error('[Book2Page] No week provided to handleFlexDateSelect');
+      return;
+    }
+    
+    // Always create a new week with the selected date as the start date
+    // but preserve end date and ID from the original week
+    const selectedWeek: Week = {
+      ...week,
+      startDate: date, // ALWAYS use the selected flex date as start date
+      endDate: week.endDate,
+      id: week.id,
+      isCustom: true, // Ensure it's marked as custom
+      isFlexibleSelection: true, // Flag to indicate this is a flexible selection
+      flexibleDates: week.flexibleDates, // Preserve the flex dates array for reference
+      // Mark the originally selected flex date for UI purposes
+      selectedFlexDate: date 
+    };
+    
+    console.log('[Book2Page] Created flexible week:', {
+      weekId: selectedWeek.id,
+      weekStart: formatDateForDisplay(selectedWeek.startDate),
+      weekEnd: formatDateForDisplay(selectedWeek.endDate),
+      isCustom: selectedWeek.isCustom,
+      isFlexibleSelection: selectedWeek.isFlexibleSelection,
+      selectedFlexDate: formatDateForDisplay(selectedWeek.selectedFlexDate!)
+    });
+    
+    // Use a direct state update for the first selection to avoid any stale closures
+    if (selectedWeeks.length === 0) {
+      console.log('[Book2Page] Direct state update for first flex date selection');
+      setSelectedWeeks([selectedWeek]);
+    } else {
+      // For subsequent selections, use the normal handler
+      handleWeekSelect(selectedWeek);
+    }
+  }, [handleWeekSelect, selectedWeeks.length]);
+
   return (
     <div 
       className="min-h-screen tree-pattern"
@@ -495,20 +614,38 @@ export function Book2Page() {
             <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-semibold text-stone-800">Select Your Dates</h2>
-                <div className="flex gap-2">
-                  {/* Only navigation buttons now */}
-                  <button 
-                    className="p-2 rounded-full hover:bg-gray-100"
-                    onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-                  >
-                    <ChevronLeft className="h-5 w-5 text-stone-600" />
-                  </button>
-                  <button 
-                    className="p-2 rounded-full hover:bg-gray-100"
-                    onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-                  >
-                    <ChevronRight className="h-5 w-5 text-stone-600" />
-                  </button>
+                <div className="grid grid-cols-[40px_40px_auto_40px] items-center" style={{ minWidth: "280px" }}>
+                  <div className="flex justify-start">
+                    <button 
+                      className="p-2 rounded-full hover:bg-gray-100 text-emerald-600"
+                      onClick={() => setCurrentMonth(startOfMonth(new Date()))}
+                      aria-label="Return to current month"
+                      title="Return to today"
+                    >
+                      <Home className="h-5 w-5" />
+                    </button>
+                  </div>
+                  <div className="flex justify-start">
+                    <button 
+                      className="p-2 rounded-full hover:bg-gray-100"
+                      onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+                      aria-label="Previous month"
+                    >
+                      <ChevronLeft className="h-5 w-5 text-stone-600" />
+                    </button>
+                  </div>
+                  <div className="text-center text-stone-700 font-medium whitespace-nowrap px-1">
+                    {format(currentMonth, 'MMMM yyyy')}
+                  </div>
+                  <div className="flex justify-end">
+                    <button 
+                      className="p-2 rounded-full hover:bg-gray-100"
+                      onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+                      aria-label="Next month"
+                    >
+                      <ChevronRight className="h-5 w-5 text-stone-600" />
+                    </button>
+                  </div>
                 </div>
               </div>
               
@@ -521,7 +658,10 @@ export function Book2Page() {
                   weeks={weeks}
                   selectedWeeks={selectedWeeks}
                   onWeekSelect={handleWeekSelect}
+                  onWeeksDeselect={handleWeeksDeselect}
+                  onClearSelection={handleClearSelection}
                   isAdmin={isAdminMode}
+                  onDateSelect={handleFlexDateSelect}
                 />
               )}
             </div>

@@ -156,7 +156,7 @@ export default function App() {
               <Route
                 path="/*"
                 element={<Navigate to="/" replace />}
-              />
+              /> 
             </Routes>
           </Router>
         </ThemeProvider>
@@ -165,7 +165,11 @@ export default function App() {
   }
 
   // Get user metadata with proper type checking
-  const isAdmin = session?.user?.email === 'andre@thegarden.pt' || session?.user?.email === 'redis213@gmail.com';
+  const isAdmin = session?.user?.email === 'andre@thegarden.pt' ||
+    session?.user?.email === 'redis213@gmail.com' ||
+    session?.user?.email === 'dawn@thegarden.pt' ||
+    session?.user?.email === 'simone@thegarden.pt' ||
+    session?.user?.email === 'samjlloa@gmail.com';
   const hasApplied = session?.user?.user_metadata?.has_applied === true;
   const isWhitelistedUser = session?.user?.user_metadata?.is_whitelisted === true;
   const hasCompletedWhitelistSignup = session?.user?.user_metadata?.has_completed_whitelist_signup === true;

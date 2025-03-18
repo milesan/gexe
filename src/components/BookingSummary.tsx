@@ -14,6 +14,7 @@ import { useSession } from '../hooks/useSession';
 import { DayPicker } from 'react-day-picker';
 import type { DayPickerSingleProps } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
+import { formatDateForDisplay } from '../utils/dates';
 
 // Define the season breakdown type
 export interface SeasonBreakdown {
@@ -333,7 +334,11 @@ export function BookingSummary({
   const { getArrivalDepartureForDate } = useSchedulingRules();
   const navigate = useNavigate();
   const session = useSession();
-  const isAdmin = session?.user?.email === 'andre@thegarden.pt' || session?.user?.email === 'redis213@gmail.com';
+  const isAdmin = session?.user?.email === 'andre@thegarden.pt' ||
+    session?.user?.email === 'redis213@gmail.com' ||
+    session?.user?.email === 'dawn@thegarden.pt' ||
+    session?.user?.email === 'simone@thegarden.pt' ||
+    session?.user?.email === 'samjlloa@gmail.com';
 
   // Get flexible dates from the first week if available
   const flexibleDates = selectedWeeks[0]?.flexibleDates;
@@ -342,16 +347,22 @@ export function BookingSummary({
   // Calculate pricing details
   const pricing = calculatePricing(selectedWeeks, selectedAccommodation, baseRate, seasonBreakdown, foodContribution);
 
-  // If no flexible dates are available, use the first week's start date
+  // Always update the check-in date when selectedWeeks changes
   useEffect(() => {
     if (selectedWeeks.length > 0) {
-      if (!hasFlexibleDates || !selectedCheckInDate) {
+      // Check if the first week has a selectedFlexDate property (from flexible check-in)
+      if (selectedWeeks[0].selectedFlexDate) {
+        console.log('[BookingSummary] Using selectedFlexDate from first week:', formatDateForDisplay(selectedWeeks[0].selectedFlexDate));
+        setSelectedCheckInDate(selectedWeeks[0].selectedFlexDate);
+      } else {
+        // Otherwise use the week's start date
+        console.log('[BookingSummary] Using default start date from first week:', formatDateForDisplay(selectedWeeks[0].startDate));
         setSelectedCheckInDate(selectedWeeks[0].startDate);
       }
     } else {
       setSelectedCheckInDate(null);
     }
-  }, [selectedWeeks, hasFlexibleDates, selectedCheckInDate]);
+  }, [selectedWeeks]); // Only depend on selectedWeeks changing
 
   // Initialize food contribution based on number of nights
   useEffect(() => {
