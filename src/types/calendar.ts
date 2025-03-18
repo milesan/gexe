@@ -36,6 +36,7 @@ export interface Week {
     isEdgeWeek?: boolean;
     flexibleDates?: Date[];
     isFlexibleSelection?: boolean;
+    selectedFlexDate?: Date;
 }
 
 export interface FlexibleCheckin {

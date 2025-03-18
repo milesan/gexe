@@ -1,16 +1,14 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { isBefore, startOfToday, isSameDay } from 'date-fns';
+import { isBefore, startOfToday, isSameDay, differenceInDays } from 'date-fns';
 import { WeekBox } from './WeekBox';
 import clsx from 'clsx';
 import { Week } from '../types/calendar';
-import { isWeekSelectable, formatWeekRange, formatDateForDisplay, normalizeToUTCDate, generateWeekId } from '../utils/dates';
+import { isWeekSelectable, formatWeekRange, formatDateForDisplay, normalizeToUTCDate, generateWeekId, canDeselectArrivalWeek, getWeeksToDeselect } from '../utils/dates';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
-import { Calendar } from 'lucide-react';
+import { Calendar, X } from 'lucide-react';
 import { FlexibleCheckInModal } from './FlexibleCheckInModal';
-
-const MOBILE_WEEKS = 3;
-const DESKTOP_WEEKS = 4;
+import { areSameWeeks } from '../utils/dates';
 
 // Helper function to log week dates consistently without timezone confusion
 const getSimplifiedWeekInfo = (week: Week, isAdmin: boolean = false, selectedWeeks: Week[] = []) => {
@@ -29,22 +27,28 @@ interface WeekSelectorProps {
   weeks: Week[];
   selectedWeeks: Week[];
   onWeekSelect: (week: Week) => void;
+  onWeeksDeselect?: (weeks: Week[]) => void;
+  onClearSelection?: () => void;
   currentMonth?: Date;
   isMobile?: boolean;
   isAdmin?: boolean;
   isLoading?: boolean;
   onMonthChange?: (newMonth: Date) => void;
+  onDateSelect: (date: Date, week: Week) => void;
 }
 
 export function WeekSelector({
   weeks,
   selectedWeeks,
   onWeekSelect,
+  onWeeksDeselect,
+  onClearSelection,
   currentMonth,
   isMobile,
   isAdmin = false,
   isLoading = false,
   onMonthChange,
+  onDateSelect,
 }: WeekSelectorProps) {
   console.log('[WeekSelector] Rendering weeks:', weeks?.map(w => getSimplifiedWeekInfo(w, isAdmin, selectedWeeks)));
 
@@ -85,14 +89,21 @@ export function WeekSelector({
   const [selectedFlexDate, setSelectedFlexDate] = useState<Date | null>(null);
   const [flexModalWeek, setFlexModalWeek] = useState<Week | null>(null);
 
-  // Check if a week can be used as a valid first week (arrival)
-  const isValidFirstWeek = useCallback((week: Week): boolean => {
-    if (isAdmin) return true; // Admins can select any week
+  // Define isWeekSelected first since it's used in the handleWeekClick dependency array
+  const isWeekSelected = useCallback((week: Week) => {
+    // Add debug logging for flexible weeks
+    if (week.flexibleDates && week.flexibleDates.length > 0) {
+      console.log('[isWeekSelected] Checking flexible week:', {
+        weekId: week.id,
+        weekStartDate: formatDateForDisplay(week.startDate),
+        weekEndDate: formatDateForDisplay(week.endDate),
+        flexDates: week.flexibleDates?.map(d => formatDateForDisplay(d))
+      });
+    }
     
-    const weekStartDate = normalizeToUTCDate(week.startDate);
-    const weeksSinceEpoch = Math.floor(weekStartDate.getTime() / (7 * 24 * 60 * 60 * 1000));
-    return weeksSinceEpoch % 2 === 0; // Only even-numbered weeks can be arrival weeks
-  }, [isAdmin]);
+    // Simple check: does this week match any of the selected weeks?
+    return selectedWeeks.some(selectedWeek => areSameWeeks(week, selectedWeek));
+  }, [selectedWeeks]);
 
   const handleWeekClick = useCallback((week: Week) => {
     console.log('[WeekSelector] Week clicked:', {
@@ -104,47 +115,46 @@ export function WeekSelector({
       isCurrentlySelected: isWeekSelected(week)
     });
     
-    // Check if this week is already the first selected week - using our improved week matching
-    // to properly handle flexible dates
-    const isFirstSelectedWeek = selectedWeeks.length > 0 && (() => {
-      const firstSelectedWeek = selectedWeeks[0];
-      
-      // Check exact date match
-      const dateMatch = isSameDay(normalizeToUTCDate(week.startDate), normalizeToUTCDate(firstSelectedWeek.startDate));
-      
-      // Check ID match for flexible dates
-      const idMatch = week.id && firstSelectedWeek.id && week.id === firstSelectedWeek.id;
-      
-      // Check if this is a flexible date within the same week
-      const isFlexibleDateMatch = week.flexibleDates?.some(flexDate => 
-        firstSelectedWeek.startDate && isSameDay(normalizeToUTCDate(flexDate), normalizeToUTCDate(firstSelectedWeek.startDate))
-      ) || false;
-      
-      const result = dateMatch || idMatch || isFlexibleDateMatch;
-      console.log('[handleWeekClick] Checking if week is first selected:', {
-        dateMatch,
-        idMatch,
-        isFlexibleDateMatch,
-        result
+    // If the week is already selected, we're trying to deselect it
+    if (isWeekSelected(week)) {
+      // Get all weeks that should be deselected when clicking this week
+      const weeksToDeselect = getWeeksToDeselect(week, selectedWeeks, isAdmin);
+      console.log('[WeekSelector] Weeks to deselect:', {
+        count: weeksToDeselect.length,
+        weeks: weeksToDeselect.map(w => ({
+          id: w.id,
+          startDate: formatDateForDisplay(w.startDate),
+          endDate: formatDateForDisplay(w.endDate)
+        }))
       });
       
-      return result;
-    })();
-    
-    // If the user is clicking on the first selected week (to deselect it) and there are multiple weeks selected
-    if (isFirstSelectedWeek && selectedWeeks.length > 1) {
-      // Check if the second week would be valid as a first week
-      const potentialNewFirstWeek = selectedWeeks[1];
-      
-      // If the second week wouldn't be valid as a first week and we're not in admin mode,
-      // prevent the deselection completely
-      if (!isValidFirstWeek(potentialNewFirstWeek) && !isAdmin) {
-        console.log('[WeekSelector] Cannot deselect first week - second week would violate every-other-week rule');
-        console.error('Cannot deselect this week. Please deselect your departure week first.');
+      // If array is empty, deselection is not allowed
+      if (weeksToDeselect.length === 0) {
+        console.log('[WeekSelector] Cannot deselect - no valid subsequent week found');
+        console.error('Cannot deselect this week. No valid subsequent week found to become the new arrival week.');
         return;
       }
+      
+      // If we have a batch deselection handler, use it
+      if (onWeeksDeselect && weeksToDeselect.length > 1) {
+        console.log('[WeekSelector] Using batch deselection handler for multiple weeks:', weeksToDeselect.length);
+        onWeeksDeselect(weeksToDeselect);
+        return;
+      }
+      
+      // Otherwise fall back to single week deselection
+      console.log('[WeekSelector] Using single week deselection');
+      onWeekSelect(week);
+      
+      // Log a warning if there are more weeks to deselect but we can't
+      if (weeksToDeselect.length > 1) {
+        console.warn('[WeekSelector] Multiple weeks should be deselected, but onWeeksDeselect is not provided. Some weeks may remain selected incorrectly.');
+      }
+      
+      return;
     }
     
+    // If we're selecting a new week (not deselecting)
     if (!isWeekSelectable(week, isAdmin, selectedWeeks)) {
       console.log('[WeekSelector] Week not selectable:', {
         isAdmin,
@@ -166,150 +176,45 @@ export function WeekSelector({
       console.log('[WeekSelector] Standard week selection');
       onWeekSelect(week);
     }
-  }, [onWeekSelect, isAdmin, selectedWeeks, isValidFirstWeek]);
+  }, [onWeekSelect, onWeeksDeselect, isAdmin, selectedWeeks, isWeekSelected]);
 
   const handleFlexDateSelect = useCallback((date: Date) => {
     if (!flexModalWeek) return;
-    
-    // Create a new week object with the selected check-in date
-    // IMPORTANT: Ensure we explicitly keep the original ID!
-    const selectedWeek: Week = {
-      ...flexModalWeek,
-      startDate: date,
-      // Keep the same duration between original start and end dates
-      endDate: new Date(date.getTime() + (flexModalWeek.endDate.getTime() - flexModalWeek.startDate.getTime())),
-      // Explicitly preserve the original ID to ensure proper matching
-      id: flexModalWeek.id,
-      // Also preserve the flexibleDates array which might be needed for further selections
-      flexibleDates: flexModalWeek.flexibleDates,
-      // Explicitly mark this as derived from a flexible date selection
-      isFlexibleSelection: true
-    };
     
     console.log('[handleFlexDateSelect] Selecting flexible date:', {
       originalWeekId: flexModalWeek.id,
       originalWeekStart: formatDateForDisplay(flexModalWeek.startDate),
       originalWeekEnd: formatDateForDisplay(flexModalWeek.endDate),
       selectedDate: formatDateForDisplay(date),
-      newWeekStart: formatDateForDisplay(selectedWeek.startDate),
-      newWeekEnd: formatDateForDisplay(selectedWeek.endDate),
+      newWeekStart: formatDateForDisplay(date),
+      newWeekEnd: formatDateForDisplay(flexModalWeek.endDate),
       // Track if we preserved the ID
-      preservedId: flexModalWeek.id === selectedWeek.id,
+      preservedId: true,
       // Calculate if the new week duration matches the original
       durationMatches: Math.abs(
-        (selectedWeek.endDate.getTime() - selectedWeek.startDate.getTime()) -
+        (flexModalWeek.endDate.getTime() - date.getTime()) -
         (flexModalWeek.endDate.getTime() - flexModalWeek.startDate.getTime())
       ) < 1000 * 60 * 60 * 24,
+      // Add variable duration information
+      variableDuration: true,
+      durationDays: differenceInDays(flexModalWeek.endDate, date) + 1,
+      originalDurationDays: differenceInDays(flexModalWeek.endDate, flexModalWeek.startDate) + 1,
       // Add explicit flag to help with debugging
-      isFlexibleSelection: selectedWeek.isFlexibleSelection
+      isFlexibleSelection: true,
+      // Also mark the selected flex date
+      selectedFlexDate: formatDateForDisplay(date)
     });
     
-    onWeekSelect(flexModalWeek);
-  }, [flexModalWeek, onWeekSelect]);
-
-  const isWeekSelected = useCallback((week: Week) => {
-    // Add debug logging for all weeks with flexible dates to help troubleshoot
-    if (week.flexibleDates && week.flexibleDates.length > 0) {
-      console.log('[isWeekSelected] Checking flexible week:', {
-        weekId: week.id,
-        weekStartDate: formatDateForDisplay(week.startDate),
-        weekEndDate: formatDateForDisplay(week.endDate),
-        flexDates: week.flexibleDates?.map(d => formatDateForDisplay(d)),
-        selectedWeeks: selectedWeeks.map(sw => ({
-          id: sw.id,
-          startDate: formatDateForDisplay(sw.startDate),
-          endDate: formatDateForDisplay(sw.endDate)
-        }))
-      });
-    }
+    // Create a modified week with the selected flex date
+    const modifiedWeek: Week = {
+      ...flexModalWeek,
+      selectedFlexDate: date  // This gets explicitly passed to the parent
+    };
     
-    return selectedWeeks.some(selectedWeek => {
-      // Check by exact date match (standard case)
-      const dateMatch = isSameDay(normalizeToUTCDate(selectedWeek.startDate), normalizeToUTCDate(week.startDate)) && 
-                       isSameDay(normalizeToUTCDate(selectedWeek.endDate), normalizeToUTCDate(week.endDate));
-      
-      // Check if the ID matches (for custom or flexible dates)
-      const idMatch = Boolean(week.id && selectedWeek.id && week.id === selectedWeek.id);
-      
-      // For flexible dates, we need to check if the selected week's start date
-      // is one of this week's flexible check-in dates
-      let flexDateMatch = false;
-      
-      if (week.flexibleDates && week.flexibleDates.length > 0 && selectedWeek.startDate) {
-        // Normalize to prevent timezone issues
-        const normalizedSelectedStart = normalizeToUTCDate(selectedWeek.startDate);
-        
-        // Check if the selected week's start date is one of this week's flexible dates
-        flexDateMatch = week.flexibleDates.some(flexDate => 
-          isSameDay(normalizeToUTCDate(flexDate), normalizedSelectedStart)
-        );
-        
-        // If it's a flex date match, also verify that the duration matches
-        if (flexDateMatch) {
-          const weekDuration = week.endDate.getTime() - week.startDate.getTime();
-          const selectedWeekDuration = selectedWeek.endDate.getTime() - selectedWeek.startDate.getTime();
-          // Check if durations are within a day of each other
-          const durationsMatch = Math.abs(weekDuration - selectedWeekDuration) < 1000 * 60 * 60 * 24;
-          
-          flexDateMatch = flexDateMatch && durationsMatch;
-        }
-      }
-      
-      // CRITICAL: Also check the reverse case - if this standard week needs to match a
-      // selection that was made with a flexible date
-      let reverseFlexMatch = false;
-      
-      // If this is a standard week (not a flex week itself) but the selected week
-      // might be derived from a flexible check-in date from this week's original
-      if (!flexDateMatch && !dateMatch && !idMatch && week.id && selectedWeek.id && 
-          (!week.flexibleDates || week.flexibleDates.length === 0)) {
-        // Find if there's another week with the same ID as this one but with flexible dates
-        // that include the selected week's start date
-        const matchingWeeks = weeks.filter(w => w.id === week.id && w.flexibleDates && w.flexibleDates.length > 0);
-        
-        if (matchingWeeks.length > 0) {
-          for (const flexWeek of matchingWeeks) {
-            // Check if the selected week's start date is one of the flexible weeks's flexible dates
-            const hasFlexMatch = flexWeek.flexibleDates?.some(flexDate => 
-              isSameDay(normalizeToUTCDate(flexDate), normalizeToUTCDate(selectedWeek.startDate))
-            ) || false;
-            
-            if (hasFlexMatch) {
-              console.log('[isWeekSelected] Found reverse flex match:', {
-                standardWeekId: week.id,
-                flexWeekId: flexWeek.id,
-                standardWeekStart: formatDateForDisplay(week.startDate),
-                flexWeekStart: formatDateForDisplay(flexWeek.startDate),
-                selectedWeekStart: formatDateForDisplay(selectedWeek.startDate)
-              });
-              reverseFlexMatch = true;
-              break;
-            }
-          }
-        }
-      }
-      
-      // Log detailed selection information for debugging
-      if (week.id && (dateMatch || idMatch || flexDateMatch || reverseFlexMatch || 
-          (week.flexibleDates && week.flexibleDates.length > 0))) {
-        console.log('[isWeekSelected] Week match check details:', {
-          weekId: week.id,
-          weekStartDate: formatDateForDisplay(week.startDate),
-          selectedWeekStartDate: formatDateForDisplay(selectedWeek.startDate),
-          dateMatch,
-          idMatch,
-          flexDateMatch,
-          reverseFlexMatch,
-          hasFlexibleDates: Boolean(week.flexibleDates?.length),
-          flexibleDatesCount: week.flexibleDates?.length || 0,
-          flexibleDates: week.flexibleDates?.map(d => formatDateForDisplay(d)),
-          result: dateMatch || idMatch || flexDateMatch || reverseFlexMatch
-        });
-      }
-      
-      return dateMatch || idMatch || flexDateMatch || reverseFlexMatch;
-    });
-  }, [selectedWeeks, weeks]);
+    // Pass both the date and the original week to the parent handler
+    onDateSelect(date, modifiedWeek);
+    setFlexModalWeek(null);
+  }, [flexModalWeek, onDateSelect]);
 
   const getWeekClasses = useCallback((week: Week) => {
     // Use our improved isWeekSelected function instead of doing a direct date match
@@ -333,13 +238,15 @@ export function WeekSelector({
       });
     }
 
+    // Check if this is the first selected week
     const isFirstSelected = isSelected && 
       selectedWeeks.length > 0 && 
-      isSameDay(week.startDate, selectedWeeks[0].startDate);
+      areSameWeeks(week, selectedWeeks[0]);
 
+    // Check if this is the last selected week
     const isLastSelected = isSelected && 
       selectedWeeks.length > 0 && 
-      isSameDay(week.startDate, selectedWeeks[selectedWeeks.length - 1].startDate);
+      areSameWeeks(week, selectedWeeks[selectedWeeks.length - 1]);
 
     const baseClasses = 'relative flex items-center justify-center border-2 rounded-lg p-4 transition-all duration-200';
     const selectedClasses = 'border-emerald-500 bg-emerald-50 shadow-lg transform scale-105';
@@ -423,107 +330,30 @@ export function WeekSelector({
     return classes;
   }, [selectedWeeks, isAdmin, isWeekSelected]);
 
-  const isConsecutiveWeek = (week: Week): boolean => {
-    if (selectedWeeks.length !== 2) return false;
+  const handleClearSelection = useCallback(() => {
+    console.log('[WeekSelector] Clearing all selected weeks');
     
-    const [start, end] = selectedWeeks;
-    return week.startDate > start.startDate && week.startDate < end.startDate;
-  };
-
-  const isFirstOrLastSelected = (week: Week): boolean => {
-    if (selectedWeeks.length === 0) return false;
-    
-    // For a single selected week, use our flexible date matching logic
-    if (selectedWeeks.length === 1) {
-      const matchingWeek = selectedWeeks[0];
-      
-      // Check exact date match
-      const dateMatch = isSameDay(normalizeToUTCDate(week.startDate), normalizeToUTCDate(matchingWeek.startDate));
-      
-      // Check ID match for flexible dates
-      const idMatch = Boolean(week.id && matchingWeek.id && week.id === matchingWeek.id);
-      
-      // Check if this is a flexible date within the same week - handle undefined case
-      const isFlexibleDateMatch = Boolean(week.flexibleDates?.some(flexDate => 
-        matchingWeek.startDate && isSameDay(normalizeToUTCDate(flexDate), normalizeToUTCDate(matchingWeek.startDate))
-      ));
-      
-      // Calculate if durations match (for flexible dates)
-      const weekDuration = week.endDate.getTime() - week.startDate.getTime();
-      const matchingWeekDuration = matchingWeek.endDate.getTime() - matchingWeek.startDate.getTime();
-      const durationMatch = Math.abs(weekDuration - matchingWeekDuration) < 1000 * 60 * 60 * 24;
-      
-      const isFlexibleWeekSelection = durationMatch && (isFlexibleDateMatch || idMatch);
-      
-      return dateMatch || idMatch || isFlexibleWeekSelection;
+    // Use the provided onClearSelection handler if available
+    if (onClearSelection) {
+      console.log('[WeekSelector] Using provided onClearSelection handler');
+      onClearSelection();
+      return;
     }
     
-    // For multiple weeks, check if it's the first or last selected week
-    const firstWeek = selectedWeeks[0];
-    const lastWeek = selectedWeeks[selectedWeeks.length - 1];
+    // Otherwise fallback to our implementation
+    // If we have a batch deselection handler, use it for all weeks at once
+    if (onWeeksDeselect && selectedWeeks.length > 0) {
+      console.log('[WeekSelector] Using batch deselection handler to clear all weeks:', selectedWeeks.length);
+      onWeeksDeselect(selectedWeeks);
+      return;
+    }
     
-    // Check for first week matches using same pattern
-    const isFirstWeekMatch = (() => {
-      const dateMatch = isSameDay(normalizeToUTCDate(week.startDate), normalizeToUTCDate(firstWeek.startDate));
-      const idMatch = Boolean(week.id && firstWeek.id && week.id === firstWeek.id);
-      const isFlexibleDateMatch = Boolean(week.flexibleDates?.some(flexDate => 
-        firstWeek.startDate && isSameDay(normalizeToUTCDate(flexDate), normalizeToUTCDate(firstWeek.startDate))
-      ));
-      
-      const weekDuration = week.endDate.getTime() - week.startDate.getTime();
-      const firstWeekDuration = firstWeek.endDate.getTime() - firstWeek.startDate.getTime();
-      const durationMatch = Math.abs(weekDuration - firstWeekDuration) < 1000 * 60 * 60 * 24;
-      
-      const isFlexibleWeekSelection = durationMatch && (isFlexibleDateMatch || idMatch);
-      
-      return dateMatch || idMatch || isFlexibleWeekSelection;
-    })();
-    
-    // Check for last week matches using same pattern
-    const isLastWeekMatch = (() => {
-      const dateMatch = isSameDay(normalizeToUTCDate(week.startDate), normalizeToUTCDate(lastWeek.startDate));
-      const idMatch = Boolean(week.id && lastWeek.id && week.id === lastWeek.id);
-      const isFlexibleDateMatch = Boolean(week.flexibleDates?.some(flexDate => 
-        lastWeek.startDate && isSameDay(normalizeToUTCDate(flexDate), normalizeToUTCDate(lastWeek.startDate))
-      ));
-      
-      const weekDuration = week.endDate.getTime() - week.startDate.getTime();
-      const lastWeekDuration = lastWeek.endDate.getTime() - lastWeek.startDate.getTime();
-      const durationMatch = Math.abs(weekDuration - lastWeekDuration) < 1000 * 60 * 60 * 24;
-      
-      const isFlexibleWeekSelection = durationMatch && (isFlexibleDateMatch || idMatch);
-      
-      return dateMatch || idMatch || isFlexibleWeekSelection;
-    })();
-    
-    return isFirstWeekMatch || isLastWeekMatch;
-  };
-
-  const isFirstSelected = (week: Week): boolean => {
-    if (selectedWeeks.length === 0) return false;
-    
-    const firstWeek = selectedWeeks[0];
-    
-    // Check exact date match
-    const dateMatch = isSameDay(normalizeToUTCDate(week.startDate), normalizeToUTCDate(firstWeek.startDate));
-    
-    // Check ID match for flexible dates
-    const idMatch = Boolean(week.id && firstWeek.id && week.id === firstWeek.id);
-    
-    // Check if this is a flexible date within the same week - handle undefined case
-    const isFlexibleDateMatch = Boolean(week.flexibleDates?.some(flexDate => 
-      firstWeek.startDate && isSameDay(normalizeToUTCDate(flexDate), normalizeToUTCDate(firstWeek.startDate))
-    ));
-    
-    // Calculate if durations match (for flexible dates)
-    const weekDuration = week.endDate.getTime() - week.startDate.getTime();
-    const firstWeekDuration = firstWeek.endDate.getTime() - firstWeek.startDate.getTime();
-    const durationMatch = Math.abs(weekDuration - firstWeekDuration) < 1000 * 60 * 60 * 24;
-    
-    const isFlexibleWeekSelection = durationMatch && (isFlexibleDateMatch || idMatch);
-    
-    return dateMatch || idMatch || isFlexibleWeekSelection;
-  };
+    // Last resort: fallback to deselecting the arrival week, which should cascade
+    if (selectedWeeks.length > 0) {
+      console.log('[WeekSelector] Using arrival week deselection to clear all weeks');
+      onWeekSelect(selectedWeeks[0]);
+    }
+  }, [onWeekSelect, onWeeksDeselect, selectedWeeks, onClearSelection]);
 
   const handleMonthChange = useCallback((newMonth: Date) => {
     console.log('[WeekSelector] Month changed:', {
@@ -535,6 +365,24 @@ export function WeekSelector({
 
   return (
     <>
+      {/* Clear Selection button - always visible but disabled when no weeks are selected */}
+      <div className="flex justify-end mb-4">
+        <button
+          onClick={handleClearSelection}
+          className={clsx(
+            "flex items-center gap-1 px-3 py-1.5 text-sm font-medium border rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50",
+            selectedWeeks.length > 0 
+              ? "text-emerald-700 bg-emerald-50 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300" 
+              : "text-stone-400 bg-stone-50 border-stone-200 cursor-not-allowed opacity-70"
+          )}
+          aria-label="Clear week selection"
+          disabled={selectedWeeks.length === 0}
+        >
+          <X size={16} />
+          <span>Clear Dates</span>
+        </button>
+      </div>
+      
       <div className={clsx(
         'grid gap-4',
         isMobile ? 'grid-cols-3' : 'grid-cols-4'
@@ -573,12 +421,24 @@ export function WeekSelector({
                 <div className="text-xs text-indigo-600 mt-1 font-medium flex items-center justify-center gap-1">
                   <Calendar className="w-3 h-3" />
                   <span>{week.flexibleDates.length} check-in {week.flexibleDates.length === 1 ? 'date' : 'dates'}</span>
+                  {/* Show indicator if this flex week has a selected date that matches one of its flex dates */}
                   {isWeekSelected(week) && selectedWeeks.length > 0 && 
-                    week.flexibleDates.some(fd => 
-                      selectedWeeks.some(sw => 
-                        isSameDay(normalizeToUTCDate(fd), normalizeToUTCDate(sw.startDate))
-                      )
-                    ) && <span className="text-emerald-600 ml-1">★</span>
+                    selectedWeeks.some(sw => {
+                      if (areSameWeeks(week, sw) && sw.selectedFlexDate && 
+                          week.flexibleDates?.some(fd => isSameDay(normalizeToUTCDate(fd), normalizeToUTCDate(sw.selectedFlexDate!)))) {
+                        return true;
+                      }
+                      return false;
+                    }) && (
+                      <span 
+                        className="text-emerald-600 ml-1 flex items-center tooltip-container" 
+                        title={`Check-in on ${format(selectedWeeks.find(sw => 
+                          areSameWeeks(week, sw) && sw.selectedFlexDate
+                        )?.selectedFlexDate || week.startDate, 'EEEE, MMM d')}`}
+                      >
+                        ★
+                      </span>
+                    )
                   }
                 </div>
               )}

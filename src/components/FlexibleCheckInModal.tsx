@@ -10,7 +10,7 @@ interface Props {
   week: Week;
   isOpen: boolean;
   onClose: () => void;
-  onDateSelect: (date: Date) => void;
+  onDateSelect: (date: Date, week: Week) => void;
 }
 
 export function FlexibleCheckInModal({ week, isOpen, onClose, onDateSelect }: Props) {
@@ -45,7 +45,8 @@ export function FlexibleCheckInModal({ week, isOpen, onClose, onDateSelect }: Pr
       )
     });
 
-    onDateSelect(normalizedDate);
+    // Pass both the date and the week to the parent component
+    onDateSelect(normalizedDate, week);
     onClose();
   };
 

@@ -450,21 +450,16 @@ export function isWeekSelectable(week: Week, isAdmin: boolean = false, selectedW
   }
   
   // For normal users, check both status and start date
-  const today = normalizeToUTCDate(new Date());
-  const weekStartDate = normalizeToUTCDate(week.startDate);
+  const today = new Date();
+  const weekStartDate = week.startDate;
   
   // Non-admin can't select weeks with check-in date in the past
   if (weekStartDate < today) {
     return false;
   }
   
-  // Non-admin can only select visible weeks
-  if (week.status !== 'visible' && week.status !== 'default') {
-    return false;
-  }
-
   // If this is the currently selected arrival week, allow deselecting it
-  if (selectedWeeks.length > 0 && isSameDay(selectedWeeks[0].startDate, week.startDate)) {
+  if (selectedWeeks.length > 0 && isSameDay(selectedWeeks[0].endDate, week.endDate)) {
     return true;
   }
 
@@ -473,14 +468,25 @@ export function isWeekSelectable(week: Week, isAdmin: boolean = false, selectedW
   if (selectedWeeks.length === 0) {
     // Get the week number since the epoch
     const weeksSinceEpoch = Math.floor(weekStartDate.getTime() / (7 * 24 * 60 * 60 * 1000));
+    
+    // For arrival weeks, we need to enforce the visibility check
+    if (week.status !== 'visible' && week.status !== 'default') {
+      return false;
+    }
+    
     return weeksSinceEpoch % 2 === 0; // Only allow even-numbered weeks for arrivals
   }
 
   // If we already have selected weeks, this could be a departure week
-  // Allow any week after the arrival week for departure
+  // Allow any week after the arrival week for departure, even if hidden
   if (selectedWeeks.length > 0) {
     const arrivalWeek = selectedWeeks[0];
     return weekStartDate > arrivalWeek.startDate;
+  }
+
+  // Non-admin can only select visible weeks (this is a fallback)
+  if (week.status !== 'visible' && week.status !== 'default') {
+    return false;
   }
 
   return true;
@@ -500,4 +506,118 @@ export function getWeekDisplayName(week: Week): string {
 export function normalizeToLocalDate(date: Date | string): Date {
     const dateString = typeof date === 'string' ? date : format(date, 'yyyy-MM-dd');
     return new Date(dateString + 'T00:00:00');
+}
+
+/**
+ * Consistently compares two weeks to determine if they represent the same week
+ * Uses ID match for custom weeks or end date match as a fallback
+ */
+export function areSameWeeks(week1: Week, week2: Week): boolean {
+  // If both weeks have IDs and they match
+  if (week1.id && week2.id && week1.id === week2.id) {
+    return true;
+  }
+  
+  // Otherwise compare by end date (reliable for both standard and flex weeks)
+  return isSameDay(normalizeToUTCDate(week1.endDate), normalizeToUTCDate(week2.endDate));
+}
+
+/**
+ * Determines which weeks should be deselected when a user clicks on a week.
+ * 
+ * Rules:
+ * 1. If it's the last week of the selection, only that week is deselected
+ * 2. If it's not the first week (arrival week), only that week is deselected
+ * 3. If it's the first week (arrival week):
+ *    - The function will check subsequent weeks until finding one that's selectable
+ *    - If no selectable week is found, deselection is prevented (empty array)
+ *    - If a selectable week is found, all weeks up to that week are deselected
+ * 
+ * @param weekToDeselect The week being deselected
+ * @param selectedWeeks The full array of currently selected weeks
+ * @param isAdmin Whether the user has admin privileges
+ * @returns Array of weeks to deselect. Empty array means deselection is not allowed.
+ */
+export function getWeeksToDeselect(
+  weekToDeselect: Week,
+  selectedWeeks: Week[],
+  isAdmin: boolean = false
+): Week[] {
+  console.log('[getWeeksToDeselect] Starting with:', {
+    weekToDeselect: {
+      id: weekToDeselect.id,
+      startDate: formatDateForDisplay(weekToDeselect.startDate),
+      endDate: formatDateForDisplay(weekToDeselect.endDate),
+      status: weekToDeselect.status
+    },
+    selectedWeeksCount: selectedWeeks.length,
+    isAdmin
+  });
+
+  // Admins can do anything
+  if (isAdmin) {
+    console.log('[getWeeksToDeselect] Admin user - allowing deselection of single week');
+    return [weekToDeselect];
+  }
+
+  // If no weeks are selected, nothing to deselect
+  if (selectedWeeks.length === 0) {
+    console.log('[getWeeksToDeselect] No weeks selected - nothing to deselect');
+    return [];
+  }
+
+  // If this is the only week selected, just deselect it
+  if (selectedWeeks.length === 1) {
+    console.log('[getWeeksToDeselect] Only one week selected - allowing deselection');
+    return [weekToDeselect];
+  }
+
+  // If this is the first week (arrival week)
+  if (areSameWeeks(weekToDeselect, selectedWeeks[0])) {
+    console.log('[getWeeksToDeselect] Attempting to deselect arrival week - checking subsequent weeks');
+    
+    // Look for the next valid arrival week
+    for (let i = 1; i < selectedWeeks.length; i++) {
+      const potentialNewArrivalWeek = selectedWeeks[i];
+      console.log(`[getWeeksToDeselect] Checking week ${i} as potential new arrival:`, {
+        id: potentialNewArrivalWeek.id,
+        startDate: formatDateForDisplay(potentialNewArrivalWeek.startDate),
+        endDate: formatDateForDisplay(potentialNewArrivalWeek.endDate),
+        status: potentialNewArrivalWeek.status
+      });
+
+      if (isWeekSelectable(potentialNewArrivalWeek, isAdmin, [])) {
+        console.log('[getWeeksToDeselect] Found valid new arrival week - returning weeks to deselect:', {
+          weeksToDeselect: selectedWeeks.slice(0, i).map(w => ({
+            id: w.id,
+            startDate: formatDateForDisplay(w.startDate),
+            endDate: formatDateForDisplay(w.endDate)
+          }))
+        });
+        // Found a week that can be the new arrival week
+        // Return all weeks that should be deselected (from original arrival to just before this one)
+        return selectedWeeks.slice(0, i);
+      }
+    }
+    
+    console.log('[getWeeksToDeselect] No valid new arrival week found - preventing deselection');
+    // No valid new arrival week found, can't deselect the current arrival
+    return [];
+  }
+
+  console.log('[getWeeksToDeselect] Deselecting non-arrival week');
+  // For any other week in the selection, just deselect that one
+  return [weekToDeselect];
+}
+
+/**
+ * Legacy function that just checks if deselection is allowed.
+ * @deprecated Use getWeeksToDeselect instead
+ */
+export function canDeselectArrivalWeek(
+  weekToDeselect: Week,
+  selectedWeeks: Week[],
+  isAdmin: boolean = false
+): boolean {
+  return getWeeksToDeselect(weekToDeselect, selectedWeeks, isAdmin).length > 0;
 }

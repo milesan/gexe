@@ -42,8 +42,6 @@ export function BookingsList() {
       if (!user) throw new Error('User not authenticated');
       console.log('Current user:', user.id);
       console.log('User metadata:', user.user_metadata);
-      console.log('Is admin:', user.user_metadata?.is_admin);
-
       // First get the bookings
       console.log('Fetching all bookings...');
       
