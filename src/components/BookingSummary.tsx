@@ -338,7 +338,8 @@ export function BookingSummary({
     session?.user?.email === 'redis213@gmail.com' ||
     session?.user?.email === 'dawn@thegarden.pt' ||
     session?.user?.email === 'simone@thegarden.pt' ||
-    session?.user?.email === 'samjlloa@gmail.com';
+    session?.user?.email === 'samjlloa@gmail.com' ||
+    session?.user?.email === 'redis213+testadmin@gmail.com';
 
   // Get flexible dates from the first week if available
   const flexibleDates = selectedWeeks[0]?.flexibleDates;
