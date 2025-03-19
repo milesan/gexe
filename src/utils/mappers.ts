@@ -1,5 +1,6 @@
 import { Database } from '../types/database';
 import { CalendarConfig, WeekCustomization, WeekStatus } from '../types/calendar';
+import { normalizeToUTCDate } from './dates';
 
 type CalendarConfigRow = Database['public']['Tables']['calendar_config']['Row'];
 type WeekCustomizationRow = Database['public']['Tables']['week_customizations']['Row'];
