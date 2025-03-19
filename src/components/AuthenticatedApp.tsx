@@ -17,7 +17,7 @@ export function AuthenticatedApp() {
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const session = useSession();
   const navigate = useNavigate();
-  const adminEmails = ['andre@thegarden.pt', 'redis213@gmail.com', 'dawn@thegarden.pt', 'simone@thegarden.pt', 'samjlloa@gmail.com'];
+  const adminEmails = ['andre@thegarden.pt', 'redis213@gmail.com', 'dawn@thegarden.pt', 'simone@thegarden.pt', 'samjlloa@gmail.com', 'redis213+testadmin@gmail.com'];
   const isAdmin = adminEmails.includes(session?.user?.email);
   const { accommodations, refresh: refreshAccommodations } = useAccommodations();
 

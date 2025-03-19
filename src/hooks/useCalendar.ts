@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { CalendarConfig, Week, WeekCustomization } from '../types/calendar';
 import { CalendarService } from '../services/CalendarService';
-import { generateWeeksWithCustomizations, startOfDay } from '../utils/dates';
+import { generateWeeksWithCustomizations, startOfDay, normalizeToUTCDate } from '../utils/dates';
 
 interface UseCalendarOptions {
     startDate: Date;
@@ -30,9 +30,9 @@ interface UseCalendarReturn {
 }
 
 export function useCalendar({ startDate, endDate, isAdminMode = false }: UseCalendarOptions): UseCalendarReturn {
-    // Normalize dates to ensure consistent handling
-    const normalizedStartDate = startOfDay(new Date(startDate));
-    const normalizedEndDate = startOfDay(new Date(endDate));
+    // Normalize dates immediately when they enter the hook
+    const normalizedStartDate = normalizeToUTCDate(startDate);
+    const normalizedEndDate = normalizeToUTCDate(endDate);
 
     console.log('[useCalendar] Hook initialized:', {
         startDate: startOfDay(new Date(startDate)),
@@ -136,14 +136,20 @@ export function useCalendar({ startDate, endDate, isAdminMode = false }: UseCale
 
     // Week selection logic
     const selectWeek = useCallback((week: Week) => {
+        const normalizedWeek = {
+            ...week,
+            startDate: normalizeToUTCDate(week.startDate),
+            endDate: normalizeToUTCDate(week.endDate)
+        };
+
         if (selectedWeeks.length === 0) {
-            setSelectedWeeks([week]);
+            setSelectedWeeks([normalizedWeek]);
         } else if (selectedWeeks.length === 1) {
             const [firstWeek] = selectedWeeks;
-            const isAfter = week.startDate > firstWeek.startDate;
-            setSelectedWeeks(isAfter ? [firstWeek, week] : [week, firstWeek]);
+            const isAfter = normalizedWeek.startDate > firstWeek.startDate;
+            setSelectedWeeks(isAfter ? [firstWeek, normalizedWeek] : [normalizedWeek, firstWeek]);
         } else {
-            setSelectedWeeks([week]);
+            setSelectedWeeks([normalizedWeek]);
         }
     }, [selectedWeeks]);
 

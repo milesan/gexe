@@ -365,24 +365,6 @@ export function WeekSelector({
 
   return (
     <>
-      {/* Clear Selection button - always visible but disabled when no weeks are selected */}
-      <div className="flex justify-end mb-4">
-        <button
-          onClick={handleClearSelection}
-          className={clsx(
-            "flex items-center gap-1 px-3 py-1.5 text-sm font-medium border rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50",
-            selectedWeeks.length > 0 
-              ? "text-emerald-700 bg-emerald-50 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300" 
-              : "text-stone-400 bg-stone-50 border-stone-200 cursor-not-allowed opacity-70"
-          )}
-          aria-label="Clear week selection"
-          disabled={selectedWeeks.length === 0}
-        >
-          <X size={16} />
-          <span>Clear Dates</span>
-        </button>
-      </div>
-      
       <div className={clsx(
         'grid gap-4',
         isMobile ? 'grid-cols-3' : 'grid-cols-4'

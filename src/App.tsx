@@ -169,7 +169,8 @@ export default function App() {
     session?.user?.email === 'redis213@gmail.com' ||
     session?.user?.email === 'dawn@thegarden.pt' ||
     session?.user?.email === 'simone@thegarden.pt' ||
-    session?.user?.email === 'samjlloa@gmail.com';
+    session?.user?.email === 'samjlloa@gmail.com' ||
+    session?.user?.email === 'redis213+testadmin@gmail.com';
   const hasApplied = session?.user?.user_metadata?.has_applied === true;
   const isWhitelistedUser = session?.user?.user_metadata?.is_whitelisted === true;
   const hasCompletedWhitelistSignup = session?.user?.user_metadata?.has_completed_whitelist_signup === true;

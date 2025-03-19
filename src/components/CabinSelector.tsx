@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Wifi, Zap, BedDouble, WifiOff, ZapOff, Bath } from 'lucide-react';
 import clsx from 'clsx';
@@ -7,6 +7,7 @@ import { Week } from '../types/calendar';
 import { getSeasonalDiscount } from '../utils/pricing';
 import { useWeeklyAccommodations } from '../hooks/useWeeklyAccommodations';
 import { addDays, isDate, eachDayOfInterval, isBefore } from 'date-fns';
+import { createPortal } from 'react-dom';
 
 interface Props {
   accommodations: Accommodation[];
@@ -31,7 +32,7 @@ const BED_SIZES = {
   'Master\'s Suite': '160×200cm (63×79") - Queen',
   '2.2 Meter Tipi': '90×200cm (35×79") - Single',
   '4 Meter Bell Tent': '140×200cm (55×79") - Double',
-  '5m Bell Tent': '160×200cm (63×79") - Queen',
+  '5 Meter Bell Tent': '160×200cm (63×79") - Queen',
   'Your Own Tent': 'Bring your own',
   'Van Parking': 'Bring your own',
   'I\'m staying with someone else / +1': 'N/A'
@@ -55,6 +56,41 @@ const HAS_WIFI = [
   'Valleyview Room',
   'Master\'s Suite'
 ];
+
+// Simple tooltip component with portal
+const Tooltip = ({ 
+  content, 
+  show, 
+  x, 
+  y, 
+  type 
+}: { 
+  content: React.ReactNode, 
+  show: boolean, 
+  x: number, 
+  y: number,
+  type: 'wifi' | 'electricity' | 'bed'
+}) => {
+  if (!show) return null;
+  
+  return createPortal(
+    <div 
+      className={`fixed transition-all duration-200 pointer-events-none z-[9999] ${show ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1'}`}
+      style={{
+        left: `${x}px`,
+        top: `${y}px`,
+        // All tooltips now use the same positioning with no offset
+        transform: 'translate(-50%, -130%)',
+        marginBottom: '0.5rem'
+      }}
+    >
+      <div className="bg-stone-900 text-white text-xs px-3 py-2 rounded-lg shadow-lg whitespace-nowrap">
+        {content}
+      </div>
+    </div>,
+    document.body
+  );
+};
 
 export function CabinSelector({ 
   accommodations, 
@@ -323,6 +359,32 @@ export function CabinSelector({
     isTentSeason: isTentSeason
   });
 
+  // Instead use simple tooltip state for each type
+  const [wifiTooltip, setWifiTooltip] = useState({ show: false, x: 0, y: 0, content: '' });
+  const [electricityTooltip, setElectricityTooltip] = useState({ show: false, x: 0, y: 0, content: '' });
+  const [bedTooltip, setBedTooltip] = useState({ show: false, x: 0, y: 0, content: '' });
+  
+  // Functions to handle tooltip visibility
+  const showTooltip = (
+    e: React.MouseEvent, 
+    content: string, 
+    setTooltipState: React.Dispatch<React.SetStateAction<{show: boolean, x: number, y: number, content: string}>>
+  ) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setTooltipState({
+      show: true,
+      x: rect.left + rect.width / 2,
+      y: rect.top,
+      content
+    });
+  };
+  
+  const hideTooltip = (
+    setTooltipState: React.Dispatch<React.SetStateAction<{show: boolean, x: number, y: number, content: string}>>
+  ) => {
+    setTooltipState(prev => ({ ...prev, show: false }));
+  };
+
   return (
     <div className="space-y-6">
       {/* Filter options could be added here in the future */}
@@ -386,6 +448,7 @@ export function CabinSelector({
               return (
                 <motion.div
                   key={accommodation.id}
+                  data-accommodation-id={accommodation.id}
                   className={clsx(
                     'relative rounded-xl overflow-hidden transition-all duration-200 h-full',
                     'border border-stone-200 hover:border-emerald-200',
@@ -439,45 +502,55 @@ export function CabinSelector({
                       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent pt-16 pb-3 px-3">
                         <div className="flex items-center justify-end space-x-3 text-white">
                           {/* WiFi indicator */}
-                          <div className="group/wifi relative">
+                          <div 
+                            className="relative"
+                            onMouseEnter={(e) => showTooltip(
+                              e, 
+                              hasWifi(accommodation.title) ? 'WiFi Available' : 'No WiFi',
+                              setWifiTooltip
+                            )}
+                            onMouseLeave={() => hideTooltip(setWifiTooltip)}
+                          >
                             {hasWifi(accommodation.title) ? (
                               <Wifi size={18} className="text-emerald-300 hover:text-emerald-200" />
                             ) : (
                               <WifiOff size={18} className="text-stone-400 hover:text-stone-300" />
                             )}
-                            <div className="absolute bottom-full right-0 mb-2 opacity-0 group-hover/wifi:opacity-100 transform translate-y-1 group-hover/wifi:translate-y-0 transition-all duration-200 pointer-events-none z-50">
-                              <div className="bg-stone-900 text-white text-xs px-3 py-2 rounded-lg shadow-lg whitespace-nowrap">
-                                {hasWifi(accommodation.title) ? 'WiFi Available' : 'No WiFi'}
-                                <div className="absolute bottom-0 right-6 translate-y-full border-4 border-transparent border-t-stone-900"></div>
-                              </div>
-                            </div>
                           </div>
 
                           {/* Electricity indicator */}
-                          <div className="group/electricity relative">
+                          <div 
+                            className="relative"
+                            onMouseEnter={(e) => showTooltip(
+                              e, 
+                              hasElectricity(accommodation.title) ? 'Electricity Available' : 'No Electricity',
+                              setElectricityTooltip
+                            )}
+                            onMouseLeave={() => hideTooltip(setElectricityTooltip)}
+                          >
                             {hasElectricity(accommodation.title) ? (
                               <Zap size={18} className="text-emerald-300 hover:text-emerald-200" />
                             ) : (
                               <ZapOff size={18} className="text-stone-400 hover:text-stone-300" />
                             )}
-                            <div className="absolute bottom-full right-0 mb-2 opacity-0 group-hover/electricity:opacity-100 transform translate-y-1 group-hover/electricity:translate-y-0 transition-all duration-200 pointer-events-none z-50">
-                              <div className="bg-stone-900 text-white text-xs px-3 py-2 rounded-lg shadow-lg whitespace-nowrap">
-                                {hasElectricity(accommodation.title) ? 'Electricity Available' : 'No Electricity'}
-                                <div className="absolute bottom-0 right-6 translate-y-full border-4 border-transparent border-t-stone-900"></div>
-                              </div>
-                            </div>
                           </div>
 
                           {/* Bed size indicator */}
-                          <div className="group/bed relative">
-                            <BedDouble size={18} className="text-emerald-300 hover:text-emerald-200" />
-                            <div className="absolute bottom-full right-0 mb-2 opacity-0 group-hover/bed:opacity-100 transform translate-y-1 group-hover/bed:translate-y-0 transition-all duration-200 pointer-events-none z-50">
-                              <div className="bg-stone-900 text-white text-xs px-3 py-2 rounded-lg shadow-lg whitespace-nowrap">
-                                {BED_SIZES[accommodation.title as keyof typeof BED_SIZES]}
-                                <div className="absolute bottom-0 right-6 translate-y-full border-4 border-transparent border-t-stone-900"></div>
-                              </div>
+                          {BED_SIZES[accommodation.title as keyof typeof BED_SIZES] && 
+                           BED_SIZES[accommodation.title as keyof typeof BED_SIZES] !== 'N/A' && 
+                           BED_SIZES[accommodation.title as keyof typeof BED_SIZES] !== 'Bring your own' && (
+                            <div 
+                              className="relative"
+                              onMouseEnter={(e) => showTooltip(
+                                e, 
+                                BED_SIZES[accommodation.title as keyof typeof BED_SIZES],
+                                setBedTooltip
+                              )}
+                              onMouseLeave={() => hideTooltip(setBedTooltip)}
+                            >
+                              <BedDouble size={18} className="text-emerald-300 hover:text-emerald-200" />
                             </div>
-                          </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -534,6 +607,29 @@ export function CabinSelector({
           </div>
         </>
       )}
+      
+      {/* Render tooltip portals */}
+      <Tooltip 
+        content={wifiTooltip.content} 
+        show={wifiTooltip.show} 
+        x={wifiTooltip.x} 
+        y={wifiTooltip.y}
+        type="wifi"
+      />
+      <Tooltip 
+        content={electricityTooltip.content} 
+        show={electricityTooltip.show} 
+        x={electricityTooltip.x} 
+        y={electricityTooltip.y}
+        type="electricity"
+      />
+      <Tooltip 
+        content={bedTooltip.content} 
+        show={bedTooltip.show} 
+        x={bedTooltip.x} 
+        y={bedTooltip.y}
+        type="bed"
+      />
     </div>
   );
 }
