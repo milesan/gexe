@@ -53,6 +53,9 @@ export function ConfirmationPage() {
           <p className="text-stone-600 font-body">
             Your journey at The Garden awaits
           </p>
+          <p className="text-stone-500 font-body text-sm mt-2">
+            A confirmation email has been sent to your registered email address
+          </p>
         </div>
 
         <div className="p-8 space-y-6">

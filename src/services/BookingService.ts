@@ -270,12 +270,30 @@ class BookingService {
 
       const { data: accommodation, error: accError } = await supabase
         .from('accommodations')
-        .select('title, type, image_url')
+        .select('title, type, image_url, capacity')
         .eq('id', newBooking.accommodation_id)
         .single();
 
       if (accError) {
         console.warn('[BookingService] Error fetching accommodation details:', accError);
+      }
+
+      // Send booking confirmation email
+      if (user?.email) {
+        try {
+          await this.sendBookingConfirmationEmail({
+            email: user.email,
+            bookingId: newBooking.id,
+            checkIn: checkInISO,
+            checkOut: checkOutISO,
+            accommodation: accommodation?.title || 'Accommodation',
+            totalPrice: booking.totalPrice,
+            guests: accommodation?.capacity || 1
+          });
+        } catch (emailError) {
+          console.error('[BookingService] Error sending confirmation email:', emailError);
+          // Don't throw here - we want to return the booking even if email fails
+        }
       }
 
       console.log('[BookingService] Returning booking with accommodation:', {
@@ -385,6 +403,31 @@ class BookingService {
 
       if (availabilityError) throw availabilityError;
 
+      // Get accommodation details for email
+      const { data: accommodation } = await supabase
+        .from('accommodations')
+        .select('title, capacity')
+        .eq('id', accommodationId)
+        .single();
+
+      // Send booking confirmation email
+      if (user.email) {
+        try {
+          await this.sendBookingConfirmationEmail({
+            email: user.email,
+            bookingId: booking.id,
+            checkIn: checkIn,
+            checkOut: checkOut,
+            accommodation: accommodation?.title || 'Accommodation',
+            totalPrice: totalPrice,
+            guests: accommodation?.capacity || 1
+          });
+        } catch (emailError) {
+          console.error('[BookingService] Error sending confirmation email for weekly booking:', emailError);
+          // Don't throw here - we want to return the booking even if email fails
+        }
+      }
+
       return booking;
     } catch (error) {
       console.error('Error creating booking:', error);
@@ -424,6 +467,47 @@ class BookingService {
 
   async cancelBooking(id: string) {
     return this.updateBooking(id, { status: 'cancelled' });
+  }
+
+  /**
+   * Sends a booking confirmation email to the user
+   */
+  async sendBookingConfirmationEmail(params: {
+    email: string;
+    bookingId: string;
+    checkIn: string;
+    checkOut: string;
+    accommodation: string;
+    totalPrice: number;
+    guests: number;
+  }) {
+    console.log('[BookingService] Sending booking confirmation email to:', params.email);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('send-booking-confirmation', {
+        body: {
+          email: params.email,
+          bookingId: params.bookingId,
+          checkIn: params.checkIn,
+          checkOut: params.checkOut,
+          accommodation: params.accommodation,
+          totalPrice: params.totalPrice,
+          guests: params.guests,
+          frontendUrl: window.location.origin
+        }
+      });
+      
+      if (error) {
+        console.error('[BookingService] Error sending booking confirmation email:', error);
+        throw error;
+      }
+      
+      console.log('[BookingService] Booking confirmation email sent successfully:', data);
+      return data;
+    } catch (error) {
+      console.error('[BookingService] Error calling send-booking-confirmation function:', error);
+      throw error;
+    }
   }
 }
 
