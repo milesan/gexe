@@ -5,6 +5,7 @@ import type { Database } from '../types/database';
 import { addDays, startOfWeek, endOfWeek, isBefore, isEqual } from 'date-fns';
 import { normalizeToUTCDate, safeParseDate, formatDateOnly } from '../utils/dates';
 import { convertToUTC1 } from '../utils/timezone';
+import { getFrontendUrl } from '../lib/environment';
 
 type AccommodationType = Database['public']['Tables']['accommodations']['Row'];
 
@@ -280,20 +281,19 @@ class BookingService {
 
       // Send booking confirmation email
       if (user?.email) {
-        try {
-          await this.sendBookingConfirmationEmail({
+        console.log('[BookingService] Sending booking confirmation email to:', user.email);
+        const { error: emailError } = await supabase.functions.invoke('send-booking-confirmation', {
+          body: { 
             email: user.email,
             bookingId: newBooking.id,
             checkIn: checkInISO,
             checkOut: checkOutISO,
             accommodation: accommodation?.title || 'Accommodation',
             totalPrice: booking.totalPrice,
-            guests: accommodation?.capacity || 1
-          });
-        } catch (emailError) {
-          console.error('[BookingService] Error sending confirmation email:', emailError);
-          // Don't throw here - we want to return the booking even if email fails
-        }
+            frontendUrl: getFrontendUrl()
+          }
+        });
+        console.log('[BookingService] Email sending result:', { emailError });
       }
 
       console.log('[BookingService] Returning booking with accommodation:', {
@@ -412,20 +412,19 @@ class BookingService {
 
       // Send booking confirmation email
       if (user.email) {
-        try {
-          await this.sendBookingConfirmationEmail({
+        console.log('[BookingService] Sending booking confirmation email to:', user.email);
+        const { error: emailError } = await supabase.functions.invoke('send-booking-confirmation', {
+          body: { 
             email: user.email,
             bookingId: booking.id,
             checkIn: checkIn,
             checkOut: checkOut,
             accommodation: accommodation?.title || 'Accommodation',
             totalPrice: totalPrice,
-            guests: accommodation?.capacity || 1
-          });
-        } catch (emailError) {
-          console.error('[BookingService] Error sending confirmation email for weekly booking:', emailError);
-          // Don't throw here - we want to return the booking even if email fails
-        }
+            frontendUrl: getFrontendUrl()
+          }
+        });
+        console.log('[BookingService] Email sending result:', { emailError });
       }
 
       return booking;
@@ -467,47 +466,6 @@ class BookingService {
 
   async cancelBooking(id: string) {
     return this.updateBooking(id, { status: 'cancelled' });
-  }
-
-  /**
-   * Sends a booking confirmation email to the user
-   */
-  async sendBookingConfirmationEmail(params: {
-    email: string;
-    bookingId: string;
-    checkIn: string;
-    checkOut: string;
-    accommodation: string;
-    totalPrice: number;
-    guests: number;
-  }) {
-    console.log('[BookingService] Sending booking confirmation email to:', params.email);
-    
-    try {
-      const { data, error } = await supabase.functions.invoke('send-booking-confirmation', {
-        body: {
-          email: params.email,
-          bookingId: params.bookingId,
-          checkIn: params.checkIn,
-          checkOut: params.checkOut,
-          accommodation: params.accommodation,
-          totalPrice: params.totalPrice,
-          guests: params.guests,
-          frontendUrl: window.location.origin
-        }
-      });
-      
-      if (error) {
-        console.error('[BookingService] Error sending booking confirmation email:', error);
-        throw error;
-      }
-      
-      console.log('[BookingService] Booking confirmation email sent successfully:', data);
-      return data;
-    } catch (error) {
-      console.error('[BookingService] Error calling send-booking-confirmation function:', error);
-      throw error;
-    }
   }
 }
 
