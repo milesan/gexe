@@ -1012,24 +1012,24 @@ export function BookingSummary({
                   <div className="flex items-center gap-3 mb-2">
                     <input
                       type="number"
-                      min="0.01"
+                      min="0.50"
                       step="0.01"
                       value={testPaymentAmount !== null ? testPaymentAmount : ''}
                       onChange={(e) => {
                         const value = e.target.value === '' ? null : parseFloat(e.target.value);
                         setTestPaymentAmount(value);
                       }}
-                      placeholder="0.01"
+                      placeholder="0.50"
                       className="px-3 py-2 border border-blue-300 rounded-md w-32 text-blue-800"
                     />
                     <span className="text-sm text-blue-600">Set custom test amount (€)</span>
                   </div>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => setTestPaymentAmount(0.01)}
+                      onClick={() => setTestPaymentAmount(0.50)}
                       className="px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-800 text-xs rounded"
                     >
-                      €0.01
+                      €0.50
                     </button>
                     <button
                       onClick={() => setTestPaymentAmount(1)}
