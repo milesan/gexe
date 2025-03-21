@@ -3,7 +3,11 @@ import { loadStripe } from '@stripe/stripe-js';
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js';
 import { createPortal } from 'react-dom';
 
+// The public key stays the same, always loaded from Netlify environment variables
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
+
+// Log the current environment for debugging purposes
+console.log('[StripeCheckout] Current environment:', import.meta.env.MODE);
 
 interface Props {
   description: string;
@@ -42,6 +46,10 @@ export function StripeCheckoutForm({ total, authToken, description, onSuccess }:
 
   useEffect(() => {
     const fetchSecret = async () => {
+      // Pass the current environment to the edge function
+      const environment = import.meta.env.MODE;
+      console.log('[StripeCheckout] Sending request with environment:', environment);
+      
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-webhook`, {
         method: "POST",
         mode: 'cors',
@@ -49,7 +57,11 @@ export function StripeCheckoutForm({ total, authToken, description, onSuccess }:
           Authorization: `Bearer ${authToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ total, description }),
+        body: JSON.stringify({ 
+          total, 
+          description,
+          environment // Pass the environment to the edge function
+        }),
       });
       const data = await response.json();
       setClientSecret(data.clientSecret);
@@ -60,6 +72,9 @@ export function StripeCheckoutForm({ total, authToken, description, onSuccess }:
   const handleCheckoutComplete = useCallback(async () => {
     console.log('[StripeCheckout] Payment completed, checking status...');
     
+    // Also pass environment to the status endpoint
+    const environment = import.meta.env.MODE;
+    
     const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-webhook-status`, {
       method: "POST",
       mode: 'cors',
@@ -67,7 +82,10 @@ export function StripeCheckoutForm({ total, authToken, description, onSuccess }:
         Authorization: `Bearer ${authToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ clientSecret }),
+      body: JSON.stringify({ 
+        clientSecret,
+        environment // Pass the environment to the status edge function
+      }),
     });
     const { status } = await response.json();
     

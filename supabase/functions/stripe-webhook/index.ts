@@ -11,22 +11,37 @@ const log = (message: string, data?: any) => {
 };
 
 log('Function starting - initializing Stripe client');
-const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
 
-if (!stripeKey) {
-  log('ERROR: Missing STRIPE_SECRET_KEY environment variable');
-}
-
-const stripe = new Stripe(stripeKey ?? '', {
-  apiVersion: '2023-10-16',
-  httpClient: Stripe.createFetchHttpClient(),
-});
-
-log('Stripe client initialized');
+// Initialize Stripe with appropriate key based on environment parameter
+const getStripeKey = (clientEnvironment: string | undefined) => {
+  // Use the client environment or default to 'production' if not provided
+  const environment = clientEnvironment ? 
+    clientEnvironment.toLowerCase() : 
+    'production'; // Default to production if not specified
+  
+  log(`Using environment: ${environment}`);
+  
+  // Construct the environment-specific key name based on request environment
+  // Production uses PRODUCTION key, everything else uses DEVELOPMENT key
+  const keyName = environment === 'production' ? 
+    'STRIPE_SECRET_KEY_PRODUCTION' : 
+    'STRIPE_SECRET_KEY_DEVELOPMENT';
+  
+  log(`Looking for Stripe key: ${keyName}`);
+  
+  const stripeKey = Deno.env.get(keyName);
+  
+  if (!stripeKey) {
+    log(`ERROR: Missing ${keyName} environment variable for '${environment}' environment`);
+    return ''; // Return empty string if key is not found
+  }
+  
+  return stripeKey;
+};
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-timezone',
   'Content-Type': 'application/json',
 };
 
@@ -48,7 +63,17 @@ serve(async (req) => {
     const body = await req.json();
     log(`Request ${requestId} body parsed`, body);
     
-    const { total, description } = body;
+    // Extract environment from request body
+    const { total, description, environment } = body;
+    
+    // Get the appropriate Stripe key based on environment
+    const stripeKey = getStripeKey(environment);
+    
+    // Initialize Stripe with the selected key
+    const stripe = new Stripe(stripeKey, {
+      apiVersion: '2023-10-16',
+      httpClient: Stripe.createFetchHttpClient(),
+    });
     
     if (total === undefined) {
       log(`ERROR: Request ${requestId} missing 'total' parameter`, body);
@@ -63,6 +88,7 @@ serve(async (req) => {
     }
 
     log(`Creating Stripe checkout session for request ${requestId}`, {
+      environment,
       total,
       description,
       amountInCents: total * 100
