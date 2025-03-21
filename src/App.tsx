@@ -1,5 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, useSearchParams, Navigate } from 'react-router-dom';
+// Import and configure logging
+import { configureLogging } from './utils/logging';
 import { LandingPage } from './pages/LandingPage';
 import { PendingPage } from './pages/PendingPage';
 import { AuthenticatedApp } from './components/AuthenticatedApp';
@@ -14,6 +16,9 @@ import { AcceptInvitePage } from './pages/AcceptInvitePage';
 import { WhitelistSignupPage } from './pages/WhitelistSignupPage';
 import { normalizeToUTCDate } from './utils/dates';
 import { WhitelistWelcomeModal } from './components/WhitelistWelcomeModal';
+
+// Configure logging early to silence logs in production
+configureLogging();
 
 export default function App() {
   const session = useSession();
