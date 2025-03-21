@@ -329,6 +329,7 @@ export function BookingSummary({
   // New state for food and facilities contribution
   const [foodContribution, setFoodContribution] = useState<number | null>(null);
   const [showDiscountDetails, setShowDiscountDetails] = useState(false);
+  const [testPaymentAmount, setTestPaymentAmount] = useState<number | null>(null);
 
   // Hooks
   const { getArrivalDepartureForDate } = useSchedulingRules();
@@ -615,8 +616,8 @@ export function BookingSummary({
 
               <StripeCheckoutForm
                 authToken={authToken}
-                total={pricing.totalAmount}
-                description={`${selectedAccommodation?.title || 'Accommodation'} for ${pricing.totalNights} nights`}
+                total={testPaymentAmount !== null && isAdmin ? testPaymentAmount : pricing.totalAmount}
+                description={`${selectedAccommodation?.title || 'Accommodation'} for ${pricing.totalNights} nights${testPaymentAmount !== null && isAdmin ? ' (TEST PAYMENT)' : ''}`}
                 onSuccess={handleBookingSuccess}
               />
             </motion.div>
@@ -1003,6 +1004,53 @@ export function BookingSummary({
                   </div>
                 </div>
               </div>
+
+              {/* Test Payment Option for Admins */}
+              {isAdmin && (
+                <div className="mt-4 mb-6 bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <h4 className="font-medium text-blue-800 mb-2">Test Payment Options</h4>
+                  <div className="flex items-center gap-3 mb-2">
+                    <input
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      value={testPaymentAmount !== null ? testPaymentAmount : ''}
+                      onChange={(e) => {
+                        const value = e.target.value === '' ? null : parseFloat(e.target.value);
+                        setTestPaymentAmount(value);
+                      }}
+                      placeholder="0.01"
+                      className="px-3 py-2 border border-blue-300 rounded-md w-32 text-blue-800"
+                    />
+                    <span className="text-sm text-blue-600">Set custom test amount (€)</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setTestPaymentAmount(0.01)}
+                      className="px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-800 text-xs rounded"
+                    >
+                      €0.01
+                    </button>
+                    <button
+                      onClick={() => setTestPaymentAmount(1)}
+                      className="px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-800 text-xs rounded"
+                    >
+                      €1.00
+                    </button>
+                    <button
+                      onClick={() => setTestPaymentAmount(null)}
+                      className="px-2 py-1 bg-rose-100 hover:bg-rose-200 text-rose-800 text-xs rounded ml-auto"
+                    >
+                      Reset
+                    </button>
+                  </div>
+                  {testPaymentAmount !== null && (
+                    <p className="text-xs text-blue-600 mt-2">
+                      Using test payment amount: <strong>€{testPaymentAmount.toFixed(2)}</strong> instead of €{pricing.totalAmount.toFixed(2)}
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Action Buttons */}
               <div className="space-y-3 pt-4">
