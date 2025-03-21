@@ -24,7 +24,8 @@ export function BookingPage() {
     session?.user?.email === 'redis213@gmail.com' ||
     session?.user?.email === 'dawn@thegarden.pt' ||
     session?.user?.email === 'simone@thegarden.pt' ||
-    session?.user?.email === 'samjlloa@gmail.com';
+    session?.user?.email === 'samjlloa@gmail.com' ||
+    session?.user?.email === 'redis213+testadmin@gmail.com';
 
   useEffect(() => {
     if (dateRange?.from && dateRange?.to && showAccommodations) {

@@ -5,6 +5,7 @@ import type { Database } from '../types/database';
 import { addDays, startOfWeek, endOfWeek, isBefore, isEqual } from 'date-fns';
 import { normalizeToUTCDate, safeParseDate, formatDateOnly } from '../utils/dates';
 import { convertToUTC1 } from '../utils/timezone';
+import { getFrontendUrl } from '../lib/environment';
 
 type AccommodationType = Database['public']['Tables']['accommodations']['Row'];
 
@@ -270,12 +271,29 @@ class BookingService {
 
       const { data: accommodation, error: accError } = await supabase
         .from('accommodations')
-        .select('title, type, image_url')
+        .select('title, type, image_url, capacity')
         .eq('id', newBooking.accommodation_id)
         .single();
 
       if (accError) {
         console.warn('[BookingService] Error fetching accommodation details:', accError);
+      }
+
+      // Send booking confirmation email
+      if (user?.email) {
+        console.log('[BookingService] Sending booking confirmation email to:', user.email);
+        const { error: emailError } = await supabase.functions.invoke('send-booking-confirmation', {
+          body: { 
+            email: user.email,
+            bookingId: newBooking.id,
+            checkIn: checkInISO,
+            checkOut: checkOutISO,
+            accommodation: accommodation?.title || 'Accommodation',
+            totalPrice: booking.totalPrice,
+            frontendUrl: getFrontendUrl()
+          }
+        });
+        console.log('[BookingService] Email sending result:', { emailError });
       }
 
       console.log('[BookingService] Returning booking with accommodation:', {
@@ -384,6 +402,30 @@ class BookingService {
         );
 
       if (availabilityError) throw availabilityError;
+
+      // Get accommodation details for email
+      const { data: accommodation } = await supabase
+        .from('accommodations')
+        .select('title, capacity')
+        .eq('id', accommodationId)
+        .single();
+
+      // Send booking confirmation email
+      if (user.email) {
+        console.log('[BookingService] Sending booking confirmation email to:', user.email);
+        const { error: emailError } = await supabase.functions.invoke('send-booking-confirmation', {
+          body: { 
+            email: user.email,
+            bookingId: booking.id,
+            checkIn: checkIn,
+            checkOut: checkOut,
+            accommodation: accommodation?.title || 'Accommodation',
+            totalPrice: totalPrice,
+            frontendUrl: getFrontendUrl()
+          }
+        });
+        console.log('[BookingService] Email sending result:', { emailError });
+      }
 
       return booking;
     } catch (error) {

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { Calendar, ChevronLeft, ChevronRight, Home } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Home, X } from 'lucide-react';
 import { isSameWeek, addWeeks, isAfter, isBefore, startOfMonth, format, addMonths, subMonths, startOfDay, isSameDay, addDays, eachDayOfInterval, differenceInDays } from 'date-fns';
 import { WeekSelector } from '../components/WeekSelector';
 import { formatDateForDisplay, normalizeToUTCDate, doDateRangesOverlap } from '../utils/dates';
@@ -18,6 +18,7 @@ import { CalendarService } from '../services/CalendarService';
 import { CalendarConfigButton } from '../components/admin/CalendarConfigButton';
 import { getSeasonalDiscount } from '../utils/pricing';
 import { areSameWeeks } from '../utils/dates';
+import { clsx } from 'clsx';
 
 const DESKTOP_WEEKS = 16;
 const MOBILE_WEEKS = 12;
@@ -614,37 +615,55 @@ export function Book2Page() {
             <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-semibold text-stone-800">Select Your Dates</h2>
-                <div className="grid grid-cols-[40px_40px_auto_40px] items-center" style={{ minWidth: "280px" }}>
-                  <div className="flex justify-start">
-                    <button 
-                      className="p-2 rounded-full hover:bg-gray-100 text-emerald-600"
-                      onClick={() => setCurrentMonth(startOfMonth(new Date()))}
-                      aria-label="Return to current month"
-                      title="Return to today"
-                    >
-                      <Home className="h-5 w-5" />
-                    </button>
-                  </div>
-                  <div className="flex justify-start">
-                    <button 
-                      className="p-2 rounded-full hover:bg-gray-100"
-                      onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-                      aria-label="Previous month"
-                    >
-                      <ChevronLeft className="h-5 w-5 text-stone-600" />
-                    </button>
-                  </div>
-                  <div className="text-center text-stone-700 font-medium whitespace-nowrap px-1">
-                    {format(currentMonth, 'MMMM yyyy')}
-                  </div>
-                  <div className="flex justify-end">
-                    <button 
-                      className="p-2 rounded-full hover:bg-gray-100"
-                      onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-                      aria-label="Next month"
-                    >
-                      <ChevronRight className="h-5 w-5 text-stone-600" />
-                    </button>
+                
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleClearSelection}
+                    className={clsx(
+                      "flex items-center gap-1 px-3 py-1.5 text-sm font-medium border rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50",
+                      selectedWeeks.length > 0 
+                        ? "text-emerald-700 bg-emerald-50 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300" 
+                        : "text-stone-400 bg-stone-50 border-stone-200 cursor-not-allowed opacity-70"
+                    )}
+                    aria-label="Clear week selection"
+                    disabled={selectedWeeks.length === 0}
+                  >
+                    <X size={16} />
+                    <span>Clear Dates</span>
+                  </button>
+                  
+                  <div className="grid grid-cols-[40px_40px_auto_40px] items-center ml-2" style={{ minWidth: "280px" }}>
+                    <div className="flex justify-start">
+                      <button 
+                        className="p-2 rounded-full hover:bg-gray-100 text-emerald-600"
+                        onClick={() => setCurrentMonth(startOfMonth(new Date()))}
+                        aria-label="Return to current month"
+                        title="Return to today"
+                      >
+                        <Home className="h-5 w-5" />
+                      </button>
+                    </div>
+                    <div className="flex justify-start">
+                      <button 
+                        className="p-2 rounded-full hover:bg-gray-100"
+                        onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+                        aria-label="Previous month"
+                      >
+                        <ChevronLeft className="h-5 w-5 text-stone-600" />
+                      </button>
+                    </div>
+                    <div className="text-center text-stone-700 font-medium whitespace-nowrap px-1">
+                      {format(currentMonth, 'MMMM yyyy')}
+                    </div>
+                    <div className="flex justify-end">
+                      <button 
+                        className="p-2 rounded-full hover:bg-gray-100"
+                        onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+                        aria-label="Next month"
+                      >
+                        <ChevronRight className="h-5 w-5 text-stone-600" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -659,7 +678,6 @@ export function Book2Page() {
                   selectedWeeks={selectedWeeks}
                   onWeekSelect={handleWeekSelect}
                   onWeeksDeselect={handleWeeksDeselect}
-                  onClearSelection={handleClearSelection}
                   isAdmin={isAdminMode}
                   onDateSelect={handleFlexDateSelect}
                 />
