@@ -11,7 +11,6 @@
     NODE_ENV = "production"
     VITE_SUPABASE_URL = "https://guquxpxxycfmmlqajdyw.supabase.co"
     VITE_SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1cXV4cHh4eWNmbW1scWFqZHl3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzE5MzczOTYsImV4cCI6MjA0NzUxMzM5Nn0.CaOsAbm7eALs22atCPtsaGSWc5h6QZ8ly8Bar_O3N8Y"
-    VITE_STRIPE_PUBLIC_KEY="pk_live_51KRJB4Gi5eXNGIkHhMGff7jQ8QGHbyk93UyQkK1IsjtYWFCYuLIKpJqiThkmhbHq5G0IhjoUvtfuFpD3Vo0xXMMK00ZoyckXfF"
 
 # Dev branch - dev--mellow-mandazi-f4bd0c.netlify.app
 [context.dev]
@@ -19,7 +18,6 @@
     NODE_ENV = "development"
     VITE_SUPABASE_URL = "https://guquxpxxycfmmlqajdyw.supabase.co"
     VITE_SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1cXV4cHh4eWNmbW1scWFqZHl3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzE5MzczOTYsImV4cCI6MjA0NzUxMzM5Nn0.CaOsAbm7eALs22atCPtsaGSWc5h6QZ8ly8Bar_O3N8Y"
-    VITE_STRIPE_PUBLIC_KEY="pk_test_51KRJB4Gi5eXNGIkHSucqLNxKB6rfUkfLroMBMYWo8E2u56xqXXsX7TLKZbMUT6IFdtTfWpJtgoEi4zQ3CZzrJiEL00aJtBw3Mu"
 
 # Deploy previews (pull requests)
 [context.deploy-preview]
@@ -27,7 +25,6 @@
     NODE_ENV = "development"
     VITE_SUPABASE_URL = "https://guquxpxxycfmmlqajdyw.supabase.co"
     VITE_SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1cXV4cHh4eWNmbW1scWFqZHl3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzE5MzczOTYsImV4cCI6MjA0NzUxMzM5Nn0.CaOsAbm7eALs22atCPtsaGSWc5h6QZ8ly8Bar_O3N8Y"
-    VITE_STRIPE_PUBLIC_KEY="pk_test_51KRJB4Gi5eXNGIkHSucqLNxKB6rfUkfLroMBMYWo8E2u56xqXXsX7TLKZbMUT6IFdtTfWpJtgoEi4zQ3CZzrJiEL00aJtBw3Mu"
 
 [[redirects]]
   from = "/*"
