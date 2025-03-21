@@ -18,7 +18,7 @@ import { normalizeToUTCDate } from './utils/dates';
 import { WhitelistWelcomeModal } from './components/WhitelistWelcomeModal';
 
 // Configure logging early to silence logs in production
-configureLogging();
+//configureLogging();
 
 export default function App() {
   const session = useSession();
