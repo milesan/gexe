@@ -1,5 +1,6 @@
 import { Database } from '../types/database';
 import { CalendarConfig, WeekCustomization, WeekStatus } from '../types/calendar';
+import { normalizeToUTCDate } from './dates';
 
 type CalendarConfigRow = Database['public']['Tables']['calendar_config']['Row'];
 type WeekCustomizationRow = Database['public']['Tables']['week_customizations']['Row'];
@@ -50,13 +51,15 @@ export function mapWeekCustomizationFromRow(row: WeekCustomizationRow & { flexib
     
     return {
         id: row.id,
-        startDate: new Date(row.start_date),
-        endDate: new Date(row.end_date),
+        startDate: normalizeToUTCDate(new Date(row.start_date)),
+        endDate: normalizeToUTCDate(new Date(row.end_date)),
         name: row.name,
         status: row.status as WeekStatus,
-        createdAt: new Date(row.created_at),
+        createdAt: normalizeToUTCDate(new Date(row.created_at)),
         createdBy: row.created_by || 'system',
-        flexibleDates: row.flexible_checkins?.map((fc: { allowed_checkin_date: string }) => new Date(fc.allowed_checkin_date)) || []
+        flexibleDates: row.flexible_checkins?.map((fc: { allowed_checkin_date: string }) => 
+            normalizeToUTCDate(new Date(fc.allowed_checkin_date))
+        ) || []
     };
 }
 

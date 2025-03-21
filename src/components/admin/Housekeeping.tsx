@@ -35,6 +35,7 @@ export function Housekeeping({ onClose }: Props) {
   const [weekStart, setWeekStart] = useState<Date | null>(null);
   const [weekEnd, setWeekEnd] = useState<Date | null>(null);
   const [checkInDay, setCheckInDay] = useState<number>(1); // Default to Monday
+  const [copiedId, setCopiedId] = useState<{id: string, type: 'in' | 'out'} | null>(null);
 
   useEffect(() => {
     async function fetchCalendarConfig() {
@@ -271,26 +272,68 @@ export function Housekeeping({ onClose }: Props) {
       // Get all user IDs from the bookings
       const userIds = [...new Set(data.map(booking => booking.user_id))];
       
-      // Fetch user profiles
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, email, first_name, last_name')
-        .in('id', userIds);
+      // Fetch all user details using our enhanced function that includes both profiles and applications data
+      console.log('[Housekeeping] Fetching user details for:', userIds);
+      let allUserData = [];
+      try {
+        const { data: userData, error: userError } = await supabase
+          .rpc('get_profiles_by_ids', { 
+            user_ids: userIds 
+          });
 
-      if (profilesError) {
-        console.error('[Housekeeping] Error fetching profiles:', profilesError);
-        throw profilesError;
+        if (userError) {
+          console.error('[Housekeeping] Error fetching user data:', userError);
+          // Create basic placeholders for missing user data
+          allUserData = userIds.map(id => ({
+            id,
+            email: `${id.substring(0, 8)}@placeholder.com`,
+            first_name: 'Guest',
+            last_name: `#${id.substring(0, 6)}`
+          }));
+        } else {
+          allUserData = userData || [];
+          
+          // Add placeholders for any missing users
+          if (allUserData.length < userIds.length) {
+            const foundIds = new Set(allUserData.map(user => user.id));
+            const missingIds = userIds.filter(id => !foundIds.has(id));
+            
+            if (missingIds.length > 0) {
+              console.log('[Housekeeping] Creating placeholders for missing users:', missingIds);
+              
+              missingIds.forEach(id => {
+                allUserData.push({
+                  id,
+                  email: `${id.substring(0, 8)}@placeholder.com`,
+                  first_name: 'Guest',
+                  last_name: `#${id.substring(0, 6)}`
+                });
+              });
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[Housekeeping] Unexpected error fetching user data:', err);
+        // Create basic placeholders for all users on error
+        allUserData = userIds.map(id => ({
+          id,
+          email: `${id.substring(0, 8)}@placeholder.com`,
+          first_name: 'Guest',
+          last_name: `#${id.substring(0, 6)}`
+        }));
       }
+
+      console.log(`[Housekeeping] Retrieved data for ${allUserData.length} users`);
 
       // Create maps for user emails and names
       const userEmailMap = Object.fromEntries(
-        profiles.map(profile => [profile.id, profile.email])
+        allUserData.map(user => [user.id, user.email])
       );
 
       const userNameMap = Object.fromEntries(
-        profiles.map(profile => [
-          profile.id, 
-          `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Unknown'
+        allUserData.map(user => [
+          user.id, 
+          `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Unknown'
         ])
       );
 
@@ -358,7 +401,7 @@ export function Housekeeping({ onClose }: Props) {
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
-              <span className="text-sm">
+              <span className="text-sm font-mono w-[140px] text-center">
                 {weekStart && weekEnd ? (
                   `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d')}`
                 ) : (
@@ -422,10 +465,21 @@ export function Housekeeping({ onClose }: Props) {
                         <h4 className="text-sm font-medium text-green-600 mb-1">Check-ins</h4>
                         <ul className="space-y-2">
                           {checkIns.map(booking => (
-                            <li key={`in-${booking.id}`} className="text-xs p-2 bg-green-50 border border-green-100 rounded">
-                              <div className="font-semibold">{booking.accommodation_title}</div>
-                              <div>{booking.user_name}</div>
-                              <div className="text-gray-500">{booking.user_email}</div>
+                            <li key={`in-${booking.id}`} className="text-xs p-2 bg-green-50 border border-green-100 rounded relative">
+                              <div className="font-semibold truncate">{booking.accommodation_title}</div>
+                              <div className="break-words min-h-[1.25rem]">{booking.user_name}</div>
+                              <button 
+                                onClick={() => {
+                                  navigator.clipboard.writeText(booking.user_email);
+                                  setCopiedId({ id: booking.id, type: 'in' });
+                                  setTimeout(() => setCopiedId(null), 1000);
+                                  console.log('[Housekeeping] Copied check-in email to clipboard:', booking.user_email);
+                                }}
+                                className="truncate block w-full text-left cursor-pointer text-gray-500 hover:text-blue-600"
+                                title="Click to copy email address"
+                              >
+                                {copiedId?.id === booking.id && copiedId?.type === 'in' ? 'Copied!' : booking.user_email}
+                              </button>
                             </li>
                           ))}
                         </ul>
@@ -438,10 +492,21 @@ export function Housekeeping({ onClose }: Props) {
                         <h4 className="text-sm font-medium text-red-600 mb-1">Check-outs</h4>
                         <ul className="space-y-2">
                           {checkOuts.map(booking => (
-                            <li key={`out-${booking.id}`} className="text-xs p-2 bg-red-50 border border-red-100 rounded">
-                              <div className="font-semibold">{booking.accommodation_title}</div>
-                              <div>{booking.user_name}</div>
-                              <div className="text-gray-500">{booking.user_email}</div>
+                            <li key={`out-${booking.id}`} className="text-xs p-2 bg-red-50 border border-red-100 rounded relative">
+                              <div className="font-semibold truncate">{booking.accommodation_title}</div>
+                              <div className="break-words min-h-[1.25rem]">{booking.user_name}</div>
+                              <button 
+                                onClick={() => {
+                                  navigator.clipboard.writeText(booking.user_email);
+                                  setCopiedId({ id: booking.id, type: 'out' });
+                                  setTimeout(() => setCopiedId(null), 1000);
+                                  console.log('[Housekeeping] Copied check-out email to clipboard:', booking.user_email);
+                                }}
+                                className="truncate block w-full text-left cursor-pointer text-gray-500 hover:text-blue-600"
+                                title="Click to copy email address"
+                              >
+                                {copiedId?.id === booking.id && copiedId?.type === 'out' ? 'Copied!' : booking.user_email}
+                              </button>
                             </li>
                           ))}
                         </ul>

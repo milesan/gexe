@@ -7,7 +7,7 @@ export function Auth() {
   const [success, setSuccess] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => { // Dead code ? Duplicate in AnimatedTerminal.tsx 
     e.preventDefault();
     setError(null);
     setSuccess(null);
