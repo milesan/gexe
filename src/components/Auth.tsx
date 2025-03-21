@@ -33,7 +33,7 @@ export function Auth() {
         },
       });
       if (error) throw error;
-      setSuccess('Check your email for the magic link');
+      setSuccess('Check your email for the magic link. If you don\'t see it, check your spam/junk folder.');
     } catch (err) {
       console.error('Error:', err);
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');

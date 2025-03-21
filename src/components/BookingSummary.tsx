@@ -660,53 +660,21 @@ export function BookingSummary({
                 </div>
 
                 <div className="space-y-5">
-                  {/* Arrival Information - Simplified */}
-                  <div className="bg-white border border-emerald-200 rounded-lg shadow-sm">
-                    <div className="p-4 border-b border-emerald-100 flex items-center">
-                      <div className="bg-emerald-100 p-2 rounded-lg mr-3">
-                        <ArrowRight className="w-4 h-4 text-emerald-700" />
-                      </div>
-                      <div>
-                        <h4 className="font-medium text-stone-800">Arrival</h4>
-                        <p className="text-emerald-700 text-sm">{formatDateWithDay(selectedWeeks[0].startDate)}</p>
-                      </div>
-                    </div>
-                    
-                    <div className="p-4 bg-stone-50">
-                      <div className="flex items-center">
-                        <div className="bg-emerald-100 p-2 rounded-lg mr-3">
-                          <Clock className="w-4 h-4 text-emerald-600" />
-                        </div>
-                        <div>
-                          <h4 className="font-medium text-stone-800">Arrival between</h4>
-                          <p className="text-emerald-700 text-sm">3PM-8PM</p>
-                        </div>
-                      </div>
+                  {/* Arrival Information - Simplified and optimized */}
+                  <div className="bg-white border border-emerald-200 rounded-lg shadow-sm p-3">
+                    <h4 className="font-medium text-stone-800 mb-1.5">Arrival</h4>
+                    <div className="space-y-0.5">
+                      <p className="text-emerald-700 text-sm">{formatDateWithDay(selectedWeeks[0].startDate)}</p>
+                      <p className="text-emerald-700 text-sm">3PM-8PM</p>
                     </div>
                   </div>
                   
-                  {/* Departure Information - Simplified */}
-                  <div className="bg-white border border-stone-200 rounded-lg shadow-sm">
-                    <div className="p-4 border-b border-stone-100 flex items-center">
-                      <div className="bg-stone-100 p-2 rounded-lg mr-3">
-                        <LogOut className="w-4 h-4 text-stone-700" />
-                      </div>
-                      <div>
-                        <h4 className="font-medium text-stone-800">Departure</h4>
-                        <p className="text-stone-600 text-sm">{formatDateWithOrdinal(selectedWeeks[selectedWeeks.length - 1].endDate)}</p>
-                      </div>
-                    </div>
-                    
-                    <div className="p-4 bg-stone-50">
-                      <div className="flex items-center">
-                        <div className="bg-stone-100 p-2 rounded-lg mr-3">
-                          <Clock className="w-4 h-4 text-stone-600" />
-                        </div>
-                        <div>
-                          <h4 className="font-medium text-stone-800">Begone by</h4>
-                          <p className="text-stone-600 text-sm">12:00PM Noon</p>
-                        </div>
-                      </div>
+                  {/* Departure Information - Simplified and optimized */}
+                  <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-3">
+                    <h4 className="font-medium text-stone-800 mb-1.5">Begone by</h4>
+                    <div className="space-y-0.5">
+                      <p className="text-stone-600 text-sm">{formatDateWithOrdinal(selectedWeeks[selectedWeeks.length - 1].endDate)}</p>
+                      <p className="text-stone-600 text-sm">12:00PM Noon</p>
                     </div>
                   </div>
                   
