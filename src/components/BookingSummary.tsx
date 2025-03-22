@@ -674,7 +674,7 @@ export function BookingSummary({
                     <h4 className="font-medium text-stone-800 mb-1.5">Begone by</h4>
                     <div className="space-y-0.5">
                       <p className="text-stone-600 text-sm">{formatDateWithOrdinal(selectedWeeks[selectedWeeks.length - 1].endDate)}</p>
-                      <p className="text-stone-600 text-sm">12:00PM Noon</p>
+                      <p className="text-stone-600 text-sm">12PM Noon</p>
                     </div>
                   </div>
                   
