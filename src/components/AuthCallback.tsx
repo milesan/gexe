@@ -1,14 +1,44 @@
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 export function AuthCallback() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const handleCallback = async () => {
       try {
         console.log('AuthCallback: Handling callback');
+        
+        // Get the hash from the URL
+        const hash = window.location.hash;
+        if (hash) {
+          console.log('AuthCallback: Found hash in URL');
+          // Parse the hash parameters
+          const params = new URLSearchParams(hash.replace('#', '?'));
+          const accessToken = params.get('access_token');
+          const refreshToken = params.get('refresh_token');
+          
+          if (accessToken && refreshToken) {
+            console.log('AuthCallback: Setting session from URL tokens');
+            const { error: setSessionError } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken
+            });
+            
+            if (setSessionError) {
+              console.error('AuthCallback: Error setting session:', setSessionError);
+              navigate('/');
+              return;
+            }
+            
+            // Clean up the URL by removing the hash
+            window.location.hash = '';
+          }
+        }
+
+        // Verify the session was set correctly
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -31,7 +61,7 @@ export function AuthCallback() {
     };
 
     handleCallback();
-  }, [navigate]);
+  }, [navigate, location]);
 
   return (
     <div className="min-h-screen bg-stone-50 flex items-center justify-center">
