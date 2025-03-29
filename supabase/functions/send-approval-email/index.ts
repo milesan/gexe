@@ -96,6 +96,7 @@ serve(async (req) => {
             
             <p style="${styles.value}">If the button doesn't work, copy and paste this link into your browser:</p>
             <p style="${styles.value}">${acceptanceUrl}</p>
+            <p style="${styles.value}">Welcome aboard, sailors, scientists, and sirens of the seas</p>
           </div>
           
           <div style="${styles.infoCard}">
@@ -103,7 +104,6 @@ serve(async (req) => {
             <ul style="color: #115e59; padding-left: 20px; margin: 15px 0;">
               <li style="margin-bottom: 8px;">This invitation link will expire in 14 days</li>
               <li style="margin-bottom: 8px;">Please complete your registration to access all Garden features</li>
-              <li style="margin-bottom: 8px;">Welcome aboard, sailors, scientists, and sirens of the seas</li>
             </ul>
           </div>
         </div>
