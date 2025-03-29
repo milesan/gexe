@@ -611,14 +611,14 @@ export function Book2Page() {
             <svg className="w-4 h-4 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            <h2 className="text-sm font-medium text-stone-700">Note!</h2>
+            <h2 className="text-sm font-medium text-stone-700 font-regular">Note!</h2>
           </div>
           <div className="flex flex-col gap-3 text-stone-600">
-            <p className="flex items-start gap-2.5 text-sm">
+            <p className="flex items-start gap-2.5 text-sm font-regular">
               <span className="text-emerald-600 mt-0.5">•</span>
               The longer you stay, the less € you contribute on both lodging & base-rate
             </p>
-            <p className="flex items-start gap-2.5 text-sm">
+            <p className="flex items-start gap-2.5 text-sm font-regular">
               <span className="text-emerald-600 mt-0.5">•</span>
               The quieter the time of year, the less € you contribute on lodging.
             </p>
@@ -635,7 +635,7 @@ export function Book2Page() {
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => setIsAdminMode(false)}
-                      className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm bg-amber-600 text-white hover:bg-amber-700 transition-all duration-200 font-medium"
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm bg-amber-600 text-white hover:bg-amber-700 transition-all duration-200 font-medium font-regular"
                     >
                       <svg 
                         className="h-5 w-5" 
@@ -662,7 +662,7 @@ export function Book2Page() {
                 ) : (
                   <button
                     onClick={() => setIsAdminMode(true)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm bg-emerald-600 text-white hover:bg-emerald-700 transition-all duration-200 font-medium"
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm bg-emerald-600 text-white hover:bg-emerald-700 transition-all duration-200 font-medium font-regular"
                   >
                     <svg 
                       className="h-5 w-5" 
@@ -693,11 +693,11 @@ export function Book2Page() {
                   {selectedWeeks.length > 0 && (
                     <button
                       onClick={() => setShowDiscountModal(true)}
-                      className="group flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium border rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 text-emerald-700 bg-emerald-50 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300 relative"
+                      className="group flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium border rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 text-emerald-700 bg-emerald-50 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300 relative font-regular"
                     >
                       <span>{combinedDiscount > 0 ? `Discount: ${seasonBreakdown?.hasMultipleSeasons ? '~' : ''}${Math.round(combinedDiscount * 100)}%` : 'Discounts'}</span>
                       <HelpCircle className="w-4 h-4 text-emerald-600" />
-                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-stone-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-stone-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-regular">
                         Click for detailed breakdown
                         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-stone-800"></div>
                       </div>
@@ -706,7 +706,7 @@ export function Book2Page() {
                   <button
                     onClick={handleClearSelection}
                     className={clsx(
-                      "flex items-center gap-1 px-3 py-1.5 text-sm font-medium border rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50",
+                      "flex items-center gap-1 px-3 py-1.5 text-sm font-medium border rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 font-regular",
                       selectedWeeks.length > 0 
                         ? "text-emerald-700 bg-emerald-50 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300" 
                         : "text-stone-400 bg-stone-50 border-stone-200 cursor-not-allowed opacity-70"
@@ -738,7 +738,7 @@ export function Book2Page() {
                         <ChevronLeft className="h-5 w-5 text-stone-600" />
                       </button>
                     </div>
-                    <div className="text-center text-stone-700 font-medium whitespace-nowrap px-1">
+                    <div className="text-center text-stone-700 font-medium whitespace-nowrap px-1 font-regular">
                       {format(currentMonth, 'MMMM yyyy')}
                     </div>
                     <div className="flex justify-end">
@@ -796,13 +796,12 @@ export function Book2Page() {
                     selectedAccommodation={selectedAccommodation && accommodations ? 
                       accommodations.find(a => a.id === selectedAccommodation) || null : null
                     }
-                    baseRate={BASE_RATE}
                     onClearWeeks={() => setSelectedWeeks([])}
                     onClearAccommodation={() => setSelectedAccommodation(null)}
                     seasonBreakdown={seasonBreakdown}
                   />
                 ) : (
-                  <div className="text-stone-600 text-sm">
+                  <div className="text-stone-600 text-sm font-regular">
                     <p>Select your dates to see booking details</p>
                   </div>
                 )}

@@ -321,13 +321,13 @@ export function CabinSelector({
         </div>
       ) : accommodations.length === 0 ? (
         <div className="text-center py-12 bg-stone-50 rounded-xl">
-          <h3 className="text-lg font-medium text-stone-800 mb-2">No accommodations available</h3>
-          <p className="text-stone-600">Please try different dates or check back later.</p>
+          <h3 className="text-lg font-medium text-stone-800 mb-2 font-regular">No accommodations available</h3>
+          <p className="text-stone-600 font-regular">Please try different dates or check back later.</p>
         </div>
       ) : (
         <>
           {isDisabled && (
-            <div className="text-stone-600 text-sm">
+            <div className="text-stone-600 text-sm font-regular">
               <p>Select your dates to see booking details</p>
             </div>
           )}
@@ -379,7 +379,7 @@ export function CabinSelector({
                   {/* Booked out overlay */}
                   {!isAvailable && (
                     <div className="absolute inset-0 bg-stone-50/50 z-10 flex items-center justify-center">
-                      <div className="bg-stone-100/80 backdrop-blur-[1px] text-stone-500 px-3 py-1.5 rounded-md font-medium text-xs shadow-sm border border-stone-200">
+                      <div className="bg-stone-100/80 backdrop-blur-[1px] text-stone-500 px-3 py-1.5 rounded-md font-medium text-xs shadow-sm border border-stone-200 font-regular">
                         Booked out
                       </div>
                     </div>
@@ -388,7 +388,7 @@ export function CabinSelector({
                   {/* Out of season overlay for tents - more subtle */}
                   {isOutOfSeason && (
                     <div className="absolute inset-0 bg-amber-50/40 z-10 flex items-center justify-center">
-                      <div className="bg-amber-50 text-amber-800 px-3 py-1.5 rounded-md font-medium text-xs shadow-sm border border-amber-200">
+                      <div className="bg-amber-50 text-amber-800 px-3 py-1.5 rounded-md font-medium text-xs shadow-sm border border-amber-200 font-regular">
                         Seasonal: Apr 15 - Sep 1
                       </div>
                     </div>
@@ -397,7 +397,7 @@ export function CabinSelector({
                   {/* Selected indicator */}
                   {selectedAccommodationId === accommodation.id && (
                     <div className="absolute top-3 right-3 z-10">
-                      <div className="bg-emerald-600 text-white text-xs px-2 py-1 rounded-full shadow-md">
+                      <div className="bg-emerald-600 text-white text-xs px-2 py-1 rounded-full shadow-md font-regular">
                         Selected
                       </div>
                     </div>
@@ -407,11 +407,11 @@ export function CabinSelector({
                   {statusBadge && !isOutOfSeason && (
                     <div className="absolute top-3 right-3 z-10 flex flex-col gap-1.5">
                       {selectedAccommodationId === accommodation.id && (
-                        <div className="bg-emerald-600 text-white text-xs px-2 py-1 rounded-full shadow-md">
+                        <div className="bg-emerald-600 text-white text-xs px-2 py-1 rounded-full shadow-md font-regular">
                           Selected
                         </div>
                       )}
-                      <div className={`inline-flex items-center px-2 py-0.5 rounded-full ${statusBadge.bgColor} ${statusBadge.textColor} text-xs font-medium shadow-sm backdrop-blur-[1px] bg-white/90`}>
+                      <div className={`inline-flex items-center px-2 py-0.5 rounded-full ${statusBadge.bgColor} ${statusBadge.textColor} text-xs font-medium shadow-sm backdrop-blur-[1px] bg-white/90 font-regular`}>
                         {statusBadge.text}
                       </div>
                     </div>
@@ -484,19 +484,19 @@ export function CabinSelector({
                     <div className="p-3 bg-white">
                       <div className="flex flex-col h-full">
                         {/* Title */}
-                        <h3 className="text-base font-medium text-stone-900 mb-1.5 line-clamp-1" title={accommodation.title}>
+                        <h3 className="text-base font-medium text-stone-900 mb-1.5 line-clamp-1 font-regular" title={accommodation.title}>
                           {accommodation.title}
                         </h3>
 
                         {/* Price Section */}
                         <div className="flex flex-col">
                           <div className="flex items-baseline gap-2">
-                            <span className="text-2xl font-light tracking-tight text-stone-900">
+                            <span className="text-2xl font-light tracking-tight text-stone-900 font-regular">
                               €{selectedWeeks.length > 0 
                                 ? calculateFinalPrice(accommodation.base_price, selectedWeeks, accommodation.title).toFixed(0)
                                 : accommodation.base_price}
                             </span>
-                            <span className="text-sm text-stone-500"> / week</span>
+                            <span className="text-sm text-stone-500 font-regular"> / week</span>
                             {(() => {
                               const durationDiscount = selectedWeeks.length > 0 ? getDurationDiscount(calculateDurationDiscountWeeks(selectedWeeks)) : 0;
                               return selectedWeeks.length > 0 && 
@@ -516,13 +516,13 @@ export function CabinSelector({
                                         <div className="space-y-2">
                                           <div className="flex items-center gap-2">
                                             <Percent className="w-4 h-4 text-emerald-600" />
-                                            <h4 className="font-medium text-stone-800">Discounts Applied</h4>
+                                            <h4 className="font-medium text-stone-800 font-regular">Discounts Applied</h4>
                                           </div>
                                           <div className="mt-2 space-y-2">
                                             {seasons
                                               .filter(season => season.nights > 0 && season.discount > 0)
                                               .map((season, index) => (
-                                              <div key={index} className={`flex items-center text-xs gap-2 ${season.nights > 0 ? "text-emerald-700 font-medium" : ""}`}>
+                                              <div key={index} className={`flex items-center text-xs gap-2 ${season.nights > 0 ? "text-emerald-700 font-medium" : ""} font-regular`}>
                                                 <span className="min-w-[100px]">{season.name}</span>
                                                 <span className="font-medium">
                                                   {season.nights} nights × {Math.round(season.discount * 100)}% off
@@ -530,7 +530,7 @@ export function CabinSelector({
                                               </div>
                                             ))}
                                           </div>
-                                          <div className="text-xs text-stone-500">
+                                          <div className="text-xs text-stone-500 font-regular">
                                             {durationDiscount > 0 && `Duration discount: ${Math.round(durationDiscount * 100)}% off`}
                                           </div>
                                         </div>

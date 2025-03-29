@@ -18,8 +18,8 @@ export function AuthenticatedApp() {
   const session = useSession();
   const navigate = useNavigate();
   const adminEmails = ['andre@thegarden.pt', 'redis213@gmail.com', 'dawn@thegarden.pt', 'simone@thegarden.pt', 'samjlloa@gmail.com', 'redis213+testadmin@gmail.com'];
-  const isAdmin = adminEmails.includes(session?.user?.email);
-  const { accommodations, refresh: refreshAccommodations } = useAccommodations();
+  const isAdmin = session?.user?.email ? adminEmails.includes(session.user.email) : false;
+  const { accommodations } = useAccommodations();
 
   console.log('AuthenticatedApp: User status', { 
     email: session?.user?.email,
@@ -97,23 +97,20 @@ export function AuthenticatedApp() {
               onClick={() => handleNavigation('calendar')}
               className="text-black flex items-center gap-3 hover:opacity-80 transition-opacity"
             >
-              <img 
+              {/* <img 
                 src="https://raw.githubusercontent.com/milesan/synesthesia/refs/heads/main/Enso%20Zen%20Soto%20Symbol.png" 
                 alt="Logo" 
                 className="w-[42px] h-[42px]"
-              />
+              /> */}
               <div>
-                <h1 className="text-2xl font-display text-stone-800">The Garden</h1>
-                <p className="text-sm text-stone-600 hidden md:block font-['EB_Garamond'] italic tracking-wide">
-                  a new kind of place
-                </p>
+                <h1 className="text-2xl font-['PP_Lettra_Regular'] text-stone-800">The Garden</h1>
               </div>
             </button>
             <div className="flex items-center gap-6">
               <nav className="flex gap-6">
                 <button
                   onClick={() => handleNavigation('my-bookings')}
-                  className={`text-sm font-body transition-colors ${
+                  className={`text-sm font-regular transition-colors ${
                     currentPage === 'my-bookings' 
                       ? 'text-emerald-900 font-medium' 
                       : 'text-stone-600 hover:text-emerald-900'
@@ -124,7 +121,7 @@ export function AuthenticatedApp() {
                 {isAdmin && (
                   <button
                     onClick={() => handleNavigation('admin')}
-                    className="bg-emerald-900 text-white px-4 py-2 rounded-lg hover:bg-emerald-800 transition-colors text-sm font-body"
+                    className="bg-emerald-900 text-white px-4 py-2 rounded-lg hover:bg-emerald-800 transition-colors text-sm font-regular"
                   >
                     Admin Panel
                   </button>
@@ -132,7 +129,7 @@ export function AuthenticatedApp() {
               </nav>
               <button 
                 onClick={handleSignOut}
-                className="bg-stone-100 text-stone-700 px-6 py-2 hover:bg-stone-200 transition-colors text-sm font-body rounded-lg border border-stone-200"
+                className="bg-stone-100 text-stone-700 px-6 py-2 hover:bg-stone-200 transition-colors text-sm font-regular rounded-lg border border-stone-200"
               >
                 Sign Out
               </button>

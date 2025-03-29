@@ -15,7 +15,9 @@ export default {
         mono: ['Space Mono', 'monospace'],
         display: ['VT323', 'monospace'],
         serif: ['Playfair Display', 'serif'],
-        body: ['Lora', 'serif']
+        body: ['Lora', 'serif'],
+        lettra: ['PP Lettra Mono Thin', 'monospace'],
+        regular: ['Space Mono', 'monospace']
       }
     },
   },

@@ -44,15 +44,15 @@ const SeasonLegend = () => {
     <div className="flex items-center justify-center gap-4 mb-4 text-xs">
       <div className="flex items-center gap-2">
         <div className="w-3 h-3 rounded-full bg-blue-400"></div>
-        <span className="text-stone-600">Low (Nov-May)</span>
+        <span className="text-stone-600 font-regular">Low (Nov-May)</span>
       </div>
       <div className="flex items-center gap-2">
         <div className="w-3 h-3 rounded-full bg-orange-400"></div>
-        <span className="text-stone-600">Medium (Jun, Oct)</span>
+        <span className="text-stone-600 font-regular">Medium (Jun, Oct)</span>
       </div>
       <div className="flex items-center gap-2">
         <div className="w-3 h-3 rounded-full bg-gray-400"></div>
-        <span className="text-stone-600">Summer (Jul-Sep)</span>
+        <span className="text-stone-600 font-regular">Summer (Jul-Sep)</span>
       </div>
     </div>
   );
@@ -532,7 +532,7 @@ export function WeekSelector({
                   </div>
                   {/* Show flex dates indicator only if no weeks are selected yet */}
                   {week.flexibleDates && week.flexibleDates.length > 0 && !selectedWeeks.length && (
-                    <div className="text-xs text-indigo-600 mt-1 font-body flex items-center justify-center gap-1">
+                    <div className="text-xs text-indigo-600 mt-1 font-regular flex items-center justify-center gap-1">
                       <Calendar className="w-3 h-3" />
                       <span>{week.flexibleDates.length} check-in {week.flexibleDates.length === 1 ? 'date' : 'dates'}</span>
                     </div>
@@ -546,7 +546,7 @@ export function WeekSelector({
                 // Only show day count for non-standard weeks that are not at the edge of the view
                 if (diffDays !== 7 && !week.isEdgeWeek) {
                   return (
-                    <div className="text-xs text-indigo-600 mt-1 font-body">
+                    <div className="text-xs text-indigo-600 mt-1 font-regular">
                       {diffDays} {diffDays === 1 ? 'day' : 'days'}
                     </div>
                   );
@@ -555,7 +555,7 @@ export function WeekSelector({
               })()}
               {isAdmin && week.status !== 'default' && (
                 <div className={clsx(
-                  'text-xs font-body mt-1',
+                  'text-xs font-regular mt-1',
                   week.status === 'hidden' && 'text-yellow-600',
                   week.status === 'deleted' && 'text-red-600',
                   week.status === 'visible' && 'text-blue-600'
