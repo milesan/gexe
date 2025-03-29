@@ -10,11 +10,13 @@ import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import { PaymentPage } from '../pages/PaymentPage';
 import { useAccommodations } from '../hooks/useAccommodations';
 import { WhitelistWelcomeModal } from './WhitelistWelcomeModal';
+import { Menu, X } from 'lucide-react';
 
 export function AuthenticatedApp() {
   console.log('AuthenticatedApp: Initializing');
   const [currentPage, setCurrentPage] = useState<'calendar' | 'my-bookings' | 'admin'>('calendar');
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const session = useSession();
   const navigate = useNavigate();
   const adminEmails = ['andre@thegarden.pt', 'redis213@gmail.com', 'dawn@thegarden.pt', 'simone@thegarden.pt', 'samjlloa@gmail.com', 'redis213+testadmin@gmail.com'];
@@ -86,27 +88,38 @@ export function AuthenticatedApp() {
   const handleNavigation = (page: 'calendar' | 'my-bookings' | 'admin') => {
     setCurrentPage(page);
     navigate(page === 'calendar' ? '/' : `/${page}`);
+    setIsMobileMenuOpen(false);
   };
 
   return (
     <div className="min-h-screen bg-stone-50">
       <header className="sticky top-0 z-50 bg-white border-b border-stone-200">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16 sm:h-20">
             <button 
               onClick={() => handleNavigation('calendar')}
               className="text-black flex items-center gap-3 hover:opacity-80 transition-opacity"
             >
-              {/* <img 
-                src="https://raw.githubusercontent.com/milesan/synesthesia/refs/heads/main/Enso%20Zen%20Soto%20Symbol.png" 
-                alt="Logo" 
-                className="w-[42px] h-[42px]"
-              /> */}
               <div>
-                <h1 className="text-2xl font-['PP_Lettra_Regular'] text-stone-800">The Garden</h1>
+                <h1 className="text-xl sm:text-2xl font-['PP_Lettra_Regular'] text-stone-800">The Garden</h1>
               </div>
             </button>
-            <div className="flex items-center gap-6">
+
+            {/* Mobile menu button */}
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="lg:hidden p-2 rounded-lg hover:bg-stone-100 transition-colors"
+              aria-label="Toggle menu"
+            >
+              {isMobileMenuOpen ? (
+                <X className="w-6 h-6 text-stone-600" />
+              ) : (
+                <Menu className="w-6 h-6 text-stone-600" />
+              )}
+            </button>
+
+            {/* Desktop navigation */}
+            <div className="hidden lg:flex items-center gap-6">
               <nav className="flex gap-6">
                 <button
                   onClick={() => handleNavigation('my-bookings')}
@@ -130,6 +143,40 @@ export function AuthenticatedApp() {
               <button 
                 onClick={handleSignOut}
                 className="bg-stone-100 text-stone-700 px-6 py-2 hover:bg-stone-200 transition-colors text-sm font-regular rounded-lg border border-stone-200"
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+
+          {/* Mobile menu */}
+          <div 
+            className={`lg:hidden transition-all duration-300 ease-in-out ${
+              isMobileMenuOpen ? 'max-h-64 opacity-100' : 'max-h-0 opacity-0'
+            } overflow-hidden`}
+          >
+            <div className="py-4 space-y-4 border-t border-stone-200">
+              <button
+                onClick={() => handleNavigation('my-bookings')}
+                className={`w-full text-left px-4 py-2 rounded-lg transition-colors ${
+                  currentPage === 'my-bookings' 
+                    ? 'bg-emerald-50 text-emerald-900 font-medium' 
+                    : 'text-stone-600 hover:bg-stone-50'
+                }`}
+              >
+                My Account
+              </button>
+              {isAdmin && (
+                <button
+                  onClick={() => handleNavigation('admin')}
+                  className="w-full text-left bg-emerald-900 text-white px-4 py-2 rounded-lg hover:bg-emerald-800 transition-colors text-sm font-regular"
+                >
+                  Admin Panel
+                </button>
+              )}
+              <button 
+                onClick={handleSignOut}
+                className="w-full text-left bg-stone-100 text-stone-700 px-4 py-2 hover:bg-stone-200 transition-colors text-sm font-regular rounded-lg border border-stone-200"
               >
                 Sign Out
               </button>

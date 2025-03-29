@@ -144,11 +144,13 @@ export function CabinSelector({
   }, [accommodations, selectedWeeks, checkWeekAvailability, onSelectAccommodation, selectedAccommodationId]);
 
   // Filter accommodations based on season and type
-  const visibleAccommodations = accommodations.filter(acc => {
-    // Filter out individual bed entries
-    if ((acc as any).parent_accommodation_id) return false;
-    return true;
-  });
+  const visibleAccommodations = accommodations
+    .filter(acc => {
+      // Filter out individual bed entries
+      if ((acc as any).parent_accommodation_id) return false;
+      return true;
+    })
+    .sort((a, b) => a.base_price - b.base_price); // Sort by base price in ascending order
 
   // Convert selectedWeeks to dates for comparison
   const selectedDates = selectedWeeks?.map(w => w.startDate || w) || [];
@@ -491,7 +493,7 @@ export function CabinSelector({
                         {/* Price Section */}
                         <div className="flex flex-col">
                           <div className="flex items-baseline gap-2">
-                            <span className="text-2xl font-light tracking-tight text-stone-900 font-regular">
+                            <span className="text-2xl font-light tracking-tight text-stone-900 font-display">
                               €{selectedWeeks.length > 0 
                                 ? calculateFinalPrice(accommodation.base_price, selectedWeeks, accommodation.title).toFixed(0)
                                 : accommodation.base_price}
