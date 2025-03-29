@@ -603,42 +603,42 @@ export function Book2Page() {
         backgroundPosition: 'center',
       }}
     >
-      <div className="container mx-auto py-8 px-4">
-        <h1 className="text-4xl font-display mb-4 text-stone-800">Book Your Stay</h1>
+      <div className="container mx-auto py-4 xs:py-6 sm:py-8 px-3 xs:px-4">
+        <h1 className="text-2xl xs:text-3xl font-display mb-3 xs:mb-4 text-stone-800">Book Your Stay</h1>
         
-        <div className="lg:col-span-2 max-w-2xl bg-white/50 backdrop-blur-sm border border-stone-200/50 rounded-lg p-5 mb-8 shadow-sm">
-          <div className="flex items-center gap-2 mb-3">
-            <svg className="w-4 h-4 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <div className="lg:col-span-2 max-w-2xl bg-white/50 backdrop-blur-sm border border-stone-200/50 rounded-lg p-3 xs:p-4 sm:p-5 mb-4 xs:mb-6 sm:mb-8 shadow-sm">
+          <div className="flex items-center gap-2 mb-2 xs:mb-3">
+            <svg className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            <h2 className="text-sm font-medium text-stone-700 font-regular">Note!</h2>
+            <h2 className="text-xs xs:text-sm font-medium text-stone-700 font-regular">Note!</h2>
           </div>
-          <div className="flex flex-col gap-3 text-stone-600">
-            <p className="flex items-start gap-2.5 text-sm font-regular">
+          <div className="flex flex-col gap-2 xs:gap-3 text-stone-600">
+            <p className="flex items-start gap-2 xs:gap-2.5 text-xs xs:text-sm font-regular">
               <span className="text-emerald-600 mt-0.5">•</span>
               The longer you stay, the less € you contribute on both lodging & base-rate
             </p>
-            <p className="flex items-start gap-2.5 text-sm font-regular">
+            <p className="flex items-start gap-2 xs:gap-2.5 text-xs xs:text-sm font-regular">
               <span className="text-emerald-600 mt-0.5">•</span>
               The quieter the time of year, the less € you contribute on lodging.
             </p>
           </div>
         </div>
         
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 xs:gap-5 sm:gap-6">
           {/* Left Column - Calendar and Cabin Selector */}
           <div className="lg:col-span-2">
             {/* Move admin controls here - above the calendar white box */}
             {isAdmin && (
-              <div className="flex justify-end mb-4">
+              <div className="flex justify-end mb-3 xs:mb-4">
                 {isAdminMode ? (
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 xs:gap-3">
                     <button
                       onClick={() => setIsAdminMode(false)}
-                      className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm bg-amber-600 text-white hover:bg-amber-700 transition-all duration-200 font-medium font-regular"
+                      className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-lg text-xs xs:text-sm bg-amber-600 text-white hover:bg-amber-700 transition-all duration-200 font-medium font-regular"
                     >
                       <svg 
-                        className="h-5 w-5" 
+                        className="h-4 w-4 xs:h-5 xs:w-5" 
                         xmlns="http://www.w3.org/2000/svg" 
                         viewBox="0 0 24 24" 
                         fill="none" 
@@ -662,10 +662,10 @@ export function Book2Page() {
                 ) : (
                   <button
                     onClick={() => setIsAdminMode(true)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm bg-emerald-600 text-white hover:bg-emerald-700 transition-all duration-200 font-medium font-regular"
+                    className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-lg text-xs xs:text-sm bg-emerald-600 text-white hover:bg-emerald-700 transition-all duration-200 font-medium font-regular"
                   >
                     <svg 
-                      className="h-5 w-5" 
+                      className="h-4 w-4 xs:h-5 xs:w-5" 
                       xmlns="http://www.w3.org/2000/svg" 
                       viewBox="0 0 24 24" 
                       fill="none" 
@@ -683,80 +683,78 @@ export function Book2Page() {
               </div>
             )}
 
-            <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl lg:text-2xl font-display font-light text-stone-800">
-                  {selectedWeeks.length === 0 ? "When do you want to arrive?" : "When do you want to depart?"}
-                </h2>
-                
-                <div className="flex items-center gap-2">
-                  {selectedWeeks.length > 0 && (
-                    <button
-                      onClick={() => setShowDiscountModal(true)}
-                      className="group flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium border rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 text-emerald-700 bg-emerald-50 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300 relative font-regular"
+            <div className="bg-white rounded-xl shadow-sm p-3 xs:p-4 sm:p-6 mb-4 xs:mb-5 sm:mb-6">
+              <div className="flex flex-col gap-3 mb-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <h2 className="text-lg xxs:text-xl sm:text-2xl font-display font-light text-stone-800">
+                    {selectedWeeks.length === 0 ? "When do you want to arrive?" : 
+                     selectedWeeks.length === 1 ? "When do you want to depart?" : 
+                     "Select your lodging below"}
+                  </h2>
+
+                  <div className="flex items-center gap-2 xxs:gap-3">
+                    <button 
+                      className="p-1 xxs:p-1.5 sm:p-2 rounded-full hover:bg-gray-100 text-emerald-600"
+                      onClick={() => setCurrentMonth(startOfMonth(new Date()))}
+                      aria-label="Return to current month"
+                      title="Return to today"
                     >
-                      <span>{combinedDiscount > 0 ? `Discount: ${seasonBreakdown?.hasMultipleSeasons ? '~' : ''}${Math.round(combinedDiscount * 100)}%` : 'Discounts'}</span>
-                      <HelpCircle className="w-4 h-4 text-emerald-600" />
-                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-stone-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-regular">
-                        Click for detailed breakdown
-                        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-stone-800"></div>
-                      </div>
+                      <Home className="h-3.5 w-3.5 xxs:h-4 xxs:w-4 sm:h-5 sm:w-5" />
                     </button>
-                  )}
-                  <button
-                    onClick={handleClearSelection}
-                    className={clsx(
-                      "flex items-center gap-1 px-3 py-1.5 text-sm font-medium border rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 font-regular",
-                      selectedWeeks.length > 0 
-                        ? "text-emerald-700 bg-emerald-50 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300" 
-                        : "text-stone-400 bg-stone-50 border-stone-200 cursor-not-allowed opacity-70"
-                    )}
-                    aria-label="Clear week selection"
-                    disabled={selectedWeeks.length === 0}
-                  >
-                    <X size={16} />
-                    <span>Clear Dates</span>
-                  </button>
-                  
-                  <div className="grid grid-cols-[40px_40px_auto_40px] items-center ml-2" style={{ minWidth: "280px" }}>
-                    <div className="flex justify-start">
+
+                    <div className="flex items-center bg-white/80 rounded-lg shadow-sm border border-stone-200/50">
                       <button 
-                        className="p-2 rounded-full hover:bg-gray-100 text-emerald-600"
-                        onClick={() => setCurrentMonth(startOfMonth(new Date()))}
-                        aria-label="Return to current month"
-                        title="Return to today"
-                      >
-                        <Home className="h-5 w-5" />
-                      </button>
-                    </div>
-                    <div className="flex justify-start">
-                      <button 
-                        className="p-2 rounded-full hover:bg-gray-100"
+                        className="p-1 xxs:p-1.5 sm:p-2 rounded-l-lg hover:bg-gray-100 border-r border-stone-200/50"
                         onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
                         aria-label="Previous month"
                       >
-                        <ChevronLeft className="h-5 w-5 text-stone-600" />
+                        <ChevronLeft className="h-3.5 w-3.5 xxs:h-4 xxs:w-4 sm:h-5 sm:w-5 text-stone-600" />
                       </button>
-                    </div>
-                    <div className="text-center text-stone-700 font-medium whitespace-nowrap px-1 font-regular">
-                      {format(currentMonth, 'MMMM yyyy')}
-                    </div>
-                    <div className="flex justify-end">
+                      <div className="px-2 xxs:px-3 sm:px-4 text-center text-stone-700 font-medium whitespace-nowrap text-xs xxs:text-sm sm:text-base font-regular min-w-[120px] xxs:min-w-[140px] sm:min-w-[160px]">
+                        {format(currentMonth, 'MMMM yyyy')}
+                      </div>
                       <button 
-                        className="p-2 rounded-full hover:bg-gray-100"
+                        className="p-1 xxs:p-1.5 sm:p-2 rounded-r-lg hover:bg-gray-100 border-l border-stone-200/50"
                         onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
                         aria-label="Next month"
                       >
-                        <ChevronRight className="h-5 w-5 text-stone-600" />
+                        <ChevronRight className="h-3.5 w-3.5 xxs:h-4 xxs:w-4 sm:h-5 sm:w-5 text-stone-600" />
                       </button>
                     </div>
                   </div>
                 </div>
+
+                {selectedWeeks.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 xxs:gap-2">
+                    <button
+                      onClick={() => setShowDiscountModal(true)}
+                      className="group flex items-center gap-1 xxs:gap-1.5 px-2 xxs:px-2.5 py-1 xxs:py-1.5 text-[10px] xxs:text-xs sm:text-sm font-medium border rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 text-emerald-700 bg-emerald-50 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300 relative font-regular"
+                    >
+                      <span>{combinedDiscount > 0 ? `Discount: ${seasonBreakdown?.hasMultipleSeasons ? '~' : ''}${Math.round(combinedDiscount * 100)}%` : 'Discounts'}</span>
+                      <HelpCircle className="w-3 h-3 xxs:w-3.5 xxs:h-3.5 sm:w-4 sm:h-4 text-emerald-600" />
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 xxs:mb-1.5 px-1.5 xxs:px-2 py-0.5 xxs:py-1 bg-stone-800 text-white text-[8px] xxs:text-[10px] sm:text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-regular">
+                        Click for detailed breakdown
+                        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 rotate-45 w-1.5 h-1.5 bg-stone-800"></div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={handleClearSelection}
+                      className={clsx(
+                        "flex items-center gap-0.5 xxs:gap-1 px-2 xxs:px-2.5 py-1 xxs:py-1.5 text-[10px] xxs:text-xs sm:text-sm font-medium border rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 font-regular",
+                        "text-emerald-700 bg-emerald-50 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300"
+                      )}
+                      aria-label="Clear week selection"
+                    >
+                      <X size={12} className="xxs:w-3.5 xxs:h-3.5 sm:w-4 sm:h-4" />
+                      <span>Clear Dates</span>
+                    </button>
+                  </div>
+                )}
               </div>
-              
+
               {isLoading ? (
-                <div className="h-64 flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-green-800"></div>
+                <div className="h-48 xs:h-56 sm:h-64 flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 xs:h-10 xs:w-10 border-t-2 border-b-2 border-green-800"></div>
                 </div>
               ) : (
                 <WeekSelector 
@@ -766,13 +764,15 @@ export function Book2Page() {
                   onWeeksDeselect={handleWeeksDeselect}
                   isAdmin={isAdminMode}
                   onDateSelect={handleFlexDateSelect}
+                  currentMonth={currentMonth}
+                  onMonthChange={setCurrentMonth}
                 />
               )}
             </div>
             
             {/* Cabin Selector - Under the calendar */}
-            <div className="bg-white rounded-xl shadow-sm p-6 mb-6 cabin-selector">
-              <h2 className="text-xl lg:text-2xl font-display font-light text-stone-800 mb-4">Select Accommodation</h2>
+            <div className="bg-white rounded-xl shadow-sm p-3 xs:p-4 sm:p-6 mb-4 xs:mb-5 sm:mb-6 cabin-selector">
+              <h2 className="text-lg xs:text-xl lg:text-2xl font-display font-light text-stone-800 mb-3 xs:mb-4">Select Accommodation</h2>
               <CabinSelector 
                 accommodations={accommodations || []}
                 selectedAccommodationId={selectedAccommodation}
@@ -789,7 +789,7 @@ export function Book2Page() {
           <div>
             {/* Use regular position on small screens and sticky on large screens */}
             <div className="lg:sticky lg:top-8">
-              <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+              <div className="bg-white rounded-xl shadow-sm p-3 xs:p-4 sm:p-6 mb-4 xs:mb-5 sm:mb-6">
                 {selectedWeeks.length > 0 ? (
                   <BookingSummary 
                     selectedWeeks={selectedWeeks}
@@ -801,7 +801,7 @@ export function Book2Page() {
                     seasonBreakdown={seasonBreakdown}
                   />
                 ) : (
-                  <div className="text-stone-600 text-sm font-regular">
+                  <div className="text-stone-600 text-xs xs:text-sm font-regular">
                     <p>Select your dates to see booking details</p>
                   </div>
                 )}
