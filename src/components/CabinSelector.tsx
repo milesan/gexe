@@ -486,7 +486,7 @@ export function CabinSelector({
                     <div className="p-3 bg-white">
                       <div className="flex flex-col h-full">
                         {/* Title */}
-                        <h3 className="text-base font-medium text-stone-900 mb-1.5 line-clamp-1 font-regular" title={accommodation.title}>
+                        <h3 className="text-base font-medium text-stone-900 mb-1.5 font-regular break-words" title={accommodation.title}>
                           {accommodation.title}
                         </h3>
 
@@ -523,14 +523,17 @@ export function CabinSelector({
                                           <div className="mt-2 space-y-2">
                                             {seasons
                                               .filter(season => season.nights > 0 && season.discount > 0)
-                                              .map((season, index) => (
-                                              <div key={index} className={`flex items-center text-xs gap-2 ${season.nights > 0 ? "text-emerald-700 font-medium" : ""} font-regular`}>
-                                                <span className="min-w-[100px]">{season.name}</span>
-                                                <span className="font-medium">
-                                                  {season.nights} nights × {Math.round(season.discount * 100)}% off
-                                                </span>
-                                              </div>
-                                            ))}
+                                              .map((season, index) => {
+                                                const weeks = Math.floor(season.nights / 7);
+                                                return (
+                                                  <div key={index} className={`flex items-center text-xs gap-2 ${season.nights > 0 ? "text-emerald-700 font-medium" : ""} font-regular`}>
+                                                    <span className="min-w-[100px]">{season.name}</span>
+                                                    <span className="font-medium">
+                                                      {weeks} week{weeks !== 1 ? 's' : ''} × {Math.round(season.discount * 100)}% off
+                                                    </span>
+                                                  </div>
+                                                );
+                                              })}
                                           </div>
                                           <div className="text-xs text-stone-500 font-regular">
                                             {durationDiscount > 0 && `Duration discount: ${Math.round(durationDiscount * 100)}% off`}
