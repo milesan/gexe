@@ -285,7 +285,7 @@ export function WeekSelector({
     const baseClasses = 'relative flex items-center justify-center border-2 rounded-lg p-4 transition-all duration-200';
     const selectedClasses = 'bg-emerald-50 shadow-lg transform scale-105';
     const defaultClasses = 'hover:border-emerald-300 hover:bg-stone-50';
-    const nonSelectableClasses = 'opacity-50 bg-gray-100 border-gray-200 cursor-not-allowed';
+    const nonSelectableClasses = 'opacity-30 bg-gray-100 border-gray-200 cursor-not-allowed';
     
     let statusClasses = '';
     if (week.isCustom) {
@@ -452,6 +452,7 @@ export function WeekSelector({
                       if (selectedWeeks.length > 1) {
                         const isFirstSelected = selectedWeeks[0] && areSameWeeks(week, selectedWeeks[0]);
                         const isLastSelected = selectedWeeks[selectedWeeks.length - 1] && areSameWeeks(week, selectedWeeks[selectedWeeks.length - 1]);
+                        const isIntermediary = selectedWeeks.some(sw => areSameWeeks(week, sw)) && !isFirstSelected && !isLastSelected;
                         
                         if (isFirstSelected) {
                           // For first week, show selected flex date if available, otherwise show start date
@@ -460,73 +461,83 @@ export function WeekSelector({
                           return (
                             <div className="flex items-center justify-center gap-2">
                               <div>{format(displayDate, 'MMM d')}</div>
-                              <div className="text-4xl">→</div>
+                              <div className="text-2xl">→</div>
                             </div>
                           );
                         }
                         if (isLastSelected) {
                           return (
                             <div className="flex items-center justify-center gap-2">
-                              <div className="text-4xl">→</div>
+                              <div className="text-2xl">→</div>
                               <div>{format(week.endDate, 'MMM d')}</div>
+                            </div>
+                          );
+                        }
+                        if (isIntermediary) {
+                          // For intermediary weeks, just show arrow
+                          return (
+                            <div className="flex items-center justify-center">
+                              <div className="text-2xl">→</div>
                             </div>
                           );
                         }
                       }
                       // For single week selection, show flex date if available
                       const selectedWeek = selectedWeeks[0];
-                      if (selectedWeek && areSameWeeks(week, selectedWeek) && selectedWeek.selectedFlexDate) {
-                        return format(selectedWeek.selectedFlexDate, 'MMM d');
+                      if (selectedWeek && areSameWeeks(week, selectedWeek)) {
+                        if (selectedWeek.selectedFlexDate) {
+                          return (
+                            <div className="flex items-center justify-center gap-2">
+                              <div>{format(selectedWeek.selectedFlexDate, 'MMM d')}</div>
+                              <div className="text-2xl">→</div>
+                              <div>{format(week.endDate, 'MMM d')}</div>
+                            </div>
+                          );
+                        }
+                        return (
+                          <div className="flex items-center justify-center gap-2">
+                            <div>{format(week.startDate, 'MMM d')}</div>
+                            <div className="text-2xl">→</div>
+                            <div>{format(week.endDate, 'MMM d')}</div>
+                          </div>
+                        );
                       }
                       // Default display for non-selected weeks
-                      return format(week.startDate, 'MMM d');
+                      if (selectedWeeks.length === 0) {
+                        // If week has flexible dates, show the first available one
+                        if (week.flexibleDates && week.flexibleDates.length > 0) {
+                          // Sort flexible dates to ensure we show the earliest one
+                          const sortedFlexDates = [...week.flexibleDates].sort((a, b) => a.getTime() - b.getTime());
+                          return format(sortedFlexDates[0], 'MMM d');
+                        }
+                        return format(week.startDate, 'MMM d');
+                      }
+                      // For weeks before the selected check-in date, keep original display
+                      const selectedCheckInWeek = selectedWeeks[0];
+                      if (selectedCheckInWeek && isBefore(week.startDate, selectedCheckInWeek.startDate)) {
+                        if (week.flexibleDates && week.flexibleDates.length > 0) {
+                          const sortedFlexDates = [...week.flexibleDates].sort((a, b) => a.getTime() - b.getTime());
+                          return format(sortedFlexDates[0], 'MMM d');
+                        }
+                        return format(week.startDate, 'MMM d');
+                      }
+                      // Show departure date for non-selected weeks when other weeks are selected
+                      return (
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="text-2xl">→</div>
+                          <div>{format(week.endDate, 'MMM d')}</div>
+                        </div>
+                      );
                     })()}
                   </div>
-                  {(() => {
-                    // Don't show the smaller date display for first/last selected weeks when multiple weeks are selected
-                    if (selectedWeeks.length > 1) {
-                      const isFirstSelected = selectedWeeks[0] && areSameWeeks(week, selectedWeeks[0]);
-                      const isLastSelected = selectedWeeks[selectedWeeks.length - 1] && areSameWeeks(week, selectedWeeks[selectedWeeks.length - 1]);
-                      if (isFirstSelected || isLastSelected) {
-                        return null;
-                      }
-                    }
-                    return (
-                      <div className="font-mono text-sm text-stone-500 flex items-center justify-center gap-2">
-                        <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                          <path d="M4 12h16m0 0l-6-6m6 6l-6 6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                        <span>{format(week.endDate, 'MMM d')}</span>
-                      </div>
-                    );
-                  })()}
+                  {/* Show flex dates indicator only if no weeks are selected yet */}
+                  {week.flexibleDates && week.flexibleDates.length > 0 && !selectedWeeks.length && (
+                    <div className="text-xs text-indigo-600 mt-1 font-body flex items-center justify-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      <span>{week.flexibleDates.length} check-in {week.flexibleDates.length === 1 ? 'date' : 'dates'}</span>
+                    </div>
+                  )}
                 </>
-              )}
-              {/* Show flex dates indicator */}
-              {week.flexibleDates && week.flexibleDates.length > 0 && (
-                <div className="text-xs text-indigo-600 mt-1 font-body flex items-center justify-center gap-1">
-                  <Calendar className="w-3 h-3" />
-                  <span>{week.flexibleDates.length} check-in {week.flexibleDates.length === 1 ? 'date' : 'dates'}</span>
-                  {/* Show indicator if this flex week has a selected date that matches one of its flex dates */}
-                  {isWeekSelected(week) && selectedWeeks.length > 0 && 
-                    selectedWeeks.some(sw => {
-                      if (areSameWeeks(week, sw) && sw.selectedFlexDate && 
-                          week.flexibleDates?.some(fd => isSameDay(normalizeToUTCDate(fd), normalizeToUTCDate(sw.selectedFlexDate!)))) {
-                        return true;
-                      }
-                      return false;
-                    }) && (
-                      <span 
-                        className="text-emerald-600 ml-1 flex items-center tooltip-container" 
-                        title={`Check-in on ${format(selectedWeeks.find(sw => 
-                          areSameWeeks(week, sw) && sw.selectedFlexDate
-                        )?.selectedFlexDate || week.startDate, 'EEEE, MMM d')}`}
-                      >
-                        ★
-                      </span>
-                    )
-                  }
-                </div>
               )}
               {(() => {
                 const diffTime = week.endDate.getTime() - week.startDate.getTime();
