@@ -6,10 +6,11 @@ import { InventoryCalendar } from '../components/InventoryCalendar';
 import { Weekly } from '../components/admin/Weekly';
 import { Whitelist } from '../components/admin/Whitelist';
 import { Housekeeping } from '../components/admin/Housekeeping';
-import { ClipboardList, Calendar, Users, LayoutGrid, ListChecks, UserPlus, Home } from 'lucide-react';
+import { Accommodations } from '../components/admin/Accommodations';
+import { ClipboardList, Calendar, Users, LayoutGrid, ListChecks, UserPlus, Home, Building2 } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 
-type AdminView = 'applications' | 'appview' | 'bookings' | 'calendar' | 'weekly' | 'whitelist';
+type AdminView = 'applications' | 'appview' | 'bookings' | 'calendar' | 'weekly' | 'whitelist' | 'accommodations';
 
 export function AdminPage() {
   const [currentView, setCurrentView] = useState<AdminView>('applications');
@@ -103,6 +104,17 @@ export function AdminPage() {
             <UserPlus className="w-4 h-4" />
             Whitelist
           </button>
+          <button
+            onClick={() => setCurrentView('accommodations')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${
+              currentView === 'accommodations'
+                ? 'bg-emerald-900 text-white'
+                : 'bg-white text-stone-600 hover:bg-stone-50 border border-stone-200'
+            }`}
+          >
+            <Building2 className="w-4 h-4" />
+            Accommodations
+          </button>
         </div>
 
         <div className="bg-white rounded-xl border border-stone-200 shadow-sm">
@@ -110,6 +122,7 @@ export function AdminPage() {
           {currentView === 'appview' && <AppView />}
           {currentView === 'bookings' && <BookingsList />}
           {currentView === 'whitelist' && <Whitelist />}
+          {currentView === 'accommodations' && <Accommodations />}
         </div>
 
         <AnimatePresence>
