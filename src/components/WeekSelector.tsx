@@ -44,15 +44,15 @@ const SeasonLegend = () => {
     <div className="flex items-center justify-center gap-4 mb-4 text-xs">
       <div className="flex items-center gap-2">
         <div className="w-3 h-3 rounded-full bg-blue-400"></div>
-        <span className="text-stone-600">Winter (Nov-May)</span>
+        <span className="text-stone-600">Low (Nov-May)</span>
       </div>
       <div className="flex items-center gap-2">
         <div className="w-3 h-3 rounded-full bg-orange-400"></div>
-        <span className="text-stone-600">Shoulder (Jun, Oct)</span>
+        <span className="text-stone-600">Medium (Jun, Oct)</span>
       </div>
       <div className="flex items-center gap-2">
         <div className="w-3 h-3 rounded-full bg-gray-400"></div>
-        <span className="text-stone-600">High (Jul-Sep)</span>
+        <span className="text-stone-600">Summer (Jul-Sep)</span>
       </div>
     </div>
   );
