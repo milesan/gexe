@@ -16,6 +16,7 @@ import type { DayPickerSingleProps } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import { formatDateForDisplay } from '../utils/dates';
 import * as Tooltip from '@radix-ui/react-tooltip';
+import { calculateTotalNights, calculateDurationDiscountWeeks } from '../utils/dates';
 
 // Define the season breakdown type
 export interface SeasonBreakdown {
@@ -34,20 +35,6 @@ interface BookingSummaryProps {
   onClearAccommodation: () => void;
   seasonBreakdown?: SeasonBreakdown; // Optional for backward compatibility
 }
-
-// Helper function to calculate total nights from selected weeks
-const calculateTotalNights = (selectedWeeks: Week[]): number => {
-  if (selectedWeeks.length === 0) return 0;
-  
-  // For a date range like "Jul 1 → Jul 14", the correct number of nights is 13
-  // We need to calculate (end date - start date) in days
-  const firstDate = selectedWeeks[0].startDate;
-  const lastDate = selectedWeeks[selectedWeeks.length - 1].endDate;
-  
-  // differenceInDays gives us the exact number of nights
-  console.log('[BookingSummary] Total nights:', differenceInDays(lastDate, firstDate));
-  return differenceInDays(lastDate, firstDate);
-};
 
 // Helper function to format numbers without decimal points when they're integers
 const formatNumber = (num: number, decimals: number = 1): string => {
@@ -164,12 +151,11 @@ const calculatePricing = (
   const totalAccommodationCostWithFood = baseAccommodationCostWithDiscount + totalFoodAndFacilitiesCost;
   
   // Calculate duration discount using the utility function
-  const totalDays = totalNights + 1;
-  const completeWeeks = Math.floor(totalDays / 7);
+  const completeWeeks = calculateDurationDiscountWeeks(selectedWeeks);
   const durationDiscount = getDurationDiscount(completeWeeks);
   
   console.log('[BookingSummary] Duration discount calculation:', {
-    totalDays,
+    totalNights: calculateTotalNights(selectedWeeks),
     completeWeeks,
     discount: durationDiscount,
     isCapped: durationDiscount === 0.35
@@ -664,7 +650,7 @@ export function BookingSummary({
                   transition={{ duration: 0.3 }}
                 >
                   <div className="flex justify-between items-center mb-3">
-                    <h3 className="font-serif text-lg text-stone-800 flex items-center">
+                    <h3 className="text-lg text-stone-800 flex items-center">
                       <Bed className="w-4 h-4 mr-2 text-emerald-600" />
                       Accommodation
                     </h3>
@@ -680,7 +666,7 @@ export function BookingSummary({
                   <div className="space-y-3">
                     <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-100">
                       <div className="text-center">
-                        <span className="text-emerald-800 font-serif">
+                        <span className="text-emerald-800 font-medium">
                           {selectedAccommodation.title === 'Van Parking' || 
                            selectedAccommodation.title === 'Your Own Tent' || 
                            selectedAccommodation.title === '+1 Accommodation' || 
@@ -705,26 +691,38 @@ export function BookingSummary({
                       <span>Accommodation ({pricing.totalNights} nights)</span>
                       {seasonBreakdown?.hasMultipleSeasons && pricing.totalAccommodationCost > 0 && (
                         <Tooltip.Provider>
-                          <Tooltip.Root>
+                          <Tooltip.Root delayDuration={0}>
                             <Tooltip.Trigger asChild>
                               <Info className="w-4 h-4 text-stone-400 hover:text-stone-600 cursor-help" />
                             </Tooltip.Trigger>
                             <Tooltip.Portal>
                               <Tooltip.Content
-                                className="bg-white p-4 rounded-lg shadow-lg border border-stone-200 max-w-xs z-50"
+                                className="bg-white p-4 rounded-lg shadow-lg border border-stone-200 max-w-xs z-50 data-[state=delayed-open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=delayed-open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=delayed-open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2"
                                 sideOffset={5}
                               >
-                                <div className="space-y-2">
-                                  <h4 className="font-medium text-stone-800">Seasonal Breakdown</h4>
-                                  {seasonBreakdown.seasons.map((season, index) => (
-                                    <div key={index} className="flex justify-between items-center text-sm">
-                                      <span className="text-stone-600 min-w-[140px]">{season.name}</span>
-                                      <div className="flex items-center gap-6">
-                                        <span className="text-stone-800">{season.nights} nights</span>
-                                        <span className="text-emerald-600">-{(season.discount * 100).toFixed(0)}%</span>
+                                <div className="space-y-3">
+                                  <div className="flex items-center gap-2">
+                                    <Percent className="w-4 h-4 text-emerald-600" />
+                                    <h4 className="font-medium text-stone-800">Discounts Applied</h4>
+                                  </div>
+                                  <div className="space-y-2">
+                                    {/* Seasonal Discounts */}
+                                    {seasonBreakdown.seasons.map((season, index) => (
+                                      <div key={index} className="flex items-center justify-between text-sm">
+                                        <span className="text-stone-600 min-w-[120px]">{season.name}</span>
+                                        <span className="text-emerald-600 font-medium">
+                                          {season.nights} nights × {season.discount === 0 ? "standard rate" : `${Math.round(season.discount * 100)}% off`}
+                                        </span>
                                       </div>
-                                    </div>
-                                  ))}
+                                    ))}
+                                    
+                                    {/* Duration Discount */}
+                                    {pricing.durationDiscountPercent > 0 && (
+                                      <div className="text-xs text-stone-500 pt-2 border-t border-stone-100">
+                                        Duration discount: {Math.round(getDurationDiscount(calculateDurationDiscountWeeks(selectedWeeks)) * 100)}% off
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                               </Tooltip.Content>
                             </Tooltip.Portal>
@@ -793,8 +791,8 @@ export function BookingSummary({
                             </svg>
                           </span>
                           <div className="flex-1">
-                            <p className="mb-2 text-stone-700 font-medium">Your contribution helps us:</p>
-                            <ul className="list-disc list-inside space-y-1.5 pl-0 mb-3">
+                            <p className="mb-1.5 text-stone-700 font-medium">Your contribution helps us:</p>
+                            <ul className="list-disc list-inside space-y-1.5 pl-0 mb-1.5">
                               <li>Provide meals during your stay</li>
                               <li>Maintain our community spaces</li>
                               <li>Ongoing Technical & Wellness Upgrades</li>

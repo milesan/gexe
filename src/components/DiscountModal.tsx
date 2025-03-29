@@ -2,8 +2,9 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { Week } from '../types/calendar';
-import { getSeasonalDiscount, getDurationDiscount } from '../utils/pricing';
+import { getSeasonalDiscount, getDurationDiscount, getSeasonBreakdown } from '../utils/pricing';
 import { eachDayOfInterval, isBefore } from 'date-fns';
+import { calculateTotalNights, calculateDurationDiscountWeeks } from '../utils/dates';
 
 interface DiscountModalProps {
   isOpen: boolean;
@@ -23,13 +24,13 @@ export function DiscountModal({ isOpen, onClose, selectedWeeks }: DiscountModalP
       const startDate = week.startDate;
       const endDate = week.endDate;
       
-      if (endDate < startDate) {
+      if (isBefore(endDate, startDate)) {
         console.warn('[DiscountModal] Invalid date range:', { startDate, endDate });
         return;
       }
       
       // Get all days in this week
-      const daysInWeek = Array.from({ length: (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24) + 1 }, (_, i) => new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000));
+      const daysInWeek = eachDayOfInterval({ start: startDate, end: endDate });
       allDays = [...allDays, ...daysInWeek];
     });
     
@@ -56,101 +57,18 @@ export function DiscountModal({ isOpen, onClose, selectedWeeks }: DiscountModalP
     return weightedDiscount;
   };
 
-  // Calculate duration discount
-  const calculateDurationDiscount = (weeks: Week[]): number => {
-    if (weeks.length === 0) return 0;
-    
-    // Calculate total nights (inclusive of start and end dates)
-    const totalDays = weeks.reduce((acc, week) => {
-      return acc + (week.endDate.getTime() - week.startDate.getTime()) / (1000 * 60 * 60 * 24) + 1;
-    }, 0);
-    
-    // Convert to complete weeks (rounding down)
-    const completeWeeks = Math.floor(totalDays / 7);
-    
-    console.log('[DiscountModal] Duration discount calculation:', {
-      totalDays,
-      completeWeeks,
-      durationDiscount: getDurationDiscount(completeWeeks)
-    });
-    
-    return getDurationDiscount(completeWeeks);
-  };
-
-  // Determine if the booking spans multiple seasons
-  const getSeasonBreakdown = (weeks: Week[]): { hasMultipleSeasons: boolean, seasons: { name: string, discount: number, days: number }[] } => {
-    if (weeks.length === 0) {
-      const discount = getSeasonalDiscount(new Date());
-      const seasonName = discount === 0 ? 'High Season' : 
-                         discount === 0.15 ? 'Shoulder Season' : 
-                         'Winter Season';
-      return { 
-        hasMultipleSeasons: false, 
-        seasons: [{ name: seasonName, discount, days: 0 }] 
-      };
-    }
-
-    // Get all days in the selected period
-    let allDays: Date[] = [];
-    
-    weeks.forEach(week => {
-      const startDate = week.startDate;
-      const endDate = week.endDate;
-      
-      if (isBefore(endDate, startDate)) {
-        return;
-      }
-      
-      const daysInWeek = eachDayOfInterval({ start: startDate, end: endDate });
-      allDays = [...allDays, ...daysInWeek];
-    });
-    
-    if (allDays.length === 0) {
-      const discount = getSeasonalDiscount(new Date());
-      const seasonName = discount === 0 ? 'High Season' : 
-                         discount === 0.15 ? 'Shoulder Season' : 
-                         'Winter Season';
-      return { 
-        hasMultipleSeasons: false, 
-        seasons: [{ name: seasonName, discount, days: 0 }] 
-      };
-    }
-    
-    // Group days by season
-    const seasonMap: Record<string, { name: string, discount: number, days: number }> = {};
-    
-    allDays.forEach(day => {
-      const discount = getSeasonalDiscount(day);
-      const seasonName = discount === 0 ? 'High Season' : 
-                         discount === 0.15 ? 'Shoulder Season' : 
-                         'Winter Season';
-      const key = `${seasonName}-${discount}`;
-      
-      if (!seasonMap[key]) {
-        seasonMap[key] = { name: seasonName, discount, days: 0 };
-      }
-      
-      seasonMap[key].days++;
-    });
-    
-    const seasons = Object.values(seasonMap).sort((a, b) => b.days - a.days);
-    const hasMultipleSeasons = seasons.length > 1;
-    
-    console.log('[DiscountModal] Season breakdown:', { 
-      hasMultipleSeasons, 
-      seasons,
-      totalDays: allDays.length
-    });
-    
-    return { hasMultipleSeasons, seasons };
-  };
-
   const seasonalDiscount = calculateWeightedSeasonalDiscount(selectedWeeks);
-  const durationDiscount = calculateDurationDiscount(selectedWeeks);
-  const { hasMultipleSeasons, seasons } = getSeasonBreakdown(selectedWeeks);
+  const durationDiscount = getDurationDiscount(calculateDurationDiscountWeeks(selectedWeeks));
+  const { hasMultipleSeasons, seasons } = getSeasonBreakdown(
+    selectedWeeks[0]?.startDate || new Date(),
+    selectedWeeks[selectedWeeks.length - 1]?.endDate || new Date()
+  );
   
   // Calculate combined discount (multiplicative)
   const combinedDiscount = 1 - (1 - seasonalDiscount) * (1 - durationDiscount);
+
+  // Calculate complete weeks for highlighting applicable discounts
+  const completeWeeks = calculateDurationDiscountWeeks(selectedWeeks);
 
   return (
     <AnimatePresence>
@@ -190,31 +108,36 @@ export function DiscountModal({ isOpen, onClose, selectedWeeks }: DiscountModalP
                       Seasonal Discount
                     </h4>
                     <span className="text-emerald-700 font-medium text-xs sm:text-sm">
-                      {hasMultipleSeasons ? `~${Math.round(seasonalDiscount * 100)}% off` : `${(seasonalDiscount * 100).toFixed(2)}% off`}
+                      {hasMultipleSeasons ? `~${Math.round(seasonalDiscount * 100)}%` : `${Math.round(seasonalDiscount * 100)}%`}
                     </span>
                   </div>
                   <p className="text-[10px] sm:text-xs text-stone-600">
                     {hasMultipleSeasons ? (
                       <>
-                        <p className="mb-2">The actual discount is calculated per night based on the season:</p>
+                        <p className="mb-2">Discounts are calculated per night based on the season:</p>
                         <div className="mt-2 space-y-2">
-                          {seasons.map((season, index) => (
-                            <div key={index} className="flex items-center text-xs gap-2">
+                          {seasons
+                            .filter(season => season.nights > 0 && season.discount > 0)
+                            .map((season, index) => (
+                            <div key={index} className={`flex items-center text-xs gap-2 ${season.nights > 0 ? "text-emerald-700 font-medium" : ""}`}>
                               <span className="min-w-[100px]">{season.name}</span>
-                              <span className="font-medium">{season.days} nights × {Math.round(season.discount * 100)}% off</span>
+                              <span className="font-medium">
+                                {season.nights} nights × {Math.round(season.discount * 100)}% off
+                              </span>
                             </div>
                           ))}
                         </div>
-                        <p className="mt-2">The number shown above (~{Math.round(seasonalDiscount * 100)}%) is just an indicative average - each night gets its own specific discount.</p>
                         <p className="mt-2 text-stone-600 italic">Note: Seasonal discounts apply to all accommodation prices, except dorm rooms.</p>
                       </>
                     ) : (
                       <>
                         Based on your selected dates, you get a seasonal discount on accommodation:
                         <ul className="list-disc list-inside mt-2 space-y-1">
-                          <li>Winter (Nov-May): 40% off</li>
-                          <li>Shoulder (Jun, Oct): 15% off</li>
-                          <li>High (Jul-Sep): Standard rate</li>
+                          {seasons.map((season, index) => (
+                            <li key={index} className={season.nights > 0 ? "text-emerald-700 font-medium" : ""}>
+                              {season.name} ({season.nights > 0 ? "selected" : "not selected"}): {season.discount === 0 ? "Standard rate" : `${Math.round(season.discount * 100)}% off`}
+                            </li>
+                          ))}
                         </ul>
                         <p className="mt-2 text-stone-600 italic">Note: Seasonal discounts apply to all accommodation prices, except dorm rooms.</p>
                       </>
@@ -231,18 +154,18 @@ export function DiscountModal({ isOpen, onClose, selectedWeeks }: DiscountModalP
                     Duration Discount
                   </h4>
                   <span className="text-violet-700 font-medium text-xs sm:text-sm">
-                    {durationDiscount > 0 ? `${(durationDiscount * 100).toFixed(2)}% off` : 'No discount'}
+                    {durationDiscount > 0 ? `${(durationDiscount * 100).toFixed(2).replace('.00', '')}%` : 'No discount'}
                   </span>
                 </div>
                 <p className="text-[10px] sm:text-xs text-stone-600">
                   Stay 3 weeks or longer to get our duration discount:
                   <ul className="list-disc list-inside mt-2 space-y-1">
-                    <li>3+ weeks: 10% off everything</li>
-                    <li>Additional weeks: +2.78% off per week</li>
-                    <li>Maximum discount: 35% (at 12 weeks)</li>
+                    <li className={completeWeeks >= 3 ? "text-emerald-700 font-medium" : ""}>3+ weeks: 10% off everything</li>
+                    <li className={completeWeeks > 3 ? "text-emerald-700 font-medium" : ""}>Additional weeks: +2.78% off per week</li>
+                    <li className={completeWeeks >= 12 ? "text-emerald-700 font-medium" : ""}>Maximum discount: 35% (at 12 weeks)</li>
                   </ul>
                   <p className="mt-2">  
-                    Currently staying {selectedWeeks.length} week{selectedWeeks.length !== 1 ? 's' : ''}.
+                    Currently staying {completeWeeks === 0 ? "<1" : completeWeeks} week{completeWeeks !== 1 ? 's' : ''}.
                   </p>
                 </p>
               </div>
@@ -251,7 +174,7 @@ export function DiscountModal({ isOpen, onClose, selectedWeeks }: DiscountModalP
               <div className="flex justify-between items-center border-t border-stone-200 pt-3 sm:pt-4">
                 <span className="text-stone-600 text-xs sm:text-sm font-medium">Total discount applied</span>
                 <span className="text-emerald-700 font-medium text-sm sm:text-base">
-                  {hasMultipleSeasons ? '~' : ''}{(combinedDiscount * 100).toFixed(2)}%
+                  {hasMultipleSeasons ? '~' : ''}{Math.round(combinedDiscount * 100)}%
                 </span>
               </div>
             </div>

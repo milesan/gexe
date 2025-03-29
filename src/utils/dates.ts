@@ -1,4 +1,4 @@
-import { addWeeks, startOfWeek, addDays, addMonths, setDay, startOfDay, isSameDay, endOfDay, isBefore, isAfter, subMonths, format, Day, parseISO } from 'date-fns';
+import { addWeeks, startOfWeek, addDays, addMonths, setDay, startOfDay, isSameDay, endOfDay, isBefore, isAfter, subMonths, format, Day, parseISO, differenceInDays } from 'date-fns';
 import { convertToUTC1 } from './timezone';
 import { CalendarConfig, Week, WeekCustomization, WeekStatus } from '../types/calendar';
 
@@ -620,4 +620,31 @@ export function canDeselectArrivalWeek(
   isAdmin: boolean = false
 ): boolean {
   return getWeeksToDeselect(weekToDeselect, selectedWeeks, isAdmin).length > 0;
+}
+
+export function calculateTotalNights(selectedWeeks: Week[]): number {
+  if (selectedWeeks.length === 0) return 0;
+  const firstDate = selectedWeeks[0].startDate;
+  const lastDate = selectedWeeks[selectedWeeks.length - 1].endDate;
+  return differenceInDays(lastDate, firstDate); // Don't add 1, we want actual number of nights
+}
+
+export function calculateTotalDays(selectedWeeks: Week[]): number {
+  if (selectedWeeks.length === 0) return 0;
+  const firstDate = selectedWeeks[0].startDate;
+  const lastDate = selectedWeeks[selectedWeeks.length - 1].endDate;
+  return differenceInDays(lastDate, firstDate) + 1;
+}
+
+/**
+ * Calculate the number of complete weeks for duration discount purposes
+ * This uses 7 days per week as per the discount policy
+ * A week is only counted if there are at least 7 days
+ */
+export function calculateDurationDiscountWeeks(selectedWeeks: Week[]): number {
+  if (selectedWeeks.length === 0) return 0;
+  
+  const totalDays = calculateTotalDays(selectedWeeks);
+  // Only count as a week if there are at least 7 days
+  return totalDays >= 7 ? Math.floor(totalDays / 7) : 0;
 }

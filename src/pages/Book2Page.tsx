@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Calendar, ChevronLeft, ChevronRight, Home, X, HelpCircle } from 'lucide-react';
 import { isSameWeek, addWeeks, isAfter, isBefore, startOfMonth, format, addMonths, subMonths, startOfDay, isSameDay, addDays, eachDayOfInterval, differenceInDays } from 'date-fns';
 import { WeekSelector } from '../components/WeekSelector';
-import { formatDateForDisplay, normalizeToUTCDate, doDateRangesOverlap } from '../utils/dates';
+import { formatDateForDisplay, normalizeToUTCDate, doDateRangesOverlap, calculateDurationDiscountWeeks } from '../utils/dates';
 import { CabinSelector } from '../components/CabinSelector';
 import { BookingSummary, SeasonBreakdown } from '../components/BookingSummary';
 import { MaxWeeksModal } from '../components/MaxWeeksModal';
@@ -81,7 +81,7 @@ export function Book2Page() {
     const totalDays = weeks.reduce((acc, week) => {
       return acc + (week.endDate.getTime() - week.startDate.getTime()) / (1000 * 60 * 60 * 24) + 1;
     }, 0);
-    const completeWeeks = Math.floor(totalDays / 7);
+    const completeWeeks = calculateDurationDiscountWeeks(weeks);
     const durationDiscount = getDurationDiscount(completeWeeks);
     
     console.log('[Book2Page] Combined discount calculation:', {
@@ -462,9 +462,9 @@ export function Book2Page() {
   const calculateSeasonBreakdown = useCallback((weeks: Week[]): SeasonBreakdown => {
     if (weeks.length === 0) {
       const discount = getSeasonalDiscount(currentMonth);
-      const seasonName = discount === 0 ? 'High Season' : 
-                         discount === 0.15 ? 'Shoulder Season' : 
-                         'Winter Season';
+      const seasonName = discount === 0 ? 'Summer Season' : 
+                         discount === 0.15 ? 'Medium Season' : 
+                         'Low Season';
       return { 
         hasMultipleSeasons: false, 
         seasons: [{ name: seasonName, discount, nights: 0 }] 
@@ -495,9 +495,9 @@ export function Book2Page() {
     // Count the nights per season using the date of each night
     allDates.forEach(date => {
       const discount = getSeasonalDiscount(date);
-      const seasonName = discount === 0 ? 'High Season' : 
-                         discount === 0.15 ? 'Shoulder Season' : 
-                         'Winter Season';
+      const seasonName = discount === 0 ? 'Summer Season' : 
+                         discount === 0.15 ? 'Medium Season' : 
+                         'Low Season';
       const key = `${seasonName}-${discount}`;
       
       if (!seasonMap[key]) {
@@ -604,7 +604,26 @@ export function Book2Page() {
       }}
     >
       <div className="container mx-auto py-8 px-4">
-        <h1 className="text-4xl font-display mb-8 text-stone-800">Book Your Stay</h1>
+        <h1 className="text-4xl font-display mb-4 text-stone-800">Book Your Stay</h1>
+        
+        <div className="lg:col-span-2 max-w-2xl bg-white/50 backdrop-blur-sm border border-stone-200/50 rounded-lg p-5 mb-8 shadow-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <svg className="w-4 h-4 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <h2 className="text-sm font-medium text-stone-700">Note!</h2>
+          </div>
+          <div className="flex flex-col gap-3 text-stone-600">
+            <p className="flex items-start gap-2.5 text-sm">
+              <span className="text-emerald-600 mt-0.5">•</span>
+              The longer you stay, the less € you contribute on both lodging & base-rate
+            </p>
+            <p className="flex items-start gap-2.5 text-sm">
+              <span className="text-emerald-600 mt-0.5">•</span>
+              The quieter the time of year, the less € you contribute on lodging.
+            </p>
+          </div>
+        </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Calendar and Cabin Selector */}
