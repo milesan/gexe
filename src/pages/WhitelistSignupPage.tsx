@@ -30,6 +30,16 @@ export function WhitelistSignupPage() {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
+  const handleSignOut = async () => {
+    try {
+      console.log('WhitelistSignupPage: Signing out user');
+      await supabase.auth.signOut();
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -152,6 +162,14 @@ export function WhitelistSignupPage() {
   return (
     <div className="fixed inset-0 bg-black overflow-hidden">
       <div className="min-h-screen flex flex-col items-center justify-center p-4 text-[#FFBF00]">
+        <div className="absolute top-4 right-4">
+          <button
+            onClick={handleSignOut}
+            className="bg-[#FFBF00]/10 text-[#FFBF00] px-4 py-2 rounded-lg hover:bg-[#FFBF00]/20 transition-colors text-sm font-body border border-[#FFBF00]/20"
+          >
+            Sign Out
+          </button>
+        </div>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
