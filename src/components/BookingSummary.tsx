@@ -566,7 +566,7 @@ export function BookingSummary({
       <div className="lg:sticky lg:top-4">
         <div className="bg-white p-6 lg:p-8 pixel-corners">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl lg:text-2xl font-playfair font-light text-stone-900">
+            <h2 className="text-xl lg:text-2xl font-display font-light text-stone-900">
               Summary of Stay
             </h2>
             <button

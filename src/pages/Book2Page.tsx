@@ -685,7 +685,9 @@ export function Book2Page() {
 
             <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl lg:text-2xl font-playfair font-light text-stone-800">Select Your Dates</h2>
+                <h2 className="text-xl lg:text-2xl font-display font-light text-stone-800">
+                  {selectedWeeks.length === 0 ? "When do you want to arrive?" : "When do you want to depart?"}
+                </h2>
                 
                 <div className="flex items-center gap-2">
                   {selectedWeeks.length > 0 && (
@@ -769,8 +771,8 @@ export function Book2Page() {
             </div>
             
             {/* Cabin Selector - Under the calendar */}
-            <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-              <h2 className="text-xl lg:text-2xl font-playfair font-light text-stone-800 mb-4">Select Accommodation</h2>
+            <div className="bg-white rounded-xl shadow-sm p-6 mb-6 cabin-selector">
+              <h2 className="text-xl lg:text-2xl font-display font-light text-stone-800 mb-4">Select Accommodation</h2>
               <CabinSelector 
                 accommodations={accommodations || []}
                 selectedAccommodationId={selectedAccommodation}

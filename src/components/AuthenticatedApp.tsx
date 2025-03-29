@@ -103,7 +103,7 @@ export function AuthenticatedApp() {
                 className="w-[42px] h-[42px]"
               />
               <div>
-                <h1 className="text-2xl font-display font-light tracking-wide">The Garden</h1>
+                <h1 className="text-2xl font-display text-stone-800">The Garden</h1>
                 <p className="text-sm text-stone-600 hidden md:block font-['EB_Garamond'] italic tracking-wide">
                   a new kind of place
                 </p>
