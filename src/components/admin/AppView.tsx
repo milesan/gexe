@@ -75,6 +75,7 @@ export function AppView() {
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
+  const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
 
   React.useEffect(() => {
     loadApplications();
@@ -114,6 +115,9 @@ export function AppView() {
 
   const updateApplicationStatus = async (id: string, status: string) => {
     try {
+      // Set loading state for this specific application
+      setLoadingStates(prev => ({ ...prev, [id]: true }));
+
       if (status === 'approved') {
         const application = applications.find(app => app.id === id);
         console.log('AppView: Approving application', { id, email: application?.user_email });
@@ -157,6 +161,9 @@ export function AppView() {
     } catch (err) {
       console.error('Error updating application:', err);
       setError(err instanceof Error ? err.message : 'Failed to update application');
+    } finally {
+      // Clear loading state for this specific application
+      setLoadingStates(prev => ({ ...prev, [id]: false }));
     }
   };
 
@@ -251,13 +258,19 @@ export function AppView() {
               <>
                 <button
                   onClick={() => updateApplicationStatus(application.id, 'approved')}
-                  className="p-2 rounded-lg bg-emerald-100 text-emerald-600 hover:bg-emerald-200 transition-colors"
+                  disabled={loadingStates[application.id]}
+                  className={`p-2 rounded-lg bg-emerald-100 text-emerald-600 hover:bg-emerald-200 transition-colors ${
+                    loadingStates[application.id] ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
                 >
                   <CheckCircle className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => updateApplicationStatus(application.id, 'rejected')}
-                  className="p-2 rounded-lg bg-rose-100 text-rose-600 hover:bg-rose-200 transition-colors"
+                  disabled={loadingStates[application.id]}
+                  className={`p-2 rounded-lg bg-rose-100 text-rose-600 hover:bg-rose-200 transition-colors ${
+                    loadingStates[application.id] ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
                 >
                   <XCircle className="w-4 h-4" />
                 </button>
