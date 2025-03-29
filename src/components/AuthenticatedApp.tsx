@@ -93,7 +93,10 @@ export function AuthenticatedApp() {
       <header className="sticky top-0 z-50 bg-white border-b border-stone-200">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div className="text-black flex items-center gap-3">
+            <button 
+              onClick={() => handleNavigation('calendar')}
+              className="text-black flex items-center gap-3 hover:opacity-80 transition-opacity"
+            >
               <img 
                 src="https://raw.githubusercontent.com/milesan/synesthesia/refs/heads/main/Enso%20Zen%20Soto%20Symbol.png" 
                 alt="Logo" 
@@ -105,19 +108,9 @@ export function AuthenticatedApp() {
                   a new kind of place
                 </p>
               </div>
-            </div>
+            </button>
             <div className="flex items-center gap-6">
               <nav className="flex gap-6">
-                <button
-                  onClick={() => handleNavigation('calendar')}
-                  className={`text-sm font-body transition-colors ${
-                    currentPage === 'calendar' 
-                      ? 'text-emerald-900 font-medium' 
-                      : 'text-stone-600 hover:text-emerald-900'
-                  }`}
-                >
-                  Calendar
-                </button>
                 <button
                   onClick={() => handleNavigation('my-bookings')}
                   className={`text-sm font-body transition-colors ${
@@ -139,7 +132,7 @@ export function AuthenticatedApp() {
               </nav>
               <button 
                 onClick={handleSignOut}
-                className="bg-stone-100 text-stone-600 px-6 py-2 hover:bg-stone-200 transition-colors text-sm font-body rounded-lg"
+                className="bg-stone-100 text-stone-700 px-6 py-2 hover:bg-stone-200 transition-colors text-sm font-body rounded-lg border border-stone-200"
               >
                 Sign Out
               </button>

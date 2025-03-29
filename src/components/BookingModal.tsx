@@ -31,7 +31,7 @@ export function BookingModal({
   const { credits, loading: creditsLoading, refresh: refreshCredits } = useCredits();
 
   const numberOfDays = differenceInDays(checkOut, checkIn);
-  const numberOfWeeks = Math.ceil(numberOfDays / 7);
+  const numberOfWeeks = Math.ceil(numberOfDays 6);
   const totalAmount = accommodation.price * numberOfWeeks;
 
   const handleBooking = async () => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { RetroQuestionField } from './RetroQuestionField';
 import { Send, ChevronRight, LogOut, Terminal } from 'lucide-react';
@@ -19,24 +19,59 @@ export function Retro2Form({ questions, onSubmit }: Props) {
   const [currentSection, setCurrentSection] = useState(0);
   const navigate = useNavigate();
   const contentRef = useRef<HTMLDivElement>(null);
+  const firstIncompleteRef = useRef<HTMLDivElement>(null);
   const { saveData, loadSavedData, showSaveNotification, setShowSaveNotification } = useAutosave();
 
-  // Load saved data and check consent status
+  // Memoize sections to ensure stable reference
+  const { sections, sectionNames } = useMemo(() => {
+    if (!questions?.length) return { sections: {}, sectionNames: [] };
+    
+    const sections = questions.reduce((acc, question) => {
+      const section = question.section || 'Other';
+      if (!acc[section]) {
+        acc[section] = [];
+      }
+      acc[section].push(question);
+      return acc;
+    }, {} as Record<string, ApplicationQuestion[]>);
+
+    return {
+      sections,
+      sectionNames: Object.keys(sections)
+    };
+  }, [questions]);
+
   useEffect(() => {
     const initializeForm = async () => {
+      if (!sectionNames.length) return;
+      
       const savedData = await loadSavedData();
       if (savedData) {
         setFormData(savedData);
-        // Find the consent question (first question) and its order_number
-        const consentQuestion = questions.find(q => q.section === 'intro');
-        // If user has already consented, skip to next section
-        if (consentQuestion && savedData[consentQuestion.order_number] === 'As you wish.') {
-          setCurrentSection(1);
+        // Find the first incomplete section
+        let lastCompleteSection = -1;
+        for (let i = 0; i < sectionNames.length; i++) {
+          const sectionQuestions = questions.filter(q => q.section === sectionNames[i].toLowerCase());
+          const isSectionComplete = sectionQuestions.every(question => {
+            if (!question.required) return true;
+            const value = savedData[question.order_number];
+            return value !== undefined && value !== '' && value !== null;
+          });
+          if (!isSectionComplete) break;
+          lastCompleteSection = i;
+        }
+        
+        // If all sections are complete, put user on the last section
+        // Otherwise, put them on the first incomplete section
+        if (lastCompleteSection === sectionNames.length - 1) {
+          setCurrentSection(sectionNames.length - 1);
+        } else {
+          setCurrentSection(lastCompleteSection + 1);
         }
       }
     };
     initializeForm();
-  }, [loadSavedData, questions]);
+  }, [loadSavedData, questions, sectionNames]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,17 +124,8 @@ export function Retro2Form({ questions, onSubmit }: Props) {
     navigate('/');
   };
 
-  const sections = questions.reduce((acc, question) => {
-    const section = question.section || 'Other';
-    if (!acc[section]) {
-      acc[section] = [];
-    }
-    acc[section].push(question);
-    return acc;
-  }, {} as Record<string, ApplicationQuestion[]>);
-
-  const sectionNames = Object.keys(sections);
-  const currentSectionName = sectionNames[currentSection];
+  // Add null check for currentSectionName
+  const currentSectionName = sectionNames[currentSection] || sectionNames[0] || '';
   const currentQuestions = sections[currentSectionName] || [];
 
   const isCurrentSectionComplete = () => {
@@ -115,6 +141,10 @@ export function Retro2Form({ questions, onSubmit }: Props) {
   useEffect(() => {
     if (contentRef.current) {
       contentRef.current.scrollTop = 0;
+      // Add a small delay to ensure the DOM has updated
+      setTimeout(() => {
+        firstIncompleteRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
     }
   }, [currentSection]);
 
@@ -188,15 +218,23 @@ export function Retro2Form({ questions, onSubmit }: Props) {
             className="space-y-12 pb-12"
           >
             {questions
-              .filter(q => q.section === sectionNames[currentSection].toLowerCase())
+              .filter(q => {
+                const currentSectionName = sectionNames[currentSection];
+                if (!currentSectionName) return false;
+                return q.section === currentSectionName.toLowerCase();
+              })
               .map((question, index) => (
-                <RetroQuestionField
+                <div
                   key={question.id}
-                  question={question}
-                  questionIndex={index}
-                  value={formData[question.order_number]}
-                  onChange={value => handleChange(question.order_number, value)}
-                />
+                  ref={index === 0 && !isCurrentSectionComplete() ? firstIncompleteRef : undefined}
+                >
+                  <RetroQuestionField
+                    question={question}
+                    questionIndex={index}
+                    value={formData[question.order_number]}
+                    onChange={value => handleChange(question.order_number, value)}
+                  />
+                </div>
               ))}
           </motion.div>
         </div>

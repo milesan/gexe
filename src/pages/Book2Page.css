@@ -228,7 +228,7 @@
   }
 
   .stay2-week-selector h2 {
-    @apply text-2xl font-display mb-6;
+    @apply text-2xl font-serif mb-6;
   }
 
   /* Cabin Selector */
@@ -236,9 +236,17 @@
     @apply space-y-4;
   }
 
+  .stay2-cabin-selector h2 {
+    @apply text-2xl font-serif mb-6;
+  }
+
   /* Booking Summary */
   .stay2-booking-summary {
     @apply bg-white rounded-lg shadow-lg p-6;
+  }
+
+  .stay2-booking-summary h2 {
+    @apply text-2xl font-serif mb-6;
   }
 
   @screen lg {

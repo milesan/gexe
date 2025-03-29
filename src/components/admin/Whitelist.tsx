@@ -27,6 +27,7 @@ export function Whitelist() {
   const [newEmail, setNewEmail] = useState('');
   const [newNotes, setNewNotes] = useState('');
   const [showUpload, setShowUpload] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
 
   useEffect(() => {
     console.log(' Initializing Whitelist component');
@@ -95,20 +96,27 @@ export function Whitelist() {
   };
 
   const addToWhitelist = async () => {
-    if (!newEmail) {
-      console.warn('⚠️ Attempted to add empty email to whitelist');
+    if (!newEmail || isAdding) {
+      console.warn('⚠️ Attempted to add empty email to whitelist or button was clicked while processing');
       return;
     }
 
     console.log('➕ Adding to whitelist:', { email: newEmail, notes: newNotes });
     try {
+      setIsAdding(true);
       const { data, error } = await supabase
         .from('whitelist')
         .insert({ email: newEmail, notes: newNotes })
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        // Check for unique constraint violation
+        if (error.code === '23505') {
+          throw new Error(`Email "${newEmail}" is already in the whitelist`);
+        }
+        throw error;
+      }
       
       console.log('✅ Successfully added to whitelist');
 
@@ -135,6 +143,8 @@ export function Whitelist() {
     } catch (err) {
       console.error('❌ Error adding to whitelist:', err);
       setError(err instanceof Error ? err.message : 'Failed to add to whitelist');
+    } finally {
+      setIsAdding(false);
     }
   };
 
@@ -274,10 +284,15 @@ export function Whitelist() {
           />
           <button
             onClick={addToWhitelist}
-            className="flex items-center gap-2 bg-emerald-900 text-white px-4 py-2 rounded-lg hover:bg-emerald-800 transition-colors"
+            disabled={isAdding || !newEmail}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+              isAdding || !newEmail 
+                ? 'bg-stone-300 cursor-not-allowed' 
+                : 'bg-emerald-900 text-white hover:bg-emerald-800'
+            }`}
           >
             <Plus className="w-4 h-4" />
-            Add
+            {isAdding ? 'Adding...' : 'Add'}
           </button>
         </div>
       </div>

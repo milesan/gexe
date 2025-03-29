@@ -1,5 +1,5 @@
 // Common styles as template literals
-const styles = {
+export const styles = {
   container: 'font-family: sans-serif; max-width: 600px; margin: 0 auto;',
   heading: 'color: #064e3b; text-align: center;',
   card: 'background-color: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0;',

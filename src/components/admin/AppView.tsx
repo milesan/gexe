@@ -5,6 +5,7 @@ import { CheckCircle, XCircle, X } from 'lucide-react';
 import { Housekeeping } from './Housekeeping';
 import { ImageModal } from '../shared/ImageModal';
 import { getFrontendUrl } from '../../lib/environment';
+import { ApplicationDetails } from './ApplicationDetails';
 
 interface Application {
   id: string;
@@ -13,11 +14,6 @@ interface Application {
   status: string;
   created_at: string;
   user_email: string;
-}
-
-interface FullApplicationModalProps {
-  application: Application;
-  onClose: () => void;
 }
 
 const DISPLAY_QUESTIONS = {
@@ -33,60 +29,6 @@ const DISPLAY_QUESTIONS = {
   identity: "How do you identify yourself?",
   reallyKnowYou: "If we really knew you, what would we know?"
 } as const;
-
-function FullApplicationModal({ application, onClose }: FullApplicationModalProps) {
-  const renderAnswer = (value: any) => {
-    if (!value) return 'Not answered';
-    if (typeof value === 'object') {
-      if (value.answer) {
-        let text = value.answer;
-        if (value.role) text += `\nRole: ${value.role}`;
-        if (value.partnerName) text += `\nPartner Name: ${value.partnerName}`;
-        if (value.partnerEmail) text += `\nPartner Email: ${value.partnerEmail}`;
-        return text;
-      }
-      return JSON.stringify(value, null, 2);
-    }
-    return String(value);
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
-      >
-        <div className="p-6 border-b border-stone-200 flex justify-between items-center sticky top-0 bg-white z-10">
-          <div>
-            <h2 className="text-xl font-medium">
-              {application.data[4]} {application.data[5]}
-            </h2>
-            <p className="text-stone-600">{application.user_email}</p>
-          </div>
-          <button 
-            onClick={onClose}
-            className="text-stone-400 hover:text-stone-600 transition-colors"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-
-        <div className="overflow-y-auto p-6">
-          {Object.entries(application.data).map(([key, value]) => (
-            <div key={key} className="mb-6">
-              <h3 className="font-medium text-stone-900 mb-2">Question {key}</h3>
-              <div className="bg-stone-50 p-4 rounded-lg">
-                <p className="text-stone-600 whitespace-pre-wrap">{renderAnswer(value)}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </motion.div>
-    </div>
-  );
-}
 
 function AnswerTooltip({ children, content }: { children: React.ReactNode; content: any }) {
   const [showTooltip, setShowTooltip] = useState(false);
@@ -435,14 +377,12 @@ export function AppView() {
         </AnimatePresence>
       </div>
 
-      <AnimatePresence>
-        {selectedApplication && (
-          <FullApplicationModal
-            application={selectedApplication}
-            onClose={() => setSelectedApplication(null)}
-          />
-        )}
-      </AnimatePresence>
+      {selectedApplication && (
+        <ApplicationDetails
+          application={selectedApplication}
+          onClose={() => setSelectedApplication(null)}
+        />
+      )}
 
       {selectedImage && (
         <ImageModal

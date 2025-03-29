@@ -1,7 +1,10 @@
 import { addWeeks, startOfWeek, addDays, addMonths } from 'date-fns';
 import { convertToUTC1 } from './timezone';
 
-export function getSeasonalDiscount(date: Date): number {
+export function getSeasonalDiscount(date: Date, accommodationType?: string): number {
+  // Dorm rooms don't get seasonal discounts
+  if (accommodationType?.toLowerCase().includes('dorm')) return 0;
+
   const month = date.getMonth();
   const year = date.getFullYear();
   
@@ -23,12 +26,22 @@ export function getSeasonName(date: Date): string {
 }
 
 export function getDurationDiscount(numberOfWeeks: number): number {
-  if (numberOfWeeks < 3) return 0;
+  // Round down to nearest whole week
+  const completeWeeks = Math.floor(numberOfWeeks);
   
-  // Graduated discount starting at 3 weeks
+  if (completeWeeks < 3) return 0;
+  
+  // Base discount for 3 weeks
   const baseDiscount = 0.10; // 10%
-  const extraWeeks = Math.min(numberOfWeeks - 3, 7); // Cap at 10 weeks total
-  const extraDiscount = (extraWeeks * 0.015); // 1.5% per additional week
   
-  return Math.min(baseDiscount + extraDiscount, 0.20); // Cap at 20% total
+  // Additional discount for each week 3 and above
+  if (completeWeeks >= 3) {
+    const extraWeeks = completeWeeks - 3;
+    const extraDiscount = (extraWeeks * 0.0278); // 2.78% per additional week
+    
+    // Cap at 35% (reached at 12 weeks)
+    return Math.min(baseDiscount + extraDiscount, 0.35);
+  }
+  
+  return baseDiscount;
 }

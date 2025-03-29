@@ -29,7 +29,7 @@ export function AutosaveNotification({ show, onClose }: Props) {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
           onClick={onClose}
-          className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-[#FFBF00]/10 backdrop-blur-sm text-[#FFBF00] px-4 py-2 rounded cursor-pointer z-50"
+          className="fixed bottom-8 left-[45%] -translate-x-1/2 bg-[#FFBF00]/10 backdrop-blur-sm text-[#FFBF00] px-4 py-2 rounded cursor-pointer z-50"
           style={{
             clipPath: `polygon(
               0 4px, 4px 4px, 4px 0,
