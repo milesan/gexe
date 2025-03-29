@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 import * as resend from 'https://esm.sh/resend@2.0.0'
+import { styles } from '../_shared/email-templates.ts'
 
 interface EmailPayload {
   email: string;
@@ -78,18 +79,34 @@ serve(async (req) => {
       to: email,
       subject: 'Garden Application Status',
       html: `
-        <p>Callooh, callay! O frabjous day!</p>
-        <p>Your application has been approved.</p>
-        <p>To complete your registration and frolic in the forest, please click the button below:</p>
-        <div style="margin: 30px 0;">
-          <a href="${acceptanceUrl}" style="background-color: #064e3b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-            Accept Invitation
-          </a>
+        <div style="${styles.container}">
+          <h1 style="${styles.heading}">Welcome to The Garden!</h1>
+          
+          <div style="${styles.card}">
+            <h2 style="${styles.heading}">Your Application Has Been Approved</h2>
+            
+            <p style="${styles.value}">Callooh, callay! O frabjous day!</p>
+            <p style="${styles.value}">Your application has been approved and we're excited to have you join our community.</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${acceptanceUrl}" style="${styles.button}">
+                Accept Invitation
+              </a>
+            </div>
+            
+            <p style="${styles.value}">If the button doesn't work, copy and paste this link into your browser:</p>
+            <p style="${styles.value}">${acceptanceUrl}</p>
+          </div>
+          
+          <div style="${styles.infoCard}">
+            <h3 style="${styles.heading}" style="margin-top: 0;">Important Information</h3>
+            <ul style="color: #115e59; padding-left: 20px; margin: 15px 0;">
+              <li style="margin-bottom: 8px;">This invitation link will expire in 14 days</li>
+              <li style="margin-bottom: 8px;">Please complete your registration to access all Garden features</li>
+              <li style="margin-bottom: 8px;">Welcome aboard, sailors, scientists, and sirens of the seas</li>
+            </ul>
+          </div>
         </div>
-        <p>If the button doesn't work, copy and paste this link into your browser:</p>
-        <p>${acceptanceUrl}</p>
-        <p>This invitation link will expire in 14 days.</p>
-        <p>Welcome aboard, sailors, scientists, and sirens of the seas</p>
       `
     })
 
