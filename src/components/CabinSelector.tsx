@@ -405,7 +405,12 @@ export function CabinSelector({
                   
                   {/* Status Badge */}
                   {statusBadge && !isOutOfSeason && (
-                    <div className="absolute top-3 right-3 z-10">
+                    <div className="absolute top-3 right-3 z-10 flex flex-col gap-1.5">
+                      {selectedAccommodationId === accommodation.id && (
+                        <div className="bg-emerald-600 text-white text-xs px-2 py-1 rounded-full shadow-md">
+                          Selected
+                        </div>
+                      )}
                       <div className={`inline-flex items-center px-2 py-0.5 rounded-full ${statusBadge.bgColor} ${statusBadge.textColor} text-xs font-medium shadow-sm backdrop-blur-[1px] bg-white/90`}>
                         {statusBadge.text}
                       </div>
