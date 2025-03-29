@@ -377,7 +377,7 @@ export function CabinSelector({
                   transition={{ duration: 0.3 }}
                 >
                   {/* Booked out overlay */}
-                  {(!isAvailable || isDisabled) && (
+                  {!isAvailable && (
                     <div className="absolute inset-0 bg-stone-50/50 z-10 flex items-center justify-center">
                       <div className="bg-stone-100/80 backdrop-blur-[1px] text-stone-500 px-3 py-1.5 rounded-md font-medium text-xs shadow-sm border border-stone-200">
                         Booked out
