@@ -16,6 +16,7 @@ import { AcceptInvitePage } from './pages/AcceptInvitePage';
 import { WhitelistSignupPage } from './pages/WhitelistSignupPage';
 import { normalizeToUTCDate } from './utils/dates';
 import { WhitelistWelcomeModal } from './components/WhitelistWelcomeModal';
+import { AuthCallback } from './components/AuthCallback';
 
 // Configure logging early to silence logs in production
 configureLogging();
@@ -158,6 +159,12 @@ export default function App() {
               <Route path="/pending" element={<PendingPage />} />
               <Route path="/confirmation" element={<ConfirmationPage />} />
               <Route path="/retro2" element={<Retro2Page />} />
+              <Route
+                path="/auth/callback"
+                element={
+                  <AuthCallback />
+                }
+              />
               <Route
                 path="/*"
                 element={<Navigate to="/" replace />}
