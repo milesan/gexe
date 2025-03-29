@@ -61,8 +61,8 @@ export function FlexibleCheckInModal({ week, isOpen, onClose, onDateSelect }: Pr
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-        <h2 className="text-xl font-bold mb-4">Select Check-in Date</h2>
-        <p className="text-gray-600 mb-4">
+        <h2 className="text-xl font-bold mb-4 font-regular">Select Check-in Date</h2>
+        <p className="text-gray-600 mb-4 font-regular">
           This week offers multiple check-in dates. Please select your preferred check-in date.
         </p>
         
@@ -71,7 +71,7 @@ export function FlexibleCheckInModal({ week, isOpen, onClose, onDateSelect }: Pr
             <button
               key={formatDateForDisplay(date)}
               onClick={() => handleDateSelect(date)}
-              className="w-full p-3 text-left border rounded-lg hover:bg-emerald-50 hover:border-emerald-500 transition-colors"
+              className="w-full p-3 text-left border rounded-lg hover:bg-emerald-50 hover:border-emerald-500 transition-colors font-regular"
             >
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-emerald-600" />
@@ -84,7 +84,7 @@ export function FlexibleCheckInModal({ week, isOpen, onClose, onDateSelect }: Pr
         <div className="mt-6 flex justify-end">
           <button
             onClick={handleClose}
-            className="px-4 py-2 text-gray-600 hover:text-gray-800"
+            className="px-4 py-2 text-gray-600 hover:text-gray-800 font-regular"
           >
             Cancel
           </button>

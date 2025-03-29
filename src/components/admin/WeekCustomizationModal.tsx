@@ -271,7 +271,7 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-        <h2 className="text-xl font-bold mb-4">Customize Week</h2>
+        <h2 className="text-xl font-bold mb-4 font-regular">Customize Week</h2>
         
         {/* Status Hint */}
         {getStatusHint()}
@@ -281,20 +281,20 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
           <div className="mb-4 p-3 bg-red-50 border border-red-300 text-red-700 rounded-md">
             <div className="flex items-center">
               <AlertTriangle className="h-5 w-5 mr-2" />
-              <span>{error}</span>
+              <span className="font-regular">{error}</span>
             </div>
           </div>
         )}
 
         {/* Status Selection */}
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 mb-1 font-regular">
             Status
           </label>
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value as WeekStatus)}
-            className="w-full p-2 border rounded"
+            className="w-full p-2 border rounded font-regular"
           >
             <option value="visible">Available</option>
             <option value="hidden">Hidden</option>
@@ -304,7 +304,7 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
 
         {/* Week Name */}
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 mb-1 font-regular">
             Week Name (Optional)
           </label>
           <input
@@ -312,14 +312,14 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g., Christmas Week"
-            className="w-full p-2 border rounded"
+            className="w-full p-2 border rounded font-regular"
           />
         </div>
 
         {/* Date Range */}
         <div className="grid grid-cols-2 gap-4 mb-2">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1 font-regular">
               Start Date
             </label>
             <input
@@ -329,11 +329,11 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
                 setStartDate(e.target.value);
                 setError(null);
               }}
-              className={`w-full p-2 border rounded ${dateWarning && dateWarning.includes('Start date') ? 'border-yellow-400' : ''}`}
+              className={`w-full p-2 border rounded ${dateWarning && dateWarning.includes('Start date') ? 'border-yellow-400' : ''} font-regular`}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1 font-regular">
               End Date
             </label>
             <input
@@ -343,7 +343,7 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
                 setEndDate(e.target.value);
                 setError(null);
               }}
-              className={`w-full p-2 border rounded ${dateWarning && dateWarning.includes('End date') ? 'border-yellow-400' : ''}`}
+              className={`w-full p-2 border rounded ${dateWarning && dateWarning.includes('End date') ? 'border-yellow-400' : ''} font-regular`}
             />
           </div>
         </div>
@@ -357,7 +357,7 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
               onChange={(e) => handleFlexibleCheckInToggle(e.target.checked)}
               className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
             />
-            <span className="text-sm font-medium text-gray-700">Enable Flexible Check-in Dates</span>
+            <span className="text-sm font-medium text-gray-700 font-regular">Enable Flexible Check-in Dates</span>
           </label>
         </div>
 
@@ -383,9 +383,9 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
           <div className="mb-4 p-3 bg-yellow-50 border border-yellow-300 text-yellow-700 rounded-md text-sm">
             <div className="flex items-center">
               <Info className="h-4 w-4 mr-2 flex-shrink-0" />
-              <span>{dateWarning}</span>
+              <span className="font-regular">{dateWarning}</span>
             </div>
-            <p className="mt-1 ml-6">
+            <p className="mt-1 ml-6 font-regular">
               Changing this date may affect how weeks are displayed in the calendar.
             </p>
           </div>
@@ -398,7 +398,7 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
             <button
               onClick={handleDelete}
               disabled={isSaving}
-              className="px-4 py-2 text-red-600 hover:text-red-800 mr-auto"
+              className="px-4 py-2 text-red-600 hover:text-red-800 mr-auto font-regular"
               title="Remove customization and reset to default week"
             >
               Reset to Default
@@ -406,7 +406,7 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
           )}
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-600 hover:text-gray-800"
+            className="px-4 py-2 text-gray-600 hover:text-gray-800 font-regular"
             disabled={isSaving}
           >
             Cancel
@@ -414,7 +414,7 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
           <button
             onClick={handleSave}
             disabled={isSaving || (isFlexibleCheckin && selectedFlexDates.length === 0 && !hasFlexDatesChanged)}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 font-regular"
           >
             {isSaving ? 'Saving...' : 'Save Changes'}
           </button>
