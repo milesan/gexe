@@ -169,7 +169,7 @@ export function AnimatedTerminal({ onComplete }: Props) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.05 }}
-            className="absolute font-mono text-[#FFBF00] text-xl"
+            className="absolute font-mono text-[#bac89b] text-xl"
             style={{
               ...getBorderPosition(index, dimensions),
               transform: 'translate(-50%, -50%)'
@@ -190,7 +190,7 @@ export function AnimatedTerminal({ onComplete }: Props) {
               <div className="w-full max-w-[400px] p-8">
                 <div className="bg-black p-8">
                   <div className="flex items-center justify-center gap-3 mb-8">
-                    <h1 className="text-base sm:text-xl font-mono text-[#FFBF00] whitespace-nowrap">
+                    <h1 className="text-base sm:text-xl font-mono text-[#bac89b] whitespace-nowrap">
                       enter the garden
                     </h1>
                   </div>
@@ -200,9 +200,12 @@ export function AnimatedTerminal({ onComplete }: Props) {
                       <div className="relative w-full">
                         <input
                           type="email"
+                          id="email-input"
+                          name="email"
+                          list="email-list"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
-                          className="w-full min-w-[200px] bg-black text-[#FFBF00] border-2 border-[#FFBF00]/30 p-3 font-mono focus:outline-none focus:ring-2 focus:ring-[#FFBF00]/50 placeholder-[#FFBF00]/30"
+                          className="w-full min-w-[200px] bg-black text-[#bac89b] border-2 border-[#bac89b]/30 p-3 font-mono focus:outline-none focus:ring-2 focus:ring-[#bac89b]/50 placeholder-[#bac89b]/30"
                           style={{
                             clipPath: `polygon(
                               0 4px, 4px 4px, 4px 0,
@@ -214,7 +217,7 @@ export function AnimatedTerminal({ onComplete }: Props) {
                           }}
                           placeholder="email"
                           required
-                          autoComplete="off"
+                          autoComplete="email"
                           spellCheck="false"
                         />
                       </div>
@@ -227,7 +230,7 @@ export function AnimatedTerminal({ onComplete }: Props) {
                     )}
 
                     {success && (
-                      <div className="font-mono text-[#FFBF00] text-sm">
+                      <div className="font-mono text-[#bac89b] text-sm">
                         {success}
                       </div>
                     )}
@@ -235,7 +238,7 @@ export function AnimatedTerminal({ onComplete }: Props) {
                     <button
                       type="submit"
                       disabled={isLoading}
-                      className="w-full bg-[#FFBF00] text-black p-3 font-mono hover:bg-[#FFBF00]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full bg-[#bac89b] text-black p-3 font-mono hover:bg-[#bac89b]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       style={{
                         clipPath: `polygon(
                           0 4px, 4px 4px, 4px 0,

@@ -191,7 +191,7 @@ export function DateRangePicker({ selected, onSelect, isExtension = false }: Dat
   }
 
   const numberOfWeeks = selected?.from && selected?.to 
-    ? Math.ceil(differenceInDays(selected.to, selected.from) / 7)
+    ? Math.ceil(differenceInDays(selected.to, selected.from) / 6)
     : 0;
 
   return (

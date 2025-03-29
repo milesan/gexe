@@ -92,11 +92,15 @@ export function ApplicationDetails({ application, onClose }: ApplicationDetailsP
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+      <div 
+        className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+        onClick={onClose}
+      >
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col"
+          onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between p-6 border-b">
             <div>

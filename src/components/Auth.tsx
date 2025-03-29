@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { getFrontendUrl } from '../lib/environment';
+
 
 export function Auth() {
   const [email, setEmail] = useState('');
@@ -14,12 +16,7 @@ export function Auth() {
     setIsLoading(true);
   
     // Determine the base URL based on environment
-    const isNetlify = !!process.env.NETLIFY; // True if running on Netlify
-    const baseUrl = isNetlify
-      ? (process.env.DEPLOY_URL || process.env.APP_URL || window.location.origin) // Netlify preview or production
-      : (import.meta.env.VITE_APP_URL || window.location.origin); // Local dev fallback
-  
-    const redirectUrl = `${baseUrl}/auth/callback`;
+    const redirectUrl = `${getFrontendUrl()}/auth/callback`;
     console.log('Redirecting to:', redirectUrl);
     try {
       console.log('[Auth] Sending magic link to:', email, 'Redirecting to:', redirectUrl);

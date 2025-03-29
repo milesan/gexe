@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { Calendar, ChevronLeft, ChevronRight, Home, X } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Home, X, HelpCircle } from 'lucide-react';
 import { isSameWeek, addWeeks, isAfter, isBefore, startOfMonth, format, addMonths, subMonths, startOfDay, isSameDay, addDays, eachDayOfInterval, differenceInDays } from 'date-fns';
 import { WeekSelector } from '../components/WeekSelector';
 import { formatDateForDisplay, normalizeToUTCDate, doDateRangesOverlap } from '../utils/dates';
@@ -7,6 +7,7 @@ import { CabinSelector } from '../components/CabinSelector';
 import { BookingSummary, SeasonBreakdown } from '../components/BookingSummary';
 import { MaxWeeksModal } from '../components/MaxWeeksModal';
 import { WeekCustomizationModal } from '../components/admin/WeekCustomizationModal';
+import { DiscountModal } from '../components/DiscountModal';
 import { generateWeeksWithCustomizations, generateSquigglePath, getWeeksInRange } from '../utils/dates';
 import { useWeeklyAccommodations } from '../hooks/useWeeklyAccommodations';
 import { useSession } from '../hooks/useSession';
@@ -16,7 +17,7 @@ import { useCalendar } from '../hooks/useCalendar';
 import { Week, WeekStatus } from '../types/calendar';
 import { CalendarService } from '../services/CalendarService';
 import { CalendarConfigButton } from '../components/admin/CalendarConfigButton';
-import { getSeasonalDiscount } from '../utils/pricing';
+import { getSeasonalDiscount, getDurationDiscount } from '../utils/pricing';
 import { areSameWeeks } from '../utils/dates';
 import { clsx } from 'clsx';
 
@@ -43,7 +44,58 @@ export function Book2Page() {
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [selectedWeekForCustomization, setSelectedWeekForCustomization] = useState<Week | null>(null);
   const [lastRefresh, setLastRefresh] = useState(Date.now());
+  const [showDiscountModal, setShowDiscountModal] = useState(false);
   const [seasonBreakdown, setSeasonBreakdown] = useState<SeasonBreakdown | undefined>(undefined);
+
+  // Calculate combined discount
+  const calculateCombinedDiscount = useCallback((weeks: Week[]): number => {
+    if (weeks.length === 0) return 0;
+
+    // Get all days in the selected period
+    let allDays: Date[] = [];
+    
+    weeks.forEach(week => {
+      const startDate = week.startDate;
+      const endDate = week.endDate;
+      
+      if (endDate < startDate) {
+        console.warn('[Book2Page] Invalid date range:', { startDate, endDate });
+        return;
+      }
+      
+      // Get all days in this week
+      const daysInWeek = Array.from({ length: (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24) + 1 }, (_, i) => new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000));
+      allDays = [...allDays, ...daysInWeek];
+    });
+    
+    if (allDays.length === 0) return 0;
+    
+    // Calculate seasonal discount
+    let totalSeasonalDiscount = 0;
+    allDays.forEach(day => {
+      totalSeasonalDiscount += getSeasonalDiscount(day);
+    });
+    const seasonalDiscount = totalSeasonalDiscount / allDays.length;
+    
+    // Calculate duration discount using complete weeks
+    const totalDays = weeks.reduce((acc, week) => {
+      return acc + (week.endDate.getTime() - week.startDate.getTime()) / (1000 * 60 * 60 * 24) + 1;
+    }, 0);
+    const completeWeeks = Math.floor(totalDays / 7);
+    const durationDiscount = getDurationDiscount(completeWeeks);
+    
+    console.log('[Book2Page] Combined discount calculation:', {
+      totalDays,
+      completeWeeks,
+      seasonalDiscount: `${(seasonalDiscount * 100).toFixed(2)}%`,
+      durationDiscount: `${(durationDiscount * 100).toFixed(2)}%`
+    });
+    
+    // Calculate combined discount (multiplicative)
+    return 1 - (1 - seasonalDiscount) * (1 - durationDiscount);
+  }, []);
+
+  const combinedDiscount = calculateCombinedDiscount(selectedWeeks);
 
   const session = useSession();
   const isAdmin = session?.user?.email === 'andre@thegarden.pt' ||
@@ -552,7 +604,7 @@ export function Book2Page() {
       }}
     >
       <div className="container mx-auto py-8 px-4">
-        <h1 className="text-3xl font-bold mb-8 text-stone-800">Book Your Stay</h1>
+        <h1 className="text-4xl font-display mb-8 text-stone-800">Book Your Stay</h1>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Calendar and Cabin Selector */}
@@ -614,9 +666,22 @@ export function Book2Page() {
 
             <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-semibold text-stone-800">Select Your Dates</h2>
+                <h2 className="text-xl lg:text-2xl font-playfair font-light text-stone-800">Select Your Dates</h2>
                 
                 <div className="flex items-center gap-2">
+                  {selectedWeeks.length > 0 && (
+                    <button
+                      onClick={() => setShowDiscountModal(true)}
+                      className="group flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium border rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 text-emerald-700 bg-emerald-50 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300 relative"
+                    >
+                      <span>{combinedDiscount > 0 ? `Discount: ${seasonBreakdown?.hasMultipleSeasons ? '~' : ''}${Math.round(combinedDiscount * 100)}%` : 'Discounts'}</span>
+                      <HelpCircle className="w-4 h-4 text-emerald-600" />
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-stone-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                        Click for detailed breakdown
+                        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-stone-800"></div>
+                      </div>
+                    </button>
+                  )}
                   <button
                     onClick={handleClearSelection}
                     className={clsx(
@@ -686,7 +751,7 @@ export function Book2Page() {
             
             {/* Cabin Selector - Under the calendar */}
             <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-              <h2 className="text-xl font-semibold mb-4 text-stone-800">Select Accommodation</h2>
+              <h2 className="text-xl lg:text-2xl font-playfair font-light text-stone-800 mb-4">Select Accommodation</h2>
               <CabinSelector 
                 accommodations={accommodations || []}
                 selectedAccommodationId={selectedAccommodation}
@@ -696,9 +761,6 @@ export function Book2Page() {
                 isLoading={accommodationsLoading}
                 isDisabled={selectedWeeks.length === 0}
               />
-              {selectedWeeks.length === 0 && (
-                <p className="text-sm text-stone-500 mt-2 italic">Please select dates above to enable accommodation selection</p>
-              )}
             </div>
           </div>
 
@@ -743,6 +805,14 @@ export function Book2Page() {
           onClose={() => setSelectedWeekForCustomization(null)}
           onSave={handleSaveWeekCustomization}
           onDelete={handleDeleteWeekCustomization}
+        />
+      )}
+
+      {showDiscountModal && (
+        <DiscountModal
+          isOpen={showDiscountModal}
+          onClose={() => setShowDiscountModal(false)}
+          selectedWeeks={selectedWeeks}
         />
       )}
     </div>

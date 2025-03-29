@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar, Clock, ArrowRight, LogOut, Sun, Moon, Home, Bed, ChevronDown, ChevronUp, Percent } from 'lucide-react';
+import { X, Calendar, Clock, ArrowRight, LogOut, Sun, Moon, Home, Bed, ChevronDown, ChevronUp, Percent, Info } from 'lucide-react';
 import { useSchedulingRules } from '../hooks/useSchedulingRules';
-import { getSeasonalDiscount, getDurationDiscount, getSeasonName } from '../utils/pricing';
+import { getSeasonalDiscount, getDurationDiscount } from '../utils/pricing';
 import type { Week } from '../types/calendar';
 import type { Accommodation } from '../types';
 import { format, addDays, differenceInDays, isSameDay, isBefore, eachDayOfInterval } from 'date-fns';
@@ -15,6 +15,7 @@ import { DayPicker } from 'react-day-picker';
 import type { DayPickerSingleProps } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import { formatDateForDisplay } from '../utils/dates';
+import * as Tooltip from '@radix-ui/react-tooltip';
 
 // Define the season breakdown type
 export interface SeasonBreakdown {
@@ -29,7 +30,6 @@ export interface SeasonBreakdown {
 interface BookingSummaryProps {
   selectedWeeks: Week[];
   selectedAccommodation: Accommodation | null;
-  baseRate: number;
   onClearWeeks: () => void;
   onClearAccommodation: () => void;
   seasonBreakdown?: SeasonBreakdown; // Optional for backward compatibility
@@ -45,6 +45,7 @@ const calculateTotalNights = (selectedWeeks: Week[]): number => {
   const lastDate = selectedWeeks[selectedWeeks.length - 1].endDate;
   
   // differenceInDays gives us the exact number of nights
+  console.log('[BookingSummary] Total nights:', differenceInDays(lastDate, firstDate));
   return differenceInDays(lastDate, firstDate);
 };
 
@@ -63,11 +64,8 @@ interface PricingDetails {
   nightlyAccommodationRate: number;
   baseAccommodationRate: number;
   effectiveBaseRate: number;
-  nightlyRate: number;
   totalAccommodationCost: number;
   totalFoodAndFacilitiesCost: number;
-  originalAccommodationCost: number;
-  accommodationDiscountAmount: number;
   subtotal: number;
   durationDiscountAmount: number;
   durationDiscountPercent: number;
@@ -75,13 +73,11 @@ interface PricingDetails {
   totalAmount: number;
   totalAmountInCents: number;
   seasonalDiscount: number;
-  seasonName: string;
 }
 
 const calculatePricing = (
   selectedWeeks: Week[],
   selectedAccommodation: Accommodation | null,
-  baseRate: number,
   seasonBreakdown?: SeasonBreakdown,
   foodContribution?: number | null
 ): PricingDetails => {
@@ -98,164 +94,116 @@ const calculatePricing = (
     });
   }
   
-  // Get base accommodation rate
+  // Get base accommodation rate from the selected accommodation
   const baseAccommodationRate = selectedAccommodation?.base_price || 0;
   
-  // Calculate seasonal discount - use the provided breakdown if available
-  const seasonalDiscount = seasonBreakdown 
-    ? seasonBreakdown.seasons.reduce((acc, season) => acc + (season.discount * season.nights), 0) / 
-      seasonBreakdown.seasons.reduce((acc, season) => acc + season.nights, 0)
-    : selectedWeeks.length > 0 
-      ? selectedWeeks.reduce((acc, week) => acc + getSeasonalDiscount(week.startDate), 0) / selectedWeeks.length 
-      : 0;
-
-  // Determine the season name based on the discount
-  const seasonName = seasonBreakdown?.hasMultipleSeasons 
-    ? "Multiple Seasons" 
-    : seasonalDiscount === 0 
-      ? 'Summer Season' 
-      : seasonalDiscount === 0.15 
-        ? 'Shoulder Season' 
-        : 'Winter Season';
+  // Calculate seasonal discount and total accommodation cost
+  let baseAccommodationCostWithDiscount = 0;
   
-  // Apply seasonal discount to accommodation rate with cent precision
-  const accommodationRate = baseAccommodationRate > 0 
-    ? +(baseAccommodationRate * (1 - seasonalDiscount)).toFixed(2)
-    : 0;
+  if (seasonBreakdown) {
+    // Calculate cost for each season separately
+    baseAccommodationCostWithDiscount = seasonBreakdown.seasons.reduce((acc, season) => {
+      // For each season, calculate its portion of the weekly rate
+      // base_price is for 6 nights, so we divide by 6 to get nightly rate
+      const nightlyRate = baseAccommodationRate / 6;
+      // Apply the season's discount to its portion of nights
+      const seasonCost = nightlyRate * (1 - season.discount) * season.nights;
+      return acc + seasonCost;
+    }, 0);
+  }
   
   // Log the accommodation rate calculation
   console.log('[BookingSummary] Accommodation rate calculation:', {
     baseAccommodationRate,
-    seasonalDiscount,
-    discountPercentage: `${formatNumber(seasonalDiscount * 100)}%`,
-    discountAmount: +(baseAccommodationRate * seasonalDiscount).toFixed(2),
-    accommodationRate,
-    seasonName,
-    hasMultipleSeasons: seasonBreakdown?.hasMultipleSeasons
+    baseAccommodationCostWithDiscount,
+    hasMultipleSeasons: seasonBreakdown?.hasMultipleSeasons,
+    seasonBreakdown: seasonBreakdown?.seasons
   });
   
-  // Calculate nightly accommodation rate (base_price is for 6 nights) with cent precision
-  const nightlyAccommodationRate = accommodationRate > 0 
-    ? +(accommodationRate / 6).toFixed(2)
+  // Calculate nightly rate for display purposes only
+  const nightlyAccommodationRate = baseAccommodationCostWithDiscount > 0 
+    ? totalNights <= 6 
+      ? baseAccommodationCostWithDiscount // For 6 nights or less, use the rate directly
+      : +(baseAccommodationCostWithDiscount / totalNights).toFixed(2) // For longer stays, divide by total nights
     : 0;
 
   // Determine food & facilities rate based on contribution or default
-  let effectiveBaseRate: number;
-  let totalFoodAndFacilitiesCost: number;
+  let nightlyFoodRate: number;
   
   if (foodContribution !== null && foodContribution !== undefined) {
-    // Use the user-selected contribution amount (weekly rate)
-    // For food & facilities, we calculate based on complete and partial weeks
-    const completeWeeks = Math.floor(totalNights / 6);
-    const remainingNights = totalNights % 6;
-    
-    // Calculate cost for complete weeks
-    const completeWeeksCost = completeWeeks * foodContribution;
-    
-    // Calculate cost for remaining nights (pro-rated from weekly rate)
-    const remainingNightsCost = remainingNights > 0 ? (remainingNights / 6) * foodContribution : 0;
-    
-    // Total food & facilities cost
-    totalFoodAndFacilitiesCost = +(completeWeeksCost + remainingNightsCost).toFixed(2);
-    
-    // For other calculations, we still need a nightly rate
-    effectiveBaseRate = foodContribution / 6;
+    // Convert weekly food contribution to daily rate (6 nights = 1 week)
+    nightlyFoodRate = foodContribution / 6;
     
     console.log('[BookingSummary] Food contribution calculation:', {
       weeklyRate: foodContribution,
-      nightlyRate: effectiveBaseRate,
-      totalNights,
-      completeWeeks,
-      remainingNights,
-      completeWeeksCost,
-      remainingNightsCost,
-      totalCost: totalFoodAndFacilitiesCost
+      dailyRate: nightlyFoodRate
     });
   } else {
-    // Special December 2024 rate for food & facilities
-    effectiveBaseRate = selectedWeeks.some(week => {
-      const month = week.startDate.getMonth();
-      const year = week.startDate.getFullYear();
-      return month === 11 && year === 2024;
-    }) ? 190 : baseRate;
+    // Use default base rate for food & facilities (convert weekly rate to daily)
+    // For food & facilities, we'll use a default rate of €345 per week
+    const defaultWeeklyRate = 345;
+    nightlyFoodRate = defaultWeeklyRate / 6;
     
-    // Calculate total food & facilities cost using nightly rate
-    totalFoodAndFacilitiesCost = +(effectiveBaseRate * totalNights).toFixed(2);
-    
-    console.log('[BookingSummary] Using default food contribution:', effectiveBaseRate, 'per night');
+    console.log('[BookingSummary] Using default food contribution:', {
+      weeklyRate: defaultWeeklyRate,
+      dailyRate: nightlyFoodRate
+    });
   }
 
-  // Calculate nightly rate with cent precision
-  const nightlyRate = +(effectiveBaseRate + nightlyAccommodationRate).toFixed(2);
+  // Calculate total food & facilities cost using daily rate
+  const totalFoodAndFacilitiesCost = +(nightlyFoodRate * totalNights).toFixed(2);
   
+  // Log the final calculation
+  console.log('[BookingSummary] Total food & facilities cost:', {
+    nightlyRate: nightlyFoodRate,
+    totalNights,
+    totalCost: totalFoodAndFacilitiesCost
+  });
+
   // Calculate total costs for each component
-  const totalAccommodationCost = +(nightlyAccommodationRate * totalNights).toFixed(2);
-  // totalFoodAndFacilitiesCost is calculated above
+  const totalAccommodationCostWithFood = baseAccommodationCostWithDiscount + totalFoodAndFacilitiesCost;
   
-  // Calculate original accommodation cost before discount
-  const originalAccommodationCost = +((baseAccommodationRate / 6) * totalNights).toFixed(2);
-  const accommodationDiscountAmount = +(originalAccommodationCost - totalAccommodationCost).toFixed(2);
-  
-  // Calculate subtotal with cent precision
-  const subtotal = +(totalAccommodationCost + totalFoodAndFacilitiesCost).toFixed(2);
-  
-  // Calculate duration discount
-  // Duration Discounts:
-  // - 3+ weeks: 10% off
-  // - Additional weeks: +1.5% off per week
-  // - Maximum discount: 20% (at 10 weeks)
-  let durationDiscountPercent = 0;
-  
-  // Calculate weeks based on days (7 days = 1 week)
-  // For a date range like "Jul 1 → Jul 14", that's 14 days (inclusive of start and end dates)
-  // So we add 1 to the nights to get the total days
+  // Calculate duration discount using the utility function
   const totalDays = totalNights + 1;
-  const weeksStaying = totalDays / 7;
+  const completeWeeks = Math.floor(totalDays / 7);
+  const durationDiscount = getDurationDiscount(completeWeeks);
   
-  if (weeksStaying >= 3) {
-    // Base discount for 3 weeks
-    durationDiscountPercent = 10;
-    
-    // Additional discount for each week beyond 3
-    if (weeksStaying > 3) {
-      const additionalWeeks = weeksStaying - 3;
-      durationDiscountPercent += additionalWeeks * 1.5;
-      
-      // Cap at 20%
-      durationDiscountPercent = Math.min(durationDiscountPercent, 20);
-    }
-    
-    // Ensure precision to 1 decimal place
-    durationDiscountPercent = Math.round(durationDiscountPercent * 10) / 10;
-  }
+  console.log('[BookingSummary] Duration discount calculation:', {
+    totalDays,
+    completeWeeks,
+    discount: durationDiscount,
+    isCapped: durationDiscount === 0.35
+  });
   
-  // Calculate duration discount amount with cent precision
-  const durationDiscountAmount = +(subtotal * (durationDiscountPercent / 100)).toFixed(2);
+  // Apply duration discount to accommodation cost
+  const accommodationWithDurationDiscount = +(baseAccommodationCostWithDiscount * (1 - durationDiscount)).toFixed(2);
+  
+  // Calculate total with duration discount on accommodation
+  const subtotal = +(accommodationWithDurationDiscount + totalFoodAndFacilitiesCost).toFixed(2);
   
   // Calculate total amount with cent precision
-  const totalAmount = +(subtotal - durationDiscountAmount).toFixed(2);
+  const totalAmount = subtotal;
   
   // Calculate total amount in cents for database storage (as integer)
   const totalAmountInCents = Math.round(totalAmount * 100);
+
+  // Calculate duration discount amount
+  const durationDiscountAmount = +(baseAccommodationCostWithDiscount - accommodationWithDurationDiscount).toFixed(2);
 
   return {
     totalNights,
     nightlyAccommodationRate,
     baseAccommodationRate,
-    effectiveBaseRate,
-    nightlyRate,
-    totalAccommodationCost,
+    effectiveBaseRate: nightlyFoodRate,
+    totalAccommodationCost: accommodationWithDurationDiscount,
     totalFoodAndFacilitiesCost,
-    originalAccommodationCost,
-    accommodationDiscountAmount,
     subtotal,
     durationDiscountAmount,
-    durationDiscountPercent,
-    weeksStaying,
+    durationDiscountPercent: durationDiscount * 100, // Convert to percentage for display
+    weeksStaying: completeWeeks,
     totalAmount,
     totalAmountInCents,
-    seasonalDiscount,
-    seasonName
+    seasonalDiscount: 0
   };
 };
 
@@ -289,7 +237,6 @@ const formatDateWithOrdinal = (date: Date): string => {
 export function BookingSummary({
   selectedWeeks,
   selectedAccommodation,
-  baseRate,
   onClearWeeks,
   onClearAccommodation,
   seasonBreakdown
@@ -301,14 +248,14 @@ export function BookingSummary({
       end: w.endDate.toISOString()
     })),
     selectedAccommodation: selectedAccommodation?.title,
-    baseRate,
+    basePrice: selectedAccommodation?.base_price,
     seasonBreakdown
   });
 
   console.log('[Booking Summary] Component mounted with:', {
     selectedWeeks: selectedWeeks.map(w => w.startDate.toISOString()),
     selectedAccommodation: selectedAccommodation?.title,
-    baseRate
+    basePrice: selectedAccommodation?.base_price
   });
 
   const [isBooking, setIsBooking] = useState(false);
@@ -347,7 +294,7 @@ export function BookingSummary({
   const hasFlexibleDates = flexibleDates && flexibleDates.length > 0;
 
   // Calculate pricing details
-  const pricing = calculatePricing(selectedWeeks, selectedAccommodation, baseRate, seasonBreakdown, foodContribution);
+  const pricing = calculatePricing(selectedWeeks, selectedAccommodation, seasonBreakdown, foodContribution);
 
   // Always update the check-in date when selectedWeeks changes
   useEffect(() => {
@@ -373,18 +320,22 @@ export function BookingSummary({
       // Set default contribution to the middle of the range
       if (totalNights <= 6) {
         // For 6 nights or less (1 week): €345-€390 range
-        setFoodContribution(368); // Middle of the range
-        console.log('[BookingSummary] Setting default food contribution for short stay:', 368, 'per week');
+        const min = Math.round(345 * (1 - pricing.durationDiscountPercent / 100));
+        const max = Math.round(390 * (1 - pricing.durationDiscountPercent / 100));
+        setFoodContribution(Math.round((min + max) / 2));
+        console.log('[BookingSummary] Setting default food contribution for short stay:', Math.round((min + max) / 2), 'per week');
       } else {
         // For 7+ nights (more than 1 week): €240-€390 range
-        setFoodContribution(315); // Middle of the range
-        console.log('[BookingSummary] Setting default food contribution for long stay:', 315, 'per week');
+        const min = Math.round(240 * (1 - pricing.durationDiscountPercent / 100));
+        const max = Math.round(390 * (1 - pricing.durationDiscountPercent / 100));
+        setFoodContribution(Math.round((min + max) / 2));
+        console.log('[BookingSummary] Setting default food contribution for long stay:', Math.round((min + max) / 2), 'per week');
       }
     } else {
       setFoodContribution(null);
       console.log('[BookingSummary] Clearing food contribution');
     }
-  }, [selectedWeeks]);
+  }, [selectedWeeks, pricing.durationDiscountPercent]);
 
   // Log when food contribution changes
   useEffect(() => {
@@ -628,9 +579,18 @@ export function BookingSummary({
       {/* Summary of Stay section - Changes from sticky right positioning on mobile to regular flow */}
       <div className="lg:sticky lg:top-4">
         <div className="bg-white p-6 lg:p-8 pixel-corners">
-          <h2 className="text-xl lg:text-2xl font-serif font-light text-stone-900 mb-4">
-            Summary of Stay
-          </h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl lg:text-2xl font-playfair font-light text-stone-900">
+              Summary of Stay
+            </h2>
+            <button
+              onClick={onClearWeeks}
+              className="text-stone-400 hover:text-stone-600 transition-colors"
+              title="Clear selected dates"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
 
           {error && (
             <div className="mb-4 p-3 bg-rose-50 text-rose-600 rounded-lg flex justify-between items-center">
@@ -645,20 +605,6 @@ export function BookingSummary({
             <div className="space-y-6">
               {/* Stay Details Section */}
               <div className="bg-white p-5 rounded-xl border border-stone-200 shadow-sm pixel-corners overflow-hidden">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-serif text-lg text-stone-800 flex items-center">
-                    <Calendar className="w-4 h-4 mr-2 text-emerald-600" />
-                    Stay Details
-                  </h3>
-                  <button
-                    onClick={onClearWeeks}
-                    className="text-stone-400 hover:text-stone-600 transition-colors"
-                    title="Clear selected dates"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-
                 <div className="space-y-5">
                   {/* Arrival Information - Simplified and optimized */}
                   <div className="bg-white border border-emerald-200 rounded-lg shadow-sm p-3">
@@ -732,154 +678,20 @@ export function BookingSummary({
                   </div>
                   
                   <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-stone-600">Selected</span>
-                      <span className="text-stone-800 font-medium">{selectedAccommodation.title}</span>
-                    </div>
-                    
                     <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-100">
                       <div className="text-center">
                         <span className="text-emerald-800 font-serif">
-                          Sleeping in {selectedAccommodation.title === 'Van Parking' || 
-                                     selectedAccommodation.title === 'Your Own Tent' || 
-                                     selectedAccommodation.title === '+1 Accommodation' || 
-                                     selectedAccommodation.title === 'The Hearth' 
-                                     ? '' : "the '"}{selectedAccommodation.title}
                           {selectedAccommodation.title === 'Van Parking' || 
                            selectedAccommodation.title === 'Your Own Tent' || 
                            selectedAccommodation.title === '+1 Accommodation' || 
                            selectedAccommodation.title === 'The Hearth' 
-                           ? '' : "'"}
+                           ? selectedAccommodation.title
+                           : `The ${selectedAccommodation.title}`}
                         </span>
                       </div>
                     </div>
                   </div>
                 </motion.div>
-              )}
-
-              {/* Consolidated Discounts Section */}
-              {(pricing.seasonalDiscount > 0 || pricing.durationDiscountAmount > 0 || seasonBreakdown?.hasMultipleSeasons) && (
-                <div className="bg-white p-4 rounded-lg border border-emerald-200 shadow-sm">
-                  <button 
-                    onClick={() => setShowDiscountDetails(!showDiscountDetails)}
-                    className="w-full flex justify-between items-center"
-                  >
-                    <div className="flex items-center">
-                      <div className="bg-emerald-100 p-1.5 rounded-lg mr-2">
-                        <Percent className="w-4 h-4 text-emerald-700" />
-                      </div>
-                      <h3 className="font-medium text-stone-800">Discounts</h3>
-                    </div>
-                    <div className="flex items-center ml-2">
-                      {/* Only show descriptive text on screens >= 1280px */}
-                      <span className="hidden xl:inline text-emerald-700 font-medium mr-2 text-right">
-                        {seasonBreakdown?.hasMultipleSeasons 
-                          ? 'Seasonal' 
-                          : pricing.seasonalDiscount > 0 && pricing.durationDiscountAmount > 0 
-                            ? 'Multiple' 
-                            : pricing.seasonalDiscount > 0 
-                              ? `${Math.round(pricing.seasonalDiscount * 100)}%` 
-                              : `${formatNumber(pricing.durationDiscountPercent)}%`}
-                      </span>
-                      {showDiscountDetails ? (
-                        <ChevronUp className="w-4 h-4 text-stone-500 flex-shrink-0" />
-                      ) : (
-                        <ChevronDown className="w-4 h-4 text-stone-500 flex-shrink-0" />
-                      )}
-                    </div>
-                  </button>
-                  
-                  <AnimatePresence>
-                    {showDiscountDetails && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="pt-3 mt-3 border-t border-stone-100 space-y-3">
-                          {/* Multiple Seasons Breakdown */}
-                          {seasonBreakdown?.hasMultipleSeasons && (
-                            <div className="bg-amber-50 p-3 rounded-lg">
-                              <h4 className="font-medium text-amber-800 text-sm mb-2">Seasonal Pricing</h4>
-                              <div className="space-y-2">
-                                {seasonBreakdown.seasons
-                                  .slice()
-                                  .sort((a, b) => {
-                                    // Sort in chronological order: Winter -> Shoulder -> Summer
-                                    const getSeasonOrder = (season: {name: string, discount: number}) => {
-                                      if (season.name === 'Winter Season' || (season.name === 'High Season' && season.discount === 0.40)) return 1;
-                                      if (season.name === 'Shoulder Season' || (season.name === 'High Season' && season.discount === 0.15)) return 2;
-                                      return 3; // Summer/High Season
-                                    };
-                                    return getSeasonOrder(a) - getSeasonOrder(b);
-                                  })
-                                  .map((season, index) => (
-                                    <div key={index} className="xl:flex xl:justify-between xl:items-center">
-                                      <div className="flex items-center">
-                                        <div className={`w-2 h-2 rounded-full mr-2 flex-shrink-0 ${
-                                          season.name === 'High Season' ? 'bg-amber-500' : 
-                                          season.name === 'Shoulder Season' ? 'bg-amber-300' : 'bg-amber-200'
-                                        }`}></div>
-                                        <span className="text-amber-800 text-sm">{season.name === 'High Season' ? 'Summer Season' : season.name}</span>
-                                      </div>
-                                      <div className="text-amber-800 text-sm xl:text-right mt-1 xl:mt-0 ml-4 xl:ml-0">
-                                        <span className="font-medium">{season.nights} {season.nights === 1 ? 'night' : 'nights'}</span>
-                                        {season.discount > 0 && (
-                                          <span className="ml-1 text-xs">({Math.round(season.discount * 100)}% off)</span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  ))}
-                              </div>
-                            </div>
-                          )}
-                        
-                          {/* Seasonal Discount - only show if not multiple seasons */}
-                          {!seasonBreakdown?.hasMultipleSeasons && pricing.seasonalDiscount > 0 && selectedAccommodation && selectedAccommodation.base_price > 0 && (
-                            <div className="bg-emerald-50 p-3 rounded-lg">
-                              <div className="xl:flex xl:justify-between xl:items-center">
-                                <h4 className="font-medium text-emerald-800 text-sm">Seasonal Discount</h4>
-                                <span className="text-emerald-800 font-medium text-sm block xl:inline-block mt-1 xl:mt-0">{Math.round(pricing.seasonalDiscount * 100)}% off</span>
-                              </div>
-                              <p className="text-xs text-emerald-700 mt-1">
-                                You're booking during {pricing.seasonName}, which offers a discount on accommodation.
-                              </p>
-                            </div>
-                          )}
-                          
-                          {/* Duration Discount */}
-                          {pricing.durationDiscountAmount > 0 && (
-                            <div className="bg-blue-50 p-3 rounded-lg">
-                              <div className="xl:flex xl:justify-between xl:items-center">
-                                <h4 className="font-medium text-blue-800 text-sm">Duration Discount</h4>
-                                <span className="text-blue-800 font-medium text-sm block xl:inline-block mt-1 xl:mt-0">
-                                  {formatNumber(pricing.durationDiscountPercent)}% off
-                                </span>
-                              </div>
-                              <p className="text-xs text-blue-700 mt-1">
-                                {pricing.weeksStaying >= 3 && pricing.weeksStaying <= 10 ? (
-                                  <>You're booking for {formatNumber(pricing.weeksStaying)} weeks, which gives you a {formatNumber(pricing.durationDiscountPercent)}% discount.</>
-                                ) : pricing.weeksStaying > 10 ? (
-                                  <>You're booking for {formatNumber(pricing.weeksStaying)} weeks, which gives you our maximum 20% discount.</>
-                                ) : null}
-                              </p>
-                            </div>
-                          )}
-                          
-                          {/* Total Savings */}
-                          <div className="xl:flex xl:justify-between xl:items-center px-2">
-                            <span className="text-stone-600 text-sm">Total savings</span>
-                            <span className="text-emerald-700 font-medium block xl:inline-block mt-1 xl:mt-0">
-                              €{(pricing.accommodationDiscountAmount + pricing.durationDiscountAmount).toFixed(2)}
-                            </span>
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
               )}
 
               {/* Price Breakdown */}
@@ -889,7 +701,37 @@ export function BookingSummary({
                 <div className="space-y-3">
                   {/* Accommodation pricing - Simplified */}
                   <div className="flex justify-between text-stone-600">
-                    <span>Accommodation ({pricing.totalNights} nights)</span>
+                    <div className="flex items-center gap-2">
+                      <span>Accommodation ({pricing.totalNights} nights)</span>
+                      {seasonBreakdown?.hasMultipleSeasons && pricing.totalAccommodationCost > 0 && (
+                        <Tooltip.Provider>
+                          <Tooltip.Root>
+                            <Tooltip.Trigger asChild>
+                              <Info className="w-4 h-4 text-stone-400 hover:text-stone-600 cursor-help" />
+                            </Tooltip.Trigger>
+                            <Tooltip.Portal>
+                              <Tooltip.Content
+                                className="bg-white p-4 rounded-lg shadow-lg border border-stone-200 max-w-xs z-50"
+                                sideOffset={5}
+                              >
+                                <div className="space-y-2">
+                                  <h4 className="font-medium text-stone-800">Seasonal Breakdown</h4>
+                                  {seasonBreakdown.seasons.map((season, index) => (
+                                    <div key={index} className="flex justify-between items-center text-sm">
+                                      <span className="text-stone-600 min-w-[140px]">{season.name}</span>
+                                      <div className="flex items-center gap-6">
+                                        <span className="text-stone-800">{season.nights} nights</span>
+                                        <span className="text-emerald-600">-{(season.discount * 100).toFixed(0)}%</span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </Tooltip.Content>
+                            </Tooltip.Portal>
+                          </Tooltip.Root>
+                        </Tooltip.Provider>
+                      )}
+                    </div>
                     <span>€{pricing.totalAccommodationCost.toFixed(2)}</span>
                   </div>
                   
@@ -910,25 +752,22 @@ export function BookingSummary({
                       </div>
                       
                       <p className="text-xs text-stone-600 mb-4">
-                        Choose how much you'd like to contribute to food & facilities per week based on your means. 
-                        {pricing.totalNights <= 6 
-                          ? ' For stays of 6 nights or less, the range is €345-€390 per week.' 
-                          : ' For stays of 7+ nights, the range is €240-€390 per week.'}
+                        Choose how much you'd like to contribute to food & facilities per week based on your means.
                       </p>
                       
                       {/* Simplified slider implementation */}
                       <div className="mb-6">
                         {/* Simple slider with labels */}
                         <div className="flex justify-between text-xs text-stone-600 mb-2">
-                          <span>€{pricing.totalNights <= 6 ? '345' : '240'}</span>
-                          <span>€390</span>
+                          <span>€{Math.round((pricing.totalNights <= 6 ? 345 : 240) * (1 - pricing.durationDiscountPercent / 100))}</span>
+                          <span>€{Math.round(390 * (1 - pricing.durationDiscountPercent / 100))}</span>
                         </div>
                         
                         {/* Standard HTML range input with better styling */}
                         <input 
                           type="range" 
-                          min={pricing.totalNights <= 6 ? 345 : 240} 
-                          max={390} 
+                          min={Math.round((pricing.totalNights <= 6 ? 345 : 240) * (1 - pricing.durationDiscountPercent / 100))} 
+                          max={Math.round(390 * (1 - pricing.durationDiscountPercent / 100))} 
                           step={1}
                           value={foodContribution || 0}
                           onChange={(e) => {
@@ -941,8 +780,8 @@ export function BookingSummary({
                         
                         {/* Display only the min/max values */}
                         <div className="flex justify-between text-xs text-stone-600 mt-2">
-                          <span>€{pricing.totalNights <= 6 ? '345' : '240'}</span>
-                          <span>€390</span>
+                          <span>€{Math.round((pricing.totalNights <= 6 ? 345 : 240) * (1 - pricing.durationDiscountPercent / 100))}</span>
+                          <span>€{Math.round(390 * (1 - pricing.durationDiscountPercent / 100))}</span>
                         </div>
                       </div>
                       

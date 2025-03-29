@@ -4,7 +4,7 @@ import { Wifi, Zap, BedDouble, WifiOff, ZapOff, Bath } from 'lucide-react';
 import clsx from 'clsx';
 import type { Accommodation } from '../types';
 import { Week } from '../types/calendar';
-import { getSeasonalDiscount } from '../utils/pricing';
+import { getSeasonalDiscount, getDurationDiscount } from '../utils/pricing';
 import { useWeeklyAccommodations } from '../hooks/useWeeklyAccommodations';
 import { addDays, isDate, eachDayOfInterval, isBefore } from 'date-fns';
 import { createPortal } from 'react-dom';
@@ -69,7 +69,7 @@ const Tooltip = ({
   show: boolean, 
   x: number, 
   y: number,
-  type: 'wifi' | 'electricity' | 'bed'
+  type: 'wifi' | 'electricity' | 'bed' | 'price'
 }) => {
   if (!show) return null;
   
@@ -135,6 +135,20 @@ export function CabinSelector({
   
   const hasWifi = (title: string) => HAS_WIFI.includes(title);
   const hasElectricity = (title: string) => HAS_ELECTRICITY.includes(title);
+
+  // Clear selection if selected accommodation becomes unavailable
+  useEffect(() => {
+    if (selectedAccommodationId && selectedWeeks.length > 0) {
+      const isAvailable = availabilityMap[selectedAccommodationId]?.isAvailable;
+      if (!isAvailable) {
+        console.log('[CabinSelector] Clearing selection - accommodation became unavailable:', {
+          accommodationId: selectedAccommodationId,
+          availability: availabilityMap[selectedAccommodationId]
+        });
+        onSelectAccommodation('');
+      }
+    }
+  }, [selectedAccommodationId, selectedWeeks, availabilityMap, onSelectAccommodation]);
 
   useEffect(() => {
     if (selectedWeeks.length > 0) {
@@ -228,10 +242,10 @@ export function CabinSelector({
   });
 
   // Calculate weighted seasonal discount based on all selected days
-  const calculateWeightedSeasonalDiscount = (weeks: Week[]): number => {
+  const calculateWeightedSeasonalDiscount = (weeks: Week[], accommodationType?: string): number => {
     if (weeks.length === 0) {
       // If no weeks selected, use current month for display purposes
-      return getSeasonalDiscount(currentMonth);
+      return getSeasonalDiscount(currentMonth, accommodationType);
     }
 
     // Get all days in the selected period
@@ -252,14 +266,14 @@ export function CabinSelector({
     });
     
     if (allDays.length === 0) {
-      return getSeasonalDiscount(currentMonth);
+      return getSeasonalDiscount(currentMonth, accommodationType);
     }
     
     // Calculate discount for each day
     let totalDiscount = 0;
     
     allDays.forEach(day => {
-      totalDiscount += getSeasonalDiscount(day);
+      totalDiscount += getSeasonalDiscount(day, accommodationType);
     });
     
     // Calculate weighted average discount
@@ -270,16 +284,17 @@ export function CabinSelector({
       firstDay: allDays[0]?.toISOString(),
       lastDay: allDays[allDays.length - 1]?.toISOString(),
       weightedDiscount: weightedDiscount,
-      discountPercentage: `${(weightedDiscount * 100).toFixed(1)}%`
+      discountPercentage: `${(weightedDiscount * 100).toFixed(1)}%`,
+      accommodationType
     });
     
     return weightedDiscount;
   };
 
   // Determine if the booking spans multiple seasons with different discount rates
-  const getSeasonBreakdown = (weeks: Week[]): { hasMultipleSeasons: boolean, seasons: { name: string, discount: number, days: number }[] } => {
+  const getSeasonBreakdown = (weeks: Week[], accommodationType?: string): { hasMultipleSeasons: boolean, seasons: { name: string, discount: number, days: number }[] } => {
     if (weeks.length === 0) {
-      const discount = getSeasonalDiscount(currentMonth);
+      const discount = getSeasonalDiscount(currentMonth, accommodationType);
       const seasonName = discount === 0 ? 'High Season' : 
                          discount === 0.15 ? 'Shoulder Season' : 
                          'Winter Season';
@@ -305,7 +320,7 @@ export function CabinSelector({
     });
     
     if (allDays.length === 0) {
-      const discount = getSeasonalDiscount(currentMonth);
+      const discount = getSeasonalDiscount(currentMonth, accommodationType);
       const seasonName = discount === 0 ? 'High Season' : 
                          discount === 0.15 ? 'Shoulder Season' : 
                          'Winter Season';
@@ -319,7 +334,7 @@ export function CabinSelector({
     const seasonMap: Record<string, { name: string, discount: number, days: number }> = {};
     
     allDays.forEach(day => {
-      const discount = getSeasonalDiscount(day);
+      const discount = getSeasonalDiscount(day, accommodationType);
       const seasonName = discount === 0 ? 'High Season' : 
                          discount === 0.15 ? 'Shoulder Season' : 
                          'Winter Season';
@@ -338,7 +353,8 @@ export function CabinSelector({
     console.log('[CabinSelector] Season breakdown:', { 
       hasMultipleSeasons, 
       seasons,
-      totalDays: allDays.length
+      totalDays: allDays.length,
+      accommodationType
     });
     
     return { hasMultipleSeasons, seasons };
@@ -359,10 +375,33 @@ export function CabinSelector({
     isTentSeason: isTentSeason
   });
 
+  // Calculate final price with both seasonal and duration discounts
+  const calculateFinalPrice = (basePrice: number, weeks: Week[], accommodationType?: string): number => {
+    if (weeks.length === 0) return basePrice;
+    
+    const seasonalDiscount = calculateWeightedSeasonalDiscount(weeks, accommodationType);
+    const durationDiscount = getDurationDiscount(weeks.length);
+    
+    // Apply both discounts multiplicatively (not additively)
+    const finalPrice = basePrice * (1 - seasonalDiscount) * (1 - durationDiscount);
+    
+    console.log('[CabinSelector] Price calculation:', {
+      basePrice,
+      seasonalDiscount: `${(seasonalDiscount * 100).toFixed(1)}%`,
+      durationDiscount: `${(durationDiscount * 100).toFixed(1)}%`,
+      finalPrice,
+      weeksCount: weeks.length,
+      accommodationType
+    });
+    
+    return finalPrice;
+  };
+
   // Instead use simple tooltip state for each type
   const [wifiTooltip, setWifiTooltip] = useState({ show: false, x: 0, y: 0, content: '' });
   const [electricityTooltip, setElectricityTooltip] = useState({ show: false, x: 0, y: 0, content: '' });
   const [bedTooltip, setBedTooltip] = useState({ show: false, x: 0, y: 0, content: '' });
+  const [priceTooltip, setPriceTooltip] = useState({ show: false, x: 0, y: 0, content: '' });
   
   // Functions to handle tooltip visibility
   const showTooltip = (
@@ -411,10 +450,8 @@ export function CabinSelector({
       ) : (
         <>
           {isDisabled && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
-              <p className="text-sm text-amber-800">
-                Please select dates above to see availability for each accommodation.
-              </p>
+            <div className="text-stone-600 text-sm">
+              <p>Select your dates to see booking details</p>
             </div>
           )}
           
@@ -431,15 +468,16 @@ export function CabinSelector({
               
               // Determine status badge
               let statusBadge = null;
-              if (!isAvailable && selectedWeeks.length > 0) {
+              const isDorm = accommodation.title.includes('Dorm');
+              if (isDorm && availableCapacity !== null && availableCapacity !== undefined && availableCapacity > 0) {
                 statusBadge = {
-                  text: "Not available for selected dates",
-                  bgColor: "bg-rose-50",
-                  textColor: "text-rose-600"
+                  text: `${availableCapacity} spot${availableCapacity === 1 ? '' : 's'} available`,
+                  bgColor: "bg-emerald-50",
+                  textColor: "text-emerald-700"
                 };
-              } else if (availableCapacity !== null && availableCapacity !== undefined) {
+              } else if (availableCapacity !== null && availableCapacity !== undefined && availableCapacity > 1) {
                 statusBadge = {
-                  text: `${availableCapacity} ${availableCapacity === 1 ? 'spot' : 'spots'} available`,
+                  text: `${availableCapacity} spots available`,
                   bgColor: "bg-emerald-50",
                   textColor: "text-emerald-700"
                 };
@@ -453,7 +491,7 @@ export function CabinSelector({
                     'relative rounded-xl overflow-hidden transition-all duration-200 h-full',
                     'border border-stone-200 hover:border-emerald-200',
                     'hover:shadow-md',
-                    (!isAvailable || isDisabled) && 'opacity-70',
+                    (!isAvailable || isDisabled) && 'opacity-60 grayscale-[0.3]',
                     isOutOfSeason && 'opacity-85'
                   )}
                   whileHover={{ y: -4, scale: 1.02 }}
@@ -461,6 +499,15 @@ export function CabinSelector({
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
                 >
+                  {/* Booked out overlay */}
+                  {(!isAvailable || isDisabled) && (
+                    <div className="absolute inset-0 bg-stone-50/50 z-10 flex items-center justify-center">
+                      <div className="bg-stone-100/80 backdrop-blur-[1px] text-stone-500 px-3 py-1.5 rounded-md font-medium text-xs shadow-sm border border-stone-200">
+                        Booked out
+                      </div>
+                    </div>
+                  )}
+                  
                   {/* Out of season overlay for tents - more subtle */}
                   {isOutOfSeason && (
                     <div className="absolute inset-0 bg-amber-50/40 z-10 flex items-center justify-center">
@@ -503,7 +550,12 @@ export function CabinSelector({
                         <div className="flex items-center justify-end space-x-3 text-white">
                           {/* WiFi indicator */}
                           <div 
-                            className="relative"
+                            className={clsx(
+                              "relative",
+                              selectedWeeks.length > 0 && 
+                              !accommodation.title.includes('Dorm') && 
+                              accommodation.base_price > 0 && "cursor-help"
+                            )}
                             onMouseEnter={(e) => showTooltip(
                               e, 
                               hasWifi(accommodation.title) ? 'WiFi Available' : 'No WiFi',
@@ -563,41 +615,51 @@ export function CabinSelector({
                           {accommodation.title}
                         </h3>
 
-                        {/* Price Section - Show base price with discount indicator */}
+                        {/* Price Section */}
                         <div className="flex flex-col mb-3">
-                          <div className="flex items-baseline gap-2">
-                            <span className="text-2xl font-light tracking-tight text-stone-900">€{accommodation.base_price}</span>
-                            <span className="text-sm text-stone-500">/week</span>
+                          <div 
+                            className={clsx(
+                              "flex items-baseline gap-2",
+                              selectedWeeks.length > 0 && 
+                              !accommodation.title.includes('Dorm') && 
+                              accommodation.base_price > 0 && "cursor-help"
+                            )}
+                            onMouseEnter={(e) => {
+                              if (selectedWeeks.length > 0 && 
+                                  !accommodation.title.includes('Dorm') && 
+                                  accommodation.base_price > 0) {
+                                const seasonalDiscount = calculateWeightedSeasonalDiscount(selectedWeeks, accommodation.title);
+                                const durationDiscount = getDurationDiscount(selectedWeeks.length);
+                                const finalPrice = calculateFinalPrice(accommodation.base_price, selectedWeeks, accommodation.title);
+                                
+                                if (seasonalDiscount > 0 || durationDiscount > 0) {
+                                  showTooltip(
+                                    e,
+                                    "Multiple discounts applied",
+                                    setPriceTooltip
+                                  );
+                                }
+                              }
+                            }}
+                            onMouseLeave={() => hideTooltip(setPriceTooltip)}
+                          >
+                            <span className="text-2xl font-light tracking-tight text-stone-900">
+                              {selectedWeeks.length > 0 && hasMultipleSeasons && !accommodation.title.includes('Dorm') && accommodation.base_price > 0 ? '~' : ''}€{selectedWeeks.length > 0 
+                                ? calculateFinalPrice(accommodation.base_price, selectedWeeks, accommodation.title).toFixed(0)
+                                : accommodation.base_price}
+                            </span>
+                            <span className="text-sm text-stone-500"> / week</span>
                           </div>
                           
-                          {/* Discount indicator - only show for available, non-free accommodations and during tent season for tents */}
-                          {selectedWeeks.length > 0 && 
-                           seasonalDiscount > 0 && 
-                           accommodation.base_price > 0 && 
-                           isAvailable &&
-                           (!isTent || (isTent && isTentSeason)) && (
-                            <div className="mt-1">
-                              {hasMultipleSeasons ? (
-                                <span className="text-xs px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full">
-                                  Seasonal discounts available
-                                </span>
-                              ) : (
-                                <span className="text-xs px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full">
-                                  {Math.round(seasonalDiscount * 100)}% off
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Status Badge - don't show "Available Apr 15..." for tents when we already have the overlay */}
-                        {statusBadge && !isOutOfSeason && (
-                          <div className="mt-auto">
-                            <div className={`inline-flex items-center px-2 py-1 rounded-full ${statusBadge.bgColor} ${statusBadge.textColor} text-xs font-medium`}>
-                              {statusBadge.text}
-                            </div>
+                          {/* Status Badge - always present but conditionally visible */}
+                          <div className="mt-2 h-6">
+                            {statusBadge && !isOutOfSeason && (
+                              <div className={`inline-flex items-center px-2 py-1 rounded-full ${statusBadge.bgColor} ${statusBadge.textColor} text-xs font-medium`}>
+                                {statusBadge.text}
+                              </div>
+                            )}
                           </div>
-                        )}
+                        </div>
                       </div>
                     </div>
                   </button>
@@ -629,6 +691,13 @@ export function CabinSelector({
         x={bedTooltip.x} 
         y={bedTooltip.y}
         type="bed"
+      />
+      <Tooltip 
+        content={priceTooltip.content} 
+        show={priceTooltip.show} 
+        x={priceTooltip.x} 
+        y={priceTooltip.y}
+        type="price"
       />
     </div>
   );

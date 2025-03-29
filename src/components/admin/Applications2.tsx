@@ -198,13 +198,18 @@ export function Applications2() {
             >
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="font-medium">
-                    {questions.length > 0 && application.data && (
-                      <>
-                        {application.data[questions[1]?.order_number]} {application.data[questions[2]?.order_number]}
-                      </>
-                    )}
-                  </h3>
+                  <button
+                    onClick={() => setSelectedApplication(application)}
+                    className="font-medium text-lg hover:text-emerald-600 transition-colors text-left group"
+                  >
+                    <span className="group-hover:underline">
+                      {questions.length > 0 && application.data && (
+                        <>
+                          {application.data[questions[1]?.order_number]} {application.data[questions[2]?.order_number]}
+                        </>
+                      )}
+                    </span>
+                  </button>
                   <p className="text-sm text-stone-600">
                     {application.user_email}
                   </p>

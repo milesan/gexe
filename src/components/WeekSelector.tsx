@@ -1,14 +1,15 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { isBefore, startOfToday, isSameDay, differenceInDays } from 'date-fns';
+import { isBefore, startOfToday, isSameDay, differenceInDays, eachDayOfInterval, addDays } from 'date-fns';
 import { WeekBox } from './WeekBox';
 import clsx from 'clsx';
 import { Week } from '../types/calendar';
 import { isWeekSelectable, formatWeekRange, formatDateForDisplay, normalizeToUTCDate, generateWeekId, canDeselectArrivalWeek, getWeeksToDeselect } from '../utils/dates';
 import { format } from 'date-fns';
-import { motion } from 'framer-motion';
-import { Calendar, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Calendar, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { FlexibleCheckInModal } from './FlexibleCheckInModal';
 import { areSameWeeks } from '../utils/dates';
+import { getSeasonalDiscount } from '../utils/pricing';
 
 // Helper function to log week dates consistently without timezone confusion
 const getSimplifiedWeekInfo = (week: Week, isAdmin: boolean = false, selectedWeeks: Week[] = []) => {
@@ -36,6 +37,26 @@ interface WeekSelectorProps {
   onMonthChange?: (newMonth: Date) => void;
   onDateSelect: (date: Date, week: Week) => void;
 }
+
+// Season legend component
+const SeasonLegend = () => {
+  return (
+    <div className="flex items-center justify-center gap-4 mb-4 text-xs">
+      <div className="flex items-center gap-2">
+        <div className="w-3 h-3 rounded-full bg-blue-400"></div>
+        <span className="text-stone-600">Winter (Nov-May)</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="w-3 h-3 rounded-full bg-orange-400"></div>
+        <span className="text-stone-600">Shoulder (Jun, Oct)</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="w-3 h-3 rounded-full bg-gray-400"></div>
+        <span className="text-stone-600">High (Jul-Sep)</span>
+      </div>
+    </div>
+  );
+};
 
 export function WeekSelector({
   weeks,
@@ -220,6 +241,19 @@ export function WeekSelector({
     // Use our improved isWeekSelected function instead of doing a direct date match
     const isSelected = isWeekSelected(week);
 
+    // Get seasonal discount for this week
+    const seasonalDiscount = getSeasonalDiscount(week.startDate);
+    
+    // Add seasonal background styling
+    let seasonalClasses = '';
+    if (seasonalDiscount === 0.40) {
+      seasonalClasses = isSelected ? 'border-blue-300' : 'bg-blue-50 border-blue-100';
+    } else if (seasonalDiscount === 0.15) {
+      seasonalClasses = isSelected ? 'border-orange-300' : 'bg-orange-50 border-orange-100';
+    } else {
+      seasonalClasses = isSelected ? 'border-gray-300' : 'bg-white border-gray-200';
+    }
+
     // Add debug logging for each week's selection state
     if (week.flexibleDates?.length) {
       console.log('[getWeekClasses] Week with flexible dates:', {
@@ -249,8 +283,8 @@ export function WeekSelector({
       areSameWeeks(week, selectedWeeks[selectedWeeks.length - 1]);
 
     const baseClasses = 'relative flex items-center justify-center border-2 rounded-lg p-4 transition-all duration-200';
-    const selectedClasses = 'border-emerald-500 bg-emerald-50 shadow-lg transform scale-105';
-    const defaultClasses = 'border-stone-200 hover:border-emerald-300 hover:bg-stone-50';
+    const selectedClasses = 'bg-emerald-50 shadow-lg transform scale-105';
+    const defaultClasses = 'hover:border-emerald-300 hover:bg-stone-50';
     const nonSelectableClasses = 'opacity-50 bg-gray-100 border-gray-200 cursor-not-allowed';
     
     let statusClasses = '';
@@ -312,7 +346,7 @@ export function WeekSelector({
       }
     }
 
-    const classes = `${baseClasses} ${stateClass} ${statusClasses}`;
+    const classes = `${baseClasses} ${stateClass} ${statusClasses} ${seasonalClasses}`;
 
     console.log('[WeekSelector] Week classes:', {
       weekInfo: getSimplifiedWeekInfo(week, isAdmin, selectedWeeks),
@@ -323,7 +357,8 @@ export function WeekSelector({
         isLastSelected,
         isSelectable: isWeekSelectable(week, isAdmin, selectedWeeks),
         isHiddenButEditableByAdmin,
-        isDeletedAndAdmin
+        isDeletedAndAdmin,
+        seasonalDiscount
       }
     });
 
@@ -365,6 +400,7 @@ export function WeekSelector({
 
   return (
     <>
+      <SeasonLegend />
       <div className={clsx(
         'grid gap-4',
         isMobile ? 'grid-cols-3' : 'grid-cols-4'
@@ -373,34 +409,102 @@ export function WeekSelector({
           <button
             key={week.id || `week-${index}`}
             onClick={() => handleWeekClick(week)}
-            className={getWeekClasses(week)}
+            className={clsx(
+              'relative p-4 border-2 transition-all duration-300',
+              'aspect-[1.5] shadow-sm hover:shadow-md',
+              'pixel-corners',
+              // Selection states - now overlay on seasonal colors
+              isWeekSelected(week) && 'border-emerald-600 shadow-lg',
+              !isWeekSelected(week) && selectedWeeks.length > 1 && 'border-emerald-600/20',
+              !isWeekSelectable(week, isAdmin, selectedWeeks) && !isAdmin && 'opacity-50 cursor-not-allowed',
+              isAdmin && 'cursor-pointer hover:border-blue-400',
+              // Status colors
+              isAdmin && week.status === 'hidden' && 'border-yellow-400 bg-yellow-50',
+              isAdmin && week.status === 'deleted' && 'border-red-400 bg-red-50 border-dashed',
+              isAdmin && week.status === 'visible' && week.isCustom && 'border-blue-400 bg-white',
+              // Week status classes
+              week.isCustom && week.status === 'hidden' && 'week-status-hidden',
+              week.isCustom && week.status === 'deleted' && 'week-status-deleted',
+              week.isCustom && week.status === 'visible' && 'week-status-visible',
+              week.isCustom && week.status === 'default' && 'week-status-default'
+            )}
             disabled={!isWeekSelectable(week, isAdmin, selectedWeeks)}
           >
-            <div className="text-center">
+            <div className="text-center flex flex-col justify-center h-full">
               {week.name ? (
                 <>
-                  <div className="text-sm font-bold">
+                  <div className="text-2xl font-display mb-1">
                     {week.name}
                   </div>
-                  <div className="text-xs text-gray-500 mt-1 flex items-center justify-center gap-1">
+                  <div className="font-mono text-xs text-stone-500 flex items-center justify-center gap-1">
                     <span>{format(week.startDate, 'MMM d')}</span>
-                    <span>-</span>
+                    <svg className="w-2 h-2" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path d="M4 12h16m0 0l-6-6m6 6l-6 6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
                     <span>{format(week.endDate, 'MMM d')}</span>
                   </div>
                 </>
               ) : (
                 <>
-                  <div className="text-sm font-medium">
-                    {format(week.startDate, 'MMM d')}
+                  <div className="text-2xl font-display mb-1">
+                    {(() => {
+                      // If multiple weeks are selected, show simplified dates for first and last weeks
+                      if (selectedWeeks.length > 1) {
+                        const isFirstSelected = selectedWeeks[0] && areSameWeeks(week, selectedWeeks[0]);
+                        const isLastSelected = selectedWeeks[selectedWeeks.length - 1] && areSameWeeks(week, selectedWeeks[selectedWeeks.length - 1]);
+                        
+                        if (isFirstSelected) {
+                          // For first week, show selected flex date if available, otherwise show start date
+                          const selectedFlexDate = selectedWeeks[0].selectedFlexDate;
+                          const displayDate = selectedFlexDate || week.startDate;
+                          return (
+                            <div className="flex items-center justify-center gap-2">
+                              <div>{format(displayDate, 'MMM d')}</div>
+                              <div className="text-4xl">→</div>
+                            </div>
+                          );
+                        }
+                        if (isLastSelected) {
+                          return (
+                            <div className="flex items-center justify-center gap-2">
+                              <div className="text-4xl">→</div>
+                              <div>{format(week.endDate, 'MMM d')}</div>
+                            </div>
+                          );
+                        }
+                      }
+                      // For single week selection, show flex date if available
+                      const selectedWeek = selectedWeeks[0];
+                      if (selectedWeek && areSameWeeks(week, selectedWeek) && selectedWeek.selectedFlexDate) {
+                        return format(selectedWeek.selectedFlexDate, 'MMM d');
+                      }
+                      // Default display for non-selected weeks
+                      return format(week.startDate, 'MMM d');
+                    })()}
                   </div>
-                  <div className="text-xs text-gray-500">
-                    {format(week.endDate, 'MMM d')}
-                  </div>
+                  {(() => {
+                    // Don't show the smaller date display for first/last selected weeks when multiple weeks are selected
+                    if (selectedWeeks.length > 1) {
+                      const isFirstSelected = selectedWeeks[0] && areSameWeeks(week, selectedWeeks[0]);
+                      const isLastSelected = selectedWeeks[selectedWeeks.length - 1] && areSameWeeks(week, selectedWeeks[selectedWeeks.length - 1]);
+                      if (isFirstSelected || isLastSelected) {
+                        return null;
+                      }
+                    }
+                    return (
+                      <div className="font-mono text-sm text-stone-500 flex items-center justify-center gap-2">
+                        <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                          <path d="M4 12h16m0 0l-6-6m6 6l-6 6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        <span>{format(week.endDate, 'MMM d')}</span>
+                      </div>
+                    );
+                  })()}
                 </>
               )}
               {/* Show flex dates indicator */}
               {week.flexibleDates && week.flexibleDates.length > 0 && (
-                <div className="text-xs text-indigo-600 mt-1 font-medium flex items-center justify-center gap-1">
+                <div className="text-xs text-indigo-600 mt-1 font-body flex items-center justify-center gap-1">
                   <Calendar className="w-3 h-3" />
                   <span>{week.flexibleDates.length} check-in {week.flexibleDates.length === 1 ? 'date' : 'dates'}</span>
                   {/* Show indicator if this flex week has a selected date that matches one of its flex dates */}
@@ -431,7 +535,7 @@ export function WeekSelector({
                 // Only show day count for non-standard weeks that are not at the edge of the view
                 if (diffDays !== 7 && !week.isEdgeWeek) {
                   return (
-                    <div className="text-xs text-indigo-600 mt-1 font-medium">
+                    <div className="text-xs text-indigo-600 mt-1 font-body">
                       {diffDays} {diffDays === 1 ? 'day' : 'days'}
                     </div>
                   );
@@ -440,7 +544,7 @@ export function WeekSelector({
               })()}
               {isAdmin && week.status !== 'default' && (
                 <div className={clsx(
-                  'text-xs font-medium mt-1',
+                  'text-xs font-body mt-1',
                   week.status === 'hidden' && 'text-yellow-600',
                   week.status === 'deleted' && 'text-red-600',
                   week.status === 'visible' && 'text-blue-600'
@@ -449,22 +553,41 @@ export function WeekSelector({
                 </div>
               )}
             </div>
+
+            {/* Squiggly line and connecting lines for selected weeks */}
             {isWeekSelected(week) && (
-              <motion.svg
-                className="absolute inset-0 w-full h-full pointer-events-none"
-                initial={{ pathLength: 0 }}
-                animate={{ pathLength: 1 }}
-                transition={{ duration: 0.5 }}
-              >
-                <path
-                  d={squigglePaths[index]}
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  className="text-emerald-500"
-                />
-              </motion.svg>
+              <>
+                <div className="connecting-line left" />
+                <div className="connecting-line right" />
+                <svg
+                  className="absolute inset-0 w-full h-full pointer-events-none"
+                  preserveAspectRatio="none"
+                  viewBox="0 0 100 30"
+                >
+                  <path
+                    d="M 0 15 Q 25 5, 50 15 T 100 15"
+                    className="squiggle-path"
+                    stroke="rgb(5, 150, 105)"
+                    strokeWidth="2"
+                    fill="none"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                </svg>
+              </>
             )}
+
+            {/* Bottom border animation */}
+            <div 
+              className={clsx(
+                'absolute bottom-0 left-0 right-0 transition-all duration-300',
+                // Seasonal colors for bottom line
+                getSeasonalDiscount(week.startDate) === 0.40 && 'bg-blue-400',
+                getSeasonalDiscount(week.startDate) === 0.15 && 'bg-orange-400',
+                !getSeasonalDiscount(week.startDate) && 'bg-gray-400',
+                // Height based on selection
+                isWeekSelected(week) ? 'h-1.5' : 'h-1'
+              )}
+            />
           </button>
         ))}
       </div>

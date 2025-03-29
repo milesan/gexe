@@ -1,3 +1,5 @@
+//TODO: Dead code? Remove?
+/*
 import React, { useState, useEffect } from 'react';
 import { Star } from 'lucide-react';
 import type { Database } from '../types/database';
@@ -5,6 +7,7 @@ import { BookingModal } from './BookingModal';
 import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
+import { getDurationDiscount } from '../utils/pricing';
 
 type Accommodation = Database['public']['Tables']['accommodations']['Row'];
 
@@ -18,9 +21,9 @@ export function AccommodationCard({ accommodation, checkIn, checkOut }: Accommod
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [isAvailable, setIsAvailable] = useState(true);
   const [nextAvailableDate, setNextAvailableDate] = useState<Date | null>(null);
-  const basePrice = accommodation.price;
-  const weeklyDiscount = basePrice * 0.1; // 10% off for 2+ weeks
-  const longTermDiscount = basePrice * 0.15; // 15% off for 6+ weeks
+  const basePrice = accommodation.base_price;
+  const threeWeekDiscount = basePrice * getDurationDiscount(3);
+  const sixWeekDiscount = basePrice * getDurationDiscount(6);
 
   useEffect(() => {
     if (checkIn && checkOut) {
@@ -88,7 +91,7 @@ export function AccommodationCard({ accommodation, checkIn, checkOut }: Accommod
       >
         <div className="relative aspect-[4/3] overflow-hidden rounded-2xl">
           <img
-            src={accommodation.image_url}
+            src={accommodation.image_url || ''}
             alt={accommodation.title}
             className={`object-cover w-full h-full ${isAvailable ? 'group-hover:scale-105' : ''} transition-transform duration-500`}
           />
@@ -103,17 +106,18 @@ export function AccommodationCard({ accommodation, checkIn, checkOut }: Accommod
           <div className="flex justify-between items-start">
             <div>
               <h3 className="font-display text-xl text-stone-900">{accommodation.title}</h3>
-              <p className="text-stone-500 mt-1">{accommodation.location}</p>
+              <p className="text-stone-500 mt-1">{accommodation.type}</p>
             </div>
             <div className="flex items-center gap-1 text-stone-700">
               <Star className="w-4 h-4 fill-current text-stone-900" />
-              <span className="font-medium">{accommodation.rating}</span>
+              <span className="font-medium">4.8</span>
             </div>
           </div>
 
           <p className="text-stone-500 mt-2">
-            {accommodation.type} · {accommodation.beds > 0 ? `${accommodation.beds} bed${accommodation.beds > 1 ? 's' : ''}` : 'No bed'} 
-            {accommodation.bathrooms > 0 ? ` · ${accommodation.bathrooms} bath${accommodation.bathrooms > 1 ? 's' : ''}` : ''}
+            {accommodation.type} · {accommodation.capacity} guests
+            {accommodation.has_wifi ? ' · WiFi' : ''}
+            {accommodation.has_electricity ? ' · Electricity' : ''}
           </p>
 
           <div className="mt-4 space-y-1">
@@ -121,10 +125,10 @@ export function AccommodationCard({ accommodation, checkIn, checkOut }: Accommod
               €{basePrice} <span className="text-stone-500 text-base">per week</span>
             </p>
             <p className="text-sm text-stone-500">
-              2+ weeks: €{(basePrice - weeklyDiscount).toFixed(0)} per week
+              3+ weeks: €{(basePrice - threeWeekDiscount).toFixed(0)} per week
             </p>
             <p className="text-sm text-stone-500">
-              6+ weeks: €{(basePrice - longTermDiscount).toFixed(0)} per week
+              6+ weeks: €{(basePrice - sixWeekDiscount).toFixed(0)} per week
             </p>
           </div>
         </div>
@@ -132,7 +136,11 @@ export function AccommodationCard({ accommodation, checkIn, checkOut }: Accommod
 
       {showBookingModal && checkIn && checkOut && (
         <BookingModal
-          accommodation={accommodation}
+          accommodation={{
+            id: accommodation.id,
+            title: accommodation.title,
+            price: accommodation.base_price
+          }}
           checkIn={checkIn}
           checkOut={checkOut}
           onClose={() => setShowBookingModal(false)}
