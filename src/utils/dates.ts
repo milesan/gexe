@@ -163,14 +163,11 @@ export function adjustToCheckInDay(date: Date, checkInDay: number = 0): Date {
  * Check if a date falls within a week
  */
 export function isDateInWeek(date: Date, week: Week): boolean {
-  const normalizedDate = normalizeToUTCDate(date);
-  const normalizedStart = normalizeToUTCDate(week.startDate);
-  const normalizedEnd = normalizeToUTCDate(week.endDate);
+  const dateMs = date.getTime();
+  const startMs = week.startDate.getTime();
+  const endMs = week.endDate.getTime();
   
-  return (
-    normalizedDate >= normalizedStart && 
-    normalizedDate <= normalizedEnd
-  );
+  return dateMs >= startMs && dateMs <= endMs;
 }
 
 /**
@@ -182,10 +179,10 @@ export function doDateRangesOverlap(
   start2: Date, 
   end2: Date
 ): boolean {
-  const s1 = normalizeToUTCDate(start1);
-  const e1 = normalizeToUTCDate(end1);
-  const s2 = normalizeToUTCDate(start2);
-  const e2 = normalizeToUTCDate(end2);
+  const s1 = start1.getTime();
+  const e1 = end1.getTime();
+  const s2 = start2.getTime();
+  const e2 = end2.getTime();
   
   return (
     // Case 1: Range 2 starts during range 1
@@ -206,12 +203,10 @@ export function generateStandardWeek(
   startDate: Date, 
   config: { checkInDay: number; checkOutDay: number }
 ): { startDate: Date; endDate: Date } {
-  const normalizedStart = normalizeToUTCDate(startDate);
-  
   // If not starting on check-in day, adjust to next check-in day
-  const adjustedStart = normalizedStart.getDay() !== config.checkInDay
-    ? adjustToCheckInDay(normalizedStart, config.checkInDay)
-    : normalizedStart;
+  const adjustedStart = startDate.getDay() !== config.checkInDay
+    ? adjustToCheckInDay(startDate, config.checkInDay)
+    : startDate;
   
   // Calculate end date based on check-out day
   let endDate: Date;
@@ -265,13 +260,9 @@ export function generateWeeksWithCustomizations(
   customizations: WeekCustomization[] = [],
   isAdminMode: boolean = false
 ): Week[] {
-  // Normalize input dates
-  const normalizedStartDate = normalizeToUTCDate(from);
-  const normalizedEndDate = normalizeToUTCDate(to);
-  
   console.log('[generateWeeksWithCustomizations] Starting with:', {
-    startDate: formatDateForDisplay(normalizedStartDate),
-    endDate: formatDateForDisplay(normalizedEndDate),
+    startDate: formatDateForDisplay(from),
+    endDate: formatDateForDisplay(to),
     customizationsCount: customizations.length,
     isAdminMode
   });
@@ -279,19 +270,13 @@ export function generateWeeksWithCustomizations(
   // Default config if none provided
   const safeConfig = config || { checkInDay: 0, checkOutDay: 6 };
   
-  // Sort and normalize customizations
+  // Sort customizations by start date
   const sortedCustomizations = [...customizations]
-    .map(c => ({
-      ...c,
-      startDate: normalizeToUTCDate(c.startDate),
-      endDate: normalizeToUTCDate(c.endDate),
-      flexibleDates: c.flexibleDates?.map(d => normalizeToUTCDate(d)) || []
-    }))
     .sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
 
   // Filter relevant customizations
   const relevantCustomizations = sortedCustomizations.filter(c => 
-    doDateRangesOverlap(c.startDate, c.endDate, normalizedStartDate, normalizedEndDate)
+    doDateRangesOverlap(c.startDate, c.endDate, from, to)
   );
   
   console.log('[generateWeeksWithCustomizations] Relevant customizations:', {
@@ -316,9 +301,7 @@ export function generateWeeksWithCustomizations(
 
   // Add customizations to timeline
   relevantCustomizations.forEach(customization => {
-    const daysDiff = Math.round(
-      (customization.endDate.getTime() - customization.startDate.getTime()) / (1000 * 60 * 60 * 24)
-    ) + 1;
+    const daysDiff = calculateDaysBetween(customization.startDate, customization.endDate, true);
     
     timeline.push({
       type: 'custom',
@@ -336,16 +319,16 @@ export function generateWeeksWithCustomizations(
   const addedWeekStartDates = new Set<string>();
   
   // Generate standard weeks for the entire date range
-  let currentDate = new Date(normalizedStartDate);
+  let currentDate = new Date(from);
   
   // Keep generating weeks until we reach the end date
-  while (currentDate <= normalizedEndDate) {
+  while (currentDate.getTime() <= to.getTime()) {
     // Generate a standard week
     const { startDate, endDate } = generateStandardWeek(currentDate, safeConfig);
     
     // Check if this week extends beyond the end date
-    const isPartial = endDate > normalizedEndDate;
-    const actualEndDate = isPartial ? normalizedEndDate : endDate;
+    const isPartial = endDate.getTime() > to.getTime();
+    const actualEndDate = isPartial ? to : endDate;
     
     // Check if this week overlaps with any customization
     let overlapsWithCustomization = false;
@@ -454,12 +437,12 @@ export function isWeekSelectable(week: Week, isAdmin: boolean = false, selectedW
   const weekStartDate = week.startDate;
   
   // Non-admin can't select weeks with check-in date in the past
-  if (weekStartDate < today) {
+  if (weekStartDate.getTime() < today.getTime()) {
     return false;
   }
   
   // If this is the currently selected arrival week, allow deselecting it
-  if (selectedWeeks.length > 0 && isSameDay(selectedWeeks[0].endDate, week.endDate)) {
+  if (selectedWeeks.length > 0 && selectedWeeks[0].endDate.getTime() === week.endDate.getTime()) {
     return true;
   }
 
@@ -481,7 +464,7 @@ export function isWeekSelectable(week: Week, isAdmin: boolean = false, selectedW
   // Allow any week after the arrival week for departure, even if hidden
   if (selectedWeeks.length > 0) {
     const arrivalWeek = selectedWeeks[0];
-    return weekStartDate > arrivalWeek.startDate;
+    return weekStartDate.getTime() > arrivalWeek.startDate.getTime();
   }
 
   // Non-admin can only select visible weeks (this is a fallback)
@@ -519,7 +502,7 @@ export function areSameWeeks(week1: Week, week2: Week): boolean {
   }
   
   // Otherwise compare by end date (reliable for both standard and flex weeks)
-  return isSameDay(normalizeToUTCDate(week1.endDate), normalizeToUTCDate(week2.endDate));
+  return week1.endDate.getTime() === week2.endDate.getTime();
 }
 
 /**
@@ -622,18 +605,43 @@ export function canDeselectArrivalWeek(
   return getWeeksToDeselect(weekToDeselect, selectedWeeks, isAdmin).length > 0;
 }
 
+/**
+ * Calculate the number of days between two dates using millisecond-based calculation
+ * @param startDate The start date
+ * @param endDate The end date
+ * @param includeEndDate Whether to include the end date in the count (default: false)
+ * @returns Number of days between the dates
+ */
+export function calculateDaysBetween(startDate: Date, endDate: Date, includeEndDate: boolean = false): number {
+  const msPerDay = 24 * 60 * 60 * 1000;
+  return Math.round((endDate.getTime() - startDate.getTime()) / msPerDay) + (includeEndDate ? 1 : 0);
+}
+
 export function calculateTotalNights(selectedWeeks: Week[]): number {
   if (selectedWeeks.length === 0) return 0;
   const firstDate = selectedWeeks[0].startDate;
   const lastDate = selectedWeeks[selectedWeeks.length - 1].endDate;
-  return differenceInDays(lastDate, firstDate); // Don't add 1, we want actual number of nights
+  return calculateDaysBetween(firstDate, lastDate, false);
 }
 
 export function calculateTotalDays(selectedWeeks: Week[]): number {
+  console.log('[calculateTotalDays] Calculating for:', {
+    weeks: selectedWeeks.map(w => ({
+      id: w.id,
+      startDate: formatDateForDisplay(w.startDate),
+      endDate: formatDateForDisplay(w.endDate)
+    }))
+  });
   if (selectedWeeks.length === 0) return 0;
+  
   const firstDate = selectedWeeks[0].startDate;
   const lastDate = selectedWeeks[selectedWeeks.length - 1].endDate;
-  return differenceInDays(lastDate, firstDate) + 1;
+  console.log('[calculateTotalDays] firstDate:', formatDateForDisplay(firstDate));
+  console.log('[calculateTotalDays] lastDate:', formatDateForDisplay(lastDate));
+  
+  const days = calculateDaysBetween(firstDate, lastDate, true);
+  console.log('[calculateTotalDays] total days:', days);
+  return days;
 }
 
 /**
@@ -642,9 +650,18 @@ export function calculateTotalDays(selectedWeeks: Week[]): number {
  * A week is only counted if there are at least 7 days
  */
 export function calculateDurationDiscountWeeks(selectedWeeks: Week[]): number {
+  console.log('[calculateDurationDiscountWeeks] Calculating for:', {
+    weeks: selectedWeeks.map(w => ({
+      id: w.id,
+      startDate: formatDateForDisplay(w.startDate),
+      endDate: formatDateForDisplay(w.endDate)
+    }))
+  });
   if (selectedWeeks.length === 0) return 0;
   
   const totalDays = calculateTotalDays(selectedWeeks);
+  console.log('[calculateDurationDiscountWeeks] totalDays:', totalDays);
+  console.log('[calculateDurationDiscountWeeks] returning:', totalDays >= 7 ? Math.floor(totalDays / 7) : 0);
   // Only count as a week if there are at least 7 days
   return totalDays >= 7 ? Math.floor(totalDays / 7) : 0;
 }
