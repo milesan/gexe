@@ -26,6 +26,14 @@ interface Week {
   status?: string;
 }
 
+// Define a simple User type for the map callbacks
+interface SimpleUser {
+  id: string;
+  email?: string; // Make optional as placeholders might be used
+  first_name?: string;
+  last_name?: string;
+}
+
 export function Housekeeping({ onClose }: Props) {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [bookings, setBookings] = useState<BookingWithUser[]>([]);
@@ -295,7 +303,7 @@ export function Housekeeping({ onClose }: Props) {
           
           // Add placeholders for any missing users
           if (allUserData.length < userIds.length) {
-            const foundIds = new Set(allUserData.map(user => user.id));
+            const foundIds = new Set(allUserData.map((user: SimpleUser) => user.id));
             const missingIds = userIds.filter(id => !foundIds.has(id));
             
             if (missingIds.length > 0) {
@@ -327,11 +335,11 @@ export function Housekeeping({ onClose }: Props) {
 
       // Create maps for user emails and names
       const userEmailMap = Object.fromEntries(
-        allUserData.map(user => [user.id, user.email])
+        allUserData.map((user: SimpleUser) => [user.id, user.email || `${user.id.substring(0, 8)}@placeholder.com`])
       );
 
       const userNameMap = Object.fromEntries(
-        allUserData.map(user => [
+        allUserData.map((user: SimpleUser) => [
           user.id, 
           `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Unknown'
         ])
@@ -453,8 +461,18 @@ export function Housekeeping({ onClose }: Props) {
                 const checkIns = getBookingsForDate(day, 'check_in');
                 const checkOuts = getBookingsForDate(day, 'check_out');
                 
+                // Sort check-ins by accommodation title
+                checkIns.sort((a, b) => 
+                  a.accommodation_title.localeCompare(b.accommodation_title)
+                );
+                
+                // Sort check-outs by accommodation title
+                checkOuts.sort((a, b) => 
+                  a.accommodation_title.localeCompare(b.accommodation_title)
+                );
+
                 return (
-                  <div key={i} className="border rounded p-4">
+                  <div key={i} className="border rounded p-4 min-h-[200px]">
                     <h3 className="font-medium text-center mb-2">
                       {format(day, 'EEE, MMM d')}
                     </h3>
