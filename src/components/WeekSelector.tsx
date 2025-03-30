@@ -451,27 +451,53 @@ export function WeekSelector({
                 <>
                   <div className="text-lg xxs:text-xl xs:text-2xl sm:text-3xl font-display">
                     {(() => {
-                      // If no weeks are selected, only show check-in date
+                      // --- START: Determine effective start date for the first selected week ---
+                      let effectiveStartDate: Date | undefined;
+                      if (selectedWeeks.length > 0) {
+                        const firstSelected = selectedWeeks[0];
+                        // Find the corresponding week object from the initial props to access original flexibleDates
+                        // Use filteredWeeks as it's the source for rendering
+                        const originalWeekData = filteredWeeks.find(w => areSameWeeks(w, firstSelected));
+
+                        if (firstSelected.selectedFlexDate) {
+                          effectiveStartDate = firstSelected.selectedFlexDate;
+                          console.log(`[WeekSelector] Using explicitly selected flex date ${formatDateForDisplay(effectiveStartDate)} for first week.`);
+                        } else if (originalWeekData?.flexibleDates?.length) {
+                          effectiveStartDate = new Date(Math.min(...originalWeekData.flexibleDates.map(d => d.getTime())));
+                          console.log(`[WeekSelector] Displaying earliest flex date ${formatDateForDisplay(effectiveStartDate)} for first selected week starting ${formatDateForDisplay(firstSelected.startDate)}`);
+                        } else {
+                          effectiveStartDate = firstSelected.startDate;
+                          console.log(`[WeekSelector] Using standard start date ${formatDateForDisplay(effectiveStartDate)} for first week.`);
+                        }
+                      }
+                      // --- END: Determine effective start date ---
+
+                      // If no weeks are selected, show the earliest potential check-in date
                       if (selectedWeeks.length === 0) {
+                        let displayDate = week.startDate;
+                        if (week.flexibleDates?.length) {
+                          displayDate = new Date(Math.min(...week.flexibleDates.map(d => d.getTime())));
+                          // console log already exists from previous change for this case
+                        }
                         return (
                           <div className="flex items-center justify-center">
-                            <span>{format(week.startDate, 'MMM d')}</span>
+                            <span>{format(displayDate, 'MMM d')}</span>
                           </div>
                         );
                       }
 
-                      // If multiple weeks are selected, show simplified dates for first and last weeks
+                      // If multiple weeks are selected
                       if (selectedWeeks.length > 1) {
-                        const isFirstSelected = selectedWeeks[0] && areSameWeeks(week, selectedWeeks[0]);
-                        const isLastSelected = selectedWeeks[selectedWeeks.length - 1] && areSameWeeks(week, selectedWeeks[selectedWeeks.length - 1]);
+                        const firstSelected = selectedWeeks[0];
+                        const lastSelected = selectedWeeks[selectedWeeks.length - 1];
+                        const isFirstSelected = areSameWeeks(week, firstSelected);
+                        const isLastSelected = areSameWeeks(week, lastSelected);
                         const isIntermediary = selectedWeeks.some(sw => areSameWeeks(week, sw)) && !isFirstSelected && !isLastSelected;
-                        
-                        if (isFirstSelected) {
-                          const selectedFlexDate = selectedWeeks[0].selectedFlexDate;
-                          const displayDate = selectedFlexDate || week.startDate;
+
+                        if (isFirstSelected && effectiveStartDate) { // Use effectiveStartDate here
                           return (
                             <div className="flex items-center justify-center gap-1">
-                              <span>{format(displayDate, 'MMM d')}</span>
+                              <span>{format(effectiveStartDate, 'MMM d')}</span>
                               <span>→</span>
                             </div>
                           );
@@ -485,45 +511,42 @@ export function WeekSelector({
                           );
                         }
                         if (isIntermediary) {
-                          return null;
+                          return null; // Intermediary weeks display nothing specific
                         }
+                        // Fallthrough for non-selected weeks in multi-select mode handled below
                       }
-                      
-                      // For single week selection
-                      const selectedWeek = selectedWeeks[0];
+
+                      // If a single week is selected (selectedWeeks.length === 1 implicitly falls here after length > 1 check)
+                      const selectedWeek = selectedWeeks[0]; // Will exist if length > 0
                       const isSelected = areSameWeeks(week, selectedWeek);
-                      
-                      // If this is the selected week, show full range
-                      if (isSelected) {
+
+                      if (isSelected && effectiveStartDate) { // Handles selectedWeeks.length === 1 case. Use effectiveStartDate.
                         return (
                           <div className="flex items-center justify-center gap-1">
-                            <span>{format(week.startDate, 'MMM d')}</span>
+                            <span>{format(effectiveStartDate, 'MMM d')}</span>
                             <span>→</span>
                             <span>{format(week.endDate, 'MMM d')}</span>
                           </div>
                         );
                       }
-                      
-                      // For weeks before the selected check-in date, show check-in date
-                      if (isBefore(week.startDate, selectedWeek.startDate)) {
-                        return (
-                          <div className="flex items-center justify-center">
-                            <span>{format(week.startDate, 'MMM d')}</span>
-                          </div>
-                        );
+
+                      // Fallback display for any week not covered above (e.g., not selected when others are)
+                      // Show the earliest potential check-in date for this week.
+                      let fallbackDisplayDate = week.startDate;
+                      if (week.flexibleDates?.length) {
+                        fallbackDisplayDate = new Date(Math.min(...week.flexibleDates.map(d => d.getTime())));
                       }
-                      
-                      // For weeks after the selected week, show check-out date
                       return (
                         <div className="flex items-center justify-center">
-                          <span>{format(week.endDate, 'MMM d')}</span>
+                          <span>{format(fallbackDisplayDate, 'MMM d')}</span>
                         </div>
                       );
+
                     })()}
                   </div>
                   {/* Show flex dates indicator only if no weeks are selected yet */}
                   {week.flexibleDates && week.flexibleDates.length > 0 && !selectedWeeks.length && (
-                    <div className="text-xs xxs:text-sm xs:text-base sm:text-lg text-indigo-600 mt-1 font-regular flex items-center justify-center gap-1">
+                    <div className="text-xs xxs:text-xs xs:text-base sm:text-sm text-indigo-600 mt-1 font-regular flex items-center justify-center gap-1">
                       <Calendar className="w-3 h-3 xxs:w-3.5 xxs:h-3.5 xs:w-4 xs:h-4" />
                       <span>{week.flexibleDates.length} check-in {week.flexibleDates.length === 1 ? 'date' : 'dates'}</span>
                     </div>

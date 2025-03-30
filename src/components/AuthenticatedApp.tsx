@@ -93,7 +93,7 @@ export function AuthenticatedApp() {
   };
 
   return (
-    <div className="min-h-screen bg-stone-50">
+    <div className="min-h-screen bg-stone-50 flex flex-col">
       <header className="sticky top-0 z-50 bg-white border-b border-stone-200">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16 sm:h-20">
@@ -186,7 +186,7 @@ export function AuthenticatedApp() {
         </div>
       </header>
 
-      <main className="relative">
+      <main className="relative flex-grow">
         <Routes>
           <Route path="/" element={<Book2Page />} />
           <Route path="/my-bookings" element={<MyBookings />} />

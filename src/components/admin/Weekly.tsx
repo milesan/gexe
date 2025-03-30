@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { format, addDays, addWeeks, subWeeks, startOfWeek, endOfWeek, isWithinInterval, parseISO } from 'date-fns';
+import { format, addDays, addWeeks, subWeeks, startOfWeek, endOfWeek, isWithinInterval, parseISO, Day } from 'date-fns';
 import { supabase } from '../../lib/supabase';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { CalendarService } from '../../services/CalendarService';
@@ -18,7 +18,27 @@ interface Week {
   status?: string;
 }
 
-interface BookingWithColor extends Booking {
+// Define a type that matches the data structure returned by the Supabase query
+// Note: supabase joins often return related tables as arrays, even if it's a one-to-one relationship
+interface AccommodationInfo {
+  title: string;
+  type: string;
+  image_url: string;
+}
+
+// Update BookingWithColor to match fetched data structure
+interface FetchedBooking {
+  id: string;
+  accommodation_id: string;
+  check_in: string;
+  check_out: string;
+  status: string;
+  total_price: number;
+  user_id: string;
+  accommodations: AccommodationInfo | null; // Changed from AccommodationInfo[] | null
+}
+
+interface BookingWithColor extends FetchedBooking {
   color: string;
 }
 
@@ -80,7 +100,7 @@ export function Weekly({ onClose }: Props) {
         console.log(`[Weekly] Generating weeks with check-in day: ${checkInDay}`);
         
         // Adjust current date to start of week with the configured check-in day
-        const adjustedDate = startOfWeek(currentDate, { weekStartsOn: checkInDay });
+        const adjustedDate = startOfWeek(currentDate, { weekStartsOn: checkInDay as Day });
         
         // Generate 52 weeks (1 year) of data - 26 weeks before and 26 weeks after
         const startDate = subWeeks(adjustedDate, 26);
@@ -201,16 +221,24 @@ export function Weekly({ onClose }: Props) {
             )
           `)
           .lte('check_in', extendedEnd.toISOString())
-          .gte('check_out', extendedStart.toISOString());
+          .gte('check_out', extendedStart.toISOString())
+          .returns<FetchedBooking[]>();
         
         if (error) {
           throw error;
         }
         
+        if (!data) {
+          console.warn('[Weekly] No booking data returned from Supabase');
+          setBookings([]);
+          setLoadingBookings(false);
+          return;
+        }
+        
         console.log(`[Weekly] Found ${data.length} bookings`);
         
         // Assign colors to bookings for visual distinction
-        const coloredBookings = data.map((booking, index) => ({
+        const coloredBookings: BookingWithColor[] = data.map((booking, index) => ({
           ...booking,
           color: colors[index % colors.length]
         }));
@@ -268,9 +296,9 @@ export function Weekly({ onClose }: Props) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [weekStart]);
 
-  // Get bookings for a specific day
+  // Get bookings for a specific day and sort them
   const getBookingsForDay = (day: Date) => {
-    return bookings.filter(booking => {
+    const dayBookings = bookings.filter(booking => {
       const checkIn = parseISO(booking.check_in);
       const checkOut = parseISO(booking.check_out);
       
@@ -297,6 +325,15 @@ export function Weekly({ onClose }: Props) {
       // Check if the day is between check-in and check-out
       return day > checkIn && day < checkOut;
     });
+
+    // Sort the bookings for the day by accommodation title
+    dayBookings.sort((a, b) => {
+      const titleA = a.accommodations?.title || '';
+      const titleB = b.accommodations?.title || '';
+      return titleA.localeCompare(titleB);
+    });
+
+    return dayBookings;
   };
 
   return (
@@ -320,7 +357,7 @@ export function Weekly({ onClose }: Props) {
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
-              <span className="text-sm">
+              <span className="text-sm w-40 text-center">
                 {weekStart && weekEnd ? (
                   `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d, yyyy')}`
                 ) : (
@@ -384,20 +421,22 @@ export function Weekly({ onClose }: Props) {
                       </div>
                     ) : dayBookings.length > 0 ? (
                       <div className="space-y-2">
-                        {dayBookings.map((booking) => (
-                          <div 
-                            key={booking.id} 
-                            className={`text-xs p-2 rounded border ${booking.color} overflow-hidden`}
-                            title={`${booking.accommodations?.title || 'Accommodation'} (${format(parseISO(booking.check_in), 'MMM d')} - ${format(parseISO(booking.check_out), 'MMM d')})`}
-                          >
-                            <div className="font-semibold truncate">
-                              {booking.accommodations?.title || 'Unknown Room'}
+                        {dayBookings.map((booking) => {
+                          return (
+                            <div 
+                              key={booking.id} 
+                              className={`text-xs p-2 rounded border ${booking.color} overflow-hidden`}
+                              title={`${booking.accommodations?.title || 'Accommodation'} (${format(parseISO(booking.check_in), 'MMM d')} - ${format(parseISO(booking.check_out), 'MMM d')})`}
+                            >
+                              <div className="font-semibold truncate">
+                                {booking.accommodations?.title || 'Unknown Room'}
+                              </div>
+                              <div className="truncate">
+                                {format(parseISO(booking.check_in), 'MMM d')} - {format(parseISO(booking.check_out), 'MMM d')}
+                              </div>
                             </div>
-                            <div className="truncate">
-                              {format(parseISO(booking.check_in), 'MMM d')} - {format(parseISO(booking.check_out), 'MMM d')}
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     ) : (
                       <div className="text-sm text-gray-500 text-center">
