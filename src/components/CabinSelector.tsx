@@ -377,10 +377,11 @@ export function CabinSelector({
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
+                  style={{ isolation: 'isolate' }}
                 >
                   {/* Booked out overlay */}
                   {!isAvailable && (
-                    <div className="absolute inset-0 bg-stone-50/50 z-10 flex items-center justify-center">
+                    <div className="absolute inset-0 bg-stone-50/50 z-[2] flex items-center justify-center">
                       <div className="bg-stone-100/80 backdrop-blur-[1px] text-stone-500 px-3 py-1.5 rounded-md font-medium text-xs shadow-sm border border-stone-200 font-regular">
                         Booked out
                       </div>
@@ -389,7 +390,7 @@ export function CabinSelector({
                   
                   {/* Out of season overlay for tents - more subtle */}
                   {isOutOfSeason && (
-                    <div className="absolute inset-0 bg-amber-50/40 z-10 flex items-center justify-center">
+                    <div className="absolute inset-0 bg-amber-50/40 z-[2] flex items-center justify-center pointer-events-none">
                       <div className="bg-amber-50 text-amber-800 px-3 py-1.5 rounded-md font-medium text-xs shadow-sm border border-amber-200 font-regular">
                         Seasonal: Apr 15 - Sep 1
                       </div>
@@ -398,7 +399,7 @@ export function CabinSelector({
                   
                   {/* Selected indicator */}
                   {selectedAccommodationId === accommodation.id && (
-                    <div className="absolute top-3 right-3 z-10">
+                    <div className="absolute top-3 right-3 z-[3]">
                       <div className="bg-emerald-600 text-white text-xs px-2 py-1 rounded-full shadow-md font-regular">
                         Selected
                       </div>
@@ -407,7 +408,7 @@ export function CabinSelector({
                   
                   {/* Status Badge */}
                   {statusBadge && !isOutOfSeason && (
-                    <div className="absolute top-3 right-3 z-10 flex flex-col gap-1.5">
+                    <div className="absolute top-3 right-3 z-[3] flex flex-col gap-1.5">
                       {selectedAccommodationId === accommodation.id && (
                         <div className="bg-emerald-600 text-white text-xs px-2 py-1 rounded-full shadow-md font-regular">
                           Selected
@@ -442,41 +443,79 @@ export function CabinSelector({
                       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent pt-16 pb-3 px-3">
                         <div className="flex items-center justify-end space-x-3 text-white">
                           {/* WiFi indicator */}
-                          <div 
-                            className={clsx(
-                              "relative",
-                              selectedWeeks.length > 0 && 
-                              !accommodation.title.includes('Dorm') && 
-                              accommodation.base_price > 0 && "cursor-help"
-                            )}
-                          >
-                            {hasWifi(accommodation.title) ? (
-                              <Wifi size={18} className="text-emerald-300 hover:text-emerald-200" />
-                            ) : (
-                              <WifiOff size={18} className="text-stone-400 hover:text-stone-300" />
-                            )}
-                          </div>
+                          <Tooltip.Provider>
+                            <Tooltip.Root delayDuration={0}>
+                              <Tooltip.Trigger asChild>
+                                <div className="relative">
+                                  {hasWifi(accommodation.title) ? (
+                                    <Wifi size={18} className="text-emerald-300 hover:text-emerald-200" />
+                                  ) : (
+                                    <WifiOff size={18} className="text-stone-400 hover:text-stone-300" />
+                                  )}
+                                </div>
+                              </Tooltip.Trigger>
+                              <Tooltip.Portal>
+                                <Tooltip.Content
+                                  className="bg-stone-800 text-white text-[8px] xxs:text-[10px] sm:text-xs px-1.5 xxs:px-2 py-0.5 xxs:py-1 rounded opacity-0 data-[state=delayed-open]:opacity-100 data-[state=closed]:opacity-0 transition-opacity whitespace-nowrap pointer-events-none font-regular"
+                                  sideOffset={5}
+                                >
+                                  {hasWifi(accommodation.title) 
+                                    ? "WiFi available in this accommodation"
+                                    : "No WiFi available in this accommodation"}
+                                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 rotate-45 w-1.5 h-1.5 bg-stone-800"></div>
+                                </Tooltip.Content>
+                              </Tooltip.Portal>
+                            </Tooltip.Root>
+                          </Tooltip.Provider>
 
                           {/* Electricity indicator */}
-                          <div 
-                            className="relative"
-                          >
-                            {hasElectricity(accommodation.title) ? (
-                              <Zap size={18} className="text-emerald-300 hover:text-emerald-200" />
-                            ) : (
-                              <ZapOff size={18} className="text-stone-400 hover:text-stone-300" />
-                            )}
-                          </div>
+                          <Tooltip.Provider>
+                            <Tooltip.Root delayDuration={0}>
+                              <Tooltip.Trigger asChild>
+                                <div className="relative">
+                                  {hasElectricity(accommodation.title) ? (
+                                    <Zap size={18} className="text-emerald-300 hover:text-emerald-200" />
+                                  ) : (
+                                    <ZapOff size={18} className="text-stone-400 hover:text-stone-300" />
+                                  )}
+                                </div>
+                              </Tooltip.Trigger>
+                              <Tooltip.Portal>
+                                <Tooltip.Content
+                                  className="bg-stone-800 text-white text-[8px] xxs:text-[10px] sm:text-xs px-1.5 xxs:px-2 py-0.5 xxs:py-1 rounded opacity-0 data-[state=delayed-open]:opacity-100 data-[state=closed]:opacity-0 transition-opacity whitespace-nowrap pointer-events-none font-regular"
+                                  sideOffset={5}
+                                >
+                                  {hasElectricity(accommodation.title)
+                                    ? "Electricity available in this accommodation"
+                                    : "No electricity available in this accommodation"}
+                                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 rotate-45 w-1.5 h-1.5 bg-stone-800"></div>
+                                </Tooltip.Content>
+                              </Tooltip.Portal>
+                            </Tooltip.Root>
+                          </Tooltip.Provider>
 
                           {/* Bed size indicator */}
                           {BED_SIZES[accommodation.title as keyof typeof BED_SIZES] && 
                            BED_SIZES[accommodation.title as keyof typeof BED_SIZES] !== 'N/A' && 
                            BED_SIZES[accommodation.title as keyof typeof BED_SIZES] !== 'Bring your own' && (
-                            <div 
-                              className="relative"
-                            >
-                              <BedDouble size={18} className="text-emerald-300 hover:text-emerald-200" />
-                            </div>
+                            <Tooltip.Provider>
+                              <Tooltip.Root delayDuration={0}>
+                                <Tooltip.Trigger asChild>
+                                  <div className="relative">
+                                    <BedDouble size={18} className="text-emerald-300 hover:text-emerald-200" />
+                                  </div>
+                                </Tooltip.Trigger>
+                                <Tooltip.Portal>
+                                  <Tooltip.Content
+                                    className="bg-stone-800 text-white text-[8px] xxs:text-[10px] sm:text-xs px-1.5 xxs:px-2 py-0.5 xxs:py-1 rounded opacity-0 data-[state=delayed-open]:opacity-100 data-[state=closed]:opacity-0 transition-opacity whitespace-nowrap pointer-events-none font-regular"
+                                    sideOffset={5}
+                                  >
+                                    Bed size: {BED_SIZES[accommodation.title as keyof typeof BED_SIZES]}
+                                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 rotate-45 w-1.5 h-1.5 bg-stone-800"></div>
+                                  </Tooltip.Content>
+                                </Tooltip.Portal>
+                              </Tooltip.Root>
+                            </Tooltip.Provider>
                           )}
                         </div>
                       </div>
@@ -500,11 +539,16 @@ export function CabinSelector({
                             </span>
                             <span className="text-sm text-stone-500 font-regular"> / week</span>
                             {(() => {
+                              // Calculate duration discount here to use in the conditional check
                               const durationDiscount = selectedWeeks.length > 0 ? getDurationDiscount(calculateDurationDiscountWeeks(selectedWeeks)) : 0;
-                              return selectedWeeks.length > 0 && 
-                                     !accommodation.title.includes('Dorm') && 
-                                     accommodation.base_price > 0 && 
-                                     (seasonalDiscount > 0 || durationDiscount > 0) && (
+                              const showDiscountInfo = selectedWeeks.length > 0 && 
+                                                       accommodation.base_price > 0 && 
+                                                       (seasonalDiscount > 0 || durationDiscount > 0);
+
+                              // Only render the tooltip provider if there's a discount to show
+                              if (!showDiscountInfo) return null;
+
+                              return (
                                 <Tooltip.Provider>
                                   <Tooltip.Root delayDuration={0}>
                                     <Tooltip.Trigger asChild>
@@ -520,24 +564,39 @@ export function CabinSelector({
                                             <Percent className="w-4 h-4 text-emerald-600" />
                                             <h4 className="font-medium text-stone-800 font-regular">Discounts Applied</h4>
                                           </div>
-                                          <div className="mt-2 space-y-2">
-                                            {seasons
-                                              .filter(season => season.nights > 0 && season.discount > 0)
-                                              .map((season, index) => {
-                                                const weeks = Math.floor(season.nights / 7);
-                                                return (
-                                                  <div key={index} className={`flex items-center text-xs gap-2 ${season.nights > 0 ? "text-emerald-700 font-medium" : ""} font-regular`}>
-                                                    <span className="min-w-[100px]">{season.name}</span>
-                                                    <span className="font-medium">
-                                                      {weeks} week{weeks !== 1 ? 's' : ''} × {Math.round(season.discount * 100)}% off
-                                                    </span>
-                                                  </div>
-                                                );
-                                              })}
-                                          </div>
-                                          <div className="text-xs text-stone-500 font-regular">
-                                            {durationDiscount > 0 && `Duration discount: ${Math.round(durationDiscount * 100)}% off`}
-                                          </div>
+                                          {/* Seasonal Discounts (only for non-dorm) */}
+                                          {!accommodation.title.toLowerCase().includes('dorm') && (
+                                           <div className="mt-2 space-y-2">
+                                             {seasons
+                                               .filter(season => season.nights > 0 && season.discount > 0)
+                                               .map((season, index) => {
+                                                 // Calculate weeks based on nights for this season
+                                                 const weeks = Math.floor(season.nights / 7); 
+                                                 // Calculate discounted price for this season
+                                                 const discountedPricePerWeek = accommodation.base_price * (1 - season.discount);
+                                                 // Ensure we don't display if weeks < 1, even if nights > 0
+                                                 if (weeks < 1) return null; 
+                                                 
+                                                 return (
+                                                   <div key={index} className={`flex justify-between items-center text-xs gap-2 ${season.nights > 0 ? "text-emerald-700 font-medium" : ""} font-regular`}>
+                                                     <span>{season.name} ({Math.round(season.discount * 100)}%)</span>
+                                                     <span className="font-medium">
+                                                       {discountedPricePerWeek.toFixed(0)}€ x {weeks} week{weeks !== 1 ? 's' : ''}
+                                                     </span>
+                                                   </div>
+                                                 );
+                                               })}
+                                           </div>
+                                          )}
+                                          {/* Display duration discount if applicable */}
+                                          {durationDiscount > 0 && (
+                                            <div className="flex items-center gap-2 text-xs text-stone-500 font-regular pt-1 border-t border-stone-100 mt-2">
+                                              <span>Duration discount</span> 
+                                              <span className="font-medium">
+                                                ({Math.round(durationDiscount * 100)}%)
+                                              </span>
+                                            </div>
+                                          )}
                                         </div>
                                       </Tooltip.Content>
                                     </Tooltip.Portal>

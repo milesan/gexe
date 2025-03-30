@@ -11,6 +11,7 @@ import { PaymentPage } from '../pages/PaymentPage';
 import { useAccommodations } from '../hooks/useAccommodations';
 import { WhitelistWelcomeModal } from './WhitelistWelcomeModal';
 import { Menu, X } from 'lucide-react';
+import { Footer } from './Footer';
 
 export function AuthenticatedApp() {
   console.log('AuthenticatedApp: Initializing');
@@ -94,7 +95,7 @@ export function AuthenticatedApp() {
   return (
     <div className="min-h-screen bg-stone-50">
       <header className="sticky top-0 z-50 bg-white border-b border-stone-200">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16 sm:h-20">
             <button 
               onClick={() => handleNavigation('calendar')}
@@ -194,6 +195,8 @@ export function AuthenticatedApp() {
           <Route path="/payment" element={<PaymentPage />} />
         </Routes>
       </main>
+
+      <Footer />
 
       <WhitelistWelcomeModal
         isOpen={showWelcomeModal}

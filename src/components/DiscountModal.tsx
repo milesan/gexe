@@ -77,14 +77,14 @@ export function DiscountModal({ isOpen, onClose, selectedWeeks }: DiscountModalP
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]"
           onClick={onClose}
         >
           <motion.div
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-white rounded-lg p-4 sm:p-6 max-w-md w-full mx-2 sm:mx-4 relative"
+            className="bg-white rounded-lg p-4 sm:p-6 max-w-md w-full mx-2 sm:mx-4 relative z-[101]"
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -114,7 +114,7 @@ export function DiscountModal({ isOpen, onClose, selectedWeeks }: DiscountModalP
                   <p className="text-[10px] sm:text-xs text-stone-600">
                     {hasMultipleSeasons ? (
                       <>
-                        <p className="mb-2">Discounts are calculated per night based on the season:</p>
+                        <p className="mb-2">The quieter time of year, the less € you contribute on lodging. Calculated per night based on the season:</p>
                         <div className="mt-2 space-y-2">
                           {seasons
                             .filter(season => season.nights > 0 && season.discount > 0)
@@ -127,7 +127,7 @@ export function DiscountModal({ isOpen, onClose, selectedWeeks }: DiscountModalP
                             </div>
                           ))}
                         </div>
-                        <p className="mt-2 text-stone-600 italic">Note: Seasonal discounts apply to all accommodation prices, except dorm rooms.</p>
+                        <p className="mt-2 text-stone-600 italic">Note: Seasonal discounts don't apply to dorm rooms.</p>
                       </>
                     ) : (
                       <>

@@ -569,14 +569,14 @@ export function BookingSummary({
         <div className="bg-white p-5 sm:p-6 lg:p-8 pixel-corners">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-6">
             <div className="flex items-center justify-between w-full sm:w-auto">
-              <h2 className="text-lg sm:text-xl lg:text-2xl font-display font-light text-stone-900">
+              <h2 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-display font-light text-stone-900">
                 Summary of Stay
               </h2>
             </div>
           </div>
 
           {error && (
-            <div className="mb-6 p-4 bg-rose-50 text-rose-600 rounded-lg flex justify-between items-center font-regular text-sm sm:text-base">
+            <div className="mb-6 p-4 bg-rose-50 text-rose-600 rounded-lg flex justify-between items-center font-regular text-xs sm:text-sm">
               <span>{error}</span>
               <button onClick={() => setError(null)}>
                 <X className="w-4 h-4" />
@@ -590,7 +590,7 @@ export function BookingSummary({
               <div className="bg-white p-4 sm:p-5 rounded-xl border border-stone-200 shadow-sm pixel-corners overflow-hidden relative">
                 <button
                   onClick={onClearWeeks}
-                  className="absolute top-3 right-3 p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
+                  className="absolute top-0.5 right-0.5 p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
                 >
                   <X className="w-4 h-4" />
                   <span className="sr-only">Clear Selected Dates</span>
@@ -598,19 +598,19 @@ export function BookingSummary({
                 <div className="space-y-4 sm:space-y-5">
                   {/* Arrival Information */}
                   <div className="bg-white border border-emerald-200 rounded-lg shadow-sm p-3 sm:p-4">
-                    <h4 className="font-medium text-stone-800 mb-2 font-regular text-sm sm:text-base">Arrival</h4>
+                    <h4 className="font-medium text-stone-800 mb-2 font-regular text-base sm:text-lg">Arrival</h4>
                     <div className="space-y-1">
-                      <p className="text-emerald-700 text-xs sm:text-sm font-regular">{formatDateWithDay(selectedWeeks[0].startDate)}</p>
-                      <p className="text-emerald-700 text-xs sm:text-sm font-regular">3PM-8PM</p>
+                      <p className="text-emerald-700 text-sm sm:text-base font-regular">{formatDateWithDay(selectedWeeks[0].startDate)}</p>
+                      <p className="text-emerald-700 text-sm sm:text-base font-regular">3PM-8PM</p>
                     </div>
                   </div>
                   
                   {/* Departure Information */}
                   <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-3 sm:p-4">
-                    <h4 className="font-medium text-stone-800 mb-2 font-regular text-sm sm:text-base">Begone by</h4>
+                    <h4 className="font-medium text-stone-800 mb-2 font-regular text-base sm:text-lg">Begone by</h4>
                     <div className="space-y-1">
-                      <p className="text-stone-600 text-xs sm:text-sm font-regular">{formatDateWithOrdinal(selectedWeeks[selectedWeeks.length - 1].endDate)}</p>
-                      <p className="text-stone-600 text-xs sm:text-sm font-regular">12PM Noon</p>
+                      <p className="text-stone-600 text-sm sm:text-base font-regular">{formatDateWithOrdinal(selectedWeeks[selectedWeeks.length - 1].endDate)}</p>
+                      <p className="text-stone-600 text-sm sm:text-base font-regular">12PM Noon</p>
                     </div>
                   </div>
                   
@@ -621,10 +621,10 @@ export function BookingSummary({
                         <div className="bg-emerald-100 p-2.5 rounded-lg mr-3">
                           <Home className="w-5 h-5 text-emerald-600" />
                         </div>
-                        <h4 className="font-medium text-stone-800 font-regular">Total Stay</h4>
+                        <h4 className="font-medium text-stone-800 font-regular text-base sm:text-lg">Total Stay</h4>
                       </div>
                       <div>
-                        <span className="text-emerald-800 font-medium font-regular">
+                        <span className="text-emerald-800 font-medium font-regular text-sm sm:text-base">
                           {pricing.totalNights} nights
                         </span>
                       </div>
@@ -635,8 +635,8 @@ export function BookingSummary({
                         <Home className="w-5 h-5 text-emerald-600" />
                       </div>
                       <div>
-                        <h4 className="font-medium text-stone-800 font-regular text-sm sm:text-base">Total Stay</h4>
-                        <p className="text-emerald-700 text-xs sm:text-sm font-regular mt-0.5">{pricing.totalNights} nights</p>
+                        <h4 className="font-medium text-stone-800 font-regular text-base sm:text-lg">Total Stay</h4>
+                        <p className="text-emerald-700 text-sm sm:text-base font-regular mt-0.5">{pricing.totalNights} nights</p>
                       </div>
                     </div>
                   </div>
@@ -659,7 +659,7 @@ export function BookingSummary({
                     <span className="sr-only">Clear Selected Accommodation</span>
                   </button>
                   <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-base sm:text-lg text-stone-800 flex items-center">
+                    <h3 className="text-base sm:text-lg text-stone-800 flex items-center font-regular">
                       <Bed className="w-5 h-5 mr-2.5 text-emerald-600" />
                       Accommodation
                     </h3>
@@ -668,7 +668,7 @@ export function BookingSummary({
                   <div className="space-y-3">
                     <div className="bg-emerald-50 p-3 sm:p-4 rounded-lg border border-emerald-100">
                       <div className="text-center">
-                        <span className="text-emerald-800 font-medium text-sm sm:text-base">
+                        <span className="text-emerald-800 font-medium text-sm sm:text-base font-regular">
                           {selectedAccommodation.title === 'Van Parking' || 
                            selectedAccommodation.title === 'Your Own Tent' || 
                            selectedAccommodation.title === '+1 Accommodation' || 
@@ -685,7 +685,7 @@ export function BookingSummary({
               {/* Price Breakdown */}
               <div className="border-t border-stone-200 pt-3 sm:pt-4 mt-3 sm:mt-4">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-medium text-stone-800 font-regular text-sm sm:text-base">Price Breakdown</h3>
+                  <h3 className="font-medium text-stone-800 font-regular text-base sm:text-lg">Price Breakdown</h3>
                   <Tooltip.Provider>
                     <Tooltip.Root delayDuration={0}>
                       <Tooltip.Trigger asChild>
@@ -699,11 +699,11 @@ export function BookingSummary({
                       </Tooltip.Trigger>
                       <Tooltip.Portal>
                         <Tooltip.Content
-                          className="bg-white px-3 py-1.5 text-xs rounded-md shadow-lg border border-stone-200 max-w-[200px] text-center"
+                          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 xxs:mb-1.5 px-1.5 xxs:px-2 py-0.5 xxs:py-1 bg-stone-800 text-white text-[8px] xxs:text-[10px] sm:text-xs rounded opacity-0 data-[state=delayed-open]:opacity-100 data-[state=closed]:opacity-0 transition-opacity whitespace-nowrap pointer-events-none font-regular text-center"
                           sideOffset={5}
                         >
-                          <p className="font-medium text-stone-800">View Discount Details</p>
-                          <p className="text-stone-500 mt-0.5">See all available discounts and savings</p>
+                          <p className="font-medium">View Discount Details</p>
+                          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 rotate-45 w-1.5 h-1.5 bg-stone-800"></div>
                         </Tooltip.Content>
                       </Tooltip.Portal>
                     </Tooltip.Root>
@@ -712,57 +712,17 @@ export function BookingSummary({
                 
                 <div className="space-y-2 sm:space-y-3">
                   {/* Accommodation pricing */}
-                  <div className="flex justify-between text-stone-600 font-regular text-xs sm:text-sm">
-                    <div className="flex items-center gap-2">
-                      <span>Accommodation ({pricing.totalNights} nights)</span>
-                      {seasonBreakdown?.hasMultipleSeasons && pricing.totalAccommodationCost > 0 && (
-                        <Tooltip.Provider>
-                          <Tooltip.Root delayDuration={0}>
-                            <Tooltip.Trigger asChild>
-                              <Info className="w-3 h-3 sm:w-4 sm:h-4 text-stone-400 hover:text-stone-600 cursor-help" />
-                            </Tooltip.Trigger>
-                            <Tooltip.Portal>
-                              <Tooltip.Content
-                                className="bg-white p-3 sm:p-4 rounded-lg shadow-lg border border-stone-200 max-w-xs z-50 data-[state=delayed-open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=delayed-open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=delayed-open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2"
-                                sideOffset={5}
-                              >
-                                <div className="space-y-2 sm:space-y-3">
-                                  <div className="flex items-center gap-2">
-                                    <Percent className="w-3 h-3 sm:w-4 sm:h-4 text-emerald-600" />
-                                    <h4 className="font-medium text-stone-800 font-regular text-sm sm:text-base">Discounts Applied</h4>
-                                  </div>
-                                  <div className="space-y-2">
-                                    {/* Seasonal Discounts */}
-                                    {seasonBreakdown.seasons.map((season, index) => (
-                                      <div key={index} className="flex items-center justify-between text-xs sm:text-sm font-regular">
-                                        <span className="text-stone-600 min-w-[120px]">{season.name}</span>
-                                        <span className="text-emerald-600 font-medium">
-                                          {season.nights} nights × {season.discount === 0 ? "standard rate" : `${Math.round(season.discount * 100)}% off`}
-                                        </span>
-                                      </div>
-                                    ))}
-                                    
-                                    {/* Duration Discount */}
-                                    {pricing.durationDiscountPercent > 0 && (
-                                      <div className="text-xs text-stone-500 pt-2 border-t border-stone-100 font-regular">
-                                        Duration discount: {Math.round(getDurationDiscount(calculateDurationDiscountWeeks(selectedWeeks)) * 100)}% off
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </Tooltip.Content>
-                            </Tooltip.Portal>
-                          </Tooltip.Root>
-                        </Tooltip.Provider>
-                      )}
+                  <div className="flex justify-between text-stone-600 font-regular text-sm sm:text-base">
+                    <div className="flex items-center gap-2 mr-4">
+                      <span>Accommodation <span className="whitespace-nowrap">({pricing.totalNights} nights)</span></span>
                     </div>
                     <span>€{pricing.totalAccommodationCost.toFixed(2)}</span>
                   </div>
                   
                   {/* Food & Facilities */}
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-stone-600 font-regular text-xs sm:text-sm">
-                      <span>Food & facilities ({pricing.totalNights} {pricing.totalNights === 1 ? 'night' : 'nights'})</span>
+                  <div className="space-y-4 sm:space-y-5">
+                    <div className="flex justify-between text-stone-600 font-regular text-sm sm:text-base">
+                      <span className="mr-4">Food & facilities <span className="whitespace-nowrap">({pricing.totalNights} {pricing.totalNights === 1 ? 'night' : 'nights'})</span></span>
                       <span>€{pricing.totalFoodAndFacilitiesCost.toFixed(2)}</span>
                     </div>
                     
@@ -821,7 +781,7 @@ export function BookingSummary({
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-2 font-medium text-stone-800 border-t border-stone-200 pt-2 sm:pt-3 mt-2 font-regular text-sm sm:text-base">
+                  <div className="grid grid-cols-2 font-medium text-stone-800 border-t border-stone-200 pt-2 sm:pt-3 mt-2 font-regular text-lg sm:text-xl">
                     <span className="col-span-1">Total</span>
                     <span className="col-span-1 text-right whitespace-nowrap">€{pricing.totalAmount.toFixed(2)}</span>
                   </div>
@@ -831,7 +791,7 @@ export function BookingSummary({
               {/* Test Payment Option for Admins */}
               {isAdmin && (
                 <div className="mt-4 mb-4 sm:mb-6 bg-blue-50 p-3 sm:p-4 rounded-lg border border-blue-200">
-                  <h4 className="font-medium text-blue-800 mb-2 font-regular text-sm sm:text-base">Test Payment Options</h4>
+                  <h4 className="font-medium text-blue-800 mb-2 font-regular text-base sm:text-lg">Test Payment Options</h4>
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 mb-2">
                     <input
                       type="number"
@@ -868,7 +828,7 @@ export function BookingSummary({
                     </button>
                   </div>
                   {testPaymentAmount !== null && (
-                    <p className="text-xs text-blue-600 mt-2 font-regular">
+                    <p className="text-xs sm:text-sm text-blue-600 mt-2 font-regular">
                       Using test payment amount: <strong>€{testPaymentAmount.toFixed(2)}</strong> instead of €{pricing.totalAmount.toFixed(2)}
                     </p>
                   )}
@@ -880,7 +840,7 @@ export function BookingSummary({
                 <motion.button
                   onClick={handleConfirmClick}
                   disabled={!selectedAccommodation || isBooking}
-                  className="w-full bg-emerald-600 text-white py-2.5 sm:py-3 rounded-lg hover:bg-emerald-700 transition-all disabled:bg-stone-200 disabled:text-stone-400 disabled:cursor-not-allowed font-serif text-base sm:text-lg pixel-corners shadow-sm flex items-center justify-center font-regular"
+                  className="w-full bg-emerald-600 text-white py-2.5 sm:py-3 rounded-lg hover:bg-emerald-700 transition-all disabled:bg-stone-200 disabled:text-stone-400 disabled:cursor-not-allowed font-regular text-sm sm:text-base pixel-corners shadow-sm flex items-center justify-center"
                   whileHover={{ scale: 1.02, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)" }}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -901,7 +861,7 @@ export function BookingSummary({
                   <motion.button
                     onClick={handleAdminConfirm}
                     disabled={!selectedAccommodation || isBooking}
-                    className="w-full bg-white border-2 border-emerald-600 text-emerald-700 py-2.5 sm:py-3 rounded-lg hover:bg-emerald-50 transition-all disabled:bg-stone-100 disabled:border-stone-200 disabled:text-stone-400 disabled:cursor-not-allowed font-serif text-base sm:text-lg pixel-corners shadow-sm flex items-center justify-center font-regular"
+                    className="w-full bg-white border-2 border-emerald-600 text-emerald-700 py-2.5 sm:py-3 rounded-lg hover:bg-emerald-50 transition-all disabled:bg-stone-100 disabled:border-stone-200 disabled:text-stone-400 disabled:cursor-not-allowed font-regular text-sm sm:text-base pixel-corners shadow-sm flex items-center justify-center"
                     whileHover={{ scale: 1.02, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)" }}
                     whileTap={{ scale: 0.98 }}
                   >

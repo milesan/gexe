@@ -41,18 +41,18 @@ interface WeekSelectorProps {
 // Season legend component
 const SeasonLegend = () => {
   return (
-    <div className="flex flex-wrap justify-center xxs:justify-start gap-2 xs:gap-3 sm:gap-4 mb-3 xs:mb-4">
-      <div className="flex items-center gap-1.5 xs:gap-2">
-        <div className="w-3 h-3 xs:w-3.5 xs:h-3.5 rounded-full bg-blue-400"></div>
-        <span className="text-xs xs:text-sm sm:text-base text-stone-600 font-regular whitespace-nowrap">Low (Nov-May)</span>
+    <div className="flex flex-wrap justify-center xxs:justify-start gap-1.5 xs:gap-2 sm:gap-3 mb-2 xs:mb-3">
+      <div className="flex items-center gap-1 xs:gap-1.5">
+        <div className="w-2.5 h-2.5 xs:w-3 xs:h-3 rounded-full bg-blue-400"></div>
+        <span className="text-[10px] xs:text-xs sm:text-sm text-stone-600 font-regular whitespace-nowrap">Low (Nov-May)</span>
       </div>
-      <div className="flex items-center gap-1.5 xs:gap-2">
-        <div className="w-3 h-3 xs:w-3.5 xs:h-3.5 rounded-full bg-orange-400"></div>
-        <span className="text-xs xs:text-sm sm:text-base text-stone-600 font-regular whitespace-nowrap">Medium (Jun, Oct)</span>
+      <div className="flex items-center gap-1 xs:gap-1.5">
+        <div className="w-2.5 h-2.5 xs:w-3 xs:h-3 rounded-full bg-orange-400"></div>
+        <span className="text-[10px] xs:text-xs sm:text-sm text-stone-600 font-regular whitespace-nowrap">Medium (Jun, Oct)</span>
       </div>
-      <div className="flex items-center gap-1.5 xs:gap-2">
-        <div className="w-3 h-3 xs:w-3.5 xs:h-3.5 rounded-full bg-gray-400"></div>
-        <span className="text-xs xs:text-sm sm:text-base text-stone-600 font-regular whitespace-nowrap">Summer (Jul-Sep)</span>
+      <div className="flex items-center gap-1 xs:gap-1.5">
+        <div className="w-2.5 h-2.5 xs:w-3 xs:h-3 rounded-full bg-gray-400"></div>
+        <span className="text-[10px] xs:text-xs sm:text-sm text-stone-600 font-regular whitespace-nowrap">Summer (Jul-Sep)</span>
       </div>
     </div>
   );
@@ -485,7 +485,7 @@ export function WeekSelector({
                           );
                         }
                         if (isIntermediary) {
-                          return <span>→</span>;
+                          return null;
                         }
                       }
                       
@@ -554,6 +554,24 @@ export function WeekSelector({
                 </div>
               )}
             </div>
+
+            {/* Add squiggly line for selected weeks */}
+            {isWeekSelected(week) && !week.isEdgeWeek && (
+              <svg
+                className="absolute inset-0 w-full h-full pointer-events-none"
+                preserveAspectRatio="none"
+                viewBox="0 0 100 30"
+              >
+                <path
+                  d="M 0 15 Q 25 5, 50 15 T 100 15"
+                  className="squiggle-path"
+                  stroke="rgb(5, 150, 105)"
+                  strokeWidth="2"
+                  fill="none"
+                  vectorEffect="non-scaling-stroke"
+                />
+              </svg>
+            )}
 
             {/* Bottom border for season indication */}
             <div 
