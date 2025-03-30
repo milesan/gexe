@@ -6,6 +6,7 @@ import { StatusModal } from './StatusModal';
 import type { AvailabilityStatus } from '../types/availability';
 import { motion, AnimatePresence } from 'framer-motion';
 import { normalizeToUTCDate } from '../utils/dates';
+import { calculateDaysBetween } from '../utils/dates';
 
 interface Props {
   onClose: () => void;
@@ -137,7 +138,7 @@ export function InventoryCalendar({ onClose }: Props) {
           checkOut: format(normalizeToUTCDate(b.check_out), 'yyyy-MM-dd'),
           isCheckInToday: format(normalizeToUTCDate(b.check_in), 'yyyy-MM-dd') === dateStr,
           isCheckOutToday: format(normalizeToUTCDate(b.check_out), 'yyyy-MM-dd') === dateStr,
-          durationDays: Math.round((normalizeToUTCDate(b.check_out).getTime() - normalizeToUTCDate(b.check_in).getTime()) / (1000 * 60 * 60 * 24))
+          durationDays: calculateDaysBetween(normalizeToUTCDate(b.check_in), normalizeToUTCDate(b.check_out), true)
         }))
       });
       

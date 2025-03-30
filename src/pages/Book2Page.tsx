@@ -17,13 +17,11 @@ import { useCalendar } from '../hooks/useCalendar';
 import { Week, WeekStatus } from '../types/calendar';
 import { CalendarService } from '../services/CalendarService';
 import { CalendarConfigButton } from '../components/admin/CalendarConfigButton';
-import { getSeasonalDiscount, getDurationDiscount } from '../utils/pricing';
+import { getSeasonalDiscount, getDurationDiscount, getSeasonBreakdown } from '../utils/pricing';
 import { areSameWeeks } from '../utils/dates';
 import { clsx } from 'clsx';
+import { calculateDaysBetween } from '../utils/dates';
 
-const DESKTOP_WEEKS = 16;
-const MOBILE_WEEKS = 12;
-const BASE_RATE = 3;
 const BACKGROUND_IMAGE = "https://images.unsplash.com/photo-1510798831971-661eb04b3739?q=80&w=2940&auto=format&fit=crop";
 
 export function Book2Page() {
@@ -49,51 +47,33 @@ export function Book2Page() {
 
   // Calculate combined discount
   const calculateCombinedDiscount = useCallback((weeks: Week[]): number => {
+    // Find the accommodation object first
+    const accommodation = selectedAccommodation && accommodations
+        ? accommodations.find(a => a.id === selectedAccommodation)
+        : null;
+    const accommodationTitle = accommodation?.title || '';
+    const accommodationPrice = accommodation?.base_price ?? 0;
+
     if (weeks.length === 0) return 0;
 
-    // Get all days in the selected period
-    let allDays: Date[] = [];
-    
-    weeks.forEach(week => {
-      const startDate = week.startDate;
-      const endDate = week.endDate;
-      
-      if (endDate < startDate) {
-        console.warn('[Book2Page] Invalid date range:', { startDate, endDate });
-        return;
-      }
-      
-      // Get all days in this week
-      const daysInWeek = Array.from({ length: (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24) + 1 }, (_, i) => new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000));
-      allDays = [...allDays, ...daysInWeek];
-    });
-    
-    if (allDays.length === 0) return 0;
-    
-    // Calculate seasonal discount
-    let totalSeasonalDiscount = 0;
-    allDays.forEach(day => {
-      totalSeasonalDiscount += getSeasonalDiscount(day);
-    });
-    const seasonalDiscount = totalSeasonalDiscount / allDays.length;
-    
     // Calculate duration discount using complete weeks
-    const totalDays = weeks.reduce((acc, week) => {
-      return acc + (week.endDate.getTime() - week.startDate.getTime()) / (1000 * 60 * 60 * 24) + 1;
-    }, 0);
-    const completeWeeks = calculateDurationDiscountWeeks(weeks);
+    const totalDays = calculateDaysBetween(weeks[0].startDate, weeks[weeks.length - 1].endDate, true);
+    const completeWeeks = Math.floor(totalDays / 7);
     const durationDiscount = getDurationDiscount(completeWeeks);
-    
-    console.log('[Book2Page] Combined discount calculation:', {
-      totalDays,
-      completeWeeks,
-      seasonalDiscount: `${(seasonalDiscount * 100).toFixed(2)}%`,
-      durationDiscount: `${(durationDiscount * 100).toFixed(2)}%`
-    });
+
+    // Calculate seasonal discount - only if it's not a dorm
+    let seasonalDiscount = 0;
+    if (accommodationPrice > 0 && !accommodationTitle.toLowerCase().includes('dorm')) {
+      const seasonBreakdown = getSeasonBreakdown(weeks[0].startDate, weeks[weeks.length - 1].endDate);
+      // Calculate weighted average seasonal discount
+      const totalNights = seasonBreakdown.seasons.reduce((sum, season) => sum + season.nights, 0);
+      seasonalDiscount = seasonBreakdown.seasons.reduce((sum, season) => 
+        sum + (season.discount * season.nights), 0) / totalNights;
+    }
     
     // Calculate combined discount (multiplicative)
     return 1 - (1 - seasonalDiscount) * (1 - durationDiscount);
-  }, []);
+  }, [selectedAccommodation, accommodations]);
 
   const combinedDiscount = calculateCombinedDiscount(selectedWeeks);
 
@@ -461,7 +441,7 @@ export function Book2Page() {
   // Calculate season breakdown for the selected weeks
   const calculateSeasonBreakdown = useCallback((weeks: Week[]): SeasonBreakdown => {
     if (weeks.length === 0) {
-      const discount = getSeasonalDiscount(currentMonth);
+      const discount = getSeasonalDiscount(currentMonth, accommodationTitle);
       const seasonName = discount === 0 ? 'Summer Season' : 
                          discount === 0.15 ? 'Medium Season' : 
                          'Low Season';
@@ -494,7 +474,7 @@ export function Book2Page() {
     
     // Count the nights per season using the date of each night
     allDates.forEach(date => {
-      const discount = getSeasonalDiscount(date);
+      const discount = getSeasonalDiscount(date, accommodationTitle);
       const seasonName = discount === 0 ? 'Summer Season' : 
                          discount === 0.15 ? 'Medium Season' : 
                          'Low Season';
@@ -530,15 +510,36 @@ export function Book2Page() {
     return { hasMultipleSeasons, seasons };
   }, [currentMonth]);
 
-  // Update season breakdown when selected weeks change
+  // Update season breakdown when selected weeks or accommodation change
   useEffect(() => {
-    if (selectedWeeks.length > 0) {
+    // Find the selected accommodation first
+    const accommodation = selectedAccommodation && accommodations
+        ? accommodations.find(a => a.id === selectedAccommodation)
+        : null;
+    const accommodationPrice = accommodation?.base_price ?? 0;
+    // Also get the title to check for Dorm
+    const accommodationTitle = accommodation?.title ?? '';
+
+    // Only calculate breakdown if weeks are selected, price > 0, AND it's not a Dorm
+    if (selectedWeeks.length > 0 && accommodationPrice > 0 && accommodationTitle !== 'Dorm') {
+      console.log('[Book2Page] Calculating season breakdown (Price > 0 and not Dorm).');
       const breakdown = calculateSeasonBreakdown(selectedWeeks);
       setSeasonBreakdown(breakdown);
     } else {
+      // Clear breakdown if no weeks selected, no accommodation, price is 0, or it's a Dorm
+      if (selectedWeeks.length === 0) {
+         console.log('[Book2Page] Clearing season breakdown: No weeks selected.');
+      } else if (!accommodation) {
+         console.log('[Book2Page] Clearing season breakdown: No accommodation selected.');
+      } else if (accommodationPrice === 0) {
+         console.log('[Book2Page] Clearing season breakdown: Accommodation price is 0.');
+      } else if (accommodationTitle === 'Dorm') {
+         console.log('[Book2Page] Clearing season breakdown: Accommodation is Dorm.');
+      }
       setSeasonBreakdown(undefined);
     }
-  }, [selectedWeeks, calculateSeasonBreakdown]);
+    // Depend on selected weeks, selected accommodation ID, the list of accommodations, and the calculation function
+  }, [selectedWeeks, selectedAccommodation, accommodations, calculateSeasonBreakdown]);
 
   // Fix the isWeekSelected function to safely handle undefined selectedWeeks
   const isWeekSelected = useCallback((week: Week) => {
@@ -593,6 +594,29 @@ export function Book2Page() {
       handleWeekSelect(selectedWeek);
     }
   }, [handleWeekSelect, selectedWeeks.length]);
+
+  // Calculates the accommodation title based on the selected accommodation ID
+  const accommodationTitle = useMemo(() => {
+    const accommodation = selectedAccommodation && accommodations
+        ? accommodations.find(a => a.id === selectedAccommodation)
+        : null;
+    return accommodation?.title || '';
+  }, [selectedAccommodation, accommodations]); // Dependencies
+  console.log('[Book2Page] Accommodation title:', accommodationTitle);
+
+  // Calculates the accommodation details based on the selected accommodation ID
+  const selectedAccommodationDetails = useMemo(() => {
+    const accommodation = selectedAccommodation && accommodations
+        ? accommodations.find(a => a.id === selectedAccommodation)
+        : null;
+    // Return price and title for easy access
+    return {
+        // object: accommodation, // Keep this commented unless needed elsewhere
+        title: accommodation?.title || '',
+        price: accommodation?.base_price ?? 0
+    };
+  }, [selectedAccommodation, accommodations]); // Dependencies
+  console.log('[Book2Page] Selected Accommodation Details:', selectedAccommodationDetails);
 
   return (
     <div 
@@ -832,7 +856,10 @@ export function Book2Page() {
         <DiscountModal
           isOpen={showDiscountModal}
           onClose={() => setShowDiscountModal(false)}
-          selectedWeeks={selectedWeeks}
+          checkInDate={selectedWeeks[0]?.startDate || new Date()}
+          checkOutDate={selectedWeeks[selectedWeeks.length - 1]?.endDate || new Date()}
+          accommodationName={selectedAccommodationDetails?.title || ''}
+          basePrice={selectedAccommodationDetails?.price || 0}
         />
       )}
     </div>

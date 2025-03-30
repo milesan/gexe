@@ -1,80 +1,74 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
-import { Week } from '../types/calendar';
-import { getSeasonalDiscount, getDurationDiscount, getSeasonBreakdown } from '../utils/pricing';
-import { eachDayOfInterval, isBefore } from 'date-fns';
-import { calculateTotalNights, calculateDurationDiscountWeeks } from '../utils/dates';
 import { createPortal } from 'react-dom';
+import { getDurationDiscount, getSeasonalDiscount, getSeasonBreakdown } from '../utils/pricing';
+import { calculateDurationDiscountWeeks } from '../utils/dates';
 
 interface DiscountModalProps {
   isOpen: boolean;
   onClose: () => void;
-  selectedWeeks: Week[];
+  checkInDate: Date;
+  checkOutDate: Date;
+  accommodationName: string;
+  basePrice: number;
 }
 
-export function DiscountModal({ isOpen, onClose, selectedWeeks }: DiscountModalProps) {
-  // Calculate weighted seasonal discount
-  const calculateWeightedSeasonalDiscount = (weeks: Week[]): number => {
-    if (weeks.length === 0) return 0;
+// Custom hook to handle all discount calculations
+function useDiscounts(checkInDate: Date, checkOutDate: Date, accommodationName: string, basePrice: number) {
+  // Calculate duration discount using the utility function
+  const completeWeeks = calculateDurationDiscountWeeks([{ 
+    startDate: checkInDate, 
+    endDate: checkOutDate,
+    status: 'visible' as const
+  }]);
+  const durationDiscount = getDurationDiscount(completeWeeks);
 
-    // Get all days in the selected period
-    let allDays: Date[] = [];
-    
-    weeks.forEach(week => {
-      const startDate = week.startDate;
-      const endDate = week.endDate;
-      
-      if (isBefore(endDate, startDate)) {
-        console.warn('[DiscountModal] Invalid date range:', { startDate, endDate });
-        return;
-      }
-      
-      // Get all days in this week
-      const daysInWeek = eachDayOfInterval({ start: startDate, end: endDate });
-      allDays = [...allDays, ...daysInWeek];
-    });
-    
-    if (allDays.length === 0) return 0;
-    
-    // Calculate discount for each day
-    let totalDiscount = 0;
-    
-    allDays.forEach(day => {
-      totalDiscount += getSeasonalDiscount(day);
-    });
-    
-    // Calculate weighted average discount
-    const weightedDiscount = totalDiscount / allDays.length;
-    
-    console.log('[DiscountModal] Weighted seasonal discount calculation:', {
-      totalDays: allDays.length,
-      firstDay: allDays[0]?.toISOString(),
-      lastDay: allDays[allDays.length - 1]?.toISOString(),
-      weightedDiscount: weightedDiscount,
-      discountPercentage: `${(weightedDiscount * 100).toFixed(1)}%`
-    });
-    
-    return weightedDiscount;
+  // Calculate seasonal discount
+  const seasonBreakdown = getSeasonBreakdown(checkInDate, checkOutDate);
+  const showSeasonalSection = basePrice > 0 && seasonBreakdown.seasons.length > 0 && !accommodationName.toLowerCase().includes('dorm');
+
+  // Calculate weighted average seasonal discount
+  const totalNights = seasonBreakdown.seasons.reduce((sum, season) => sum + season.nights, 0);
+  const averageSeasonalDiscount = seasonBreakdown.seasons.reduce((sum, season) => 
+    sum + (season.discount * season.nights), 0) / totalNights;
+
+  // Calculate combined discount
+  const combinedDiscount = basePrice > 0 
+    ? 1 - (1 - averageSeasonalDiscount) * (1 - durationDiscount)
+    : durationDiscount;
+
+  return {
+    completeWeeks,
+    durationDiscount,
+    seasonBreakdown,
+    showSeasonalSection,
+    combinedDiscount,
+    averageSeasonalDiscount
   };
+}
 
-  const seasonalDiscount = calculateWeightedSeasonalDiscount(selectedWeeks);
-  const durationDiscount = getDurationDiscount(calculateDurationDiscountWeeks(selectedWeeks));
-  const { hasMultipleSeasons, seasons } = getSeasonBreakdown(
-    selectedWeeks[0]?.startDate || new Date(),
-    selectedWeeks[selectedWeeks.length - 1]?.endDate || new Date()
-  );
-  
-  // Calculate combined discount (multiplicative)
-  const combinedDiscount = 1 - (1 - seasonalDiscount) * (1 - durationDiscount);
-
-  // Calculate complete weeks for highlighting applicable discounts
-  const completeWeeks = calculateDurationDiscountWeeks(selectedWeeks);
+export function DiscountModal({ 
+  isOpen, 
+  onClose, 
+  checkInDate,
+  checkOutDate,
+  accommodationName,
+  basePrice
+}: DiscountModalProps) {
+  const {
+    completeWeeks,
+    durationDiscount,
+    seasonBreakdown,
+    showSeasonalSection,
+    combinedDiscount,
+    averageSeasonalDiscount
+  } = useDiscounts(checkInDate, checkOutDate, accommodationName, basePrice);
 
   return (
-    <>{/* Use a fragment since createPortal returns the element */}
+    <>
       {isOpen && createPortal(
-        <AnimatePresence>{/* Move AnimatePresence inside */}
+        <AnimatePresence>
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -101,8 +95,7 @@ export function DiscountModal({ isOpen, onClose, selectedWeeks }: DiscountModalP
               </h3>
               
               <div className="space-y-6 sm:space-y-8">
-                {/* Seasonal Discount */}
-                {seasonalDiscount > 0 && (
+                {showSeasonalSection && (
                   <div className="border-l-2 border-emerald-200 pl-3 sm:pl-4 py-2">
                     <div className="flex justify-between items-center mb-2">
                       <h4 className="font-medium text-stone-800 text-xs sm:text-sm flex items-center gap-2">
@@ -110,45 +103,23 @@ export function DiscountModal({ isOpen, onClose, selectedWeeks }: DiscountModalP
                         Seasonal Discount
                       </h4>
                       <span className="text-emerald-700 font-medium text-xs sm:text-sm">
-                        {hasMultipleSeasons ? `~${Math.round(seasonalDiscount * 100)}%` : `${Math.round(seasonalDiscount * 100)}%`}
+                        {Math.round(averageSeasonalDiscount * 100)}%
                       </span>
                     </div>
                     <p className="text-[10px] sm:text-xs text-stone-600">
-                      {hasMultipleSeasons ? (
-                        <>
-                          <p className="mb-2">The quieter time of year, the less € you contribute on lodging. Calculated per night based on the season:</p>
-                          <div className="mt-2 space-y-2">
-                            {seasons
-                              .filter(season => season.nights > 0 && season.discount > 0)
-                              .map((season, index) => (
-                              <div key={index} className={`flex items-center text-xs gap-2 ${season.nights > 0 ? "text-emerald-700 font-medium" : ""}`}>
-                                <span className="min-w-[100px]">{season.name}</span>
-                                <span className="font-medium">
-                                  {season.nights} nights × {Math.round(season.discount * 100)}% off
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                          <p className="mt-2 text-stone-600 italic">Note: Seasonal discounts don't apply to dorm rooms.</p>
-                        </>
-                      ) : (
-                        <>
-                          Based on your selected dates, you get a seasonal discount on accommodation:
-                          <ul className="list-disc list-inside mt-2 space-y-1">
-                            {seasons.map((season, index) => (
-                              <li key={index} className={season.nights > 0 ? "text-emerald-700 font-medium" : ""}>
-                                {season.name} ({season.nights > 0 ? "selected" : "not selected"}): {season.discount === 0 ? "Standard rate" : `${Math.round(season.discount * 100)}% off`}
-                              </li>
-                            ))}
-                          </ul>
-                          <p className="mt-2 text-stone-600 italic">Note: Seasonal discounts apply to all accommodation prices, except dorm rooms.</p>
-                        </>
-                      )}
+                      Based on your selected dates, you get a seasonal discount on accommodation:
+                      <ul className="list-disc list-inside mt-2 space-y-1">
+                        {seasonBreakdown.seasons.map((season, index) => (
+                          <li key={index} className={season.nights > 0 ? "text-emerald-700 font-medium" : ""}>
+                            {season.name}: {season.discount === 0 ? "Standard rate" : `${Math.round(season.discount * 100)}% off`}
+                            {season.nights > 0 && ` (${season.nights} night${season.nights !== 1 ? 's' : ''})`}
+                          </li>
+                        ))}
+                      </ul>
                     </p>
                   </div>
                 )}
                 
-                {/* Duration Discount - Always show */}
                 <div className="border-l-2 border-violet-200 pl-3 sm:pl-4 py-2">
                   <div className="flex justify-between items-center mb-2">
                     <h4 className="font-medium text-stone-800 text-xs sm:text-sm flex items-center gap-2">
@@ -172,11 +143,10 @@ export function DiscountModal({ isOpen, onClose, selectedWeeks }: DiscountModalP
                   </p>
                 </div>
                 
-                {/* Total Savings */}
                 <div className="flex justify-between items-center border-t border-stone-200 pt-3 sm:pt-4">
                   <span className="text-stone-600 text-xs sm:text-sm font-medium">Total discount applied</span>
                   <span className="text-emerald-700 font-medium text-sm sm:text-base">
-                    {hasMultipleSeasons ? '~' : ''}{Math.round(combinedDiscount * 100)}%
+                    {Math.round(combinedDiscount * 100)}%
                   </span>
                 </div>
               </div>
