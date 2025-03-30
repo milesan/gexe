@@ -11,6 +11,7 @@ export function MyBookings() {
   const [bookings, setBookings] = React.useState<Booking[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [enlargedImageUrl, setEnlargedImageUrl] = React.useState<string | null>(null);
   const session = useSession();
 
   React.useEffect(() => {
@@ -56,7 +57,7 @@ export function MyBookings() {
         <div>
           <h1 className="text-4xl font-display font-light text-stone-900 mb-2">My Account</h1>
           <div className="text-stone-600">
-            <p>{session?.user?.email}</p>
+            <p className="font-regular">{session?.user?.email}</p>
           </div>
         </div>
       </div>
@@ -79,7 +80,7 @@ export function MyBookings() {
                   <h3 className="text-xl font-display font-light mb-2">
                     {booking.accommodation?.title || 'Accommodation'}
                   </h3>
-                  <div className="space-y-1 text-sm">
+                  <div className="space-y-1 text-sm font-regular">
                     <p>
                       <span className="text-stone-500">Check-in:</span>{' '}
                       {format(apiDateToUTC(booking.check_in), 'PPP')}
@@ -104,15 +105,47 @@ export function MyBookings() {
                   </div>
                 </div>
                 {booking.accommodation?.image_url && (
-                  <img
-                    src={booking.accommodation.image_url}
-                    alt={booking.accommodation.title}
-                    className="w-32 h-32 object-cover rounded-lg"
-                  />
+                  <button
+                    onClick={() => setEnlargedImageUrl(booking.accommodation?.image_url || null)}
+                    className="focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 rounded-lg transition-opacity hover:opacity-80"
+                  >
+                    <img
+                      src={booking.accommodation.image_url}
+                      alt={booking.accommodation.title}
+                      className="w-32 h-32 object-cover rounded-lg cursor-pointer"
+                    />
+                  </button>
                 )}
               </div>
             </motion.div>
           ))}
+        </div>
+      )}
+
+      {enlargedImageUrl && (
+        <div
+          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+          onClick={() => setEnlargedImageUrl(null)}
+        >
+          <div
+            className="relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={enlargedImageUrl}
+              alt="Enlarged booking accommodation"
+              className="max-w-lg max-h-[80vh] w-auto h-auto object-contain rounded-lg shadow-2xl"
+            />
+            <button
+              onClick={() => setEnlargedImageUrl(null)}
+              className="absolute -top-2 -right-2 bg-white rounded-full p-1 text-stone-600 hover:text-stone-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              aria-label="Close enlarged image"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
       )}
     </div>

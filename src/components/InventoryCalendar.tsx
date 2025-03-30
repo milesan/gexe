@@ -5,6 +5,7 @@ import { Calendar, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { StatusModal } from './StatusModal';
 import type { AvailabilityStatus } from '../types/availability';
 import { motion, AnimatePresence } from 'framer-motion';
+import { normalizeToUTCDate } from '../utils/dates';
 
 interface Props {
   onClose: () => void;
@@ -132,11 +133,11 @@ export function InventoryCalendar({ onClose }: Props) {
         hasCheckOut,
         bookingsInfo: availabilityData.bookings.map(b => ({
           id: b.id,
-          checkIn: format(new Date(b.check_in), 'yyyy-MM-dd'),
-          checkOut: format(new Date(b.check_out), 'yyyy-MM-dd'),
-          isCheckInToday: format(new Date(b.check_in), 'yyyy-MM-dd') === dateStr,
-          isCheckOutToday: format(new Date(b.check_out), 'yyyy-MM-dd') === dateStr,
-          durationDays: Math.round((new Date(b.check_out).getTime() - new Date(b.check_in).getTime()) / (1000 * 60 * 60 * 24))
+          checkIn: format(normalizeToUTCDate(b.check_in), 'yyyy-MM-dd'),
+          checkOut: format(normalizeToUTCDate(b.check_out), 'yyyy-MM-dd'),
+          isCheckInToday: format(normalizeToUTCDate(b.check_in), 'yyyy-MM-dd') === dateStr,
+          isCheckOutToday: format(normalizeToUTCDate(b.check_out), 'yyyy-MM-dd') === dateStr,
+          durationDays: Math.round((normalizeToUTCDate(b.check_out).getTime() - normalizeToUTCDate(b.check_in).getTime()) / (1000 * 60 * 60 * 24))
         }))
       });
       
@@ -154,10 +155,10 @@ export function InventoryCalendar({ onClose }: Props) {
     for (const dayData of Object.values(dailyAvailability)) {
       const accommodationData = dayData[accommodationId];
       if (accommodationData?.bookings) {
-        const isCheckOut = accommodationData.bookings.some(b => format(new Date(b.check_out), 'yyyy-MM-dd') === dateStr);
+        const isCheckOut = accommodationData.bookings.some(b => format(normalizeToUTCDate(b.check_out), 'yyyy-MM-dd') === dateStr);
         if (isCheckOut) {
           // Check if there's also a check-in on this date
-          const isCheckIn = accommodationData.bookings.some(b => format(new Date(b.check_in), 'yyyy-MM-dd') === dateStr);
+          const isCheckIn = accommodationData.bookings.some(b => format(normalizeToUTCDate(b.check_in), 'yyyy-MM-dd') === dateStr);
           
           console.log(`[InventoryCalendar] Found potential cross-day checkout for ${dateStr}:`, {
             isCheckOut,
@@ -188,7 +189,7 @@ export function InventoryCalendar({ onClose }: Props) {
 
     // Handle dorms
     if (accommodation.title.includes('Dorm') && availabilityData) {
-      return availabilityData.available_capacity.toString();
+      return (availabilityData.available_capacity ?? 0).toString();
     }
 
     // Regular accommodation handling
@@ -399,10 +400,6 @@ export function InventoryCalendar({ onClose }: Props) {
                   </table>
                 </div>
               )}
-            </div>
-
-            <div className="p-4 border-t border-stone-200 text-sm text-stone-500 text-center">
-              Note: All dates shown are accurate
             </div>
           </div>
         </motion.div>

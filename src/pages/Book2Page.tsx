@@ -603,8 +603,8 @@ export function Book2Page() {
         backgroundPosition: 'center',
       }}
     >
-      <div className="container mx-auto py-4 xs:py-6 sm:py-8 px-3 xs:px-4">
-        <h1 className="text-2xl xs:text-3xl font-display mb-3 xs:mb-4 text-stone-800">Book Your Stay</h1>
+      <div className="container mx-auto py-4 xs:py-6 sm:py-8 px-4">
+        <h1 className="text-4xl xs:text-4xl font-display mb-3 xs:mb-4 text-stone-800">Book Your Stay</h1>
         
         <div className="lg:col-span-2 max-w-2xl bg-white/50 backdrop-blur-sm border border-stone-200/50 rounded-lg p-3 xs:p-4 sm:p-5 mb-4 xs:mb-6 sm:mb-8 shadow-sm">
           <div className="flex items-center gap-2 mb-2 xs:mb-3">
@@ -710,7 +710,7 @@ export function Book2Page() {
                       >
                         <ChevronLeft className="h-3.5 w-3.5 xxs:h-4 xxs:w-4 sm:h-5 sm:w-5 text-stone-600" />
                       </button>
-                      <div className="px-2 xxs:px-3 sm:px-4 text-center text-stone-700 font-medium whitespace-nowrap text-xs xxs:text-sm sm:text-base font-regular min-w-[120px] xxs:min-w-[140px] sm:min-w-[160px]">
+                      <div className="px-2 xxs:px-3 sm:px-4 text-center text-stone-700 font-medium whitespace-nowrap text-[10px] xxs:text-xs sm:text-sm font-regular min-w-[120px] xxs:min-w-[140px] sm:min-w-[160px]">
                         {format(currentMonth, 'MMMM yyyy')}
                       </div>
                       <button 
