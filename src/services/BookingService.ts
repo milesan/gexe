@@ -113,38 +113,6 @@ class BookingService {
     return data as AvailabilityResult[];
   }
 
-  async checkWeekAvailability(
-    accommodationId: string,
-    weeks: Date[]
-  ): Promise<boolean> {
-    console.log('[BookingService] Checking week availability:', {
-      accommodationId,
-      weeks: weeks.map(w => w.toISOString())
-    });
-
-    if (weeks.length === 0) {
-      console.log('[BookingService] No weeks selected, returning true');
-      return true;
-    }
-    
-    // Get the earliest and latest dates from the weeks array
-    // Normalize the week dates to UTC
-    const normalizedWeeks = weeks.map(w => normalizeToUTCDate(w));
-    const startDate = normalizedWeeks[0];
-    const endDate = addDays(normalizedWeeks[normalizedWeeks.length - 1], 7);
-    
-    const availability = await this.getAvailability(startDate, endDate);
-    const result = availability.find(a => a.accommodation_id === accommodationId);
-
-    console.log('[BookingService] Week availability result:', {
-      accommodationId,
-      result,
-      isAvailable: result?.is_available ?? false
-    });
-
-    return result?.is_available ?? false;
-  }
-
   async getBookings(filters: {
     startDate?: Date;
     endDate?: Date;

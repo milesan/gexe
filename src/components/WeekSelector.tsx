@@ -10,7 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { FlexibleCheckInModal } from './FlexibleCheckInModal';
 import { areSameWeeks } from '../utils/dates';
-import { getSeasonalDiscount } from '../utils/pricing';
+import { getSeasonalDiscount, getSeasonName } from '../utils/pricing';
 
 // Helper function to log week dates consistently without timezone confusion
 const getSimplifiedWeekInfo = (week: Week, isAdmin: boolean = false, selectedWeeks: Week[] = []) => {
@@ -244,16 +244,18 @@ export function WeekSelector({
     // Use our improved isWeekSelected function instead of doing a direct date match
     const isSelected = isWeekSelected(week);
 
-    // Get seasonal discount for this week
+    // Get seasonal discount (still needed for other logic/debugging?)
     const seasonalDiscount = getSeasonalDiscount(week.startDate, accommodationTitle);
-    
-    // Add seasonal background styling
+    // Get season name specifically for coloring
+    const seasonName = getSeasonName(week.startDate);
+
+    // Add seasonal background styling based on season name
     let seasonalClasses = '';
-    if (seasonalDiscount === 0.40) {
+    if (seasonName === 'Low Season') { // Corresponds to 40% discount usually
       seasonalClasses = isSelected ? 'border-blue-300' : 'bg-blue-50 border-blue-100';
-    } else if (seasonalDiscount === 0.15) {
+    } else if (seasonName === 'Medium Season') { // Corresponds to 15% discount usually
       seasonalClasses = isSelected ? 'border-orange-300' : 'bg-orange-50 border-orange-100';
-    } else {
+    } else { // Summer Season (0% discount) - Use gray
       seasonalClasses = isSelected ? 'border-gray-300' : 'bg-white border-gray-200';
     }
 
@@ -690,10 +692,10 @@ export function WeekSelector({
             <div 
               className={clsx(
                 'absolute bottom-0 left-0 right-0 transition-all duration-300',
-                // Seasonal colors for bottom line
-                getSeasonalDiscount(week.startDate, accommodationTitle) === 0.40 && 'bg-blue-400',
-                getSeasonalDiscount(week.startDate, accommodationTitle) === 0.15 && 'bg-orange-400',
-                !getSeasonalDiscount(week.startDate, accommodationTitle) && 'bg-gray-400',
+                // Seasonal colors for bottom line - Use getSeasonName here too
+                getSeasonName(week.startDate) === 'Low Season' && 'bg-blue-400',
+                getSeasonName(week.startDate) === 'Medium Season' && 'bg-orange-400',
+                getSeasonName(week.startDate) === 'Summer Season' && 'bg-gray-400',
                 // Height based on selection and screen size
                 isWeekSelected(week) ? 'h-1.5 sm:h-2' : 'h-1 sm:h-1.5'
               )}
