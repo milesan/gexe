@@ -6,7 +6,7 @@ import type { Accommodation } from '../types';
 import { Week } from '../types/calendar';
 import { getSeasonalDiscount, getDurationDiscount, getSeasonBreakdown } from '../utils/pricing';
 import { useWeeklyAccommodations } from '../hooks/useWeeklyAccommodations';
-import { addDays, isDate, eachDayOfInterval, isBefore } from 'date-fns';
+import { addDays, isDate, isBefore } from 'date-fns';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { calculateTotalNights, calculateDurationDiscountWeeks, normalizeToUTCDate } from '../utils/dates';
 
@@ -129,12 +129,24 @@ export function CabinSelector({
   useEffect(() => {
     if (selectedWeeks.length > 0) {
       // Check availability for all accommodations when weeks are selected
+      
+      // MODIFIED: Determine overall check-in and check-out dates
+      const checkInDate = selectedWeeks.length > 0 ? selectedWeeks[0].startDate : null;
+      const checkOutDate = selectedWeeks.length > 0 ? selectedWeeks[selectedWeeks.length - 1].endDate : null;
+      
+      console.log('[CabinSelector] useEffect[selectedWeeks] - Checking availability with range:', {
+        checkInDate: checkInDate?.toISOString(),
+        checkOutDate: checkOutDate?.toISOString()
+      });
+
       accommodations.forEach(acc => {
         if (!(acc as any).parent_accommodation_id) { // Only check parent accommodations
-          checkWeekAvailability(acc, selectedWeeks.map(w => w.startDate || w));
+          // MODIFIED: Pass derived dates to checkWeekAvailability
+          checkWeekAvailability(acc, checkInDate, checkOutDate);
         }
       });
     }
+    // MODIFIED: Dependency array includes derived dates implicitly via selectedWeeks
   }, [selectedWeeks, accommodations, checkWeekAvailability]);
 
   const handleSelectAccommodation = useCallback((id: string) => {
@@ -144,13 +156,24 @@ export function CabinSelector({
     });
     // Check availability when accommodation is selected and weeks are already chosen
     if (selectedWeeks.length > 0) {
+      // MODIFIED: Determine overall check-in and check-out dates
+      const checkInDate = selectedWeeks.length > 0 ? selectedWeeks[0].startDate : null;
+      const checkOutDate = selectedWeeks.length > 0 ? selectedWeeks[selectedWeeks.length - 1].endDate : null;
+      
+      console.log('[CabinSelector] handleSelectAccommodation - Checking availability with range:', {
+        checkInDate: checkInDate?.toISOString(),
+        checkOutDate: checkOutDate?.toISOString()
+      });
+      
       const accommodation = accommodations.find(a => a.id === id);
       if (accommodation) {
-        checkWeekAvailability(accommodation, selectedWeeks.map(w => w.startDate || w));
+        // MODIFIED: Pass derived dates to checkWeekAvailability
+        checkWeekAvailability(accommodation, checkInDate, checkOutDate);
       }
     }
 
     onSelectAccommodation(id);
+    // MODIFIED: Dependency array includes derived dates implicitly via selectedWeeks
   }, [accommodations, selectedWeeks, checkWeekAvailability, onSelectAccommodation, selectedAccommodationId]);
 
   // Filter accommodations based on season and type
@@ -272,9 +295,6 @@ export function CabinSelector({
         console.warn('[CabinSelector] Invalid date range (normalized):', { startDate: startDate.toISOString(), endDate: endDate.toISOString() });
         return;
       }
-
-      // *** Use normalized dates in eachDayOfInterval ***
-      // const daysInWeek = eachDayOfInterval({ start: startDate, end: endDate }); <-- Removed this problematic line
 
       // *** Manually generate days in UTC to avoid timezone shifts ***
       const daysInWeek: Date[] = [];

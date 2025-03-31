@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { bookingService } from '../services/BookingService';
-import type { Accommodation } from '../types';
+import type { Accommodation, AccommodationType } from '../types';
 import type { AvailabilityResult } from '../types/availability';
 import { addDays } from 'date-fns';
 
@@ -19,12 +19,14 @@ export function useWeeklyAccommodations() {
 
   const checkWeekAvailability = useCallback(async (
     accommodation: Accommodation,
-    weeks: Date[]
+    checkInDate: Date | null | undefined,
+    checkOutDate: Date | null | undefined
   ): Promise<boolean> => {
     console.log('[useWeeklyAccommodations] Checking availability for:', {
       accommodationId: accommodation.id,
       accommodationTitle: accommodation.title,
-      weeks: weeks.map(w => w instanceof Date ? w.toISOString() : 'Invalid date'),
+      checkInDate: checkInDate instanceof Date ? checkInDate.toISOString() : checkInDate,
+      checkOutDate: checkOutDate instanceof Date ? checkOutDate.toISOString() : checkOutDate,
       isUnlimited: accommodation.is_unlimited
     });
 
@@ -40,24 +42,23 @@ export function useWeeklyAccommodations() {
       return true;
     }
     
-    if (weeks.length === 0) {
-      console.log('[useWeeklyAccommodations] No weeks selected, returning true');
+    if (!checkInDate || !checkOutDate) {
+      console.log('[useWeeklyAccommodations] No valid date range selected, returning true');
       return true;
     }
     
     try {
-      const startDate = weeks[0];
-      const endDate = addDays(weeks[weeks.length - 1], 7); // Add 7 days to include the full last week
+      const startDate = checkInDate;
+      const endDate = checkOutDate;
       
       console.log('[useWeeklyAccommodations] Fetching availability:', {
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString()
+        startDate: startDate instanceof Date ? startDate.toISOString() : 'Invalid start date',
+        endDate: endDate instanceof Date ? endDate.toISOString() : 'Invalid end date'
       });
       
       const availability = await bookingService.getAvailability(startDate, endDate);
       console.log('[useWeeklyAccommodations] Received availability:', availability);
       
-      // Update the availability map for all accommodations in the result
       const newAvailabilityMap: WeeklyAvailabilityMap = {};
       availability.forEach(result => {
         newAvailabilityMap[result.accommodation_id] = {
@@ -96,11 +97,10 @@ export function useWeeklyAccommodations() {
       const data = await bookingService.getAccommodations();
       console.log('[useWeeklyAccommodations] Received accommodations:', data);
       
-      // Only show root-level accommodations (those without parents)
       const rootAccommodations = data.filter(acc => !acc.parent_accommodation_id);
       console.log('[useWeeklyAccommodations] Filtered root accommodations:', rootAccommodations);
       
-      setAccommodations(rootAccommodations);
+      setAccommodations(rootAccommodations as Accommodation[]);
     } catch (err) {
       console.error('[useWeeklyAccommodations] Error fetching accommodations:', err);
       setError(err instanceof Error ? err : new Error('Failed to fetch accommodations'));

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Calendar, Clock, ArrowRight, LogOut, Sun, Moon, Home, Bed, ChevronDown, ChevronUp, Percent, Info } from 'lucide-react';
 import { useSchedulingRules } from '../hooks/useSchedulingRules';
@@ -70,35 +70,50 @@ const calculatePricing = (
   seasonBreakdown?: SeasonBreakdown,
   foodContribution?: number | null
 ): PricingDetails => {
+  // Log inputs to the pricing function
+  console.log('[calculatePricing] Inputs:', {
+    selectedWeeksCount: selectedWeeks.length,
+    selectedAccommodationId: selectedAccommodation?.id,
+    seasonBreakdownExists: !!seasonBreakdown,
+    foodContribution,
+    seasonBreakdownDetails: seasonBreakdown ? JSON.stringify(seasonBreakdown) : 'undefined',
+  });
+
   // Calculate total nights
   const totalNights = calculateTotalNights(selectedWeeks);
   
   // Get base accommodation rate from the selected accommodation
   const baseAccommodationRate = selectedAccommodation?.base_price || 0;
 
-  console.log('[BookingSummary] Base accommodation rate:', baseAccommodationRate);
+  console.log('[calculatePricing] Base accommodation rate:', baseAccommodationRate);
   
   // Calculate seasonal discount and total accommodation cost
   let baseAccommodationCostWithDiscount = 0;
   
-  if (selectedAccommodation && selectedWeeks.length > 0) {
-    // Get season breakdown for the entire stay
-    const breakdown = getSeasonBreakdown(selectedWeeks[0].startDate, selectedWeeks[selectedWeeks.length - 1].endDate);
-    
-    // Calculate cost for each season
-    baseAccommodationCostWithDiscount = breakdown.seasons.reduce((acc, season) => {
-      // For each season, calculate its portion of the weekly rate
-      // base_price is for 6 nights, so we divide by 6 to get nightly rate
+  if (seasonBreakdown && seasonBreakdown.seasons && seasonBreakdown.seasons.length > 0 && baseAccommodationRate > 0) {
+    console.log('[calculatePricing] Applying seasonal breakdown for cost calculation:', seasonBreakdown);
+    // Calculate cost based on the provided breakdown's seasons
+    baseAccommodationCostWithDiscount = seasonBreakdown.seasons.reduce((acc, season) => {
       const nightlyRate = baseAccommodationRate / 6;
-      // Apply the season's discount to its portion of nights
       const seasonCost = nightlyRate * (1 - season.discount) * season.nights;
+       console.log(`[calculatePricing] Season segment: ${season.name}, Nights: ${season.nights}, Discount: ${season.discount}, Nightly Rate: ${nightlyRate.toFixed(2)}, Segment Cost: ${seasonCost.toFixed(2)}`);
       return acc + seasonCost;
     }, 0);
+     console.log('[calculatePricing] Total cost after seasonal breakdown:', baseAccommodationCostWithDiscount.toFixed(2));
+  } else if (selectedAccommodation && totalNights > 0) {
+    console.log('[calculatePricing] No valid seasonal breakdown applied. Calculating base cost.');
+    const nightlyRate = baseAccommodationRate / 6;
+    baseAccommodationCostWithDiscount = nightlyRate * totalNights;
+  } else {
+    baseAccommodationCostWithDiscount = 0;
   }
+  // Ensure the result has max 2 decimal places, handle potential floating point issues
+  baseAccommodationCostWithDiscount = +(baseAccommodationCostWithDiscount.toFixed(2));
   
   // Calculate duration discount using the utility function
   const completeWeeks = calculateDurationDiscountWeeks(selectedWeeks);
   const durationDiscount = getDurationDiscount(completeWeeks);
+  console.log('[calculatePricing] Duration discount:', { completeWeeks, durationDiscount });
   
   // Apply duration discount to accommodation cost
   const accommodationWithDurationDiscount = +(baseAccommodationCostWithDiscount * (1 - durationDiscount)).toFixed(2);
@@ -114,7 +129,6 @@ const calculatePricing = (
   let nightlyFoodRate: number;
   
   if (foodContribution !== null && foodContribution !== undefined) {
-    // Convert weekly food contribution to daily rate (6 nights = 1 week)
     nightlyFoodRate = foodContribution / 6;
   } else {
     // Use default base rate for food & facilities (convert weekly rate to daily)
@@ -122,6 +136,7 @@ const calculatePricing = (
     const defaultWeeklyRate = 345;
     nightlyFoodRate = defaultWeeklyRate / 6;
   }
+  console.log('[calculatePricing] Nightly food rate:', nightlyFoodRate);
 
   // Calculate total food & facilities cost using daily rate
   const totalFoodAndFacilitiesCost = +(nightlyFoodRate * totalNights).toFixed(2);
@@ -138,11 +153,13 @@ const calculatePricing = (
   // Calculate duration discount amount
   const durationDiscountAmount = +(baseAccommodationCostWithDiscount - accommodationWithDurationDiscount).toFixed(2);
 
-  // Calculate average seasonal discount for display
+  // Calculate average seasonal discount for display (but note it's not used in final price calc)
+  // This calculation might be misleading if seasons have different lengths/discounts
   const averageSeasonalDiscount = seasonBreakdown 
     ? seasonBreakdown.seasons.reduce((sum, season) => 
         sum + (season.discount * season.nights), 0) / seasonBreakdown.seasons.reduce((sum, season) => sum + season.nights, 0)
     : 0;
+   console.log('[calculatePricing] Average seasonal discount (for info only):', averageSeasonalDiscount);
 
   return {
     totalNights,
@@ -202,22 +219,15 @@ export function BookingSummary({
   onClearAccommodation,
   seasonBreakdown: initialSeasonBreakdown
 }: BookingSummaryProps) {
-  console.log('[BookingSummary] Rendering:', {
+  // --- LOGGING: Initial props and state ---
+  console.log('[BookingSummary] --- Component Render Start ---');
+  console.log('[BookingSummary] Initial Props Received:', {
     selectedWeeksCount: selectedWeeks?.length,
-    selectedWeeksDates: selectedWeeks.map(w => ({
-      start: w.startDate.toISOString(),
-      end: w.endDate.toISOString()
-    })),
-    selectedAccommodation: selectedAccommodation?.title,
-    basePrice: selectedAccommodation?.base_price,
-    seasonBreakdown: initialSeasonBreakdown
+    selectedAccommodationId: selectedAccommodation?.id,
+    selectedAccommodationTitle: selectedAccommodation?.title,
+    initialSeasonBreakdownProvided: !!initialSeasonBreakdown,
   });
-
-  console.log('[Booking Summary] Component mounted with:', {
-    selectedWeeks: selectedWeeks.map(w => w.startDate.toISOString()),
-    selectedAccommodation: selectedAccommodation?.title,
-    basePrice: selectedAccommodation?.base_price
-  });
+  console.log('[BookingSummary] Raw selectedWeeks:', selectedWeeks.map(w => ({ start: w.startDate?.toISOString(), end: w.endDate?.toISOString(), flex: w.selectedFlexDate?.toISOString() })));
 
   const [isBooking, setIsBooking] = useState(false);
   console.log('[BookingSummary] useState(isBooking) called');
@@ -240,8 +250,25 @@ export function BookingSummary({
   const [testPaymentAmount, setTestPaymentAmount] = useState<number | null>(null);
   const [showDiscountModal, setShowDiscountModal] = useState(false);
 
-  const [seasonBreakdown, setSeasonBreakdown] = useState<SeasonBreakdown | undefined>(initialSeasonBreakdown);
+  // State for internally calculated season breakdown
+  const [seasonBreakdownState, setSeasonBreakdownState] = useState<SeasonBreakdown | undefined>(initialSeasonBreakdown);
   const [accommodations, setAccommodations] = useState<Accommodation[]>([]);
+  console.log('[BookingSummary] Initial State Values:', {
+      isBooking, error, showStripeModal, authToken: !!authToken, selectedCheckInDate, showDatePicker, foodContribution, showDiscountDetails, testPaymentAmount, showDiscountModal,
+      seasonBreakdownStateExists: !!seasonBreakdownState,
+      accommodationsCount: accommodations.length, // Log initial count
+  });
+
+  // --- LOGGING: Track selectedAccommodation prop changes ---
+  useEffect(() => {
+    console.log('[BookingSummary] PROP CHANGE: selectedAccommodation updated:', {
+        id: selectedAccommodation?.id,
+        title: selectedAccommodation?.title,
+        base_price: selectedAccommodation?.base_price,
+        is_unlimited: selectedAccommodation?.is_unlimited,
+    });
+  }, [selectedAccommodation]);
+  // --- END LOGGING ---
 
   // Hooks
   const { getArrivalDepartureForDate } = useSchedulingRules();
@@ -258,13 +285,112 @@ export function BookingSummary({
   const flexibleDates = selectedWeeks[0]?.flexibleDates;
   const hasFlexibleDates = flexibleDates && flexibleDates.length > 0;
 
-  // Calculate pricing details
-  const pricing = calculatePricing(selectedWeeks, selectedAccommodation, seasonBreakdown, foodContribution);
+  // --- LOGGING: Season Breakdown Calculation Effect ---
+  // Log state *before* the effect runs
+  console.log('[BookingSummary] State BEFORE season breakdown effect:', {
+    accommodationsCount: accommodations.length,
+    seasonBreakdownStateExists: !!seasonBreakdownState,
+  });
+
+  // Update season breakdown when selected weeks or accommodation change
+  useEffect(() => {
+    console.log('[BookingSummary] --- Running Season Breakdown Effect ---');
+    console.log('[BookingSummary] Effect Dependencies:', {
+      selectedWeeksLength: selectedWeeks.length,
+      selectedAccommodationId_Prop: selectedAccommodation?.id,
+      // Note: Explicitly removing accommodations state from dependencies if not needed for lookup
+    });
+
+    // --- Get details directly from prop ---
+    const accommodationPrice = selectedAccommodation?.base_price ?? 0;
+    const accommodationTitle = selectedAccommodation?.title ?? '';
+    console.log('[BookingSummary] Effect: Using selectedAccommodation PROP details:', {
+      id: selectedAccommodation?.id,
+      title: accommodationTitle,
+      price: accommodationPrice,
+    });
+
+    // --- Where does the 'accommodations' state list come from? ---
+    // If you still need to look up something in the `accommodations` list, log it here:
+    // const foundAccommodationInState = accommodations.find(a => a.id === selectedAccommodation?.id);
+    // console.log('[BookingSummary] Effect: Result of finding accommodation in STATE list:', {
+    //   found: !!foundAccommodationInState,
+    //   stateListCount: accommodations.length
+    // });
+    // If the lookup IS still needed, restore 'accommodations' to dependency array below.
+
+
+    // --- Calculation Logic ---
+    if (selectedWeeks.length > 0 && accommodationPrice > 0 && !accommodationTitle.toLowerCase().includes('dorm')) {
+      console.log('[BookingSummary] Effect: Conditions met for calculation (Weeks > 0, Price > 0, Not Dorm).');
+      if (selectedWeeks[0]?.startDate && selectedWeeks[selectedWeeks.length - 1]?.endDate) {
+        const startDate = selectedWeeks[0].startDate;
+        const endDate = selectedWeeks[selectedWeeks.length - 1].endDate;
+         console.log('[BookingSummary] Effect: Calculating breakdown with dates:', { start: startDate.toISOString(), end: endDate.toISOString() });
+        const breakdown = getSeasonBreakdown(startDate, endDate);
+        console.log('[BookingSummary] Effect: Calculated breakdown:', JSON.stringify(breakdown, null, 2));
+
+        // Avoid unnecessary state update
+        if (JSON.stringify(breakdown) !== JSON.stringify(seasonBreakdownState)) {
+            console.log('[BookingSummary] Effect: *** Setting NEW season breakdown state ***');
+            setSeasonBreakdownState(breakdown);
+        } else {
+            console.log('[BookingSummary] Effect: Calculated breakdown matches current state. No update.');
+        }
+      } else {
+        console.warn('[BookingSummary] Effect: Cannot calculate breakdown - missing start/end dates.');
+        if (seasonBreakdownState !== undefined) {
+           console.log('[BookingSummary] Effect: *** Clearing season breakdown state (missing dates) ***');
+           setSeasonBreakdownState(undefined);
+        }
+      }
+    } else {
+      // Determine reason for not calculating/clearing
+      let reason = 'Unknown';
+      if (selectedWeeks.length === 0) reason = 'No weeks selected.';
+      else if (!selectedAccommodation) reason = 'No accommodation selected (prop).';
+      else if (accommodationPrice === 0) reason = 'Accommodation price is 0.';
+      else if (accommodationTitle.toLowerCase().includes('dorm')) reason = 'Accommodation is Dorm.';
+
+      if (seasonBreakdownState !== undefined) {
+          console.log(`[BookingSummary] Effect: *** Clearing season breakdown state. Reason: ${reason} ***`);
+          setSeasonBreakdownState(undefined);
+      } else {
+          console.log(`[BookingSummary] Effect: Season breakdown not applicable or already clear. Reason: ${reason}`);
+      }
+    }
+    console.log('[BookingSummary] --- Finished Season Breakdown Effect ---');
+    // Dependencies: Rely only on props/values directly used in the effect's logic
+    // Removed 'accommodations' unless it's re-added for the lookup. Added seasonBreakdownState for comparison.
+  }, [selectedWeeks, selectedAccommodation, getSeasonBreakdown, seasonBreakdownState]);
+  // --- END LOGGING ---
+
+  // Calculate pricing details - MEMOIZED
+  const pricing = useMemo(() => {
+    // --- LOGGING: Inside useMemo for pricing ---
+    console.log('[BookingSummary] --- Recalculating Pricing (useMemo) ---');
+    console.log('[BookingSummary] useMemo Dependencies:', {
+      selectedWeeksLength: selectedWeeks.length,
+      selectedAccommodationId_Prop: selectedAccommodation?.id,
+      foodContribution,
+      seasonBreakdownStateExists_Input: !!seasonBreakdownState, // Log the state it's ABOUT to use
+      seasonBreakdownState_Input: seasonBreakdownState ? JSON.stringify(seasonBreakdownState) : 'undefined',
+    });
+    // --- END LOGGING ---
+
+    const calculatedPricingDetails = calculatePricing(selectedWeeks, selectedAccommodation, seasonBreakdownState, foodContribution);
+
+    // --- LOGGING: Pricing result ---
+    console.log('[BookingSummary] useMemo: Pricing calculation COMPLETE. Result:', calculatedPricingDetails);
+    console.log('[BookingSummary] --- Finished Pricing Recalculation (useMemo) ---');
+    // --- END LOGGING ---
+
+    return calculatedPricingDetails;
+  }, [selectedWeeks, selectedAccommodation, seasonBreakdownState, foodContribution]); // Use the state variable here
 
   // Always update the check-in date when selectedWeeks changes
   useEffect(() => {
-    console.log('[BookingSummary] Selected accommodation:', selectedAccommodation);
-
+    console.log('[BookingSummary] useEffect[selectedWeeks] - Updating check-in date...');
     if (selectedWeeks.length > 0) {
       // Check if the first week has a selectedFlexDate property (from flexible check-in)
       if (selectedWeeks[0].selectedFlexDate) {
@@ -283,6 +409,7 @@ export function BookingSummary({
 
   // Initialize food contribution based on number of nights
   useEffect(() => {
+    console.log('[BookingSummary] useEffect[selectedWeeks, durationDiscountPercent] - Updating food contribution...');
     if (selectedWeeks.length > 0) {
       const totalNights = calculateTotalNights(selectedWeeks);
       // Set default contribution to the middle of the range
@@ -305,17 +432,18 @@ export function BookingSummary({
     }
   }, [selectedWeeks, pricing.durationDiscountPercent]);
 
-  // Log when food contribution changes
+  // Log when food contribution changes (for debugging slider/pricing interaction)
   useEffect(() => {
     if (foodContribution !== null) {
-      console.log('[BookingSummary] Food contribution updated, recalculating pricing:', foodContribution);
+      console.log('[BookingSummary] STATE CHANGE: foodContribution updated:', foodContribution);
     }
   }, [foodContribution]);
 
   // Validate that a check-in date is selected
   const validateCheckInDate = useCallback(() => {
+    console.log('[BookingSummary] Validating check-in date. Selected:', selectedCheckInDate?.toISOString());
     if (!selectedCheckInDate) {
-      console.log('[BookingSummary] No check-in date selected');
+      console.log('[BookingSummary] Validation FAILED: No check-in date selected');
       setError('Please select a check-in date');
       return false;
     }
@@ -377,6 +505,7 @@ export function BookingSummary({
     console.log('[Booking Summary] Validating availability...');
     if (!selectedAccommodation || selectedWeeks.length === 0) {
       console.warn('[Booking Summary] Missing accommodation or weeks for validation');
+      setError('Please select accommodation and dates first.');
       return false;
     }
 
@@ -410,9 +539,12 @@ export function BookingSummary({
     }
   };
 
-  const handleBookingSuccess = useCallback(async () => {
+  const handleBookingSuccess = useCallback(async (paymentIntentId?: string) => {
+    // Added optional paymentIntentId
+    console.log('[BookingSummary] handleBookingSuccess called. Payment Intent ID:', paymentIntentId || 'N/A');
     try {
       if (!selectedAccommodation || selectedWeeks.length === 0 || !selectedCheckInDate) {
+        console.error('[Booking Summary] Missing required info for booking success:', { selectedAccommodation: !!selectedAccommodation, selectedWeeks: selectedWeeks.length > 0, selectedCheckInDate: !!selectedCheckInDate });
         throw new Error('Missing required booking information');
       }
 
@@ -470,10 +602,11 @@ export function BookingSummary({
   }, [selectedAccommodation, selectedWeeks, selectedCheckInDate, navigate, pricing.totalAmount]);
 
   const handleConfirmClick = async () => {
-    console.log('[Booking Summary] Confirm button clicked');
-    
+    console.log('[Booking Summary] Confirm button clicked.');
+    setError(null); // Clear previous errors
+
     if (!validateCheckInDate()) {
-      console.warn('[Booking Summary] Check-in date validation failed');
+      console.warn('[Booking Summary] Confirm FAILED: Check-in date validation failed.');
       return;
     }
     
@@ -513,10 +646,11 @@ export function BookingSummary({
   };
 
   const handleAdminConfirm = async () => {
-    console.log('[Booking Summary] Admin confirm button clicked');
-    
+    console.log('[Booking Summary] Admin confirm button clicked.');
+    setError(null);
+
     if (!validateCheckInDate()) {
-      console.warn('[Booking Summary] Check-in date validation failed');
+      console.warn('[Booking Summary] Admin Confirm FAILED: Check-in date validation failed.');
       return;
     }
     
@@ -535,36 +669,17 @@ export function BookingSummary({
     }
   };
 
-  // Update season breakdown when selected weeks or accommodation change
-  useEffect(() => {
-    // Find the selected accommodation first
-    const accommodation = selectedAccommodation && accommodations
-        ? accommodations.find(a => a.id === selectedAccommodation.id)
-        : null;
-    const accommodationPrice = accommodation?.base_price ?? 0;
-    // Also get the title to check for Dorms
-    const accommodationTitle = accommodation?.title ?? '';
-
-    // Only calculate breakdown if weeks are selected, price > 0, AND it's not a Dorm
-    if (selectedWeeks.length > 0 && accommodationPrice > 0 && !accommodationTitle.toLowerCase().includes('dorm')) {
-      console.log('[BookingSummary] Calculating season breakdown (Price > 0 and not Dorm).');
-      const breakdown = getSeasonBreakdown(selectedWeeks[0].startDate, selectedWeeks[selectedWeeks.length - 1].endDate);
-      setSeasonBreakdown(breakdown);
-    } else {
-      // Clear breakdown if no weeks selected, no accommodation, price is 0, or it's a Dorm
-      if (selectedWeeks.length === 0) {
-         console.log('[BookingSummary] Clearing season breakdown: No weeks selected.');
-      } else if (!accommodation) {
-         console.log('[BookingSummary] Clearing season breakdown: No accommodation selected.');
-      } else if (accommodationPrice === 0) {
-         console.log('[BookingSummary] Clearing season breakdown: Accommodation price is 0.');
-      } else if (accommodationTitle.toLowerCase().includes('dorm')) {
-         console.log('[BookingSummary] Clearing season breakdown: Accommodation is Dorm.');
-      }
-      setSeasonBreakdown(undefined);
-    }
-    // Depend on selected weeks, selected accommodation ID, the list of accommodations, and the calculation function
-  }, [selectedWeeks, selectedAccommodation, accommodations, getSeasonBreakdown]);
+  // --- LOGGING: Final Render Values ---
+  console.log('[BookingSummary] --- Final Render Values ---');
+  console.log('[BookingSummary] Pricing details:', pricing);
+  console.log('[BookingSummary] Selected Check-in Date:', selectedCheckInDate?.toISOString());
+  console.log('[BookingSummary] Food Contribution:', foodContribution);
+  console.log('[BookingSummary] Season Breakdown State:', seasonBreakdownState ? JSON.stringify(seasonBreakdownState) : 'undefined');
+  console.log('[BookingSummary] Is Admin:', isAdmin);
+  console.log('[BookingSummary] Error state:', error);
+  console.log('[BookingSummary] Is Booking state:', isBooking);
+  console.log('[BookingSummary] Show Stripe Modal state:', showStripeModal);
+  // --- END LOGGING ---
 
   const fallbackDate = new Date();
   fallbackDate.setUTCHours(0, 0, 0, 0);
@@ -797,8 +912,15 @@ export function BookingSummary({
                           value={foodContribution || 0}
                           onChange={(e) => {
                             const newValue = Number(e.target.value);
-                            setFoodContribution(newValue);
-                            console.log('[BookingSummary] Food contribution changed:', newValue, 'per week');
+                            // Basic validation: ensure value is within calculated bounds
+                            if (newValue >= Math.round((pricing.totalNights <= 6 ? 345 : 240) * (1 - pricing.durationDiscountPercent / 100)) && newValue <= Math.round(390 * (1 - pricing.durationDiscountPercent / 100))) {
+                              setFoodContribution(newValue);
+                              console.log('[BookingSummary] Food contribution slider changed:', newValue);
+                            } else {
+                              console.warn(`[BookingSummary] Slider value ${newValue} out of bounds (${Math.round((pricing.totalNights <= 6 ? 345 : 240) * (1 - pricing.durationDiscountPercent / 100))}-${Math.round(390 * (1 - pricing.durationDiscountPercent / 100))}). Clamping.`);
+                              // Optionally clamp the value
+                              setFoodContribution(Math.max(Math.min(newValue, Math.round(390 * (1 - pricing.durationDiscountPercent / 100))), Math.round((pricing.totalNights <= 6 ? 345 : 240) * (1 - pricing.durationDiscountPercent / 100))));
+                            }
                           }}
                           className="w-full h-2 bg-emerald-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
                         />
