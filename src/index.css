@@ -6,13 +6,100 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: 'PP Lettra Mono Bold';
+  src: url('/fonts/PPLettraMono-Bold.woff2') format('woff2');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'PP Lettra Mono Regular';
+  src: url('/fonts/PPLettraMono-Regular.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* Dark mode defaults */
+  --color-bg-main: #1e2734;
+  --color-bg-surface: #2c3444;
+  --color-text-primary: #f1f5f9;
+  --color-text-secondary: #94a3b8;
+  --color-border: #475569;
+  --color-accent-primary: #10b981;
+  --color-accent-secondary: #0ea5e9;
+  --color-accent-muted: rgba(16, 185, 129, 0.1);
+  --color-accent-subtle: rgba(16, 185, 129, 0.2);
+  --color-error: #f87171;
+  --color-error-muted: rgba(248, 113, 113, 0.1);
+  --color-button-secondary-bg: #334155;
+  --color-button-secondary-bg-hover: #475569;
+  --color-bg-surface-hover: rgba(255, 255, 255, 0.05);
+  --color-garden-gold: #FFBF00;
+  --color-garden-accent: #FFD700;
+  --color-garden-dark: #f3f4f6; /* Was black, now light text */
+  --color-garden-matrix: #4CD964;
+  --color-bg-pattern: rgba(110, 231, 183, 0.05); /* Light emerald, subtle on dark */
+  --color-shadow: #000000;
+  --color-white: #ffffff; /* Explicit white for when needed */
+  --color-black: #000000; /* Explicit black for when needed */
+  --color-stone-50: #fafaf9;
+  --color-stone-100: #f5f5f4; /* Added for hover */
+  --color-stone-200: #e7e5e4;
+  --color-stone-500: #78716c;
+  --color-stone-600: #57534e; /* Added for icons */
+  --color-stone-700: #44403c; /* Added for button text */
+  --color-stone-800: #292524;
+  --color-emerald-50: #ecfdf5; /* Added for mobile selected bg */
+  --color-emerald-600: #059669;
+  --color-emerald-800: #065f46; /* Added for button hover (original) */
+  --color-emerald-900: #065f46;
+  --color-bg-overlay: rgba(0, 0, 0, 0.80); /* Reduced opacity from 0.95 */
+}
+
+.light-mode {
+  --color-bg-main: #f8fafc;
+  --color-bg-surface: #ffffff;
+  --color-text-primary: #1e293b;
+  --color-text-secondary: #64748b;
+  --color-border: #e2e8f0;
+  --color-accent-primary: #059669;
+  --color-accent-secondary: #0284c7;
+  --color-accent-muted: rgba(5, 150, 105, 0.1);
+  --color-accent-subtle: rgba(5, 150, 105, 0.2);
+  --color-error: #ef4444;
+  --color-error-muted: rgba(239, 68, 68, 0.1);
+  --color-button-secondary-bg: #f1f5f9;
+  --color-button-secondary-bg-hover: #e2e8f0;
+  --color-bg-surface-hover: rgba(0, 0, 0, 0.05);
+  --color-garden-gold: #FFBF00; /* Keep original */
+  --color-garden-accent: #FFD700; /* Keep original */
+  --color-garden-dark: #000000; /* Original black */
+  --color-garden-matrix: #4CD964; /* Keep original */
+  --color-bg-pattern: rgba(20, 83, 45, 0.05); /* Original pattern color */
+  --color-shadow: #000000; /* Standard shadow */
+  --color-button-secondary-bg: var(--color-stone-100);
+  --color-button-secondary-bg-hover: var(--color-stone-200);
+
+  /* Also add original light theme colors needed for overrides */
+  --color-stone-600: #57534e;
+  --color-stone-700: #44403c;
+  --color-emerald-50: #ecfdf5;
+  --color-emerald-800: #065f46;
+  --color-bg-overlay: rgba(255, 255, 255, 0.80); /* Reduced opacity from 0.95 for consistency */
+}
+
 @layer base {
   body {
-    @apply bg-stone-50 text-stone-800;
+    background-color: var(--color-bg-main);
+    color: var(--color-text-primary);
   }
 }
 
@@ -50,7 +137,8 @@
   }
 
   .tree-pattern {
-    background-image: radial-gradient(circle at 2px 2px, rgba(20, 83, 45, 0.05) 2px, transparent 0);
+    /* background-image: radial-gradient(circle at 2px 2px, rgba(20, 83, 45, 0.05) 2px, transparent 0); */
+    background-image: radial-gradient(circle at 2px 2px, var(--color-bg-pattern) 2px, transparent 0);
     background-size: 24px 24px;
   }
 
@@ -61,7 +149,10 @@
   }
 
   .week-box {
-    @apply relative p-4 bg-white border-2 border-stone-200 shadow-sm transition-all duration-300;
+    /* @apply relative p-4 bg-white border-2 border-stone-200 shadow-sm transition-all duration-300; */
+    @apply relative p-4 shadow-sm transition-all duration-300;
+    background-color: var(--color-bg-surface);
+    border: 2px solid var(--color-border);
     aspect-ratio: 1.5;
     clip-path: polygon(
       0 4px, 4px 0,
@@ -72,15 +163,10 @@
   }
 
   .week-box::after {
-    content: '';
-    position: absolute;
-    bottom: -2px;
-    left: 4px;
-    right: 4px;
-    height: 2px;
-    @apply bg-emerald-900;
-    opacity: 0.2;
-    transition: all 0.3s ease;
+    /* ... existing styles ... */
+    /* @apply bg-emerald-900; */
+    background-color: var(--color-accent-secondary);
+    /* ... existing styles ... */
   }
 
   .week-box:hover::after {
@@ -89,7 +175,9 @@
   }
 
   .week-box.selected {
-    @apply border-emerald-600 shadow-lg;
+    /* @apply border-emerald-600 shadow-lg; */
+    border-color: var(--color-accent-primary);
+    @apply shadow-lg;
   }
 
   .week-box.selected::after {
@@ -98,15 +186,19 @@
   }
 
   .week-box .week-date {
-    @apply font-display text-xl;
+    @apply font-display text-xl; /* Inherits primary text color */
   }
 
   .week-box .week-label {
-    @apply font-mono text-sm text-stone-500;
+    /* @apply font-mono text-sm text-stone-500; */
+    @apply font-mono text-sm;
+    color: var(--color-text-secondary);
   }
 
   .connecting-line {
-    @apply absolute h-0.5 bg-emerald-600/30;
+    /* @apply absolute h-0.5 bg-emerald-600/30; */
+    @apply absolute h-0.5;
+    background-color: color-mix(in srgb, var(--color-accent-primary) 30%, transparent); /* Use color-mix for opacity */
     top: 50%;
     transform: translateY(-50%);
     z-index: -1;

@@ -49,27 +49,27 @@ export function Auth() {
             className="w-10 h-10"
           />
           <div>
-            <h1 className="text-3xl font-display font-light text-stone-900">The Garden</h1>
+            <h1 className="text-3xl font-display font-light text-primary">The Garden</h1>
           </div>
         </div>
-        <p className="text-stone-600 font-body">Welcome to reality</p>
+        <p className="text-secondary font-body">Welcome to reality</p>
       </div>
       
-      <div className="bg-white p-8 rounded-xl shadow-sm border border-stone-200">
+      <div className="bg-surface p-8 rounded-xl shadow-sm border border-color">
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-900 rounded-lg text-sm">
+          <div className="mb-6 p-4 bg-error-muted border border-error-muted text-error rounded-lg text-sm">
             {error}
           </div>
         )}
         {success && (
-          <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-lg text-sm">
+          <div className="mb-6 p-4 bg-accent-muted border border-accent-muted text-accent-primary rounded-lg text-sm">
             {success}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-stone-700 mb-1">
+            <label htmlFor="email" className="block text-sm font-medium text-primary mb-1">
               Email address
             </label>
             <input
@@ -77,7 +77,7 @@ export function Auth() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 border border-stone-300 rounded-md shadow-sm focus:ring-emerald-500 focus:border-emerald-500"
+              className="w-full px-3 py-2 border border-color rounded-md shadow-sm focus:ring-accent-primary focus:border-accent-primary bg-main text-primary"
               required
             />
           </div>
@@ -85,7 +85,7 @@ export function Auth() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-emerald-800 text-white py-2 px-4 rounded-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-accent-primary text-white py-2 px-4 rounded-md hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-accent-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? 'Sending...' : 'Send Magic Link'}
           </button>

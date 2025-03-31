@@ -34,7 +34,7 @@ export function MyBookings() {
     return (
       <div className="max-w-7xl mx-auto px-4 py-12">
         <div className="flex justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-900"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-primary"></div>
         </div>
       </div>
     );
@@ -43,7 +43,7 @@ export function MyBookings() {
   if (error) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-12">
-        <div className="bg-rose-50 text-rose-600 p-4 rounded-lg">
+        <div className="bg-error-muted text-error p-4 rounded-lg">
           {error}
         </div>
       </div>
@@ -54,15 +54,15 @@ export function MyBookings() {
     <div className="max-w-7xl mx-auto px-4 py-6 sm:py-8">
       <div className="flex justify-between items-start mb-8">
         <div>
-          <h1 className="text-4xl font-display font-light text-stone-900 mb-2">My Account</h1>
-          <div className="text-stone-600">
+          <h1 className="text-4xl font-display font-light text-primary mb-2">My Account</h1>
+          <div className="text-secondary">
             <p className="font-regular">{session?.user?.email}</p>
           </div>
         </div>
       </div>
       
       {bookings.length === 0 ? (
-        <div className="text-center text-stone-600">
+        <div className="text-center text-secondary">
           No bookings found. Book your first stay!
         </div>
       ) : (
@@ -72,31 +72,31 @@ export function MyBookings() {
               key={booking.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white p-6 rounded-xl shadow-sm border border-stone-200"
+              className="bg-surface p-6 rounded-xl shadow-sm border border-color"
             >
               <div className="flex items-start justify-between">
                 <div>
-                  <h3 className="text-xl font-display font-light mb-2">
+                  <h3 className="text-xl font-display font-light mb-2 text-primary">
                     {booking.accommodation?.title || 'Accommodation'}
                   </h3>
                   <div className="space-y-1 text-sm font-regular">
                     <p>
-                      <span className="text-stone-500">Check-in:</span>{' '}
+                      <span className="text-secondary">Check-in:</span>{' '}
                       {format(parseISO(booking.check_in), 'PPP')}
                     </p>
                     <p>
-                      <span className="text-stone-500">Check-out:</span>{' '}
+                      <span className="text-secondary">Check-out:</span>{' '}
                       {format(parseISO(booking.check_out), 'PPP')}
                     </p>
                     <p>
-                      <span className="text-stone-500">Total Price:</span>{' '}
+                      <span className="text-secondary">Total Price:</span>{' '}
                       €{booking.total_price}
                     </p>
                     <a 
                       href="https://gardening.notion.site/Welcome-to-The-Garden-2684f446b48e4b43b3f003d7fca33664?pvs=4"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-emerald-600 hover:text-emerald-700 transition-colors mt-2"
+                      className="inline-flex items-center gap-1 text-accent-primary hover:text-accent-hover transition-colors mt-2"
                     >
                       Welcome Guide
                       <ExternalLink className="w-3 h-3" />
@@ -106,7 +106,7 @@ export function MyBookings() {
                 {booking.accommodation?.image_url && (
                   <button
                     onClick={() => setEnlargedImageUrl(booking.accommodation?.image_url || null)}
-                    className="focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 rounded-lg transition-opacity hover:opacity-80"
+                    className="focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-offset-2 rounded-lg transition-opacity hover:opacity-80"
                   >
                     <img
                       src={booking.accommodation.image_url}
@@ -137,7 +137,7 @@ export function MyBookings() {
             />
             <button
               onClick={() => setEnlargedImageUrl(null)}
-              className="absolute -top-2 -right-2 bg-white rounded-full p-1 text-stone-600 hover:text-stone-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              className="absolute -top-2 -right-2 bg-surface rounded-full p-1 text-secondary hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary"
               aria-label="Close enlarged image"
             >
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">

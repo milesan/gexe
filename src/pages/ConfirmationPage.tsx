@@ -31,29 +31,29 @@ export function ConfirmationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-bg-main flex items-center justify-center p-4">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-2xl w-full bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden"
+        className="max-w-2xl w-full bg-bg-surface rounded-xl shadow-sm border border-border overflow-hidden"
       >
-        <div className="p-8 text-center border-b border-stone-200">
+        <div className="p-8 text-center border-b border-border">
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-            className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6"
+            className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/20 rounded-full flex items-center justify-center mx-auto mb-6"
           >
-            <CheckCircle className="w-8 h-8 text-emerald-600" />
+            <CheckCircle className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
           </motion.div>
           
-          <h1 className="text-3xl font-display font-light text-stone-900 mb-2">
+          <h1 className="text-3xl font-display font-light text-text-primary mb-2">
             Booking Confirmed
           </h1>
-          <p className="text-stone-600 font-body">
+          <p className="text-text-secondary font-body">
             Your journey at The Garden awaits
           </p>
-          <p className="text-stone-500 font-body text-sm mt-2">
+          <p className="text-text-secondary/80 font-body text-sm mt-2">
             A confirmation email has been sent to your registered email address
           </p>
         </div>
@@ -61,81 +61,81 @@ export function ConfirmationPage() {
         <div className="p-8 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <div className="flex items-center gap-2 text-stone-600">
+              <div className="flex items-center gap-2 text-text-secondary">
                 <Calendar className="w-4 h-4" />
                 <span className="text-sm">Check-in</span>
               </div>
-              <p className="font-display text-xl">
+              <p className="font-display text-xl text-text-primary">
                 {formatInTimeZone(new Date(booking.checkIn), 'UTC', 'EEEE, MMMM d')}
               </p>
-              <p className="text-sm text-emerald-600">
+              <p className="text-sm text-emerald-600 dark:text-emerald-400">
                 Available from 3-8PM
               </p>
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center gap-2 text-stone-600">
+              <div className="flex items-center gap-2 text-text-secondary">
                 <Calendar className="w-4 h-4" />
                 <span className="text-sm">Check-out</span>
               </div>
-              <p className="font-display text-xl">
+              <p className="font-display text-xl text-text-primary">
                 {formatInTimeZone(new Date(booking.checkOut), 'UTC', 'EEEE, MMMM d')}
               </p>
-              <p className="text-sm text-emerald-600">
+              <p className="text-sm text-emerald-600 dark:text-emerald-400">
                 By 12PM Noon
               </p>
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center gap-2 text-stone-600">
+              <div className="flex items-center gap-2 text-text-secondary">
                 <MapPin className="w-4 h-4" />
                 <span className="text-sm">Accommodation</span>
               </div>
-              <p className="font-display text-xl">
+              <p className="font-display text-xl text-text-primary">
                 {booking.accommodation}
               </p>
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center gap-2 text-stone-600">
+              <div className="flex items-center gap-2 text-text-secondary">
                 <Users className="w-4 h-4" />
                 <span className="text-sm">Guests</span>
               </div>
-              <p className="font-display text-xl">
+              <p className="font-display text-xl text-text-primary">
                 1 Person
               </p>
             </div>
           </div>
 
-          <div className="bg-amber-50 p-4 rounded-lg border border-amber-100 my-6">
-            <p className="text-amber-800 text-center flex items-center justify-center">
+          <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg border border-amber-100 dark:border-amber-900/30 my-6">
+            <p className="text-amber-800 dark:text-amber-300 text-center flex items-center justify-center">
               <Calendar className="w-4 h-4 mr-2 flex-shrink-0" />
               To ensure a smooth arrival, please respect the check-in window (3PM-8PM) and check-out time (12PM)
             </p>
           </div>
 
-          <div className="border-t border-stone-200 pt-6">
-            <div className="flex justify-between items-center text-lg font-display">
+          <div className="border-t border-border pt-6">
+            <div className="flex justify-between items-center text-lg font-display text-text-primary">
               <span>Total Amount Paid</span>
               <span>€{booking.totalPrice}</span>
             </div>
           </div>
 
-          <div className="bg-emerald-50 p-6 rounded-lg space-y-4">
-            <h3 className="font-display text-lg text-emerald-900">
+          <div className="bg-emerald-50 dark:bg-emerald-900/20 p-6 rounded-lg space-y-4">
+            <h3 className="font-display text-lg text-emerald-900 dark:text-emerald-200">
               Tidbits
             </h3>
-            <ul className="space-y-2 text-sm text-emerald-800">
+            <ul className="space-y-2 text-sm text-emerald-800 dark:text-emerald-300">
               <li className="flex items-start gap-2">
-                <span className="text-emerald-700 mt-1">❧</span>
+                <span className="text-emerald-700 dark:text-emerald-400 mt-1">❧</span>
                 <span>This is a co-created experience. </span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-emerald-700 mt-1">❧</span>
+                <span className="text-emerald-700 dark:text-emerald-400 mt-1">❧</span>
                 <span>The Garden is a strictly smoke & alcohol-free space</span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-emerald-700 mt-1">❧</span>
+                <span className="text-emerald-700 dark:text-emerald-400 mt-1">❧</span>
                 <span>Lunch & dinner included Monday-Friday</span>
               </li>
             </ul>
@@ -145,7 +145,7 @@ export function ConfirmationPage() {
             href="https://gardening.notion.site/Welcome-to-The-Garden-2684f446b48e4b43b3f003d7fca33664?pvs=4"
             target="_blank"
             rel="noopener noreferrer"
-            className="block w-full bg-emerald-900 text-white py-3 px-6 rounded-lg hover:bg-emerald-800 transition-colors text-center font-display text-lg flex items-center justify-center gap-2"
+            className="block w-full bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white py-3 px-6 rounded-lg transition-colors text-center font-display text-lg flex items-center justify-center gap-2"
           >
             Welcome Guide
             <ExternalLink className="w-4 h-4" />
@@ -153,7 +153,7 @@ export function ConfirmationPage() {
 
           <Link 
             to="/my-bookings"
-            className="inline-flex items-center gap-2 text-stone-600 hover:text-stone-900 transition-colors"
+            className="inline-flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>View All Bookings</span>
