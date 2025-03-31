@@ -7,7 +7,7 @@ import { BookingSummary } from '../components/BookingSummary';
 import { useWeeklyAccommodations } from '../hooks/useWeeklyAccommodations';
 
 const WEEKS_TO_SHOW = 16;
-const BACKGROUND_IMAGE = "https://images.unsplash.com/photo-1510798831971-661eb04b3739?q=80&w=2940&auto=format&fit=crop";
+const BACKGROUND_IMAGE = "https://guquxpxxycfmmlqajdyw.supabase.co/storage/v1/object/public/background-image//fern-background.jpg"
 
 export function FinalPage() {
   const { accommodations, loading } = useWeeklyAccommodations();

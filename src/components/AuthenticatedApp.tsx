@@ -10,7 +10,7 @@ import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import { PaymentPage } from '../pages/PaymentPage';
 import { useAccommodations } from '../hooks/useAccommodations';
 import { WhitelistWelcomeModal } from './WhitelistWelcomeModal';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Sun, Moon } from 'lucide-react';
 import { Footer } from './Footer';
 
 export function AuthenticatedApp() {
@@ -18,6 +18,8 @@ export function AuthenticatedApp() {
   const [currentPage, setCurrentPage] = useState<'calendar' | 'my-bookings' | 'admin'>('calendar');
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  // THEME FUNCTIONALITY COMMENTED OUT - TO BE IMPLEMENTED LATER
+  // const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const session = useSession();
   const navigate = useNavigate();
   const adminEmails = ['andre@thegarden.pt', 'redis213@gmail.com', 'dawn@thegarden.pt', 'simone@thegarden.pt', 'samjlloa@gmail.com', 'redis213+testadmin@gmail.com'];
@@ -33,6 +35,31 @@ export function AuthenticatedApp() {
   useEffect(() => {
     checkWhitelistStatus();
   }, []);
+
+  // THEME FUNCTIONALITY COMMENTED OUT - TO BE IMPLEMENTED LATER
+  // Effect to load saved theme from localStorage on mount
+  // useEffect(() => {
+  //   const savedTheme = localStorage.getItem('theme');
+  //   if (savedTheme === 'light') {
+  //     setTheme('light');
+  //     document.documentElement.classList.add('light-mode');
+  //   }
+  // }, []);
+
+  // Effect to apply theme changes
+  // useEffect(() => {
+  //   if (theme === 'light') {
+  //     document.documentElement.classList.add('light-mode');
+  //     localStorage.setItem('theme', 'light');
+  //   } else {
+  //     document.documentElement.classList.remove('light-mode');
+  //     localStorage.setItem('theme', 'dark');
+  //   }
+  // }, [theme]);
+
+  // const toggleTheme = () => {
+  //   setTheme(prevTheme => prevTheme === 'dark' ? 'light' : 'dark');
+  // };
 
   const checkWhitelistStatus = async () => {
     try {
@@ -93,41 +120,54 @@ export function AuthenticatedApp() {
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 flex flex-col">
-      <header className="sticky top-0 z-50 bg-white border-b border-stone-200">
+    <div className="min-h-screen bg-main flex flex-col">
+      <header className="sticky top-0 z-50 bg-surface border-b border-border">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16 sm:h-20">
             <button 
               onClick={() => handleNavigation('calendar')}
-              className="text-black flex items-center gap-3 hover:opacity-80 transition-opacity"
+              className="text-primary flex items-center gap-3 hover:opacity-80 transition-opacity"
             >
               <div>
-                <h1 className="text-xl sm:text-2xl font-['PP_Lettra_Regular'] text-stone-800">The Garden</h1>
+                <h1 className="text-xl sm:text-3xl font-['VT323'] text-primary">The Garden</h1>
               </div>
             </button>
 
             {/* Mobile menu button */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="lg:hidden p-2 rounded-lg hover:bg-stone-100 transition-colors"
+              className="lg:hidden p-2 rounded-lg hover:bg-[var(--color-bg-surface-hover)] transition-colors"
               aria-label="Toggle menu"
             >
               {isMobileMenuOpen ? (
-                <X className="w-6 h-6 text-stone-600" />
+                <X className="w-6 h-6 text-secondary" />
               ) : (
-                <Menu className="w-6 h-6 text-stone-600" />
+                <Menu className="w-6 h-6 text-secondary" />
               )}
             </button>
 
             {/* Desktop navigation */}
             <div className="hidden lg:flex items-center gap-6">
+              {/* THEME TOGGLE BUTTON COMMENTED OUT - TO BE IMPLEMENTED LATER
+              <button
+                onClick={toggleTheme}
+                className="p-2 rounded-full bg-[var(--color-button-secondary-bg)] text-secondary hover:text-primary hover:bg-[var(--color-button-secondary-bg-hover)] transition-colors"
+                aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+              >
+                {theme === 'dark' ? (
+                  <Sun className="w-5 h-5" />
+                ) : (
+                  <Moon className="w-5 h-5" />
+                )}
+              </button>
+              */}
               <nav className="flex gap-6">
                 <button
                   onClick={() => handleNavigation('my-bookings')}
                   className={`text-sm font-regular transition-colors ${
                     currentPage === 'my-bookings' 
-                      ? 'text-emerald-900 font-medium' 
-                      : 'text-stone-600 hover:text-emerald-900'
+                      ? 'text-accent-secondary font-medium' 
+                      : 'text-secondary hover:text-accent-secondary'
                   }`}
                 >
                   My Account
@@ -135,7 +175,7 @@ export function AuthenticatedApp() {
                 {isAdmin && (
                   <button
                     onClick={() => handleNavigation('admin')}
-                    className="bg-emerald-900 text-white px-4 py-2 rounded-lg hover:bg-emerald-800 transition-colors text-sm font-regular"
+                    className="bg-accent-secondary text-white px-4 py-2 rounded-lg hover:bg-accent-primary transition-colors text-sm font-regular"
                   >
                     Admin Panel
                   </button>
@@ -143,7 +183,7 @@ export function AuthenticatedApp() {
               </nav>
               <button 
                 onClick={handleSignOut}
-                className="bg-stone-100 text-stone-700 px-6 py-2 hover:bg-stone-200 transition-colors text-sm font-regular rounded-lg border border-stone-200"
+                className="bg-[var(--color-button-secondary-bg)] text-primary px-6 py-2 hover:bg-[var(--color-button-secondary-bg-hover)] transition-colors text-sm font-regular rounded-lg border border-border"
               >
                 Sign Out
               </button>
@@ -156,13 +196,31 @@ export function AuthenticatedApp() {
               isMobileMenuOpen ? 'max-h-64 opacity-100' : 'max-h-0 opacity-0'
             } overflow-hidden`}
           >
-            <div className="py-4 space-y-4 border-t border-stone-200">
+            <div className="py-4 space-y-4 border-t border-border">
+              {/* THEME TOGGLE BUTTON COMMENTED OUT - TO BE IMPLEMENTED LATER
+              <button
+                onClick={toggleTheme}
+                className="flex items-center gap-2 w-full text-left px-4 py-2 rounded-lg text-secondary hover:bg-[var(--color-bg-surface-hover)] transition-colors text-sm"
+              >
+                {theme === 'dark' ? (
+                  <>
+                    <Sun className="w-4 h-4" />
+                    <span>Switch to Light Mode</span>
+                  </>
+                ) : (
+                  <>
+                    <Moon className="w-4 h-4" />
+                    <span>Switch to Dark Mode</span>
+                  </>
+                )}
+              </button>
+              */}
               <button
                 onClick={() => handleNavigation('my-bookings')}
-                className={`w-full text-left px-4 py-2 rounded-lg transition-colors ${
+                className={`w-full text-left px-4 py-2 rounded-lg transition-colors text-sm ${
                   currentPage === 'my-bookings' 
-                    ? 'bg-emerald-50 text-emerald-900 font-medium' 
-                    : 'text-stone-600 hover:bg-stone-50'
+                    ? 'bg-[color-mix(in_srgb,_var(--color-accent-secondary)_20%,_transparent)] text-accent-secondary font-medium' 
+                    : 'text-secondary hover:bg-[var(--color-bg-surface-hover)]'
                 }`}
               >
                 My Account
@@ -170,14 +228,14 @@ export function AuthenticatedApp() {
               {isAdmin && (
                 <button
                   onClick={() => handleNavigation('admin')}
-                  className="w-full text-left bg-emerald-900 text-white px-4 py-2 rounded-lg hover:bg-emerald-800 transition-colors text-sm font-regular"
+                  className="w-full text-left bg-accent-secondary text-white px-4 py-2 rounded-lg hover:bg-accent-primary transition-colors text-sm font-regular"
                 >
                   Admin Panel
                 </button>
               )}
               <button 
                 onClick={handleSignOut}
-                className="w-full text-left bg-stone-100 text-stone-700 px-4 py-2 hover:bg-stone-200 transition-colors text-sm font-regular rounded-lg border border-stone-200"
+                className="w-full text-left bg-[var(--color-button-secondary-bg)] text-primary px-4 py-2 hover:bg-[var(--color-button-secondary-bg-hover)] transition-colors text-sm font-regular rounded-lg border border-border"
               >
                 Sign Out
               </button>

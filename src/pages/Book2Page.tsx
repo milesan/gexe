@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Calendar, ChevronLeft, ChevronRight, Home, X, HelpCircle } from 'lucide-react';
-import { isSameWeek, addWeeks, isAfter, isBefore, startOfMonth, format, addMonths, subMonths, startOfDay, isSameDay, addDays, eachDayOfInterval, differenceInDays } from 'date-fns';
+import { isSameWeek, addWeeks, isAfter, isBefore, startOfMonth, format, addMonths, subMonths, startOfDay, isSameDay, addDays, differenceInDays } from 'date-fns';
 import { WeekSelector } from '../components/WeekSelector';
 import { formatDateForDisplay, normalizeToUTCDate, doDateRangesOverlap, calculateDurationDiscountWeeks } from '../utils/dates';
 import { CabinSelector } from '../components/CabinSelector';
@@ -22,8 +22,7 @@ import { areSameWeeks } from '../utils/dates';
 import { clsx } from 'clsx';
 import { calculateDaysBetween } from '../utils/dates';
 
-const BACKGROUND_IMAGE = "https://images.unsplash.com/photo-1510798831971-661eb04b3739?q=80&w=2940&auto=format&fit=crop";
-
+const BACKGROUND_IMAGE = "https://guquxpxxycfmmlqajdyw.supabase.co/storage/v1/object/public/background-image//fern-background-vertical.png"
 export function Book2Page() {
   // Get current date and set the initial month
   const today = new Date();
@@ -671,28 +670,28 @@ export function Book2Page() {
     <div 
       className="min-h-screen tree-pattern"
       style={{
-        backgroundImage: `linear-gradient(rgba(244, 240, 232, 0.9), rgba(244, 240, 232, 0.9)), url(${BACKGROUND_IMAGE})`,
+        backgroundImage: `linear-gradient(rgba(31, 41, 55, 0.9), rgba(31, 41, 55, 0.9)), url(${BACKGROUND_IMAGE})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
       }}
     >
       <div className="container mx-auto py-4 xs:py-6 sm:py-8 px-4">
-        <h1 className="text-4xl xs:text-4xl font-display mb-3 xs:mb-4 text-stone-800">Book Your Stay</h1>
+        <h1 className="text-4xl xs:text-4xl font-display mb-3 xs:mb-4 text-primary">Book Your Stay</h1>
         
-        <div className="lg:col-span-2 max-w-2xl bg-white/50 backdrop-blur-sm border border-stone-200/50 rounded-lg p-3 xs:p-4 sm:p-5 mb-4 xs:mb-6 sm:mb-8 shadow-sm">
+        <div className="lg:col-span-2 max-w-2xl bg-surface/50 backdrop-blur-sm border border-border/50 rounded-lg p-3 xs:p-4 sm:p-5 mb-4 xs:mb-6 sm:mb-8 shadow-sm">
           <div className="flex items-center gap-2 mb-2 xs:mb-3">
-            <svg className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <svg className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-accent-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            <h2 className="text-xs xs:text-sm font-medium text-stone-700 font-regular">Note!</h2>
+            <h2 className="text-xs xs:text-sm font-medium text-primary font-regular">Note!</h2>
           </div>
-          <div className="flex flex-col gap-2 xs:gap-3 text-stone-600">
+          <div className="flex flex-col gap-2 xs:gap-3 text-secondary">
             <p className="flex items-start gap-2 xs:gap-2.5 text-xs xs:text-sm font-regular">
-              <span className="text-emerald-600 mt-0.5">•</span>
+              <span className="text-accent-primary mt-0.5">•</span>
               The longer you stay, the less € you contribute on both lodging & base-rate
             </p>
             <p className="flex items-start gap-2 xs:gap-2.5 text-xs xs:text-sm font-regular">
-              <span className="text-emerald-600 mt-0.5">•</span>
+              <span className="text-accent-primary mt-0.5">•</span>
               The quieter the time of year, the less € you contribute on lodging.
             </p>
           </div>
@@ -735,7 +734,7 @@ export function Book2Page() {
                 ) : (
                   <button
                     onClick={() => setIsAdminMode(true)}
-                    className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-lg text-xs xs:text-sm bg-emerald-600 text-white hover:bg-emerald-700 transition-all duration-200 font-medium font-regular"
+                    className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-lg text-xs xs:text-sm bg-accent-primary text-white hover:bg-accent-secondary transition-all duration-200 font-medium font-regular"
                   >
                     <svg 
                       className="h-4 w-4 xs:h-5 xs:w-5" 
@@ -756,10 +755,10 @@ export function Book2Page() {
               </div>
             )}
 
-            <div className="bg-white rounded-xl shadow-sm p-3 xs:p-4 sm:p-6 mb-4 xs:mb-5 sm:mb-6">
+            <div className="bg-surface rounded-xl shadow-sm p-3 xs:p-4 sm:p-6 mb-4 xs:mb-5 sm:mb-6">
               <div className="flex flex-col gap-3 mb-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                  <h2 className="text-lg xxs:text-xl sm:text-2xl font-display font-light text-stone-800">
+                  <h2 className="text-lg xxs:text-xl sm:text-2xl font-display font-light text-primary">
                     {selectedWeeks.length === 0 ? "When do you want to arrive?" : 
                      selectedWeeks.length === 1 ? "When do you want to depart?" : 
                      "Select your lodging below"}
@@ -767,7 +766,7 @@ export function Book2Page() {
 
                   <div className="flex items-center gap-2 xxs:gap-3">
                     <button 
-                      className="p-1 xxs:p-1.5 sm:p-2 rounded-full hover:bg-gray-100 text-emerald-600"
+                      className="p-1 xxs:p-1.5 sm:p-2 rounded-full hover:bg-[var(--color-bg-surface-hover)] text-accent-primary"
                       onClick={() => setCurrentMonth(startOfMonth(new Date()))}
                       aria-label="Return to current month"
                       title="Return to today"
@@ -775,23 +774,23 @@ export function Book2Page() {
                       <Home className="h-3.5 w-3.5 xxs:h-4 xxs:w-4 sm:h-5 sm:w-5" />
                     </button>
 
-                    <div className="flex items-center bg-white/80 rounded-lg shadow-sm border border-stone-200/50">
+                    <div className="flex items-center bg-surface/80 rounded-lg shadow-sm border border-border/50">
                       <button 
-                        className="p-1 xxs:p-1.5 sm:p-2 rounded-l-lg hover:bg-gray-100 border-r border-stone-200/50"
+                        className="p-1 xxs:p-1.5 sm:p-2 rounded-l-lg hover:bg-[var(--color-bg-surface-hover)] border-r border-border/50"
                         onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
                         aria-label="Previous month"
                       >
-                        <ChevronLeft className="h-3.5 w-3.5 xxs:h-4 xxs:w-4 sm:h-5 sm:w-5 text-stone-600" />
+                        <ChevronLeft className="h-3.5 w-3.5 xxs:h-4 xxs:w-4 sm:h-5 sm:w-5 text-secondary" />
                       </button>
-                      <div className="px-2 xxs:px-3 sm:px-4 text-center text-stone-700 font-medium whitespace-nowrap text-[10px] xxs:text-xs sm:text-sm font-regular min-w-[120px] xxs:min-w-[140px] sm:min-w-[160px]">
+                      <div className="px-2 xxs:px-3 sm:px-4 text-center text-primary font-medium whitespace-nowrap text-[10px] xxs:text-xs sm:text-sm font-regular min-w-[120px] xxs:min-w-[140px] sm:min-w-[160px]">
                         {format(currentMonth, 'MMMM yyyy')}
                       </div>
                       <button 
-                        className="p-1 xxs:p-1.5 sm:p-2 rounded-r-lg hover:bg-gray-100 border-l border-stone-200/50"
+                        className="p-1 xxs:p-1.5 sm:p-2 rounded-r-lg hover:bg-[var(--color-bg-surface-hover)] border-l border-border/50"
                         onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
                         aria-label="Next month"
                       >
-                        <ChevronRight className="h-3.5 w-3.5 xxs:h-4 xxs:w-4 sm:h-5 sm:w-5 text-stone-600" />
+                        <ChevronRight className="h-3.5 w-3.5 xxs:h-4 xxs:w-4 sm:h-5 sm:w-5 text-secondary" />
                       </button>
                     </div>
                   </div>
@@ -801,20 +800,20 @@ export function Book2Page() {
                   <div className="flex flex-wrap items-center gap-1.5 xxs:gap-2">
                     <button
                       onClick={() => setShowDiscountModal(true)}
-                      className="group flex items-center gap-1 xxs:gap-1.5 px-2 xxs:px-2.5 py-1 xxs:py-1.5 text-[10px] xxs:text-xs sm:text-sm font-medium border rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 text-emerald-700 bg-emerald-50 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300 relative font-regular"
+                      className="group flex items-center gap-1 xxs:gap-1.5 px-2 xxs:px-2.5 py-1 xxs:py-1.5 text-[10px] xxs:text-xs sm:text-sm font-medium border rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 relative font-regular text-accent-primary bg-[color-mix(in_srgb,_var(--color-accent-primary)_10%,_transparent)] border-[color-mix(in_srgb,_var(--color-accent-primary)_30%,_transparent)] hover:bg-[color-mix(in_srgb,_var(--color-accent-primary)_20%,_transparent)] hover:border-[color-mix(in_srgb,_var(--color-accent-primary)_40%,_transparent)]"
                     >
                       <span>{combinedDiscount > 0 ? `Discount: ${seasonBreakdown?.hasMultipleSeasons ? '~' : ''}${Math.round(combinedDiscount * 100)}%` : 'Discounts'}</span>
-                      <HelpCircle className="w-3 h-3 xxs:w-3.5 xxs:h-3.5 sm:w-4 sm:h-4 text-emerald-600" />
-                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 xxs:mb-1.5 px-1.5 xxs:px-2 py-0.5 xxs:py-1 bg-stone-800 text-white text-[8px] xxs:text-[10px] sm:text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-regular">
+                      <HelpCircle className="w-3 h-3 xxs:w-3.5 xxs:h-3.5 sm:w-4 sm:h-4 text-accent-primary" />
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 xxs:mb-1.5 px-1.5 xxs:px-2 py-0.5 xxs:py-1 bg-text-primary text-bg-main text-[8px] xxs:text-[10px] sm:text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-regular">
                         Click for detailed breakdown
-                        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 rotate-45 w-1.5 h-1.5 bg-stone-800"></div>
+                        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 rotate-45 w-1.5 h-1.5 bg-text-primary"></div>
                       </div>
                     </button>
                     <button
                       onClick={handleClearSelection}
                       className={clsx(
                         "flex items-center gap-0.5 xxs:gap-1 px-2 xxs:px-2.5 py-1 xxs:py-1.5 text-[10px] xxs:text-xs sm:text-sm font-medium border rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 font-regular",
-                        "text-emerald-700 bg-emerald-50 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300"
+                        "text-accent-primary bg-[color-mix(in_srgb,_var(--color-accent-primary)_10%,_transparent)] border-[color-mix(in_srgb,_var(--color-accent-primary)_30%,_transparent)] hover:bg-[color-mix(in_srgb,_var(--color-accent-primary)_20%,_transparent)] hover:border-[color-mix(in_srgb,_var(--color-accent-primary)_40%,_transparent)]"
                       )}
                       aria-label="Clear week selection"
                     >
@@ -827,7 +826,7 @@ export function Book2Page() {
 
               {isLoading ? (
                 <div className="h-48 xs:h-56 sm:h-64 flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-8 w-8 xs:h-10 xs:w-10 border-t-2 border-b-2 border-green-800"></div>
+                  <div className="animate-spin rounded-full h-8 w-8 xs:h-10 xs:w-10 border-t-2 border-b-2 border-accent-primary"></div>
                 </div>
               ) : (
                 <WeekSelector 
@@ -845,8 +844,8 @@ export function Book2Page() {
             </div>
             
             {/* Cabin Selector - Under the calendar */}
-            <div className="bg-white rounded-xl shadow-sm p-3 xs:p-4 sm:p-6 mb-4 xs:mb-5 sm:mb-6 cabin-selector">
-              <h2 className="text-lg xs:text-xl lg:text-2xl font-display font-light text-stone-800 mb-3 xs:mb-4">Select Accommodation</h2>
+            <div className="bg-surface rounded-xl shadow-sm p-3 xs:p-4 sm:p-6 mb-4 xs:mb-5 sm:mb-6 cabin-selector">
+              <h2 className="text-lg xs:text-xl lg:text-2xl font-display font-light text-primary mb-3 xs:mb-4">Select Accommodation</h2>
               <CabinSelector 
                 accommodations={accommodations || []}
                 selectedAccommodationId={selectedAccommodation}
@@ -863,7 +862,7 @@ export function Book2Page() {
           <div>
             {/* Use regular position on small screens and sticky on large screens */}
             <div className="lg:sticky lg:top-8">
-              <div className="bg-white rounded-xl shadow-sm p-3 xs:p-4 sm:p-6 mb-4 xs:mb-5 sm:mb-6">
+              <div className="bg-surface rounded-xl shadow-sm p-3 xs:p-4 sm:p-6 mb-4 xs:mb-5 sm:mb-6">
                 {selectedWeeks.length > 0 ? (
                   <BookingSummary 
                     selectedWeeks={selectedWeeks}
@@ -875,7 +874,7 @@ export function Book2Page() {
                     seasonBreakdown={seasonBreakdown}
                   />
                 ) : (
-                  <div className="text-stone-600 text-xs xs:text-sm font-regular">
+                  <div className="text-secondary text-xs xs:text-sm font-regular">
                     <p>Select your dates to see booking details</p>
                   </div>
                 )}

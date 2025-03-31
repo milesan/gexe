@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar, Clock, ArrowRight, LogOut, Sun, Moon, Home, Bed, ChevronDown, ChevronUp, Percent, Info } from 'lucide-react';
+import { X, Calendar, Clock, ArrowRight, LogOut, Home, Bed, ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { useSchedulingRules } from '../hooks/useSchedulingRules';
 import { getSeasonalDiscount, getDurationDiscount, getSeasonBreakdown } from '../utils/pricing';
 import type { Week } from '../types/calendar';
@@ -16,7 +16,7 @@ import type { DayPickerSingleProps } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import { formatDateForDisplay } from '../utils/dates';
 import * as Tooltip from '@radix-ui/react-tooltip';
-import { calculateTotalNights, calculateDurationDiscountWeeks } from '../utils/dates';
+import { calculateTotalNights, calculateDurationDiscountWeeks, calculateTotalDays } from '../utils/dates';
 import { DiscountModal } from './DiscountModal';
 import { formatInTimeZone } from 'date-fns-tz';
 
@@ -549,10 +549,7 @@ export function BookingSummary({
       }
 
       // Calculate check-out date based on the selected check-in date
-      const totalDays = differenceInDays(
-        selectedWeeks[selectedWeeks.length - 1].endDate,
-        selectedWeeks[0].startDate
-      );
+      const totalDays = calculateTotalDays(selectedWeeks);
       const checkOut = addDays(selectedCheckInDate, totalDays);
 
       console.log('[Booking Summary] Starting booking process...');
@@ -681,6 +678,17 @@ export function BookingSummary({
   console.log('[BookingSummary] Show Stripe Modal state:', showStripeModal);
   // --- END LOGGING ---
 
+  // --- Calculate display weeks using utility function ---
+  let totalWeeksDisplay = 0;
+  if (selectedWeeks.length > 0) {
+    const totalDays = calculateTotalDays(selectedWeeks);
+    totalWeeksDisplay = Math.floor(totalDays / 7);
+    console.log('[BookingSummary] Calculated display weeks (using util):', { totalDaysFromUtil: totalDays, weeks: totalWeeksDisplay });
+  } else {
+    console.log('[BookingSummary] Cannot calculate display weeks, no weeks selected.');
+  }
+  // --- END Calculation ---
+
   const fallbackDate = new Date();
   fallbackDate.setUTCHours(0, 0, 0, 0);
 
@@ -699,13 +707,13 @@ export function BookingSummary({
               initial={{ scale: 0.95 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.95 }}
-              className="bg-white rounded-lg max-w-xl w-full p-6"
+              className="bg-surface rounded-lg max-w-xl w-full p-6"
             >
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-serif">Complete Payment</h3>
+                <h3 className="text-xl font-serif text-primary">Complete Payment</h3>
                 <button
                   onClick={() => setShowStripeModal(false)}
-                  className="text-stone-400 hover:text-stone-600"
+                  className="text-secondary hover:text-secondary-hover"
                 >
                   <X className="w-6 h-6" />
                 </button>
@@ -724,17 +732,17 @@ export function BookingSummary({
 
       {/* Summary of Stay section - Changes from sticky right positioning on mobile to regular flow */}
       <div className="lg:sticky lg:top-4 w-full max-w-md lg:max-w-lg mx-auto">
-        <div className="bg-white p-5 sm:p-6 lg:p-8 pixel-corners">
+        <div className="bg-surface p-5 sm:p-6 lg:p-8 pixel-corners">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-6">
             <div className="flex items-center justify-between w-full sm:w-auto">
-              <h2 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-display font-light text-stone-900">
+              <h2 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-display font-light text-primary">
                 Summary of Stay
               </h2>
             </div>
           </div>
 
           {error && (
-            <div className="mb-6 p-4 bg-rose-50 text-rose-600 rounded-lg flex justify-between items-center font-regular text-xs sm:text-sm">
+            <div className="mb-6 p-4 bg-error-muted text-error rounded-lg flex justify-between items-center font-regular text-xs sm:text-sm">
               <span>{error}</span>
               <button onClick={() => setError(null)}>
                 <X className="w-4 h-4" />
@@ -745,56 +753,50 @@ export function BookingSummary({
           {selectedWeeks.length > 0 && (
             <div className="space-y-6">
               {/* Stay Details Section */}
-              <div className="bg-white p-4 sm:p-5 rounded-xl border border-stone-200 shadow-sm pixel-corners overflow-hidden relative">
+              <div className="bg-surface p-4 sm:p-5 rounded-xl border border-color shadow-sm pixel-corners overflow-hidden relative">
                 <button
                   onClick={onClearWeeks}
-                  className="absolute top-0.5 right-0.5 p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
+                  className="absolute top-0.5 right-0.5 p-1.5 text-secondary hover:text-error hover:bg-error-muted-hover rounded-md transition-colors"
                 >
                   <X className="w-4 h-4" />
                   <span className="sr-only">Clear Selected Dates</span>
                 </button>
                 <div className="space-y-4 sm:space-y-5">
                   {/* Arrival Information */}
-                  <div className="bg-white border border-emerald-200 rounded-lg shadow-sm p-3 sm:p-4">
-                    <h4 className="font-medium text-stone-800 mb-2 font-regular text-base sm:text-lg">Arrival</h4>
+                  <div className="bg-surface border border-color rounded-lg shadow-sm p-3 sm:p-4">
+                    <h4 className="font-medium text-primary mb-2 font-regular text-base sm:text-lg">Arrival</h4>
                     <div className="space-y-1">
-                      <p className="text-emerald-700 text-sm sm:text-base font-regular">{formatDateWithDay(selectedWeeks[0].startDate)}</p>
-                      <p className="text-emerald-700 text-sm sm:text-base font-regular">3PM-8PM</p>
+                      <p className="text-accent-primary text-sm sm:text-base font-regular">{formatDateWithDay(selectedWeeks[0].startDate)}</p>
+                      <p className="text-accent-primary text-sm sm:text-base font-regular">3PM-8PM</p>
                     </div>
                   </div>
                   
                   {/* Departure Information */}
-                  <div className="bg-white border border-stone-200 rounded-lg shadow-sm p-3 sm:p-4">
-                    <h4 className="font-medium text-stone-800 mb-2 font-regular text-base sm:text-lg">Begone by</h4>
+                  <div className="bg-surface border border-color rounded-lg shadow-sm p-3 sm:p-4">
+                    <h4 className="font-medium text-primary mb-2 font-regular text-base sm:text-lg">Begone by</h4>
                     <div className="space-y-1">
-                      <p className="text-stone-600 text-sm sm:text-base font-regular">{formatDateWithOrdinal(selectedWeeks[selectedWeeks.length - 1].endDate)}</p>
-                      <p className="text-stone-600 text-sm sm:text-base font-regular">12PM Noon</p>
+                      <p className="text-secondary text-sm sm:text-base font-regular">{formatDateWithOrdinal(selectedWeeks[selectedWeeks.length - 1].endDate)}</p>
+                      <p className="text-secondary text-sm sm:text-base font-regular">12PM Noon</p>
                     </div>
                   </div>
                   
                   {/* Duration */}
-                  <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-100">
+                  <div className="bg-accent-muted p-4 rounded-lg border border-color">
                     <div className="hidden xl:flex xl:justify-between xl:items-center">
-                      <div className="flex items-center">
-                        <div className="bg-emerald-100 p-2.5 rounded-lg mr-3">
-                          <Home className="w-5 h-5 text-emerald-600" />
-                        </div>
-                        <h4 className="font-medium text-stone-800 font-regular text-base sm:text-lg">Total Stay</h4>
-                      </div>
-                      <div>
-                        <span className="text-emerald-800 font-medium font-regular text-sm sm:text-base">
-                          {pricing.totalNights} nights
+                      <div className="w-full text-center">
+                        <span className="text-accent-primary font-medium font-regular text-sm sm:text-base">
+                          {totalWeeksDisplay} {totalWeeksDisplay === 1 ? 'week' : 'weeks'}
                         </span>
                       </div>
                     </div>
                     
                     <div className="flex items-center xl:hidden">
-                      <div className="bg-emerald-100 p-2.5 rounded-lg mr-3 flex-shrink-0 self-start mt-1">
-                        <Home className="w-5 h-5 text-emerald-600" />
+                      <div className="bg-accent-subtle p-2.5 rounded-lg mr-3 flex-shrink-0 self-start mt-1">
+                        <Home className="w-5 h-5 text-accent-primary" />
                       </div>
                       <div>
-                        <h4 className="font-medium text-stone-800 font-regular text-base sm:text-lg">Total Stay</h4>
-                        <p className="text-emerald-700 text-sm sm:text-base font-regular mt-0.5">{pricing.totalNights} nights</p>
+                        <h4 className="font-medium text-primary font-regular text-base sm:text-lg">Total Stay</h4>
+                        <p className="text-accent-primary text-sm sm:text-base font-regular mt-0.5">{pricing.totalNights} nights</p>
                       </div>
                     </div>
                   </div>
@@ -804,29 +806,28 @@ export function BookingSummary({
               {/* Accommodation Section */}
               {selectedAccommodation && (
                 <motion.div 
-                  className="bg-white p-4 sm:p-5 rounded-lg border border-stone-200 shadow-sm relative"
+                  className="bg-surface p-4 sm:p-5 rounded-lg border border-color shadow-sm relative"
                   initial={{ y: 10, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ duration: 0.3 }}
                 >
                   <button
                     onClick={onClearAccommodation}
-                    className="absolute top-3 right-3 p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
+                    className="absolute top-3 right-3 p-1.5 text-secondary hover:text-error hover:bg-error-muted-hover rounded-md transition-colors"
                   >
                     <X className="w-4 h-4" />
                     <span className="sr-only">Clear Selected Accommodation</span>
                   </button>
                   <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-base sm:text-lg text-stone-800 flex items-center font-regular">
-                      <Bed className="w-5 h-5 mr-2.5 text-emerald-600" />
-                      Accommodation
+                    <h3 className="text-base sm:text-lg text-primary flex items-center font-regular">
+                      Thy Kingdom
                     </h3>
                   </div>
                   
                   <div className="space-y-3">
-                    <div className="bg-emerald-50 p-3 sm:p-4 rounded-lg border border-emerald-100">
+                    <div className="bg-accent-muted p-3 sm:p-4 rounded-lg border border-color">
                       <div className="text-center">
-                        <span className="text-emerald-800 font-medium text-sm sm:text-base font-regular">
+                        <span className="text-accent-primary font-medium text-sm sm:text-base font-regular">
                           {selectedAccommodation.title === 'Van Parking' || 
                            selectedAccommodation.title === 'Your Own Tent' || 
                            selectedAccommodation.title === '+1 Accommodation' || 
@@ -841,15 +842,15 @@ export function BookingSummary({
               )}
 
               {/* Price Breakdown */}
-              <div className="border-t border-stone-200 pt-3 sm:pt-4 mt-3 sm:mt-4">
+              <div className="border-t border-color pt-3 sm:pt-4 mt-3 sm:mt-4">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-medium text-stone-800 font-regular text-base sm:text-lg">Price Breakdown</h3>
+                  <h3 className="font-medium text-primary font-regular text-base sm:text-lg">Price Breakdown</h3>
                   <Tooltip.Provider>
-                    <Tooltip.Root delayDuration={0}>
+                    <Tooltip.Root delayDuration={50}>
                       <Tooltip.Trigger asChild>
                         <button
                           onClick={() => setShowDiscountModal(true)}
-                          className="p-1.5 text-stone-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors"
+                          className="p-1.5 text-secondary hover:text-accent-hover hover:bg-accent-muted rounded-md transition-colors"
                         >
                           <Info className="w-4 h-4" />
                           <span className="sr-only">View Discount Details</span>
@@ -857,210 +858,190 @@ export function BookingSummary({
                       </Tooltip.Trigger>
                       <Tooltip.Portal>
                         <Tooltip.Content
-                          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 xxs:mb-1.5 px-1.5 xxs:px-2 py-0.5 xxs:py-1 bg-stone-800 text-white text-[8px] xxs:text-[10px] sm:text-xs rounded opacity-0 data-[state=delayed-open]:opacity-100 data-[state=closed]:opacity-0 transition-opacity whitespace-nowrap pointer-events-none font-regular text-center"
+                          className="bg-gray-800/95 p-3 rounded-lg shadow-lg border border-gray-500/30 max-w-xs z-50 backdrop-blur-sm text-white"
                           sideOffset={5}
+                          side="top"
+                          align="end"
                         >
-                          <p className="font-medium">View Discount Details</p>
-                          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 rotate-45 w-1.5 h-1.5 bg-stone-800"></div>
+                          <Tooltip.Arrow className="fill-gray-800 stroke-gray-500/30" width={11} height={5} />
+                          <span className="text-white">See discounts applied</span>
                         </Tooltip.Content>
                       </Tooltip.Portal>
                     </Tooltip.Root>
                   </Tooltip.Provider>
                 </div>
                 
-                <div className="space-y-2 sm:space-y-3">
-                  {/* Accommodation pricing */}
-                  <div className="flex justify-between text-stone-600 font-regular text-sm sm:text-base">
-                    <div className="flex items-center gap-2 mr-4">
-                      <span>Accommodation <span className="whitespace-nowrap">({pricing.totalNights} nights)</span></span>
-                    </div>
-                    <span>€{pricing.totalAccommodationCost.toFixed(2)}</span>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm sm:text-base">
+                    <span className="text-secondary">Accommodation ({pricing.totalNights} nights)</span>
+                    <span className="text-primary">€{pricing.totalAccommodationCost.toFixed(2)}</span>
                   </div>
                   
-                  {/* Food & Facilities */}
-                  <div className="space-y-4 sm:space-y-5">
-                    <div className="flex justify-between text-stone-600 font-regular text-sm sm:text-base">
-                      <span className="mr-4">Food & facilities <span className="whitespace-nowrap">({pricing.totalNights} {pricing.totalNights === 1 ? 'night' : 'nights'})</span></span>
-                      <span>€{pricing.totalFoodAndFacilitiesCost.toFixed(2)}</span>
-                    </div>
-                    
-                    {/* Contribution Slider */}
-                    <div className="bg-stone-50 p-3 sm:p-4 rounded-lg border border-stone-200">
-                      <div className="flex justify-between items-center mb-2 sm:mb-3">
-                        <h4 className="text-xs sm:text-sm font-medium text-stone-800 font-regular">Weekly Contribution</h4>
-                        <span className="text-xs sm:text-sm font-medium bg-emerald-600 text-white px-2 sm:px-3 py-1 rounded-full font-regular">
-                          €{foodContribution}
-                        </span>
-                      </div>
-                      
-                      <p className="text-xs text-stone-600 mb-3 sm:mb-4 font-regular">
-                        Choose how much you'd like to contribute to food & facilities per week based on your means.
-                      </p>
-                      
-                      {/* Slider implementation */}
-                      <div className="mb-4 sm:mb-6">
-                        <div className="flex justify-between text-xs text-stone-600 mb-2 font-regular">
-                          <span>€{Math.round((pricing.totalNights <= 6 ? 345 : 240) * (1 - pricing.durationDiscountPercent / 100))}</span>
-                          <span>€{Math.round(390 * (1 - pricing.durationDiscountPercent / 100))}</span>
-                        </div>
-                        
-                        <input 
-                          type="range" 
-                          min={Math.round((pricing.totalNights <= 6 ? 345 : 240) * (1 - pricing.durationDiscountPercent / 100))} 
-                          max={Math.round(390 * (1 - pricing.durationDiscountPercent / 100))} 
-                          step={1}
-                          value={foodContribution || 0}
-                          onChange={(e) => {
-                            const newValue = Number(e.target.value);
-                            // Basic validation: ensure value is within calculated bounds
-                            if (newValue >= Math.round((pricing.totalNights <= 6 ? 345 : 240) * (1 - pricing.durationDiscountPercent / 100)) && newValue <= Math.round(390 * (1 - pricing.durationDiscountPercent / 100))) {
-                              setFoodContribution(newValue);
-                              console.log('[BookingSummary] Food contribution slider changed:', newValue);
-                            } else {
-                              console.warn(`[BookingSummary] Slider value ${newValue} out of bounds (${Math.round((pricing.totalNights <= 6 ? 345 : 240) * (1 - pricing.durationDiscountPercent / 100))}-${Math.round(390 * (1 - pricing.durationDiscountPercent / 100))}). Clamping.`);
-                              // Optionally clamp the value
-                              setFoodContribution(Math.max(Math.min(newValue, Math.round(390 * (1 - pricing.durationDiscountPercent / 100))), Math.round((pricing.totalNights <= 6 ? 345 : 240) * (1 - pricing.durationDiscountPercent / 100))));
-                            }
-                          }}
-                          className="w-full h-2 bg-emerald-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
-                        />
-                      </div>
-                      
-                      <div className="text-xs text-stone-600 bg-stone-100 p-3 sm:p-4 rounded-lg border border-stone-200">
-                        <div className="flex items-start gap-2 sm:gap-3">
-                          <span className="text-emerald-700 mt-0.5 flex-shrink-0">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
+                  <div className="flex justify-between text-sm sm:text-base">
+                    <Tooltip.Provider>
+                      <Tooltip.Root delayDuration={50}>
+                        <Tooltip.Trigger asChild>
+                          <span className="text-secondary flex items-center cursor-help">
+                            Food & Facilities
+                            <Info className="w-3 h-3 ml-1 opacity-70" />
                           </span>
-                          <div className="flex-1">
-                            <p className="mb-1 text-stone-700 font-medium font-regular text-xs sm:text-sm">Your contribution helps us:</p>
-                            <ul className="list-disc list-inside space-y-1 sm:space-y-1.5 pl-0 mb-1 sm:mb-1.5 font-regular text-xs sm:text-sm">
-                              <li>Provide meals during your stay</li>
-                              <li>Maintain our community spaces</li>
-                              <li>Ongoing Technical & Wellness Upgrades</li>
-                            </ul>
-                          </div>
-                        </div>
+                        </Tooltip.Trigger>
+                        <Tooltip.Portal>
+                          <Tooltip.Content
+                            className="bg-gray-800/95 p-3 rounded-lg shadow-lg border border-gray-500/30 max-w-xs z-50 backdrop-blur-sm text-white"
+                            sideOffset={5}
+                            side="top"
+                            align="end"
+                          >
+                            <Tooltip.Arrow className="fill-gray-800 stroke-gray-500/30" width={11} height={5} />
+                            <span className="text-white">Community meals & operations costs</span>
+                          </Tooltip.Content>
+                        </Tooltip.Portal>
+                      </Tooltip.Root>
+                    </Tooltip.Provider>
+                    <span className="text-primary">€{pricing.totalFoodAndFacilitiesCost.toFixed(2)}</span>
+                  </div>
+
+   
+
+                  {/* Optional Contribution Slider */}
+                  {foodContribution !== null && selectedWeeks.length > 0 && (
+                    <div className="pt-4">
+                      <div className="flex justify-between items-center mb-2">
+                         <label htmlFor="food-contribution" className="text-sm text-secondary">Food & Facilities Contribution (€/week)</label>
+                          <Tooltip.Provider>
+                              <Tooltip.Root delayDuration={50}>
+                                  <Tooltip.Trigger asChild>
+                                      <button className="text-secondary hover:text-secondary-hover">
+                                          <Info className="w-4 h-4" />
+                                      </button>
+                                  </Tooltip.Trigger>
+                                  <Tooltip.Portal>
+                                      <Tooltip.Content
+                                          sideOffset={5}
+                                          className="bg-gray-800/95 p-3 rounded-lg shadow-lg border border-gray-500/30 max-w-xs z-50 backdrop-blur-sm text-white"
+                                          side="top"
+                                          align="end"
+                                      >
+                                          Adjust your contribution based on your means. Minimum varies by stay length.
+                                          <Tooltip.Arrow className="fill-gray-800 stroke-gray-500/30" width={11} height={5} />
+                                      </Tooltip.Content>
+                                  </Tooltip.Portal>
+                              </Tooltip.Root>
+                          </Tooltip.Provider>
                       </div>
+                      <input
+                        id="food-contribution"
+                        type="range"
+                        min={pricing.totalNights <= 6
+                          ? Math.round(345 * (1 - pricing.durationDiscountPercent / 100)) // Min for 1 week
+                          : Math.round(240 * (1 - pricing.durationDiscountPercent / 100)) // Min for 2+ weeks
+                        }
+                        max={Math.round(390 * (1 - pricing.durationDiscountPercent / 100))} // Max is same regardless of length
+                        value={foodContribution}
+                        onChange={(e) => setFoodContribution(Number(e.target.value))}
+                        className="w-full h-2 bg-border rounded-lg appearance-none cursor-pointer accent-accent-primary"
+                      />
+                       <div className="flex justify-between text-xs text-secondary mt-1">
+                          <span>
+                            Min: €{pricing.totalNights <= 6
+                              ? Math.round(345 * (1 - pricing.durationDiscountPercent / 100))
+                              : Math.round(240 * (1 - pricing.durationDiscountPercent / 100))
+                            }
+                          </span>
+                           <span>Current: €{foodContribution}</span>
+                          <span>
+                            Max: €{Math.round(390 * (1 - pricing.durationDiscountPercent / 100))}
+                          </span>
+                       </div>
                     </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 font-medium text-stone-800 border-t border-stone-200 pt-2 sm:pt-3 mt-2 font-regular text-lg sm:text-xl">
-                    <span className="col-span-1">Total</span>
-                    <span className="col-span-1 text-right whitespace-nowrap">€{pricing.totalAmount.toFixed(2)}</span>
-                  </div>
+                  )}
                 </div>
               </div>
 
-              {/* Test Payment Option for Admins */}
-              {isAdmin && (
-                <div className="mt-4 mb-4 sm:mb-6 bg-blue-50 p-3 sm:p-4 rounded-lg border border-blue-200">
-                  <h4 className="font-medium text-blue-800 mb-2 font-regular text-base sm:text-lg">Test Payment Options</h4>
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 mb-2">
-                    <input
-                      type="number"
-                      min="0.50"
-                      step="0.01"
-                      value={testPaymentAmount !== null ? testPaymentAmount : ''}
-                      onChange={(e) => {
-                        const value = e.target.value === '' ? null : parseFloat(e.target.value);
-                        setTestPaymentAmount(value);
-                      }}
-                      placeholder="0.50"
-                      className="w-full sm:w-32 px-3 py-2 border border-blue-300 rounded-md text-blue-800 font-regular text-sm"
-                    />
-                    <span className="text-xs sm:text-sm text-blue-600 font-regular">Set custom test amount (€)</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => setTestPaymentAmount(0.50)}
-                      className="px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-800 text-xs rounded font-regular"
-                    >
-                      €0.50
-                    </button>
-                    <button
-                      onClick={() => setTestPaymentAmount(1)}
-                      className="px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-800 text-xs rounded font-regular"
-                    >
-                      €1.00
-                    </button>
-                    <button
-                      onClick={() => setTestPaymentAmount(null)}
-                      className="px-2 py-1 bg-rose-100 hover:bg-rose-200 text-rose-800 text-xs rounded ml-auto font-regular"
-                    >
-                      Reset
-                    </button>
-                  </div>
-                  {testPaymentAmount !== null && (
-                    <p className="text-xs sm:text-sm text-blue-600 mt-2 font-regular">
-                      Using test payment amount: <strong>€{testPaymentAmount.toFixed(2)}</strong> instead of €{pricing.totalAmount.toFixed(2)}
-                    </p>
-                  )}
+              {/* Final Total */}
+              <div className="border-t border-color pt-4 mt-4">
+                <div className="flex justify-between items-baseline">
+                  <span className="text-lg sm:text-xl font-semibold text-primary">Total</span>
+                  <span className="text-lg sm:text-xl font-semibold text-primary">€{pricing.totalAmount.toFixed(2)}</span>
                 </div>
-              )}
+                 <p className="text-xs text-secondary mt-1">Includes accommodation, food, facilities, and discounts.</p>
+              </div>
 
-              {/* Action Buttons */}
-              <div className="space-y-2 sm:space-y-3 pt-3 sm:pt-4">
-                <motion.button
+              {/* Confirm Button */}
+              <div className="mt-6 sm:mt-8">
+                <button
                   onClick={handleConfirmClick}
-                  disabled={!selectedAccommodation || isBooking}
-                  className="w-full bg-emerald-600 text-white py-2.5 sm:py-3 rounded-lg hover:bg-emerald-700 transition-all disabled:bg-stone-200 disabled:text-stone-400 disabled:cursor-not-allowed font-regular text-sm sm:text-base pixel-corners shadow-sm flex items-center justify-center"
-                  whileHover={{ scale: 1.02, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)" }}
-                  whileTap={{ scale: 0.98 }}
+                  disabled={isBooking || !selectedAccommodation || selectedWeeks.length === 0}
+                  className={`w-full flex items-center justify-center pixel-corners--wrapper relative overflow-hidden px-6 py-3.5 sm:py-4 text-base sm:text-lg font-medium rounded-md transition-colors duration-200
+                    ${isBooking || !selectedAccommodation || selectedWeeks.length === 0
+                      ? 'bg-border text-secondary cursor-not-allowed'
+                      : 'bg-accent-primary text-white hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent-primary'
+                    }`}
                 >
-                  {isBooking ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Processing...
-                    </>
-                  ) : (
-                    'Confirm Booking'
-                  )}
-                </motion.button>
-
+                  <span className="pixel-corners--content">
+                    {isBooking ? 'Processing...' : 'Confirm & Pay'}
+                    
+                  </span>
+                </button>
+                
                 {isAdmin && (
-                  <motion.button
+                  <button
                     onClick={handleAdminConfirm}
-                    disabled={!selectedAccommodation || isBooking}
-                    className="w-full bg-white border-2 border-emerald-600 text-emerald-700 py-2.5 sm:py-3 rounded-lg hover:bg-emerald-50 transition-all disabled:bg-stone-100 disabled:border-stone-200 disabled:text-stone-400 disabled:cursor-not-allowed font-regular text-sm sm:text-base pixel-corners shadow-sm flex items-center justify-center"
-                    whileHover={{ scale: 1.02, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)" }}
-                    whileTap={{ scale: 0.98 }}
+                    disabled={isBooking || !selectedAccommodation || selectedWeeks.length === 0}
+                    className={`w-full mt-3 flex items-center justify-center pixel-corners--wrapper relative overflow-hidden px-6 py-3.5 sm:py-4 text-base sm:text-lg font-medium rounded-md transition-colors duration-200
+                      ${isBooking || !selectedAccommodation || selectedWeeks.length === 0
+                        ? 'bg-border text-secondary cursor-not-allowed'
+                        : 'bg-secondary-muted text-white hover:bg-secondary-muted-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary-muted'
+                      }`}
                   >
-                    {isBooking ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5 text-emerald-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Processing...
-                      </>
-                    ) : (
-                      'Admin Confirm (No Payment)'
-                    )}
-                  </motion.button>
+                    <span className="pixel-corners--content">
+                       {isBooking ? 'Confirming...' : 'Admin Confirm (No Payment)'}
+                    </span>
+                  </button>
+                )}
+                
+                {/* Admin Test Payment Area */}
+                {isAdmin && (
+                  <div className="mt-4 p-3 border border-dashed border-color rounded-md bg-surface">
+                    <label htmlFor="test-payment" className="block text-xs font-medium text-secondary mb-1">Admin: Set Test Payment Amount (€)</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        id="test-payment"
+                        value={testPaymentAmount === null ? '' : String(testPaymentAmount)}
+                        onChange={(e) => setTestPaymentAmount(e.target.value === '' ? null : Number(e.target.value))}
+                        placeholder="Total amount"
+                        className="flex-grow px-2 py-1 border border-color rounded-md text-sm bg-main text-primary focus:ring-accent-primary focus:border-accent-primary"
+                      />
+                      <button
+                        onClick={() => setTestPaymentAmount(null)}
+                        className="px-2 py-1 text-xs bg-border text-secondary rounded hover:bg-border-hover"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
           )}
 
           {selectedWeeks.length === 0 && (
-            <div className="text-stone-500 text-center py-6 sm:py-8 font-regular text-sm sm:text-base">
-              Select dates to see pricing
+            <div className="text-center py-10">
+              <Calendar className="w-12 h-12 mx-auto text-secondary mb-4" />
+              <p className="text-secondary text-sm sm:text-base">Select your dates to see the summary</p>
             </div>
           )}
         </div>
       </div>
 
-      {/* Add DiscountModal */}
+      {/* Discount Modal */}
       <DiscountModal
         isOpen={showDiscountModal}
         onClose={() => setShowDiscountModal(false)}
-        checkInDate={selectedWeeks[0]?.startDate || fallbackDate.toISOString()}
-        checkOutDate={selectedWeeks[selectedWeeks.length - 1]?.endDate || fallbackDate.toISOString()}
+        checkInDate={selectedWeeks[0]?.startDate || fallbackDate}
+        checkOutDate={selectedWeeks[selectedWeeks.length - 1]?.endDate || fallbackDate}
         accommodationName={selectedAccommodation?.title || ''}
         basePrice={selectedAccommodation?.base_price || 0}
       />

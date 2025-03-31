@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { format, isSameDay } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 import { Week } from '../types/calendar';
-import { Calendar } from 'lucide-react';
+import { Calendar, X } from 'lucide-react';
 import { DayPicker } from 'react-day-picker';
 import { normalizeToUTCDate, formatDateForDisplay } from '../utils/dates';
 import 'react-day-picker/dist/style.css';
@@ -67,10 +67,19 @@ export function FlexibleCheckInModal({ week, isOpen, onClose, onDateSelect }: Pr
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-        <h2 className="text-xl font-bold mb-4 font-regular">Select Check-in Date</h2>
-        <p className="text-gray-600 mb-4 font-regular">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-surface dark:bg-surface/95 light:bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl border border-border">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-primary font-regular">Select Check-in Date</h2>
+          <button 
+            onClick={handleClose}
+            className="text-secondary hover:text-primary rounded-full p-1 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        
+        <p className="text-secondary mb-4 font-regular">
           This week offers multiple check-in dates. Please select your preferred check-in date.
         </p>
         
@@ -79,10 +88,10 @@ export function FlexibleCheckInModal({ week, isOpen, onClose, onDateSelect }: Pr
             <button
               key={formatDateForDisplay(date)}
               onClick={() => handleDateSelect(date)}
-              className="w-full p-3 text-left border rounded-lg hover:bg-emerald-50 hover:border-emerald-500 transition-colors font-regular"
+              className="w-full p-3 text-left border border-border rounded-lg bg-main hover:bg-[color-mix(in_srgb,_var(--color-accent-primary)_15%,_var(--color-bg-main))] hover:border-accent-primary transition-colors font-regular text-primary"
             >
               <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-emerald-600" />
+                <Calendar className="w-4 h-4 text-accent-primary" />
                 <span className="font-medium">{formatInTimeZone(date, 'UTC', 'EEEE, MMMM d')}</span>
               </div>
             </button>
@@ -92,7 +101,7 @@ export function FlexibleCheckInModal({ week, isOpen, onClose, onDateSelect }: Pr
         <div className="mt-6 flex justify-end">
           <button
             onClick={handleClose}
-            className="px-4 py-2 text-gray-600 hover:text-gray-800 font-regular"
+            className="px-4 py-2 text-secondary hover:text-primary transition-colors font-regular"
           >
             Cancel
           </button>
