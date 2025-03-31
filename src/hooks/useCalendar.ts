@@ -54,41 +54,41 @@ export function useCalendar({ startDate, endDate, isAdminMode = false }: UseCale
 
     // Generate weeks with customizations
     const weeks = useMemo(() => {
-        console.log('[useCalendar] Generating weeks:', {
-            startDate: normalizedStartDate.toISOString(),
-            endDate: normalizedEndDate.toISOString(),
+        console.log('[useCalendar] Generating weeks within useMemo:', {
+            normalizedStartDate: normalizedStartDate.toISOString(),
+            normalizedEndDate: normalizedEndDate.toISOString(),
             isAdminMode,
             customizationsCount: customizations.length,
-            customizations: customizations.map(c => ({
-                startDate: c.startDate.toISOString(),
-                endDate: c.endDate.toISOString(),
-                status: c.status,
-                name: c.name
-            }))
         });
 
-        console.log('[useCalendar] Admin mode:', {
-            isAdminMode
-        });
+        console.log('[useCalendar] Customizations BEFORE generation:', customizations.map(c => ({
+            id: c.id,
+            startDate: c.startDate instanceof Date ? c.startDate.toISOString() : c.startDate,
+            endDate: c.endDate instanceof Date ? c.endDate.toISOString() : c.endDate,
+            status: c.status,
+            name: c.name,
+            flexibleDates: c.flexibleDates?.map(d => d instanceof Date ? d.toISOString() : d)
+        })));
 
         const generatedWeeks = generateWeeksWithCustomizations(
-            normalizedStartDate, 
-            normalizedEndDate, 
-            config, 
+            normalizedStartDate,
+            normalizedEndDate,
+            config,
             customizations,
             isAdminMode
         );
 
-        console.log('[useCalendar] Generated weeks:', {
+        console.log('[useCalendar] Generated weeks AFTER generation:', {
             count: generatedWeeks.length,
-            firstWeek: generatedWeeks[0] ? {
-                startDate: generatedWeeks[0].startDate.toISOString(),
-                endDate: generatedWeeks[0].endDate.toISOString()
-            } : null,
-            lastWeek: generatedWeeks[generatedWeeks.length - 1] ? {
-                startDate: generatedWeeks[generatedWeeks.length - 1].startDate.toISOString(),
-                endDate: generatedWeeks[generatedWeeks.length - 1].endDate.toISOString()
-            } : null
+            weeks: generatedWeeks.map(w => ({
+                id: w.id,
+                startDate: w.startDate instanceof Date ? w.startDate.toISOString() : w.startDate,
+                endDate: w.endDate instanceof Date ? w.endDate.toISOString() : w.endDate,
+                status: w.status,
+                name: w.name,
+                isCustom: w.isCustom,
+                flexibleDates: w.flexibleDates?.map(d => d instanceof Date ? d.toISOString() : d)
+            }))
         });
 
         return generatedWeeks;

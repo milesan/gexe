@@ -1,10 +1,13 @@
 import { addWeeks, startOfWeek, addDays, addMonths, setDay, startOfDay, isSameDay, endOfDay, isBefore, isAfter, subMonths, format, Day, parseISO, differenceInDays } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
 import { convertToUTC1 } from './timezone';
 import { CalendarConfig, Week, WeekCustomization, WeekStatus } from '../types/calendar';
 
-// Helper function for consistent date formatting
+// Helper function for consistent date formatting (using UTC)
 export function formatDateOnly(date: Date): string {
-    return format(startOfDay(date), 'yyyy-MM-dd');
+    // Use formatInTimeZone to ensure we format based on UTC components
+    // The input 'date' should already be normalized to UTC midnight by this point
+    return formatInTimeZone(date, 'UTC', 'yyyy-MM-dd');
 }
 
 // Re-export the startOfDay function from date-fns
@@ -20,9 +23,9 @@ export { startOfDay };
 export function normalizeToUTCDate(date: Date | string): Date {
   const inputDate = typeof date === 'string' ? new Date(date) : date;
   return new Date(Date.UTC(
-    inputDate.getFullYear(),
-    inputDate.getMonth(),
-    inputDate.getDate(),
+    inputDate.getUTCFullYear(),
+    inputDate.getUTCMonth(),
+    inputDate.getUTCDate(),
     0, 0, 0, 0
   ));
 }
@@ -35,29 +38,40 @@ export function normalizeToUTCDate(date: Date | string): Date {
  * @returns A normalized Date object at UTC midnight
  */
 export function safeParseDate(dateString: string): Date {
+  console.log(`[safeParseDate] Input string: '${dateString}'`);
   try {
     // First try to parse as ISO
     const parsedDate = parseISO(dateString);
-    return normalizeToUTCDate(parsedDate);
+    console.log(`[safeParseDate] Parsed with parseISO (local assumed): ${parsedDate.toISOString()}`);
+    const normalizedDate = normalizeToUTCDate(parsedDate);
+    console.log(`[safeParseDate] After normalizeToUTCDate: ${normalizedDate.toISOString()}`);
+    return normalizedDate;
   } catch (e) {
     // Fallback to regular Date constructor with normalization
-    return normalizeToUTCDate(new Date(dateString));
+    console.warn(`[safeParseDate] Failed parseISO, falling back to new Date('${dateString}')`);
+    const fallbackDate = new Date(dateString);
+    console.log(`[safeParseDate] Fallback parsed with new Date(): ${fallbackDate.toISOString()}`);
+    const normalizedFallback = normalizeToUTCDate(fallbackDate);
+    console.log(`[safeParseDate] Fallback after normalizeToUTCDate: ${normalizedFallback.toISOString()}`);
+    return normalizedFallback;
   }
 }
 
 /**
- * Format a date for display in logs and UI (YYYY-MM-DD)
+ * Format a date for display in logs and UI (YYYY-MM-DD) - always use UTC
  */
 export function formatDateForDisplay(date: Date | null | undefined): string {
   if (!date) return 'null';
-  return format(normalizeToUTCDate(date), 'yyyy-MM-dd');
+  // Use formatInTimeZone to guarantee UTC display
+  return formatInTimeZone(normalizeToUTCDate(date), 'UTC', 'yyyy-MM-dd');
 }
 
 /**
- * Format a date for display in UI with month and day (MMM d)
+ * Format a date for display in UI with month and day (MMM d) - always use UTC
  */
 export function formatDateShort(date: Date): string {
-  return format(date, 'MMM d');
+  // Use formatInTimeZone to guarantee UTC display
+  return formatInTimeZone(normalizeToUTCDate(date), 'UTC', 'MMM d');
 }
 
 /**
@@ -149,13 +163,13 @@ export function getWeekDates(week: Date): Date[] {
 export function adjustToCheckInDay(date: Date, checkInDay: number = 0): Date {
   const normalizedDate = normalizeToUTCDate(date);
   
-  // If already on check-in day, return the same date
-  if (normalizedDate.getDay() === checkInDay) {
+  // Use getUTCDay() for reliable UTC day comparison
+  if (normalizedDate.getUTCDay() === checkInDay) {
     return normalizedDate;
   }
   
-  // Calculate days to add to reach next check-in day
-  const daysToAdd = (checkInDay - normalizedDate.getDay() + 7) % 7;
+  // Use getUTCDay() for reliable UTC day calculation
+  const daysToAdd = (checkInDay - normalizedDate.getUTCDay() + 7) % 7;
   return addDays(normalizedDate, daysToAdd);
 }
 
@@ -203,10 +217,13 @@ export function generateStandardWeek(
   startDate: Date, 
   config: { checkInDay: number; checkOutDay: number }
 ): { startDate: Date; endDate: Date } {
-  // If not starting on check-in day, adjust to next check-in day
-  const adjustedStart = startDate.getDay() !== config.checkInDay
-    ? adjustToCheckInDay(startDate, config.checkInDay)
-    : startDate;
+  // Normalize input immediately for robustness
+  const normalizedInputStart = normalizeToUTCDate(startDate);
+
+  // Use getUTCDay() for reliable UTC day comparison
+  const adjustedStart = normalizedInputStart.getUTCDay() !== config.checkInDay
+    ? adjustToCheckInDay(normalizedInputStart, config.checkInDay) // Uses getUTCDay internally now
+    : normalizedInputStart; // Already normalized
   
   // Calculate end date based on check-out day
   let endDate: Date;
@@ -246,6 +263,12 @@ export function generateStandardWeek(
       endDate = addDays(adjustedStart, daysToAdd);
     }
   }
+  
+  // *** Add Logging Here ***
+  console.log('[generateStandardWeek] Returning:', {
+    startDate: adjustedStart.toISOString(),
+    endDate: endDate.toISOString()
+  });
   
   return { startDate: adjustedStart, endDate };
 }
@@ -319,12 +342,15 @@ export function generateWeeksWithCustomizations(
   const addedWeekStartDates = new Set<string>();
   
   // Generate standard weeks for the entire date range
-  let currentDate = new Date(from);
+  let currentDate = normalizeToUTCDate(from); // Normalize initial date
   
   // Keep generating weeks until we reach the end date
   while (currentDate.getTime() <= to.getTime()) {
-    // Generate a standard week
-    const { startDate, endDate } = generateStandardWeek(currentDate, safeConfig);
+    // Ensure currentDate is normalized UTC midnight before use
+    const normalizedCurrentDate = normalizeToUTCDate(currentDate);
+
+    // Generate a standard week using the normalized date
+    const { startDate, endDate } = generateStandardWeek(normalizedCurrentDate, safeConfig);
     
     // Check if this week extends beyond the end date
     const isPartial = endDate.getTime() > to.getTime();
@@ -362,8 +388,8 @@ export function generateWeeksWithCustomizations(
       }
     }
     
-    // Move to the next week
-    currentDate = addDays(endDate, 1);
+    // Move to the next week, ensuring we start from UTC midnight of the day after endDate
+    currentDate = addDays(normalizeToUTCDate(endDate), 1);
   }
   
   // Sort timeline by start date again after adding all weeks
@@ -391,6 +417,17 @@ export function generateWeeksWithCustomizations(
     
     // Mark this ID as used
     usedIds.add(id);
+
+    // *** Add Logging Here ***
+    console.log('[generateWeeksWithCustomizations] Processing timeline item before push:', {
+      id: id,
+      type: item.type,
+      itemStartDate: item.startDate.toISOString(),
+      itemEndDate: item.endDate.toISOString(),
+      isCustom: item.type === 'custom',
+      customizationFlexDates: item.customization?.flexibleDates?.map(d => d.toISOString()),
+      status: item.customization?.status
+    });
     
     // Create the week object with the unique ID
     result.push({
@@ -484,11 +521,6 @@ export function getWeekDisplayName(week: Week): string {
   }
   
   return formatWeekRange(week);
-}
-
-export function normalizeToLocalDate(date: Date | string): Date {
-    const dateString = typeof date === 'string' ? date : format(date, 'yyyy-MM-dd');
-    return new Date(dateString + 'T00:00:00');
 }
 
 /**
@@ -613,15 +645,32 @@ export function canDeselectArrivalWeek(
  * @returns Number of days between the dates
  */
 export function calculateDaysBetween(startDate: Date, endDate: Date, includeEndDate: boolean = false): number {
-  const msPerDay = 24 * 60 * 60 * 1000;
-  return Math.round((endDate.getTime() - startDate.getTime()) / msPerDay) + (includeEndDate ? 1 : 0);
+  // Ensure dates are UTC midnight for accurate day difference calculation
+  const startUTC = normalizeToUTCDate(startDate);
+  const endUTC = normalizeToUTCDate(endDate);
+  
+  // differenceInDays calculates the number of full 24-hour periods
+  const diff = differenceInDays(endUTC, startUTC);
+  
+  // If including the end date, add 1 (e.g., Mon to Tue = 1 day diff, 2 days inclusive)
+  return diff + (includeEndDate ? 1 : 0);
 }
 
 export function calculateTotalNights(selectedWeeks: Week[]): number {
   if (selectedWeeks.length === 0) return 0;
-  const firstDate = selectedWeeks[0].startDate;
+  
+  // Determine effective start date (could be flex date)
+  const firstWeek = selectedWeeks[0];
+  const effectiveStartDate = firstWeek.selectedFlexDate || firstWeek.startDate;
+
   const lastDate = selectedWeeks[selectedWeeks.length - 1].endDate;
-  return calculateDaysBetween(firstDate, lastDate, false);
+  
+  // Ensure dates are UTC midnight
+  const startUTC = normalizeToUTCDate(effectiveStartDate);
+  const endUTC = normalizeToUTCDate(lastDate);
+  
+  // Total nights = difference in days (number of full 24h periods)
+  return differenceInDays(endUTC, startUTC);
 }
 
 export function calculateTotalDays(selectedWeeks: Week[]): number {
@@ -634,12 +683,21 @@ export function calculateTotalDays(selectedWeeks: Week[]): number {
   });
   if (selectedWeeks.length === 0) return 0;
   
-  const firstDate = selectedWeeks[0].startDate;
+  // Determine effective start date (could be flex date)
+  const firstWeek = selectedWeeks[0];
+  const effectiveStartDate = firstWeek.selectedFlexDate || firstWeek.startDate;
+
   const lastDate = selectedWeeks[selectedWeeks.length - 1].endDate;
-  console.log('[calculateTotalDays] firstDate:', formatDateForDisplay(firstDate));
-  console.log('[calculateTotalDays] lastDate:', formatDateForDisplay(lastDate));
   
-  const days = calculateDaysBetween(firstDate, lastDate, true);
+  // Ensure dates are UTC midnight
+  const startUTC = normalizeToUTCDate(effectiveStartDate);
+  const endUTC = normalizeToUTCDate(lastDate);
+
+  console.log('[calculateTotalDays] firstDate (UTC):', startUTC.toISOString());
+  console.log('[calculateTotalDays] lastDate (UTC):', endUTC.toISOString());
+  
+  // Total days (inclusive) = difference in days + 1
+  const days = differenceInDays(endUTC, startUTC) + 1;
   console.log('[calculateTotalDays] total days:', days);
   return days;
 }
@@ -664,4 +722,27 @@ export function calculateDurationDiscountWeeks(selectedWeeks: Week[]): number {
   console.log('[calculateDurationDiscountWeeks] returning:', totalDays >= 7 ? Math.floor(totalDays / 7) : 0);
   // Only count as a week if there are at least 7 days
   return totalDays >= 7 ? Math.floor(totalDays / 7) : 0;
+}
+
+/**
+ * Converts a Date object (assumed to be UTC midnight) to a new Date object
+ * representing midnight in the local timezone for the same calendar day.
+ * Useful for displaying UTC dates in components that use local time.
+ * @param utcDate - The Date object, assumed to represent midnight UTC.
+ * @returns A new Date object representing midnight in the local timezone.
+ */
+export function utcToLocalMidnight(utcDate: Date): Date {
+  // Check if the input is a valid date
+  if (!utcDate || isNaN(utcDate.getTime())) {
+    // Return an invalid date or handle as appropriate
+    console.warn('[utcToLocalMidnight] Received invalid date:', utcDate);
+    return new Date(NaN); 
+  }
+  // Create new Date using UTC components; constructor interprets these as local time.
+  return new Date(
+    utcDate.getUTCFullYear(),
+    utcDate.getUTCMonth(),
+    utcDate.getUTCDate()
+    // Time components default to 00:00:00 in the local timezone
+  );
 }

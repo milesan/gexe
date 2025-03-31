@@ -5,7 +5,7 @@ import { useSchedulingRules } from '../hooks/useSchedulingRules';
 import { getSeasonalDiscount, getDurationDiscount, getSeasonBreakdown } from '../utils/pricing';
 import type { Week } from '../types/calendar';
 import type { Accommodation } from '../types';
-import { format, addDays, differenceInDays, isSameDay, isBefore, eachDayOfInterval } from 'date-fns';
+import { format, addDays, differenceInDays, isSameDay, isBefore } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { bookingService } from '../services/BookingService';
 import { supabase } from '../lib/supabase';
@@ -18,6 +18,7 @@ import { formatDateForDisplay } from '../utils/dates';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { calculateTotalNights, calculateDurationDiscountWeeks } from '../utils/dates';
 import { DiscountModal } from './DiscountModal';
+import { formatInTimeZone } from 'date-fns-tz';
 
 // Define the season breakdown type
 export interface SeasonBreakdown {
@@ -170,21 +171,28 @@ const formatDateRange = (week: Week): string => {
 // The number of nights is calculated as (end date - start date) in days
 const formatOverallDateRange = (selectedWeeks: Week[]): string => {
   if (selectedWeeks.length === 0) return '';
-  const firstDate = selectedWeeks[0].startDate;
+  
+  // Determine the effective start date (could be a selected flex date)
+  const firstWeek = selectedWeeks[0];
+  const effectiveStartDate = firstWeek.selectedFlexDate || firstWeek.startDate;
+
   const lastDate = selectedWeeks[selectedWeeks.length - 1].endDate;
-  return `${format(firstDate, 'MMM d')} → ${format(lastDate, 'MMM d')}`;
+  
+  // Use formatInTimeZone for consistent UTC display
+  return `${formatInTimeZone(effectiveStartDate, 'UTC', 'MMM d')} → ${formatInTimeZone(lastDate, 'UTC', 'MMM d')}`;
 };
 
-// Helper function to format date with day of week
+// Helper function to format date with day of week (Use UTC)
 const formatDateWithDay = (date: Date): string => {
-  return format(date, 'EEEE, MMMM d');
+  return formatInTimeZone(date, 'UTC', 'EEEE, MMMM d');
 };
 
-// Helper function to add ordinal suffix to day of month
+// Helper function to add ordinal suffix to day of month (Use UTC)
 const formatDateWithOrdinal = (date: Date): string => {
-  const day = date.getDate();
+  // Get UTC date parts
+  const day = date.getUTCDate();
   const suffix = ['th', 'st', 'nd', 'rd'][day % 10 > 3 ? 0 : (day % 100 - day % 10 !== 10 ? day % 10 : 0)];
-  return format(date, 'EEEE, MMMM ') + day + suffix;
+  return formatInTimeZone(date, 'UTC', 'EEEE, MMMM') + ' ' + day + suffix;
 };
 
 export function BookingSummary({
@@ -262,6 +270,7 @@ export function BookingSummary({
       if (selectedWeeks[0].selectedFlexDate) {
         console.log('[BookingSummary] Using selectedFlexDate from first week:', formatDateForDisplay(selectedWeeks[0].selectedFlexDate));
         setSelectedCheckInDate(selectedWeeks[0].selectedFlexDate);
+        console.log('[BookingSummary] Selected check-in date:', selectedWeeks[0]);
       } else {
         // Otherwise use the week's start date
         console.log('[BookingSummary] Using default start date from first week:', formatDateForDisplay(selectedWeeks[0].startDate));
@@ -306,10 +315,39 @@ export function BookingSummary({
   // Validate that a check-in date is selected
   const validateCheckInDate = useCallback(() => {
     if (!selectedCheckInDate) {
+      console.log('[BookingSummary] No check-in date selected');
       setError('Please select a check-in date');
       return false;
     }
-    if (hasFlexibleDates && !flexibleDates?.some(date => isSameDay(date, selectedCheckInDate))) {
+
+    // Add detailed logging here
+    if (hasFlexibleDates && flexibleDates) {
+      console.log('[BookingSummary] Validating flex date. Selected Check In:', selectedCheckInDate.toISOString(), selectedCheckInDate.toString());
+      flexibleDates.forEach((date, index) => {
+        console.log(`[BookingSummary] Flex Date Option ${index}:`, date.toISOString(), date.toString());
+        // Use UTC comparison instead of isSameDay
+        const areDatesSameUTC = date.getUTCFullYear() === selectedCheckInDate.getUTCFullYear() &&
+                               date.getUTCMonth() === selectedCheckInDate.getUTCMonth() &&
+                               date.getUTCDate() === selectedCheckInDate.getUTCDate();
+        console.log(`[BookingSummary] areDatesSameUTC(flexDate ${index}, selectedCheckInDate)?`, areDatesSameUTC);
+      });
+      // Perform the check using UTC comparison
+      const isValid = flexibleDates.some(date => 
+        date.getUTCFullYear() === selectedCheckInDate.getUTCFullYear() &&
+        date.getUTCMonth() === selectedCheckInDate.getUTCMonth() &&
+        date.getUTCDate() === selectedCheckInDate.getUTCDate()
+      );
+      console.log('[BookingSummary] Overall isValid based on UTC comparison:', isValid);
+    }
+    // End of added logging
+
+    // Use UTC comparison for the actual validation check
+    if (hasFlexibleDates && !flexibleDates?.some(date => 
+        date.getUTCFullYear() === selectedCheckInDate.getUTCFullYear() &&
+        date.getUTCMonth() === selectedCheckInDate.getUTCMonth() &&
+        date.getUTCDate() === selectedCheckInDate.getUTCDate()
+      )) {
+      console.log('[BookingSummary] Invalid check-in date selected (based on UTC comparison):', selectedCheckInDate);
       setError('Please select a valid check-in date from the available options');
       return false;
     }
@@ -392,15 +430,15 @@ export function BookingSummary({
       try {
         console.log('[Booking Summary] Creating booking:', {
           accommodationId: selectedAccommodation.id,
-          checkIn: selectedCheckInDate.toISOString().split('T')[0],
-          checkOut: checkOut.toISOString().split('T')[0],
+          checkIn: formatInTimeZone(selectedCheckInDate, 'UTC', 'yyyy-MM-dd'), 
+          checkOut: formatInTimeZone(checkOut, 'UTC', 'yyyy-MM-dd'),
           totalPrice: pricing.totalAmount
         });
 
         const booking = await bookingService.createBooking({
           accommodationId: selectedAccommodation.id,
-          checkIn: selectedCheckInDate.toISOString().split('T')[0],
-          checkOut: checkOut.toISOString().split('T')[0],
+          checkIn: formatInTimeZone(selectedCheckInDate, 'UTC', 'yyyy-MM-dd'),
+          checkOut: formatInTimeZone(checkOut, 'UTC', 'yyyy-MM-dd'),
           totalPrice: pricing.totalAmount
         });
 
@@ -527,6 +565,9 @@ export function BookingSummary({
     }
     // Depend on selected weeks, selected accommodation ID, the list of accommodations, and the calculation function
   }, [selectedWeeks, selectedAccommodation, accommodations, getSeasonBreakdown]);
+
+  const fallbackDate = new Date();
+  fallbackDate.setUTCHours(0, 0, 0, 0);
 
   // Render the component
   return (
@@ -896,8 +937,8 @@ export function BookingSummary({
       <DiscountModal
         isOpen={showDiscountModal}
         onClose={() => setShowDiscountModal(false)}
-        checkInDate={selectedWeeks[0]?.startDate || new Date()}
-        checkOutDate={selectedWeeks[selectedWeeks.length - 1]?.endDate || new Date()}
+        checkInDate={selectedWeeks[0]?.startDate || fallbackDate.toISOString()}
+        checkOutDate={selectedWeeks[selectedWeeks.length - 1]?.endDate || fallbackDate.toISOString()}
         accommodationName={selectedAccommodation?.title || ''}
         basePrice={selectedAccommodation?.base_price || 0}
       />

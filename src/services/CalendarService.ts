@@ -13,7 +13,7 @@ import {
   generateStandardWeek,
   generateWeeksWithCustomizations
 } from '../utils/dates';
-import { addDays, isSameDay } from 'date-fns';
+import { addDays, isSameDay, parseISO } from 'date-fns';
 
 /**
  * CalendarService - Manages all calendar-related operations
@@ -123,14 +123,37 @@ export class CalendarService {
    * Get all week customizations within a date range
    * @param startDate The start date of the range
    * @param endDate The end date of the range
-   * @returns Array of week customizations
+   * @param isAdminMode Whether to include admin-only weeks
+   * @returns Array of weeks
+   */
+  static async getWeeks(startDate: Date, endDate: Date, isAdminMode: boolean = false): Promise<Week[]> {
+    // Get calendar config
+    const config = await this.getConfig();
+    
+    // Get customizations
+    const customizations = await this.getCustomizations(startDate, endDate);
+    
+    // Generate weeks with customizations
+    return generateWeeksWithCustomizations(
+      startDate,
+      endDate,
+      config,
+      customizations,
+      isAdminMode
+    );
+  }
+
+  /**
+   * Get customizations within a date range
+   * @param startDate Start date of the range
+   * @param endDate End date of the range
+   * @returns Array of customizations
    */
   static async getCustomizations(startDate: Date, endDate: Date): Promise<WeekCustomization[]> {
-    // Normalize dates for consistent handling
     const normalizedStart = normalizeToUTCDate(startDate);
     const normalizedEnd = normalizeToUTCDate(endDate);
-    
-    console.log('[CalendarService] Getting customizations:', {
+
+    console.log('[CalendarService] Getting customizations between:', {
       startDate: formatDateForDisplay(normalizedStart),
       endDate: formatDateForDisplay(normalizedEnd)
     });
@@ -150,36 +173,15 @@ export class CalendarService {
       throw error;
     }
 
+    // Log the raw data received from Supabase BEFORE mapping
+    console.log('[CalendarService] Raw data from Supabase:', customizations);
+
     return customizations.map(row => ({
       ...mapWeekCustomizationFromRow(row),
       flexibleDates: row.flexible_checkins?.map((fc: { allowed_checkin_date: string }) => 
-        normalizeToUTCDate(new Date(fc.allowed_checkin_date))
+        parseISO(`${fc.allowed_checkin_date}T00:00:00.000Z`)
       ) || []
     }));
-  }
-
-  /**
-   * Get all weeks (standard and customized) for a date range
-   * @param startDate The start date of the range
-   * @param endDate The end date of the range
-   * @param isAdminMode Whether to include admin-only weeks
-   * @returns Array of weeks
-   */
-  static async getWeeks(startDate: Date, endDate: Date, isAdminMode: boolean = false): Promise<Week[]> {
-    // Get calendar config
-    const config = await this.getConfig();
-    
-    // Get customizations
-    const customizations = await this.getCustomizations(startDate, endDate);
-    
-    // Generate weeks with customizations
-    return generateWeeksWithCustomizations(
-      startDate,
-      endDate,
-      config,
-      customizations,
-      isAdminMode
-    );
   }
 
   /**
@@ -297,7 +299,7 @@ export class CalendarService {
       return {
         ...mapWeekCustomizationFromRow(complete),
         flexibleDates: complete.flexible_checkins?.map((fc: { allowed_checkin_date: string }) => 
-          normalizeToUTCDate(new Date(fc.allowed_checkin_date))
+          parseISO(fc.allowed_checkin_date)
         ) || []
       };
     } catch (err) {
@@ -347,8 +349,9 @@ export class CalendarService {
           
         if (currentError) throw currentError;
         
-        const currentStartDate = normalizeToUTCDate(new Date(current.start_date));
-        const currentEndDate = normalizeToUTCDate(new Date(current.end_date));
+        // Use parseISO for dates coming directly from DB string format
+        const currentStartDate = parseISO(current.start_date); 
+        const currentEndDate = parseISO(current.end_date);   
         
         // Get the new date range
         const newStartDate = normalizedUpdates.startDate || currentStartDate;
@@ -458,7 +461,7 @@ export class CalendarService {
       return {
         ...mapWeekCustomizationFromRow(complete),
         flexibleDates: complete.flexible_checkins?.map((fc: { allowed_checkin_date: string }) => 
-          normalizeToUTCDate(new Date(fc.allowed_checkin_date))
+          parseISO(fc.allowed_checkin_date)
         ) || []
       };
     } catch (err) {
@@ -485,26 +488,6 @@ export class CalendarService {
     }
 
     return true;
-  }
-
-  /**
-   * Get flexible check-in dates for a specific week
-   * @param weekId The ID of the week
-   * @returns Array of flexible check-in dates
-   */
-  static async getFlexibleCheckinDates(weekId: string): Promise<Date[]> {
-    console.log('[CalendarService] Getting flexible check-in dates for week:', weekId);
-    const { data, error } = await supabase
-      .from('flexible_checkins')
-      .select('allowed_checkin_date')
-      .eq('week_customization_id', weekId);
-
-    if (error) {
-      console.error('[CalendarService] Error getting flexible check-in dates:', error);
-      return [];
-    }
-
-    return data.map(row => normalizeToUTCDate(new Date(row.allowed_checkin_date)));
   }
 
   /**

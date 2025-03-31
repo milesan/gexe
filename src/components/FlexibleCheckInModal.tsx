@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { format, isSameDay } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
 import { Week } from '../types/calendar';
 import { Calendar } from 'lucide-react';
 import { DayPicker } from 'react-day-picker';
@@ -35,7 +36,14 @@ export function FlexibleCheckInModal({ week, isOpen, onClose, onDateSelect }: Pr
     .sort((a, b) => a.getTime() - b.getTime());
 
   const handleDateSelect = (date: Date) => {
+    // --- Log the originally clicked date object --- 
+    console.log('[DATE_TRACE] FlexibleCheckInModal: Date clicked (raw):', { dateObj: date, iso: date?.toISOString?.() });
+
     const normalizedDate = normalizeToUTCDate(date);
+
+    // --- Log the normalized date before sending --- 
+    console.log('[DATE_TRACE] FlexibleCheckInModal: Normalized date before sending:', { dateObj: normalizedDate, iso: normalizedDate?.toISOString?.() });
+    
     console.log('[FlexibleCheckInModal] Check-in date selected:', {
       weekId: week.id,
       selectedDate: formatDateForDisplay(normalizedDate),
@@ -75,7 +83,7 @@ export function FlexibleCheckInModal({ week, isOpen, onClose, onDateSelect }: Pr
             >
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-emerald-600" />
-                <span className="font-medium">{format(date, 'EEEE, MMMM d')}</span>
+                <span className="font-medium">{formatInTimeZone(date, 'UTC', 'EEEE, MMMM d')}</span>
               </div>
             </button>
           ))}

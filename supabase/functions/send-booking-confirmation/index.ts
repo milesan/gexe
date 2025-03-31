@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 import * as resend from 'https://esm.sh/resend@2.0.0'
 import { format } from 'https://esm.sh/date-fns@2.30.0'
+import { formatInTimeZone } from 'https://esm.sh/date-fns-tz@2.0.0?deps=date-fns@2.30.0'
 import { generateBookingConfirmationEmail } from '../_shared/email-templates.ts'
 
 // Also define CORS headers directly here as a backup
@@ -82,11 +83,11 @@ serve(async (req) => {
     const supabaseClient = createClient(supabaseUrl, serviceRoleKey)
     const resendClient = new resend.Resend(resendApiKey)
 
-    // Format dates for display
-    const checkInDate = new Date(checkIn)
-    const checkOutDate = new Date(checkOut)
-    const formattedCheckIn = format(checkInDate, 'EEEE, MMMM d, yyyy')
-    const formattedCheckOut = format(checkOutDate, 'EEEE, MMMM d, yyyy')
+    // Format dates for display using UTC, ensuring parsing assumes UTC
+    const checkInDate = new Date(checkIn + 'T00:00:00Z') // Append Z for UTC
+    const checkOutDate = new Date(checkOut + 'T00:00:00Z') // Append Z for UTC
+    const formattedCheckIn = formatInTimeZone(checkInDate, 'UTC', 'EEEE, MMMM d, yyyy')
+    const formattedCheckOut = formatInTimeZone(checkOutDate, 'UTC', 'EEEE, MMMM d, yyyy')
     
     // Link to booking details
     const bookingDetailsUrl = `${frontendUrl}/my-bookings`
