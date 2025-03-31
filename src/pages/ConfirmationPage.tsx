@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle, Calendar, MapPin, Users, ArrowLeft, ExternalLink } from 'lucide-react';
-import { format } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 export function ConfirmationPage() {
@@ -66,7 +66,7 @@ export function ConfirmationPage() {
                 <span className="text-sm">Check-in</span>
               </div>
               <p className="font-display text-xl">
-                {format(new Date(booking.checkIn), 'EEEE, MMMM d')}
+                {formatInTimeZone(new Date(booking.checkIn), 'UTC', 'EEEE, MMMM d')}
               </p>
               <p className="text-sm text-emerald-600">
                 Available from 3-8PM
@@ -79,7 +79,7 @@ export function ConfirmationPage() {
                 <span className="text-sm">Check-out</span>
               </div>
               <p className="font-display text-xl">
-                {format(new Date(booking.checkOut), 'EEEE, MMMM d')}
+                {formatInTimeZone(new Date(booking.checkOut), 'UTC', 'EEEE, MMMM d')}
               </p>
               <p className="text-sm text-emerald-600">
                 By 12PM Noon

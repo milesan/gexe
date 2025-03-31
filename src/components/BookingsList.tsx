@@ -1,6 +1,7 @@
 import React from 'react';
-import { format } from 'date-fns';
+import { format } from 'date-fns-tz';
 import { supabase } from '../lib/supabase';
+import { parseISO } from 'date-fns';
 
 interface Booking {
   id: string;
@@ -162,10 +163,10 @@ export function BookingsList() {
                 </div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {format(new Date(booking.check_in), 'PP')}
+                {format(parseISO(booking.check_in), 'PP')}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {format(new Date(booking.check_out), 'PP')}
+                {format(parseISO(booking.check_out), 'PP')}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                 €{booking.total_price}
@@ -182,7 +183,7 @@ export function BookingsList() {
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {format(new Date(booking.created_at), 'PPp')}
+                {format(new Date(booking.created_at), 'PPp', { timeZone: 'UTC' })}
               </td>
             </tr>
           ))}

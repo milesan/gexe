@@ -32,15 +32,3 @@ export function weeklyToDaily(weeklyBooking: WeeklyBooking): DailyBooking {
     status: weeklyBooking.status
   };
 }
-
-export function isWeekAvailable(weekStart: Date, dailyBookings: DailyBooking[]): boolean {
-  const weekEnd = endOfWeek(weekStart);
-  const daysInWeek = eachDayOfInterval({ start: weekStart, end: weekEnd });
-  
-  return !daysInWeek.some(day => 
-    dailyBookings.some(booking => 
-      day >= new Date(booking.startDate) && 
-      day <= new Date(booking.endDate)
-    )
-  );
-}

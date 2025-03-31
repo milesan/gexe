@@ -1,11 +1,10 @@
 import React from 'react';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { bookingService } from '../services/BookingService';
 import { motion } from 'framer-motion';
 import { ExternalLink } from 'lucide-react';
 import { useSession } from '../hooks/useSession';
 import type { Booking } from '../types';
-import { apiDateToUTC } from '../utils/timezone';
 
 export function MyBookings() {
   const [bookings, setBookings] = React.useState<Booking[]>([]);
@@ -83,11 +82,11 @@ export function MyBookings() {
                   <div className="space-y-1 text-sm font-regular">
                     <p>
                       <span className="text-stone-500">Check-in:</span>{' '}
-                      {format(apiDateToUTC(booking.check_in), 'PPP')}
+                      {format(parseISO(booking.check_in), 'PPP')}
                     </p>
                     <p>
                       <span className="text-stone-500">Check-out:</span>{' '}
-                      {format(apiDateToUTC(booking.check_out), 'PPP')}
+                      {format(parseISO(booking.check_out), 'PPP')}
                     </p>
                     <p>
                       <span className="text-stone-500">Total Price:</span>{' '}

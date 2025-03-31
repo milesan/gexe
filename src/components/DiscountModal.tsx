@@ -26,6 +26,9 @@ function useDiscounts(checkInDate: Date, checkOutDate: Date, accommodationName: 
 
   // Calculate seasonal discount
   const seasonBreakdown = getSeasonBreakdown(checkInDate, checkOutDate);
+  console.log('[DiscountModal] Season breakdown:', seasonBreakdown);
+  console.log('[DiscountModal] checkInDate:', checkInDate.toISOString());
+  console.log('[DiscountModal] checkOutDate:', checkOutDate.toISOString());
   const showSeasonalSection = basePrice > 0 && seasonBreakdown.seasons.length > 0 && !accommodationName.toLowerCase().includes('dorm');
 
   // Calculate weighted average seasonal discount

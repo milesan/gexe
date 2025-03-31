@@ -1,11 +1,11 @@
-import { addWeeks, startOfWeek, addDays, addMonths, eachDayOfInterval, isBefore, differenceInDays } from 'date-fns';
-import { convertToUTC1 } from './timezone';
-import { Week } from '../types/calendar';
-import { calculateTotalNights, calculateTotalDays } from './dates';
+import { isBefore, differenceInDays } from 'date-fns';
+import { normalizeToUTCDate } from './dates';
 
 // Helper function to centralize season logic based solely on date
 function _getSeasonInfoByDate(date: Date): { name: string, baseDiscount: number } {
-  const month = date.getMonth();
+  const month = date.getUTCMonth();
+  console.log('[pricing] date get season info:', date.toISOString());
+  console.log('[pricing] month:', month);
   // Low Season (November-May)
   if (month <= 4 || month >= 10) return { name: 'Low Season', baseDiscount: 0.40 };
   // Medium Season (June, October)
@@ -51,6 +51,11 @@ export function getDurationDiscount(numberOfWeeks: number): number {
 }
 
 export function getSeasonBreakdown(checkIn: Date, checkOut: Date): { hasMultipleSeasons: boolean, seasons: { name: string, discount: number, nights: number }[] } {
+  // Normalize dates *immediately*
+  const normCheckIn = normalizeToUTCDate(checkIn);
+  const normCheckOut = normalizeToUTCDate(checkOut);
+  console.log('[pricing] normCheckIn:', normCheckIn.toISOString());
+  console.log('[pricing] normCheckOut:', normCheckOut.toISOString());
   // Initialize with all possible seasons, using base discounts for mapping
   // The 'discount' here represents the base seasonal discount, not the final applied discount
   const seasonMap: Record<string, { name: string, discount: number, nights: number }> = {
@@ -59,7 +64,7 @@ export function getSeasonBreakdown(checkIn: Date, checkOut: Date): { hasMultiple
     'Summer Season-0': { name: 'Summer Season', discount: 0, nights: 0 }
   };
 
-  if (isBefore(checkOut, checkIn)) {
+  if (isBefore(normCheckOut, normCheckIn)) {
     console.warn('[pricing] Check-out date is before check-in date in getSeasonBreakdown.');
     return {
       hasMultipleSeasons: false,
@@ -67,8 +72,8 @@ export function getSeasonBreakdown(checkIn: Date, checkOut: Date): { hasMultiple
     };
   }
 
-  const totalNights = differenceInDays(checkOut, checkIn);
-
+  const totalNights = differenceInDays(normCheckOut, normCheckIn);
+  console.log('[pricing] totalNights:', totalNights);
   if (totalNights === 0) {
      console.log('[pricing] Zero nights duration in getSeasonBreakdown.');
     return {
@@ -77,11 +82,23 @@ export function getSeasonBreakdown(checkIn: Date, checkOut: Date): { hasMultiple
     };
   }
 
-  // Get all nights in the selected period
-  const allNights = eachDayOfInterval({
-    start: checkIn,
-    end: checkOut
-  }).slice(0, -1); // Remove the last day since we want nights
+  // Get all nights in the selected period (Manual UTC implementation)
+  const allNights: Date[] = [];
+  let currentDay = new Date(normCheckIn); // Start with a copy of the normalized check-in date
+  console.log('[pricing] currentDay:', currentDay.toISOString());
+  // Loop while the current day is strictly before the normalized check-out date
+  while (currentDay < normCheckOut) {
+    allNights.push(new Date(currentDay)); // Add a copy of the current day (represents the night starting on this day)
+    // Increment the day using UTC methods to avoid timezone issues
+    currentDay.setUTCDate(currentDay.getUTCDate() + 1);
+    console.log('[pricing] currentDay after increment:', currentDay.toISOString());
+  }
+  // 'allNights' now contains Date objects for the start of each night in the period
+
+  // Defensive check (optional but good practice)
+  if (allNights.length === 0 && normCheckIn < normCheckOut) {
+    console.warn('[getSeasonBreakdown] Generated zero nights for a valid interval:', { normCheckIn: normCheckIn.toISOString(), normCheckOut: normCheckOut.toISOString() });
+  }
 
   // Count nights per season using the centralized logic
   allNights.forEach(night => {
@@ -89,7 +106,11 @@ export function getSeasonBreakdown(checkIn: Date, checkOut: Date): { hasMultiple
     const seasonName = seasonInfo.name;
     const baseDiscount = seasonInfo.baseDiscount;
     const key = `${seasonName}-${baseDiscount}`; // Key based on name and base discount
-
+    console.log('[pricing] night:', night.toISOString());
+    console.log('[pricing] seasonInfo:', seasonInfo);
+    console.log('[pricing] seasonName:', seasonName);
+    console.log('[pricing] baseDiscount:', baseDiscount);
+    console.log('[pricing] key:', key);
     if (seasonMap[key]) {
       seasonMap[key].nights++;
     } else {
@@ -107,8 +128,8 @@ export function getSeasonBreakdown(checkIn: Date, checkOut: Date): { hasMultiple
     seasons: seasonsWithNights, // Return only seasons that actually occur in the interval
     totalNights,
     calculatedNights: seasonsWithNights.reduce((sum, s) => sum + s.nights, 0), // Sanity check
-    checkIn: checkIn.toISOString(),
-    checkOut: checkOut.toISOString()
+    checkIn: normCheckIn.toISOString(),
+    checkOut: normCheckOut.toISOString()
   });
 
   // Return only the seasons that actually have nights in the stay

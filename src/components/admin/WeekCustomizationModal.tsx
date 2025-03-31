@@ -4,9 +4,10 @@ import { Week, WeekStatus } from '../../types/calendar';
 import { 
   formatDateForDisplay, 
   normalizeToUTCDate, 
-  isDateInWeek
+  isDateInWeek,
+  safeParseDate,
+  utcToLocalMidnight
 } from '../../utils/dates';
-import { safeParseDate } from '../../utils/dates';
 import { AlertTriangle, Info, Calendar } from 'lucide-react';
 import { CalendarService } from '../../services/CalendarService';
 import { DayPicker } from 'react-day-picker';
@@ -96,10 +97,10 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
     const end = safeParseDate(endDate);
     
     // Check if dates align with check-in/check-out days
-    if (start.getDay() !== calendarConfig.checkInDay) {
+    if (start.getUTCDay() !== calendarConfig.checkInDay) {
       const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
       setDateWarning(`Start date should be a ${dayNames[calendarConfig.checkInDay]} (check-in day)`);
-    } else if (end.getDay() !== calendarConfig.checkOutDay) {
+    } else if (end.getUTCDay() !== calendarConfig.checkOutDay) {
       const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
       setDateWarning(`End date should be a ${dayNames[calendarConfig.checkOutDay]} (check-out day)`);
     } else {
@@ -220,9 +221,13 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
       setHasFlexDatesChanged(week.flexibleDates?.length !== 0);
     }
   };
-
+  console.log('[WeekCustomizationModal] safeParseDate(startDate)', safeParseDate(startDate));
+  console.log('[WeekCustomizationModal] safeParseDate(endDate)', safeParseDate(endDate));
+  console.log('[WeekCustomizationModal] endDate', endDate);
+  console.log('[WeekCustomizationModal] startDate', startDate);
   // Handle flexible dates selection
   const handleFlexDatesSelect = (dates: Date[] | undefined) => {
+    // Normalize dates *from* the picker (local midnight) back to UTC midnight
     const normalizedDates = Array.isArray(dates) 
       ? dates.map(d => normalizeToUTCDate(d))
       : [];
@@ -366,12 +371,15 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
           <div className="mb-4">
             <DayPicker
               mode="multiple"
-              selected={selectedFlexDates}
-              defaultMonth={safeParseDate(startDate)}
+              // Convert selected UTC dates to local midnight for display
+              selected={selectedFlexDates.map(d => utcToLocalMidnight(d))}
+              // Convert defaultMonth UTC date to local midnight
+              defaultMonth={utcToLocalMidnight(safeParseDate(startDate))}
               onSelect={handleFlexDatesSelect}
+              // Convert disabled boundary UTC dates to local midnight
               disabled={[
-                { before: safeParseDate(startDate) },
-                { after: safeParseDate(endDate) }
+                { before: utcToLocalMidnight(safeParseDate(startDate)) },
+                { after: utcToLocalMidnight(safeParseDate(endDate)) }
               ]}
               className="border-0"
             />

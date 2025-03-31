@@ -85,13 +85,20 @@ if (isSameDay(date1, date2)) { ... }
 // ❌ AVOID: Using toLocaleDateString() which is inconsistent
 date.toLocaleDateString();
 
-// ✅ BETTER: Use date-fns format
+// ⚠️ CAUTION: Using `format` directly relies on local timezone interpretation.
+// While format(normalizeToUTCDate(date), 'yyyy-MM-dd') often works,
+// it's not guaranteed across all timezones. Use with caution.
 import { format } from 'date-fns';
-format(date, 'yyyy-MM-dd');
+format(normalizeToUTCDate(date), 'yyyy-MM-dd');
 
-// ✅ BEST: Use our utility functions
-import { formatDateForDisplay } from '../utils/dates';
-formatDateForDisplay(date);
+// ✅ BEST: Use `formatInTimeZone` with 'UTC' for guaranteed UTC display.
+import { formatInTimeZone } from 'date-fns-tz';
+formatInTimeZone(normalizeToUTCDate(date), 'UTC', 'yyyy-MM-dd'); // Ensures display matches UTC date
+
+// ✅ ALSO BEST: Use our utility functions which now implement the above.
+import { formatDateForDisplay, formatDateShort } from '../utils/dates';
+formatDateForDisplay(date); // Outputs 'yyyy-MM-dd' in UTC
+formatDateShort(date); // Outputs 'MMM d' in UTC
 ```
 
 ### 6. Working with APIs

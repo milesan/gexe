@@ -466,14 +466,45 @@ export function Book2Page() {
     // Group nights by season
     const seasonMap: Record<string, { name: string; discount: number; nights: number }> = {};
     
-    // Get all dates in the stay (excluding checkout day)
-    const allDates = eachDayOfInterval({
-      start: startDate,
-      end: addDays(endDate, -1) // Exclude checkout day
+    console.log('[Book2Page] Calculating season breakdown:', {
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      totalNights
     });
-    
+
+    // Manually generate dates in UTC to avoid timezone issues with eachDayOfInterval
+    const allDates: Date[] = [];
+    // Clone start date to avoid modifying the original
+    let currentDate = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate())); 
+    // We want to iterate up to, but not including, the endDate
+    const finalExclusiveEndDate = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate()));
+
+    console.log('[Book2Page] Manual Date Generation Start:', { 
+        start: currentDate.toISOString(), 
+        endExclusive: finalExclusiveEndDate.toISOString() 
+    });
+
+    // Loop while the current date is strictly before the final end date
+    while (currentDate.getTime() < finalExclusiveEndDate.getTime()) {
+        // Add a clone of the current UTC date to the array
+        allDates.push(new Date(currentDate)); 
+        
+        // Increment the day in UTC for the next iteration
+        currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+    }
+
+    console.log('[Book2Page] Manual Date Generation Complete:', { 
+        count: allDates.length, 
+        firstDate: allDates[0]?.toISOString(), 
+        lastDate: allDates[allDates.length - 1]?.toISOString() 
+    });
+
     // Count the nights per season using the date of each night
-    allDates.forEach(date => {
+    allDates.forEach((date: Date) => {
+      console.log('[Book2Page] Calculating season breakdown:', {
+        date: date.toISOString(),
+        discount: getSeasonalDiscount(date, accommodationTitle)
+      });
       const discount = getSeasonalDiscount(date, accommodationTitle);
       const seasonName = discount === 0 ? 'Summer Season' : 
                          discount === 0.15 ? 'Medium Season' : 
@@ -550,11 +581,19 @@ export function Book2Page() {
 
   // FlexibleCheckInModal needs to pass both the week and the selected date
   const handleFlexDateSelect = useCallback((date: Date, week: Week) => {
+    // --- Use the date directly from the modal --- 
+    // It should already be normalized by the modal.
+    const normalizedDate = date; // Reverted: Use the input date directly
+    
+    // --- Log the date received from the modal --- 
+    console.log('[DATE_TRACE] Book2Page: Received date from modal:', { dateObj: normalizedDate, iso: normalizedDate?.toISOString?.() });
+    
     console.log('[Book2Page] handleFlexDateSelect called with:', {
-      date: formatDateForDisplay(date),
+      dateArgFromModal: formatDateForDisplay(normalizedDate), // Log the date received
       weekId: week?.id,
-      weekStart: week ? formatDateForDisplay(week.startDate) : null,
-      weekEnd: week ? formatDateForDisplay(week.endDate) : null
+      weekStartOriginal: week ? formatDateForDisplay(week.startDate) : null,
+      weekEndOriginal: week ? formatDateForDisplay(week.endDate) : null,
+      weekSelectedFlexOriginal: week?.selectedFlexDate ? formatDateForDisplay(week.selectedFlexDate) : null
     });
     
     if (!week) {
@@ -562,19 +601,27 @@ export function Book2Page() {
       return;
     }
     
-    // Always create a new week with the selected date as the start date
-    // but preserve end date and ID from the original week
+    // --- Explicitly construct the new week object ---
+    // Use the date from the modal (which should be normalized UTC).
     const selectedWeek: Week = {
-      ...week,
-      startDate: date, // ALWAYS use the selected flex date as start date
-      endDate: week.endDate,
-      id: week.id,
-      isCustom: true, // Ensure it's marked as custom
-      isFlexibleSelection: true, // Flag to indicate this is a flexible selection
-      flexibleDates: week.flexibleDates, // Preserve the flex dates array for reference
-      // Mark the originally selected flex date for UI purposes
-      selectedFlexDate: date 
+      id: week.id, // Preserve original ID
+      startDate: normalizedDate, // Use the date from modal as the actual start date
+      endDate: week.endDate, // Preserve original end date
+      status: 'visible', // Explicitly set status
+      name: week.name, // Preserve original name (if any)
+      isCustom: true, // Mark as custom due to flex selection changing start date
+      isEdgeWeek: week.isEdgeWeek, // Preserve edge status
+      flexibleDates: week.flexibleDates, // Preserve the original list of flex dates
+      selectedFlexDate: normalizedDate, // Store the chosen flex date
+      isFlexibleSelection: true // Add flag
+      // Ensure any other essential properties from 'Week' type are preserved if needed
     };
+    
+    // --- Log the object just before state update --- 
+    console.log('[DATE_TRACE] Book2Page: Week object before state update:', { 
+      startDateIso: selectedWeek.startDate?.toISOString?.(), 
+      selectedFlexDateIso: selectedWeek.selectedFlexDate?.toISOString?.() 
+    });
     
     console.log('[Book2Page] Created flexible week:', {
       weekId: selectedWeek.id,
@@ -582,7 +629,7 @@ export function Book2Page() {
       weekEnd: formatDateForDisplay(selectedWeek.endDate),
       isCustom: selectedWeek.isCustom,
       isFlexibleSelection: selectedWeek.isFlexibleSelection,
-      selectedFlexDate: formatDateForDisplay(selectedWeek.selectedFlexDate!)
+      selectedFlexDate: selectedWeek.selectedFlexDate ? formatDateForDisplay(selectedWeek.selectedFlexDate) : 'undefined'
     });
     
     // Use a direct state update for the first selection to avoid any stale closures
@@ -591,9 +638,11 @@ export function Book2Page() {
       setSelectedWeeks([selectedWeek]);
     } else {
       // For subsequent selections, use the normal handler
+      // Make sure handleWeekSelect correctly preserves the selectedWeek object details
+      console.log('[Book2Page] Calling handleWeekSelect for subsequent flex date selection');
       handleWeekSelect(selectedWeek);
     }
-  }, [handleWeekSelect, selectedWeeks.length]);
+  }, [handleWeekSelect, selectedWeeks.length]); 
 
   // Calculates the accommodation title based on the selected accommodation ID
   const accommodationTitle = useMemo(() => {
@@ -790,6 +839,7 @@ export function Book2Page() {
                   onDateSelect={handleFlexDateSelect}
                   currentMonth={currentMonth}
                   onMonthChange={setCurrentMonth}
+                  accommodationTitle={accommodationTitle}
                 />
               )}
             </div>

@@ -5,7 +5,7 @@ import { Calendar, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { StatusModal } from './StatusModal';
 import type { AvailabilityStatus } from '../types/availability';
 import { motion, AnimatePresence } from 'framer-motion';
-import { normalizeToUTCDate } from '../utils/dates';
+import { normalizeToUTCDate, formatDateForDisplay } from '../utils/dates';
 import { calculateDaysBetween } from '../utils/dates';
 
 interface Props {
@@ -14,13 +14,13 @@ interface Props {
 
 interface Booking {
   id: string;
-  check_in: string;
-  check_out: string;
+  check_in: Date;
+  check_out: Date;
   status: string;
 }
 
 interface AvailabilityData {
-  availability_date: string;
+  availability_date: Date;
   accommodation_id: string;
   title: string;
   is_available: boolean;
@@ -66,8 +66,18 @@ export function InventoryCalendar({ onClose }: Props) {
       setAccommodations(accommodationsData);
 
       // Get availability data for the current month
-      const startDate = format(startOfMonth(currentDate), 'yyyy-MM-dd');
-      const endDate = format(endOfMonth(currentDate), 'yyyy-MM-dd');
+      // Normalize to UTC before sending to API
+      const utcStartDate = normalizeToUTCDate(startOfMonth(currentDate));
+      const utcEndDate = normalizeToUTCDate(endOfMonth(currentDate));
+      const startDate = formatDateForDisplay(utcStartDate);
+      const endDate = formatDateForDisplay(utcEndDate);
+
+      console.log('[InventoryCalendar] Fetching availability for:', {
+        startDate,
+        endDate,
+        utcStartDate: utcStartDate.toISOString(),
+        utcEndDate: utcEndDate.toISOString()
+      });
 
       const { data: availabilityData, error: availabilityError } = await supabase
         .rpc('get_accommodation_availability_range', {
@@ -77,34 +87,50 @@ export function InventoryCalendar({ onClose }: Props) {
 
       if (availabilityError) throw availabilityError;
 
-      console.log('Availability data sample:', availabilityData.slice(0, 3));
+      console.log('[InventoryCalendar] Availability data sample:', availabilityData.slice(0, 3));
 
-      // Transform availability data into a more usable format
+      // Transform availability data into a more usable format with normalized dates
       const availability: DailyAvailability = {};
       availabilityData.forEach((data: AvailabilityData) => {
-        if (!availability[data.availability_date]) {
-          availability[data.availability_date] = {};
+        // Normalize the availability date to UTC midnight
+        
+        const normalizedDate = normalizeToUTCDate(data.availability_date);
+        const dateStr = formatDateForDisplay(normalizedDate);
+        
+        if (!availability[dateStr]) {
+          availability[dateStr] = {};
         }
         
-        // Ensure bookings is always an array
+        // Ensure bookings is always an array and normalize all booking dates
         if (!data.bookings) {
           data.bookings = [];
         }
         
+        // Normalize all booking dates
+        const normalizedBookings = data.bookings.map(booking => ({
+          ...booking,
+          check_in: normalizeToUTCDate(booking.check_in),
+          check_out: normalizeToUTCDate(booking.check_out)
+        }));
+        
         // Debug: Log any checkout dates found
-        data.bookings.forEach(booking => {
-          const checkOutDate = format(new Date(booking.check_out), 'yyyy-MM-dd');
-          if (checkOutDate === data.availability_date) {
-            console.log('Found checkout date:', data.availability_date, 'for accommodation:', data.accommodation_id);
+        normalizedBookings.forEach(booking => {
+          const checkOutDate = formatDateForDisplay(booking.check_out);
+          if (checkOutDate === dateStr) {
+            console.log('[InventoryCalendar] Found checkout date:', dateStr, 'for accommodation:', data.accommodation_id);
           }
         });
         
-        availability[data.availability_date][data.accommodation_id] = data;
+        availability[dateStr][data.accommodation_id] = {
+          ...data,
+          availability_date: normalizedDate,
+          bookings: normalizedBookings
+        };
       });
 
       setDailyAvailability(availability);
     } catch (err) {
-      console.error('Error loading data:', err);
+      console.error('[InventoryCalendar] Error loading data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load data');
     } finally {
       setLoading(false);
@@ -112,7 +138,9 @@ export function InventoryCalendar({ onClose }: Props) {
   }
 
   const getDateStatus = (date: Date, accommodationId: string): AvailabilityStatus | number => {
-    const dateStr = format(date, 'yyyy-MM-dd');
+    // Normalize the input date to UTC midnight
+    const normalizedDate = normalizeToUTCDate(date);
+    const dateStr = formatDateForDisplay(normalizedDate);
     const availabilityData = dailyAvailability[dateStr]?.[accommodationId];
     
     if (!availabilityData) return 'AVAILABLE';
@@ -125,8 +153,12 @@ export function InventoryCalendar({ onClose }: Props) {
     
     // Check for check-in/out dates regardless of availability status
     if (availabilityData.bookings && availabilityData.bookings.length > 0) {
-      const hasCheckIn = availabilityData.bookings.some(b => format(new Date(b.check_in), 'yyyy-MM-dd') === dateStr);
-      const hasCheckOut = availabilityData.bookings.some(b => format(new Date(b.check_out), 'yyyy-MM-dd') === dateStr);
+      const hasCheckIn = availabilityData.bookings.some(b => 
+        formatDateForDisplay(b.check_in) === dateStr
+      );
+      const hasCheckOut = availabilityData.bookings.some(b => 
+        formatDateForDisplay(b.check_out) === dateStr
+      );
       
       console.log(`[InventoryCalendar] Checking date status for ${dateStr} (${accommodationId}):`, {
         hasBookings: availabilityData.bookings.length > 0,
@@ -134,11 +166,11 @@ export function InventoryCalendar({ onClose }: Props) {
         hasCheckOut,
         bookingsInfo: availabilityData.bookings.map(b => ({
           id: b.id,
-          checkIn: format(normalizeToUTCDate(b.check_in), 'yyyy-MM-dd'),
-          checkOut: format(normalizeToUTCDate(b.check_out), 'yyyy-MM-dd'),
-          isCheckInToday: format(normalizeToUTCDate(b.check_in), 'yyyy-MM-dd') === dateStr,
-          isCheckOutToday: format(normalizeToUTCDate(b.check_out), 'yyyy-MM-dd') === dateStr,
-          durationDays: calculateDaysBetween(normalizeToUTCDate(b.check_in), normalizeToUTCDate(b.check_out), true)
+          checkIn: formatDateForDisplay(b.check_in),
+          checkOut: formatDateForDisplay(b.check_out),
+          isCheckInToday: formatDateForDisplay(b.check_in) === dateStr,
+          isCheckOutToday: formatDateForDisplay(b.check_out) === dateStr,
+          durationDays: calculateDaysBetween(b.check_in, b.check_out, true)
         }))
       });
       
@@ -151,31 +183,6 @@ export function InventoryCalendar({ onClose }: Props) {
       if (hasCheckOut) return 'CHECK_OUT';
     }
     
-    // Check all bookings for this accommodation for checkout dates
-    // This is a fallback in case the availability data doesn't properly include checkout dates
-    for (const dayData of Object.values(dailyAvailability)) {
-      const accommodationData = dayData[accommodationId];
-      if (accommodationData?.bookings) {
-        const isCheckOut = accommodationData.bookings.some(b => format(normalizeToUTCDate(b.check_out), 'yyyy-MM-dd') === dateStr);
-        if (isCheckOut) {
-          // Check if there's also a check-in on this date
-          const isCheckIn = accommodationData.bookings.some(b => format(normalizeToUTCDate(b.check_in), 'yyyy-MM-dd') === dateStr);
-          
-          console.log(`[InventoryCalendar] Found potential cross-day checkout for ${dateStr}:`, {
-            isCheckOut,
-            isCheckIn,
-            hasOverlap: isCheckIn && isCheckOut,
-            finalStatus: isCheckIn ? 'BOOKED' : 'CHECK_OUT'
-          });
-          
-          if (isCheckIn) {
-            return 'BOOKED'; // Both check-in and check-out on same day
-          }
-          return 'CHECK_OUT';
-        }
-      }
-    }
-    
     // For regular accommodations
     if (!availabilityData.is_available) {
       return 'BOOKED';
@@ -185,7 +192,9 @@ export function InventoryCalendar({ onClose }: Props) {
   };
 
   const getCellContent = (accommodation: any, date: Date) => {
-    const dateStr = format(date, 'yyyy-MM-dd');
+    // Normalize the input date to UTC midnight
+    const normalizedDate = normalizeToUTCDate(date);
+    const dateStr = formatDateForDisplay(normalizedDate);
     const availabilityData = dailyAvailability[dateStr]?.[accommodation.id];
 
     // Handle dorms
@@ -251,6 +260,7 @@ export function InventoryCalendar({ onClose }: Props) {
   };
 
   const handleDateClick = (date: Date, accommodationId: string) => {
+    // date is already in UTC from the table cell
     const status = getDateStatus(date, accommodationId);
     if (status === 'BOOKED') return;
 
@@ -365,12 +375,16 @@ export function InventoryCalendar({ onClose }: Props) {
                         <th className="sticky left-0 bg-gray-50 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[200px]">
                           Accommodation
                         </th>
-                        {daysInMonth.map(day => (
-                          <th key={day.toISOString()} className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            <div>{format(day, 'd')}</div>
-                            <div>{format(day, 'EEE')}</div>
-                          </th>
-                        ))}
+                        {daysInMonth.map(day => {
+                          // Convert local day to UTC for display
+                          const utcDay = normalizeToUTCDate(day);
+                          return (
+                            <th key={utcDay.toISOString()} className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              <div>{format(utcDay, 'd')}</div>
+                              <div>{format(utcDay, 'EEE')}</div>
+                            </th>
+                          );
+                        })}
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -382,14 +396,16 @@ export function InventoryCalendar({ onClose }: Props) {
                             </div>
                           </td>
                           {daysInMonth.map(day => {
-                            const dateStr = format(day, 'yyyy-MM-dd');
+                            // Convert local day to UTC for display and lookup
+                            const utcDay = normalizeToUTCDate(day);
+                            const dateStr = formatDateForDisplay(utcDay);
                             const availabilityData = dailyAvailability[dateStr]?.[accommodation.id];
                             const status = getDateStatus(day, accommodation.id);
                             return (
                               <td
-                                key={day.toISOString()}
+                                key={utcDay.toISOString()}
                                 className={getCellStyle(status)}
-                                onClick={() => handleDateClick(day, accommodation.id)}
+                                onClick={() => handleDateClick(utcDay, accommodation.id)}
                               >
                                 {getCellContent(accommodation, day)}
                               </td>
@@ -416,6 +432,7 @@ export function InventoryCalendar({ onClose }: Props) {
             if (!selectedDates) return;
             try {
               // Create a booking with the selected status
+              // selectedDates.start and end are already in UTC
               const { error } = await supabase
                 .from('bookings')
                 .insert({
@@ -432,7 +449,7 @@ export function InventoryCalendar({ onClose }: Props) {
               setShowStatusModal(false);
               setSelectedDates(null);
             } catch (err) {
-              console.error('Error creating booking:', err);
+              console.error('[InventoryCalendar] Error creating booking:', err);
               setError(err instanceof Error ? err.message : 'Failed to create booking');
             }
           }}

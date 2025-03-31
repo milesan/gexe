@@ -8,7 +8,7 @@ import { getSeasonalDiscount, getDurationDiscount, getSeasonBreakdown } from '..
 import { useWeeklyAccommodations } from '../hooks/useWeeklyAccommodations';
 import { addDays, isDate, eachDayOfInterval, isBefore } from 'date-fns';
 import * as Tooltip from '@radix-ui/react-tooltip';
-import { calculateTotalNights, calculateDurationDiscountWeeks } from '../utils/dates';
+import { calculateTotalNights, calculateDurationDiscountWeeks, normalizeToUTCDate } from '../utils/dates';
 
 interface Props {
   accommodations: Accommodation[];
@@ -64,7 +64,7 @@ export function CabinSelector({
   onSelectAccommodation,
   isLoading = false,
   selectedWeeks = [],
-  currentMonth = new Date(),
+  currentMonth = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate())),
   isDisabled = false
 }: Props) {
   console.log('[CabinSelector] Rendering with props:', {
@@ -72,8 +72,8 @@ export function CabinSelector({
     selectedAccommodationId,
     selectedWeeksCount: selectedWeeks?.length,
     currentMonth: currentMonth.toISOString(),
-    currentMonthNumber: currentMonth.getMonth(),
-    currentMonthName: new Intl.DateTimeFormat('en-US', { month: 'long' }).format(currentMonth),
+    currentMonthNumber: currentMonth.getUTCMonth(),
+    currentMonthName: new Intl.DateTimeFormat('en-US', { month: 'long', timeZone: 'UTC' }).format(currentMonth),
     selectedWeeks: selectedWeeks?.map(w => {
       if (!w || typeof w === 'string') return null;
       
@@ -96,6 +96,16 @@ export function CabinSelector({
       return null;
     }).filter(Boolean)
   });
+
+  // --- Normalization Step ---
+  // Create a date representing midnight UTC of the received currentMonth's date.
+  // This ensures consistency whether the prop was local midnight or the UTC midnight default.
+  const normalizedCurrentMonth = new Date(Date.UTC(
+    currentMonth.getUTCFullYear(),
+    currentMonth.getUTCMonth(),
+    currentMonth.getUTCDate()
+  ));
+  // --- End Normalization ---
 
   const { checkWeekAvailability, availabilityMap } = useWeeklyAccommodations();
   
@@ -155,10 +165,6 @@ export function CabinSelector({
   // Convert selectedWeeks to dates for comparison
   const selectedDates = selectedWeeks?.map(w => w.startDate || w) || [];
   
-  // Get month for filtering - only used for display when no weeks are selected
-  const month = currentMonth.getMonth();
-  const year = currentMonth.getFullYear();
-
   // Check if it's tent season (April 15 - September 1)
   // For tent season calculation, we'll use the first selected week's start date
   // If no weeks are selected, we'll use the current month for display purposes
@@ -168,16 +174,19 @@ export function CabinSelector({
   
   const isTentSeason = (() => {
     if (selectedWeeks.length === 0) {
-      // If no weeks selected, use current month for display purposes
-      const m = currentMonth.getMonth();
-      return (m > 3 || (m === 3 && currentMonth.getDate() >= 15)) && 
-             (m < 8 || (m === 8 && currentMonth.getDate() <= 1));
+      // If no weeks selected, use normalized UTC date for display purposes
+      const m = normalizedCurrentMonth.getUTCMonth(); // Use UTC month
+      const d = normalizedCurrentMonth.getUTCDate(); // Use UTC date
+      // Tent season logic (Apr 15th to Sep 1st UTC)
+      return (m > 3 || (m === 3 && d >= 15)) && 
+             (m < 8 || (m === 8 && d <= 1));
     }
     
     // For actual bookings, check if ALL of the selected days fall within tent season
     const isInTentSeason = (date: Date) => {
-      const m = date.getMonth();
-      const d = date.getDate();
+      const m = date.getUTCMonth(); // Use UTC month
+      const d = date.getUTCDate();  // Use UTC date
+      // Tent season logic (Apr 15th to Sep 1st UTC)
       return (m > 3 || (m === 3 && d >= 15)) && (m < 8 || (m === 8 && d <= 1));
     };
     
@@ -193,9 +202,24 @@ export function CabinSelector({
         return;
       }
       
-      // Get all days in this week
-      const daysInWeek = eachDayOfInterval({ start: startDate, end: endDate });
+      // *** Manually generate days in UTC to avoid timezone shifts ***
+      const daysInWeek: Date[] = [];
+      let currentDay = new Date(startDate); // Start with the normalized UTC start date
+      
+      while (currentDay <= endDate) {
+        daysInWeek.push(new Date(currentDay)); // Add a *copy* of the current day
+        // Increment the day using UTC methods
+        currentDay.setUTCDate(currentDay.getUTCDate() + 1);
+      }
+      
       allDays = [...allDays, ...daysInWeek];
+
+      // *** Log the days generated for this week (verify they are T00:00:00.000Z) ***
+      const currentWeekIndex = selectedWeeks.indexOf(week); // Calculate index beforehand
+      console.log('[CabinSelector] Processing week - Days generated:', { 
+        weekIndex: currentWeekIndex, // Use the variable here
+        daysInWeek: daysInWeek.map(d => d.toISOString())
+      });
     });
     
     // Check if ALL days fall within tent season
@@ -212,50 +236,91 @@ export function CabinSelector({
   // Calculate weighted seasonal discount based on all selected days
   const calculateWeightedSeasonalDiscount = (weeks: Week[], accommodationType?: string): number => {
     if (weeks.length === 0) {
-      // If no weeks selected, use current month for display purposes
-      return getSeasonalDiscount(currentMonth, accommodationType);
+      // If no weeks selected, use normalized UTC date for display purposes
+      return getSeasonalDiscount(normalizedCurrentMonth, accommodationType || '');
     }
 
     // Get all days in the selected period
     let allDays: Date[] = [];
-    
+
     weeks.forEach(week => {
-      const startDate = week.startDate || (week instanceof Date ? week : new Date());
-      const endDate = week.endDate || addDays(startDate, 6); // 6 days = 1 week (inclusive)
-      
-      if (isBefore(endDate, startDate)) {
-        console.warn('[CabinSelector] Invalid date range:', { startDate, endDate });
+      // Get initial dates
+      const initialStartDate = week.startDate || (week instanceof Date ? week : new Date());
+      const initialEndDate = week.endDate || addDays(initialStartDate, 6); // 6 days = 1 week (inclusive)
+
+      // *** Log the initial dates BEFORE normalization ***
+      console.log('[CabinSelector] Processing week - Initial dates:', { 
+        weekIndex: weeks.indexOf(week), // Log index for clarity
+        initialStartDate: initialStartDate?.toISOString ? initialStartDate.toISOString() : initialStartDate, 
+        initialEndDate: initialEndDate?.toISOString ? initialEndDate.toISOString() : initialEndDate,
+        weekData: week // Log the raw week object too
+      });
+
+      // *** Normalize dates ***
+      const startDate = normalizeToUTCDate(initialStartDate);
+      const endDate = normalizeToUTCDate(initialEndDate);
+
+      // *** Log the normalized dates ***
+      console.log('[CabinSelector] Processing week - Normalized dates:', { 
+        weekIndex: weeks.indexOf(week), // Log index for clarity
+        normalizedStartDate: startDate?.toISOString ? startDate.toISOString() : startDate,
+        normalizedEndDate: endDate?.toISOString ? endDate.toISOString() : endDate,
+        weekData: week // Log the raw week object too
+      });
+
+      if (isBefore(endDate, startDate)) { // Use normalized dates for comparison
+        console.warn('[CabinSelector] Invalid date range (normalized):', { startDate: startDate.toISOString(), endDate: endDate.toISOString() });
         return;
       }
+
+      // *** Use normalized dates in eachDayOfInterval ***
+      // const daysInWeek = eachDayOfInterval({ start: startDate, end: endDate }); <-- Removed this problematic line
+
+      // *** Manually generate days in UTC to avoid timezone shifts ***
+      const daysInWeek: Date[] = [];
+      let currentDay = new Date(startDate); // Start with the normalized UTC start date
       
-      // Get all days in this week
-      const daysInWeek = eachDayOfInterval({ start: startDate, end: endDate });
+      while (currentDay <= endDate) {
+        daysInWeek.push(new Date(currentDay)); // Add a *copy* of the current day
+        // Increment the day using UTC methods
+        currentDay.setUTCDate(currentDay.getUTCDate() + 1);
+      }
+      
       allDays = [...allDays, ...daysInWeek];
+
+      // *** Log the days generated for this week (verify they are T00:00:00.000Z) ***
+      const currentWeekIndex = weeks.indexOf(week); // Calculate index beforehand
+      console.log('[CabinSelector] Processing week - Days generated:', { 
+        weekIndex: currentWeekIndex, // Use the variable here
+        daysInWeek: daysInWeek.map(d => d.toISOString())
+      });
     });
-    
+
     if (allDays.length === 0) {
-      return getSeasonalDiscount(currentMonth, accommodationType);
+      return getSeasonalDiscount(normalizedCurrentMonth, accommodationType || '');
     }
-    
+
     // Calculate discount for each day
     let totalDiscount = 0;
-    
-    allDays.forEach(day => {
-      totalDiscount += getSeasonalDiscount(day, accommodationType);
+
+    allDays.forEach(day => { // 'day' is now guaranteed to be a normalized UTC date
+      // Pass normalized date to getSeasonalDiscount
+      totalDiscount += getSeasonalDiscount(day, accommodationType || '');
     });
-    
+
     // Calculate weighted average discount
     const weightedDiscount = totalDiscount / allDays.length;
-    
-    console.log('[CabinSelector] Weighted seasonal discount calculation:', {
-      totalDays: allDays.length,
-      firstDay: allDays[0]?.toISOString(),
-      lastDay: allDays[allDays.length - 1]?.toISOString(),
-      weightedDiscount: weightedDiscount,
-      discountPercentage: `${(weightedDiscount * 100).toFixed(1)}%`,
-      accommodationType
+
+    // Log with normalized dates for consistency
+    console.log('[CabinSelector] Weighted seasonal discount calculation (using normalized dates):', {
+       totalDays: allDays.length,
+       firstDay: allDays.length > 0 ? allDays[0].toISOString() : 'N/A', // Should be YYYY-MM-DDT00:00:00.000Z
+       lastDay: allDays.length > 0 ? allDays[allDays.length - 1].toISOString() : 'N/A', // Should be YYYY-MM-DDT00:00:00.000Z
+       weightedDiscount,
+       discountPercentage: `${(weightedDiscount * 100).toFixed(1)}%`,
+       accommodationType: accommodationType ?? 'Undefined'
     });
-    
+
     return weightedDiscount;
   };
 
@@ -267,9 +332,10 @@ export function CabinSelector({
   
   console.log('[CabinSelector] Seasonal discount calculation:', {
     currentMonth: currentMonth.toISOString(),
-    month: month,
-    monthName: new Intl.DateTimeFormat('en-US', { month: 'long' }).format(currentMonth),
-    year: year,
+    normalizedMonthForCalculations: normalizedCurrentMonth.toISOString(),
+    month: normalizedCurrentMonth.getUTCMonth(),
+    monthName: new Intl.DateTimeFormat('en-US', { month: 'long', timeZone: 'UTC' }).format(normalizedCurrentMonth),
+    year: normalizedCurrentMonth.getUTCFullYear(),
     seasonalDiscount: seasonalDiscount,
     discountPercentage: `${(seasonalDiscount * 100).toFixed(1)}%`,
     selectedWeeksCount: selectedWeeks.length,

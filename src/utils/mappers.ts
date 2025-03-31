@@ -1,6 +1,7 @@
 import { Database } from '../types/database';
 import { CalendarConfig, WeekCustomization, WeekStatus } from '../types/calendar';
 import { normalizeToUTCDate } from './dates';
+import { parseISO } from 'date-fns';
 
 type CalendarConfigRow = Database['public']['Tables']['calendar_config']['Row'];
 type WeekCustomizationRow = Database['public']['Tables']['week_customizations']['Row'];
@@ -33,8 +34,8 @@ export function mapCalendarConfigToRow(config: Partial<CalendarConfig>): Partial
 }
 
 export function mapWeekCustomizationFromRow(row: WeekCustomizationRow & { flexible_checkins?: { allowed_checkin_date: string }[] }): WeekCustomization {
-    const startDate = new Date(row.start_date);
-    const endDate = new Date(row.end_date);
+    const startDate = parseISO(row.start_date);
+    const endDate = parseISO(row.end_date);
     
     console.log('[mappers] Converting DB week customization to app model:', {
         id: row.id,
@@ -51,14 +52,14 @@ export function mapWeekCustomizationFromRow(row: WeekCustomizationRow & { flexib
     
     return {
         id: row.id,
-        startDate: normalizeToUTCDate(new Date(row.start_date)),
-        endDate: normalizeToUTCDate(new Date(row.end_date)),
+        startDate: parseISO(`${row.start_date}T00:00:00.000Z`),
+        endDate: parseISO(`${row.end_date}T00:00:00.000Z`),
         name: row.name,
         status: row.status as WeekStatus,
-        createdAt: normalizeToUTCDate(new Date(row.created_at)),
+        createdAt: parseISO(row.created_at),
         createdBy: row.created_by || 'system',
         flexibleDates: row.flexible_checkins?.map((fc: { allowed_checkin_date: string }) => 
-            normalizeToUTCDate(new Date(fc.allowed_checkin_date))
+            parseISO(`${fc.allowed_checkin_date}T00:00:00.000Z`)
         ) || []
     };
 }

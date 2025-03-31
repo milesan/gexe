@@ -223,10 +223,12 @@ class BookingService {
       const checkInDate = booking.checkIn instanceof Date 
         ? normalizeToUTCDate(booking.checkIn) 
         : safeParseDate(booking.checkIn as string);
+      console.log(`[BookingService] Processed checkInDate object: ${checkInDate.toISOString()}`);
       
       const checkOutDate = booking.checkOut instanceof Date 
         ? normalizeToUTCDate(booking.checkOut) 
         : safeParseDate(booking.checkOut as string);
+      console.log(`[BookingService] Processed checkOutDate object: ${checkOutDate.toISOString()}`);
       
       // Format as YYYY-MM-DD
       const checkInISO = formatDateOnly(checkInDate);
@@ -439,8 +441,7 @@ class BookingService {
     if (updates.check_in && updates.check_out) {
       const checkInDate = safeParseDate(updates.check_in);
       const checkOutDate = safeParseDate(updates.check_out);
-      
-      if (isEqual(checkInDate, checkOutDate) || isBefore(checkOutDate, checkInDate)) {
+        if (isEqual(checkInDate, checkOutDate) || isBefore(checkOutDate, checkInDate)) {
         throw new Error('Check-out date must be after check-in date');
       }
     }
