@@ -126,6 +126,14 @@ export function CabinSelector({
     }
   }, [selectedAccommodationId, selectedWeeks, availabilityMap, onSelectAccommodation]);
 
+  // NEW: Clear accommodation selection when dates are cleared
+  useEffect(() => {
+    if (selectedWeeks.length === 0 && selectedAccommodationId) {
+      console.log('[CabinSelector] Clearing accommodation selection because dates were cleared.');
+      onSelectAccommodation('');
+    }
+  }, [selectedWeeks, selectedAccommodationId, onSelectAccommodation]);
+
   useEffect(() => {
     if (selectedWeeks.length > 0) {
       // Check availability for all accommodations when weeks are selected
@@ -394,15 +402,17 @@ export function CabinSelector({
       {/* Filter options could be added here in the future */}
       
       {isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="rounded-xl border border-border bg-surface p-4 h-[300px] animate-pulse">
-              <div className="h-32 bg-border/50 rounded mb-3"></div>
-              <div className="h-4 bg-border/50 rounded w-3/4 mb-2"></div>
-              <div className="h-3 bg-border/50 rounded w-1/2 mb-4"></div>
-              <div className="h-8 bg-border/50 rounded w-1/4"></div>
-            </div>
-          ))}
+        <div className="max-w-2xl">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="rounded-xl border border-border bg-surface p-4 h-[300px] animate-pulse">
+                <div className="h-32 bg-border/50 rounded mb-3"></div>
+                <div className="h-4 bg-border/50 rounded w-3/4 mb-2"></div>
+                <div className="h-3 bg-border/50 rounded w-1/2 mb-4"></div>
+                <div className="h-8 bg-border/50 rounded w-1/4"></div>
+              </div>
+            ))}
+          </div>
         </div>
       ) : visibleAccommodations.length === 0 ? (
         <div className="text-center py-12 bg-surface rounded-xl border border-border">
@@ -410,311 +420,327 @@ export function CabinSelector({
           <p className="text-secondary font-regular">Please adjust your dates or check back later.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {visibleAccommodations.map((acc) => {
-            const isSelected = selectedAccommodationId === acc.id;
-            const availability = availabilityMap[acc.id];
-            const isAvailable = availability?.isAvailable ?? true;
-            const isFullyBooked = !isAvailable;
-            const spotsAvailable = availability?.availableCapacity;
-            const canSelect = !isDisabled && !isFullyBooked;
+        <div className="max-w-2xl">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {visibleAccommodations.map((acc) => {
+              const isSelected = selectedAccommodationId === acc.id;
+              const availability = availabilityMap[acc.id];
+              const isAvailable = availability?.isAvailable ?? true;
+              const isFullyBooked = !isAvailable;
+              const spotsAvailable = availability?.availableCapacity;
+              const canSelect = !isDisabled && !isFullyBooked;
 
-            // Re-introduce tent season logic checks
-            const isTent = acc.type === 'tent';
-              const isOutOfSeason = isTent && !isTentSeason && selectedWeeks.length > 0;
-            const finalCanSelect = canSelect && !isOutOfSeason; // Tent cannot be selected if out of season
+              // Re-introduce tent season logic checks
+              const isTent = acc.type === 'tent';
+                const isOutOfSeason = isTent && !isTentSeason && selectedWeeks.length > 0;
+              const finalCanSelect = canSelect && !isOutOfSeason; // Tent cannot be selected if out of season
 
-            const finalPrice = calculateFinalPrice(acc.base_price, selectedWeeks, acc.title);
+              const finalPrice = calculateFinalPrice(acc.base_price, selectedWeeks, acc.title);
 
-              return (
-                <motion.div
-                key={acc.id}
-                layout
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.2 }}
-                  className={clsx(
-                  'relative rounded-xl border overflow-hidden transition-all duration-200 flex flex-col justify-between group',
-                  // Selected State: Accent border, slight scale, shadow, AND subtle background highlight
-                  isSelected ? 
-                    'border-accent-primary scale-[1.01] shadow-lg bg-[color-mix(in_srgb,_var(--color-bg-surface)_95%,_var(--color-accent-primary)_5%)]' : 
-                    'border-border hover:border-accent-primary/50 bg-surface', // Default state uses bg-surface
-                  // Disabled/Booked/Out of Season States:
-                  isDisabled && 'opacity-20 grayscale-[0.5] cursor-not-allowed', // Further reduced opacity to 20% and added grayscale
-                  (!isDisabled && isFullyBooked) && 'opacity-20 grayscale-[0.7] cursor-not-allowed', // Further reduced opacity to 20% and increased grayscale
-                  (!isDisabled && isOutOfSeason) && 'opacity-40 grayscale-[0.3] cursor-not-allowed', // Adjusted opacity to 40% and added slight grayscale
-                  // Pointer state:
-                  finalCanSelect && !isDisabled && 'cursor-pointer'
-                )}
-                onClick={() => finalCanSelect && !isDisabled && handleSelectAccommodation(acc.id)}
-                style={{ minHeight: '300px' }} 
-              >
-                {/* Overlays - Order matters for visibility */}
-                {/* 1. Disabled Overlay (highest priority) */}
-                {isDisabled && (
-                  <div className="absolute inset-0 bg-bg-overlay backdrop-blur-sm z-[4] flex items-center justify-center p-4"> {/* Use theme variable and slightly less blur */}
-                    <div className="bg-bg-surface text-text-secondary px-4 py-2 rounded-md font-regular text-sm text-center border border-border shadow-md"> {/* Theme-based inner box */}
-                      Select dates first
-                    </div>
-                  </div>
-                )}
-                {/* 2. Fully Booked Overlay */}
-                {!isDisabled && isFullyBooked && (
-                  <div className="absolute inset-0 bg-bg-overlay backdrop-blur-sm z-[3] flex items-center justify-center p-4"> {/* Use theme variable and slightly less blur */}
-                    <div className="bg-bg-surface text-text-secondary px-4 py-2 rounded-md font-regular text-sm text-center border border-border shadow-md"> {/* Theme-based inner box */}
-                      Booked out
-                    </div>
-                  </div>
-                )}
-                {/* 3. Out of Season Overlay */}
-                {!isDisabled && isOutOfSeason && !isFullyBooked && (
-                  <div className="absolute inset-0 bg-bg-overlay backdrop-blur-sm z-[2] flex items-center justify-center p-4"> {/* Use theme variable and slightly less blur */}
-                    <div className="bg-bg-surface text-text-primary px-4 py-2 rounded-md font-regular text-sm text-center border border-amber-500 dark:border-amber-600 shadow-md"> {/* Theme-based inner box with amber border */}
-                      Seasonal<br />Apr 15 - Sep 1
-                    </div>
-                  </div>
-                )}
-
-                {/* Badge container - contains both badges stacked vertically */}
-                <div className="absolute top-2 left-2 z-[3] flex flex-col gap-2">
-                  {/* Spots Available Indicator */}
-                  {spotsAvailable !== undefined && spotsAvailable !== null && spotsAvailable < (acc.capacity ?? Infinity) && !isFullyBooked && !isOutOfSeason && !isDisabled && (
-                    <div className="text-xs font-medium px-3 py-1 rounded-full shadow-lg bg-gray-600/90 text-white border border-white/30 font-regular">{spotsAvailable} {spotsAvailable === 1 ? 'spot' : 'spots'} available</div>
+                return (
+                  <motion.div
+                  key={acc.id}
+                  layout
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.2 }}
+                    className={clsx(
+                    'relative rounded-xl border overflow-hidden transition-all duration-200 flex flex-col justify-between group',
+                    // Selected State: Accent border, slight scale, shadow, AND subtle background highlight
+                    isSelected ? 
+                      'border-accent-primary scale-[1.01] shadow-lg bg-[color-mix(in_srgb,_var(--color-bg-surface)_95%,_var(--color-accent-primary)_5%)]' : 
+                      'border-border hover:border-accent-primary/50 bg-surface/50 backdrop-blur-sm', // Default state uses the new background
+                    // Pointer state:
+                    finalCanSelect && !isDisabled && 'cursor-pointer'
                   )}
-                  
-                  {/* Selected Indicator */}
-                  {isSelected && (
-                    <div className="text-xs font-medium px-3 py-1 rounded-full shadow-md bg-accent-primary text-white font-regular border border-white/30">Selected</div>
-                  )}
-                </div>
-
-                {/* Image */}
-                <div className="relative h-40 bg-gradient-to-br from-border/10 to-border/20 overflow-hidden">
-                  {acc.image_url ? (
-                    <img 
-                      src={acc.image_url} 
-                      alt={acc.title} 
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ease-in-out"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-secondary">
-                       <BedDouble size={32} /> 
+                  onClick={() => finalCanSelect && !isDisabled && handleSelectAccommodation(acc.id)}
+                  style={{ minHeight: '300px' }} 
+                >
+                  {/* Overlays - Reverted to simple positioning containers */}
+                  {/* 1. Disabled Overlay (highest priority) */}
+                  {isDisabled && (
+                    <div className="absolute inset-0 z-[4] flex items-center justify-center p-4"> {/* Positioning only */}
+                      <div className="bg-bg-surface text-text-primary px-4 py-2 rounded-md font-regular text-sm text-center border border-border shadow-md">
+                        Select dates first
+                      </div>
                     </div>
                   )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div> {/* Increased gradient opacity from 40% to 60% */}
-                </div>
+                  {/* 2. Fully Booked Overlay */}
+                  {!isDisabled && isFullyBooked && (
+                    <div className="absolute inset-0 z-[3] flex items-center justify-center p-4"> {/* Positioning only */}
+                      <div className="bg-bg-surface text-text-primary px-4 py-2 rounded-md font-regular text-sm text-center border border-border shadow-md">
+                        Booked out
+                      </div>
+                    </div>
+                  )}
+                  {/* 3. Out of Season Overlay */}
+                  {!isDisabled && isOutOfSeason && !isFullyBooked && (
+                    <div className="absolute inset-0 z-[2] flex items-center justify-center p-4"> {/* Positioning only */}
+                      <div className="bg-bg-surface text-text-primary px-4 py-2 rounded-md font-regular text-sm text-center border border-amber-500 dark:border-amber-600 shadow-md">
+                        Seasonal<br />Apr 15 - Sep 1
+                      </div>
+                    </div>
+                  )}
 
-                {/* Content */}
-                <div className="p-3 bg-transparent flex-grow flex flex-col justify-between"> {/* Make content bg transparent to show card bg highlight */} 
-                  <div>
-                    <h3 className="font-medium mb-1 text-primary font-regular">{acc.title}</h3>
-                    <div className="flex items-center gap-3 text-secondary text-xs mb-2">
-                      {acc.capacity !== undefined && acc.capacity !== null && acc.capacity > 1 && (
+                  {/* Badge container - place above overlays */}
+                  <div className="absolute top-2 left-2 z-[5] flex flex-col gap-2"> 
+                    {/* Spots Available Indicator */}
+                    {spotsAvailable !== undefined && spotsAvailable !== null && spotsAvailable < (acc.capacity ?? Infinity) && !isFullyBooked && !isOutOfSeason && !isDisabled && (
+                      <div className="text-xs font-medium px-3 py-1 rounded-full shadow-lg bg-gray-600/90 text-white border border-white/30 font-regular">{spotsAvailable} {spotsAvailable === 1 ? 'spot' : 'spots'} available</div>
+                    )}
+                    
+                    {/* Selected Indicator */}
+                    {isSelected && (
+                      <div className="text-xs font-medium px-3 py-1 rounded-full shadow-md bg-accent-primary text-white font-regular border border-white/30">Selected</div>
+                    )}
+                  </div>
+
+                  {/* Image */}
+                  <div className={clsx(
+                    "relative h-40 bg-gradient-to-br from-border/10 to-border/20 overflow-hidden",
+                    // Apply blur and corresponding opacity/grayscale conditionally
+                    isDisabled && "blur-sm opacity-20 grayscale-[0.5]",
+                    (!isDisabled && isFullyBooked) && "blur-sm opacity-20 grayscale-[0.7]",
+                    (!isDisabled && isOutOfSeason && !isFullyBooked) && "blur-sm opacity-40 grayscale-[0.3]"
+                  )}>
+                    {acc.image_url ? (
+                      <img 
+                        src={acc.image_url} 
+                        alt={acc.title} 
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ease-in-out"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-secondary">
+                         <BedDouble size={32} /> 
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div> {/* Increased gradient opacity from 40% to 60% */}
+                  </div>
+
+                  {/* Content */}
+                  <div className={clsx(
+                    "p-3 bg-transparent flex-grow flex flex-col justify-between", // Make content bg transparent
+                    // Apply blur and corresponding opacity/grayscale conditionally
+                    isDisabled && "blur-sm opacity-20 grayscale-[0.5]",
+                    (!isDisabled && isFullyBooked) && "blur-sm opacity-20 grayscale-[0.7]",
+                    (!isDisabled && isOutOfSeason && !isFullyBooked) && "blur-sm opacity-40 grayscale-[0.3]"
+                  )}>
+                    <div>
+                      <h3 className="font-medium mb-1 text-primary font-regular">{acc.title}</h3>
+                      <div className="flex items-center gap-3 text-secondary text-xs mb-2">
+                        {acc.capacity !== undefined && acc.capacity !== null && acc.capacity > 1 && (
+                          <Tooltip.Provider delayDuration={50}>
+                            <Tooltip.Root>
+                              <Tooltip.Trigger asChild>
+                                <span className="flex items-center gap-1 cursor-help" title={`Capacity: ${acc.capacity ?? 'N/A'}`}> 
+                                  <BedDouble size={12} /> {acc.capacity} 
+                                </span>
+                              </Tooltip.Trigger>
+                              <Tooltip.Portal>
+                                <Tooltip.Content
+                                  sideOffset={5}
+                                  className="tooltip-content !font-regular"
+                                >
+                                  <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
+                                  <span className="text-white">Capacity: {acc.capacity} persons</span>
+                                </Tooltip.Content>
+                              </Tooltip.Portal>
+                            </Tooltip.Root>
+                          </Tooltip.Provider>
+                        )}
+                        
                         <Tooltip.Provider delayDuration={50}>
                           <Tooltip.Root>
                             <Tooltip.Trigger asChild>
-                              <span className="flex items-center gap-1 cursor-help" title={`Capacity: ${acc.capacity ?? 'N/A'}`}> 
-                                <BedDouble size={12} /> {acc.capacity} 
+                              <span className="flex items-center gap-1 cursor-help" title={hasElectricity(acc.title) ? 'Has Electricity' : 'No Electricity'}>
+                                {hasElectricity(acc.title) ? <Zap size={12} /> : <ZapOff size={12} className="opacity-50"/>}
                               </span>
                             </Tooltip.Trigger>
                             <Tooltip.Portal>
                               <Tooltip.Content
                                 sideOffset={5}
-                                className="bg-gray-800/95 p-3 rounded-lg shadow-lg border border-gray-500/30 max-w-xs z-50 backdrop-blur-sm text-white"
+                                className="tooltip-content !font-regular"
                               >
-                                <Tooltip.Arrow className="fill-gray-800 stroke-gray-500/30" />
-                                <span className="text-white">Capacity: {acc.capacity} persons</span>
+                                <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
+                                <span className="text-white">{hasElectricity(acc.title) ? 'Has Electricity' : 'No Electricity'}</span>
+                              </Tooltip.Content>
+                            </Tooltip.Portal>
+                          </Tooltip.Root>
+                        </Tooltip.Provider>
+                        
+                        <Tooltip.Provider delayDuration={50}>
+                          <Tooltip.Root>
+                            <Tooltip.Trigger asChild>
+                              <span className="flex items-center gap-1 cursor-help" title={hasWifi(acc.title) ? 'Has WiFi' : 'No WiFi'}>
+                                {hasWifi(acc.title) ? <Wifi size={12} /> : <WifiOff size={12} className="opacity-50"/>}
+                              </span>
+                            </Tooltip.Trigger>
+                            <Tooltip.Portal>
+                              <Tooltip.Content
+                                sideOffset={5}
+                                className="tooltip-content !font-regular"
+                              >
+                                <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
+                                <span className="text-white">{hasWifi(acc.title) ? 'Has WiFi' : 'No WiFi'}</span>
+                              </Tooltip.Content>
+                            </Tooltip.Portal>
+                          </Tooltip.Root>
+                        </Tooltip.Provider>
+                        
+                        {/* Bed Size Tooltip */}
+                        <Tooltip.Provider delayDuration={50}>
+                          <Tooltip.Root>
+                            <Tooltip.Trigger asChild>
+                              <button className="flex items-center gap-1 cursor-help"><Bath size={12} /></button>
+                            </Tooltip.Trigger>
+                            <Tooltip.Portal>
+                              <Tooltip.Content
+                                sideOffset={5}
+                                className="tooltip-content !font-regular"
+                              >
+                                <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
+                                <h4 className="font-medium font-regular text-white mb-1">Bed Size</h4>
+                                <p className="text-sm text-gray-300 font-regular">
+                                  {BED_SIZES[acc.title as keyof typeof BED_SIZES] || 'N/A'}
+                                </p>
+                              </Tooltip.Content>
+                            </Tooltip.Portal>
+                          </Tooltip.Root>
+                        </Tooltip.Provider>
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-between items-end">
+                      <div className="text-primary font-medium font-regular">
+                        {finalPrice === 0 ? (
+                          <span className="text-accent-primary">Free</span>
+                        ) : (
+                          <>
+                            €{Math.round(finalPrice)}
+                            <span className="text-sm text-secondary font-regular"> / week</span>
+                          </>
+                        )}
+                      </div>
+                      {/* Discount Tooltip - only show if final price is not 0 and there are applicable discounts */}
+                      {finalPrice !== 0 && (
+                        (acc.title.includes('Dorm') 
+                          ? getDurationDiscount(calculateDurationDiscountWeeks(selectedWeeks)) > 0 
+                          : calculateWeightedSeasonalDiscount(selectedWeeks, acc.title) + getDurationDiscount(calculateDurationDiscountWeeks(selectedWeeks)) > 0
+                        )
+                      ) && (
+                        <Tooltip.Provider delayDuration={50}>
+                          <Tooltip.Root>
+                            <Tooltip.Trigger asChild>
+                              <button className="text-accent-primary flex items-center gap-0.5 cursor-help">
+                                <Percent size={14} />
+                              </button>
+                            </Tooltip.Trigger>
+                            <Tooltip.Portal>
+                              <Tooltip.Content
+                                sideOffset={5}
+                                className="tooltip-content tooltip-content--accent !font-regular"
+                              >
+                                <Tooltip.Arrow className="tooltip-arrow tooltip-arrow--accent" width={11} height={5} />
+                                <h4 className="font-medium font-regular text-white mb-2">Booking Details</h4>
+                                <div className="text-sm">
+                                  {/* Seasonal discount with season info - don't show for dorms */}
+                                  {!acc.title.includes('Dorm') && (
+                                    <div className="py-2 border-b border-gray-600">
+                                      {/* Enhanced season breakdown with discounted prices */}
+                                      <div className="text-gray-300">
+                                        {(() => {
+                                          const seasonBreakdown = getSeasonBreakdown(
+                                            selectedWeeks[0]?.startDate || new Date(),
+                                            selectedWeeks[selectedWeeks.length - 1]?.endDate || new Date()
+                                          );
+                                          
+                                          if (seasonBreakdown.hasMultipleSeasons) {
+                                            return (
+                                              <div className="space-y-3">
+                                                <div className="font-medium text-white mb-1">Mixed Season Rates</div>
+                                                {seasonBreakdown.seasons.map((season, index) => (
+                                                  <div key={index} className="mb-2">
+                                                    <div className="flex justify-between items-center mb-1">
+                                                      <span className="font-medium">
+                                                        {season.name === 'Summer Season' ? 'High' : 
+                                                         season.name === 'Medium Season' ? 'Mid' : 'Low'} Season:
+                                                      </span>
+                                                      {/* Conditionally render discount % only if > 0 */}
+                                                      {season.discount > 0 && (
+                                                        <span className="text-accent-primary font-medium">
+                                                          -{Math.round(season.discount * 100)}%
+                                                        </span>
+                                                      )}
+                                                    </div>
+                                                    <div className="text-xs text-gray-400 pl-2">
+                                                      {(() => {
+                                                        const weeksValue = season.nights / 7;
+                                                        const formattedWeeks = weeksValue % 1 === 0 ? 
+                                                          Math.round(weeksValue) : 
+                                                          weeksValue.toFixed(1);
+                                                        return `${formattedWeeks} week${formattedWeeks === "1" ? "" : "s"}`;
+                                                      })()} × €{Math.round(acc.base_price * (1 - season.discount))}
+                                                    </div>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            );
+                                          } else {
+                                            const seasonName = seasonalDiscount > 0.3 ? 'Low' : 
+                                                               seasonalDiscount > 0.1 ? 'Mid' : 'High';
+                                            const discountedPrice = acc.base_price * (1 - seasonalDiscount);
+                                            return (
+                                              <div>
+                                                <div className="font-medium text-white mb-2">{seasonName} Season Rate</div>
+                                                {/* Conditionally render the discount line only if > 0 */}
+                                                {seasonalDiscount > 0 && (
+                                                  <div className="flex justify-between items-center mb-1">
+                                                    <span>Discount:</span>
+                                                    <span className="text-accent-primary font-medium">
+                                                      -{Math.round(seasonalDiscount * 100)}%
+                                                    </span>
+                                                  </div>
+                                                )}
+                                                <div className="text-xs text-gray-400 pl-2">
+                                                  {(() => {
+                                                    const weeksValue = calculateDurationDiscountWeeks(selectedWeeks);
+                                                    const formattedWeeks = weeksValue % 1 === 0 ? 
+                                                      Math.round(weeksValue) : 
+                                                      weeksValue.toFixed(1);
+                                                    return `${formattedWeeks} week${formattedWeeks === "1" ? "" : "s"}`;
+                                                  })()} × €{discountedPrice.toFixed(2)}
+                                                </div>
+                                              </div>
+                                            );
+                                          }
+                                        })()}
+                                      </div>
+                                    </div>
+                                  )}
+                                  
+                                  {/* Simplified duration discount */}
+                                  <div className="py-2"> 
+                                    <div className="flex justify-between items-center mb-1">
+                                      <span className="text-white font-medium">Duration discount:</span>
+                                      <span className="text-accent-primary font-medium">
+                                        -{Math.round(getDurationDiscount(calculateDurationDiscountWeeks(selectedWeeks)) * 100)}%
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
                               </Tooltip.Content>
                             </Tooltip.Portal>
                           </Tooltip.Root>
                         </Tooltip.Provider>
                       )}
-                      
-                      <Tooltip.Provider delayDuration={50}>
-                        <Tooltip.Root>
-                          <Tooltip.Trigger asChild>
-                            <span className="flex items-center gap-1 cursor-help" title={hasElectricity(acc.title) ? 'Has Electricity' : 'No Electricity'}>
-                              {hasElectricity(acc.title) ? <Zap size={12} /> : <ZapOff size={12} className="opacity-50"/>}
-                            </span>
-                          </Tooltip.Trigger>
-                          <Tooltip.Portal>
-                            <Tooltip.Content
-                              sideOffset={5}
-                              className="bg-gray-800/95 p-3 rounded-lg shadow-lg border border-gray-500/30 max-w-xs z-50 backdrop-blur-sm text-white"
-                            >
-                              <Tooltip.Arrow className="fill-gray-800 stroke-gray-500/30" />
-                              <span className="text-white">{hasElectricity(acc.title) ? 'Has Electricity' : 'No Electricity'}</span>
-                            </Tooltip.Content>
-                          </Tooltip.Portal>
-                        </Tooltip.Root>
-                      </Tooltip.Provider>
-                      
-                      <Tooltip.Provider delayDuration={50}>
-                        <Tooltip.Root>
-                          <Tooltip.Trigger asChild>
-                            <span className="flex items-center gap-1 cursor-help" title={hasWifi(acc.title) ? 'Has WiFi' : 'No WiFi'}>
-                              {hasWifi(acc.title) ? <Wifi size={12} /> : <WifiOff size={12} className="opacity-50"/>}
-                            </span>
-                          </Tooltip.Trigger>
-                          <Tooltip.Portal>
-                            <Tooltip.Content
-                              sideOffset={5}
-                              className="bg-gray-800/95 p-3 rounded-lg shadow-lg border border-gray-500/30 max-w-xs z-50 backdrop-blur-sm text-white"
-                            >
-                              <Tooltip.Arrow className="fill-gray-800 stroke-gray-500/30" />
-                              <span className="text-white">{hasWifi(acc.title) ? 'Has WiFi' : 'No WiFi'}</span>
-                            </Tooltip.Content>
-                          </Tooltip.Portal>
-                        </Tooltip.Root>
-                      </Tooltip.Provider>
-                      
-                      {/* Bed Size Tooltip */}
-                      <Tooltip.Provider delayDuration={50}>
-                        <Tooltip.Root>
-                          <Tooltip.Trigger asChild>
-                            <button className="flex items-center gap-1 cursor-help"><Bath size={12} /></button>
-                          </Tooltip.Trigger>
-                          <Tooltip.Portal>
-                            <Tooltip.Content
-                              sideOffset={5}
-                              className="bg-gray-800/95 p-3 rounded-lg shadow-lg border border-gray-500/30 max-w-xs z-50 backdrop-blur-sm text-white"
-                            >
-                              <Tooltip.Arrow className="fill-gray-800 stroke-gray-500/30" width={11} height={5} />
-                              <h4 className="font-medium font-regular text-white mb-1">Bed Size</h4>
-                              <p className="text-sm text-gray-300 font-regular">
-                                {BED_SIZES[acc.title as keyof typeof BED_SIZES] || 'N/A'}
-                              </p>
-                            </Tooltip.Content>
-                          </Tooltip.Portal>
-                        </Tooltip.Root>
-                      </Tooltip.Provider>
                     </div>
                   </div>
-                  
-                  <div className="flex justify-between items-end">
-                    <div className="text-primary font-medium font-regular">
-                      {finalPrice === 0 ? (
-                        <span className="text-accent-primary">Free</span>
-                      ) : (
-                        <>
-                          €{finalPrice.toFixed(2)}
-                          <span className="text-sm text-secondary font-regular"> / week</span>
-                        </>
-                      )}
-                    </div>
-                    {/* Discount Tooltip - only show if final price is not 0 and there are applicable discounts */}
-                    {finalPrice !== 0 && (
-                      (acc.title.includes('Dorm') 
-                        ? getDurationDiscount(calculateDurationDiscountWeeks(selectedWeeks)) > 0 
-                        : calculateWeightedSeasonalDiscount(selectedWeeks, acc.title) + getDurationDiscount(calculateDurationDiscountWeeks(selectedWeeks)) > 0
-                      )
-                    ) && (
-                      <Tooltip.Provider delayDuration={50}>
-                        <Tooltip.Root>
-                          <Tooltip.Trigger asChild>
-                            <button className="text-accent-primary flex items-center gap-0.5 cursor-help">
-                              <Percent size={14} />
-                            </button>
-                          </Tooltip.Trigger>
-                          <Tooltip.Portal>
-                            <Tooltip.Content
-                              sideOffset={5}
-                              className="bg-gray-800/95 p-3 rounded-lg shadow-lg border border-accent-primary/30 max-w-xs z-50 backdrop-blur-sm text-white"
-                            >
-                              <Tooltip.Arrow className="fill-gray-800 stroke-accent-primary/30" width={11} height={5} />
-                              <h4 className="font-medium font-regular text-white mb-2">Booking Details</h4>
-                              <div className="text-sm">
-                                {/* Seasonal discount with season info - don't show for dorms */}
-                                {!acc.title.includes('Dorm') && (
-                                  <div className="py-2 border-b border-gray-600">
-                                    {/* Enhanced season breakdown with discounted prices */}
-                                    <div className="text-gray-300">
-                                      {(() => {
-                                        const seasonBreakdown = getSeasonBreakdown(
-                                          selectedWeeks[0]?.startDate || new Date(),
-                                          selectedWeeks[selectedWeeks.length - 1]?.endDate || new Date()
-                                        );
-                                        
-                                        if (seasonBreakdown.hasMultipleSeasons) {
-                                          return (
-                                            <div className="space-y-3">
-                                              <div className="font-medium text-white mb-1">Mixed Season Rates</div>
-                                              {seasonBreakdown.seasons.map((season, index) => (
-                                                <div key={index} className="mb-2">
-                                                  <div className="flex justify-between items-center mb-1">
-                                                    <span className="font-medium">
-                                                      {season.name === 'Summer Season' ? 'High' : 
-                                                       season.name === 'Medium Season' ? 'Mid' : 'Low'} Season:
-                                                    </span>
-                                                    <span className="text-accent-primary font-medium">
-                                                      -{Math.round(season.discount * 100)}%
-                                                    </span>
-                                                  </div>
-                                                  <div className="text-xs text-gray-400 pl-2">
-                                                    {(() => {
-                                                      const weeksValue = season.nights / 7;
-                                                      const formattedWeeks = weeksValue % 1 === 0 ? 
-                                                        Math.round(weeksValue) : 
-                                                        weeksValue.toFixed(1);
-                                                      return `${formattedWeeks} week${formattedWeeks === "1" ? "" : "s"}`;
-                                                    })()} × €{(acc.base_price * (1 - season.discount)).toFixed(2)}
-                                                  </div>
-                                                </div>
-                                              ))}
-                                            </div>
-                                          );
-                                        } else {
-                                          const seasonName = seasonalDiscount > 0.3 ? 'Low' : 
-                                                             seasonalDiscount > 0.1 ? 'Mid' : 'High';
-                                          const discountedPrice = acc.base_price * (1 - seasonalDiscount);
-                                          return (
-                                            <div>
-                                              <div className="font-medium text-white mb-2">{seasonName} Season Rate</div>
-                                              <div className="flex justify-between items-center mb-1">
-                                                <span>Discount:</span>
-                                                <span className="text-accent-primary font-medium">
-                                                  -{Math.round(seasonalDiscount * 100)}%
-                                                </span>
-                                              </div>
-                                              <div className="text-xs text-gray-400 pl-2">
-                                                {(() => {
-                                                  const weeksValue = calculateDurationDiscountWeeks(selectedWeeks);
-                                                  const formattedWeeks = weeksValue % 1 === 0 ? 
-                                                    Math.round(weeksValue) : 
-                                                    weeksValue.toFixed(1);
-                                                  return `${formattedWeeks} week${formattedWeeks === "1" ? "" : "s"}`;
-                                                })()} × €{discountedPrice.toFixed(2)}
-                                              </div>
-                                            </div>
-                                          );
-                                        }
-                                      })()}
-                                    </div>
-                                  </div>
-                                )}
-                                
-                                {/* Simplified duration discount */}
-                                <div className="py-2">
-                                  <div className="flex justify-between items-center mb-1">
-                                    <span className="text-white font-medium">Duration discount:</span>
-                                    <span className="text-accent-primary font-medium">
-                                      -{Math.round(getDurationDiscount(calculateDurationDiscountWeeks(selectedWeeks)) * 100)}%
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            </Tooltip.Content>
-                          </Tooltip.Portal>
-                        </Tooltip.Root>
-                      </Tooltip.Provider>
-                    )}
-                  </div>
-                </div>
-              </motion.div>
-              );
-            })}
-          </div>
+                </motion.div>
+                );
+              })}
+            </div>
+        </div>
       )}
     </div>
   );

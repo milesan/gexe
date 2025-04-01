@@ -21,8 +21,12 @@ import { getSeasonalDiscount, getDurationDiscount, getSeasonBreakdown } from '..
 import { areSameWeeks } from '../utils/dates';
 import { clsx } from 'clsx';
 import { calculateDaysBetween } from '../utils/dates';
+import { bookingService } from '../services/BookingService';
+import { loadStripe } from '@stripe/stripe-js';
+import * as Tooltip from '@radix-ui/react-tooltip';
 
-const BACKGROUND_IMAGE = "https://guquxpxxycfmmlqajdyw.supabase.co/storage/v1/object/public/background-image//fern-background-vertical.png"
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+
 export function Book2Page() {
   // Get current date and set the initial month
   const today = new Date();
@@ -667,14 +671,7 @@ export function Book2Page() {
   console.log('[Book2Page] Selected Accommodation Details:', selectedAccommodationDetails);
 
   return (
-    <div 
-      className="min-h-screen tree-pattern"
-      style={{
-        backgroundImage: `linear-gradient(rgba(31, 41, 55, 0.9), rgba(31, 41, 55, 0.9)), url(${BACKGROUND_IMAGE})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      }}
-    >
+    <div className="min-h-screen">
       <div className="container mx-auto py-4 xs:py-6 sm:py-8 px-4">
         <h1 className="text-4xl xs:text-4xl font-display mb-3 xs:mb-4 text-primary">Book Your Stay</h1>
         
@@ -760,8 +757,8 @@ export function Book2Page() {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <h2 className="text-lg xxs:text-xl sm:text-2xl font-display font-light text-primary">
                     {selectedWeeks.length === 0 ? "When do you want to arrive?" : 
-                     selectedWeeks.length === 1 ? "When do you want to depart?" : 
-                     "Select your lodging below"}
+                     selectedWeeks.length === 1 ? "One week selected! Any more?" : 
+                     "Ok! Time to scroll down"}
                   </h2>
 
                   <div className="flex items-center gap-2 xxs:gap-3">
@@ -798,17 +795,28 @@ export function Book2Page() {
 
                 {selectedWeeks.length > 0 && (
                   <div className="flex flex-wrap items-center gap-1.5 xxs:gap-2">
-                    <button
-                      onClick={() => setShowDiscountModal(true)}
-                      className="group flex items-center gap-1 xxs:gap-1.5 px-2 xxs:px-2.5 py-1 xxs:py-1.5 text-[10px] xxs:text-xs sm:text-sm font-medium border rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 relative font-regular text-accent-primary bg-[color-mix(in_srgb,_var(--color-accent-primary)_10%,_transparent)] border-[color-mix(in_srgb,_var(--color-accent-primary)_30%,_transparent)] hover:bg-[color-mix(in_srgb,_var(--color-accent-primary)_20%,_transparent)] hover:border-[color-mix(in_srgb,_var(--color-accent-primary)_40%,_transparent)]"
-                    >
-                      <span>{combinedDiscount > 0 ? `Discount: ${seasonBreakdown?.hasMultipleSeasons ? '~' : ''}${Math.round(combinedDiscount * 100)}%` : 'Discounts'}</span>
-                      <HelpCircle className="w-3 h-3 xxs:w-3.5 xxs:h-3.5 sm:w-4 sm:h-4 text-accent-primary" />
-                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 xxs:mb-1.5 px-1.5 xxs:px-2 py-0.5 xxs:py-1 bg-text-primary text-bg-main text-[8px] xxs:text-[10px] sm:text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-regular">
-                        Click for detailed breakdown
-                        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 rotate-45 w-1.5 h-1.5 bg-text-primary"></div>
-                      </div>
-                    </button>
+                    <Tooltip.Provider delayDuration={50}>
+                      <Tooltip.Root>
+                        <Tooltip.Trigger asChild>
+                          <button
+                            onClick={() => setShowDiscountModal(true)}
+                            className="group flex items-center gap-1 xxs:gap-1.5 px-2 xxs:px-2.5 py-1 xxs:py-1.5 text-[10px] xxs:text-xs sm:text-sm font-medium border rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 relative font-regular text-accent-primary bg-[color-mix(in_srgb,_var(--color-accent-primary)_10%,_transparent)] border-[color-mix(in_srgb,_var(--color-accent-primary)_30%,_transparent)] hover:bg-[color-mix(in_srgb,_var(--color-accent-primary)_20%,_transparent)] hover:border-[color-mix(in_srgb,_var(--color-accent-primary)_40%,_transparent)]"
+                          >
+                            <span>{combinedDiscount > 0 ? `Discount: ${seasonBreakdown?.hasMultipleSeasons ? '~' : ''}${Math.round(combinedDiscount * 100)}%` : 'Discounts'}</span>
+                            <HelpCircle className="w-3 h-3 xxs:w-3.5 xxs:h-3.5 sm:w-4 sm:h-4 text-accent-primary" />
+                          </button>
+                        </Tooltip.Trigger>
+                        <Tooltip.Portal>
+                          <Tooltip.Content
+                            sideOffset={5}
+                            className="tooltip-content !font-regular"
+                          >
+                            Click for detailed breakdown
+                            <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
+                          </Tooltip.Content>
+                        </Tooltip.Portal>
+                      </Tooltip.Root>
+                    </Tooltip.Provider>
                     <button
                       onClick={handleClearSelection}
                       className={clsx(
@@ -845,7 +853,7 @@ export function Book2Page() {
             
             {/* Cabin Selector - Under the calendar */}
             <div className="bg-surface rounded-xl shadow-sm p-3 xs:p-4 sm:p-6 mb-4 xs:mb-5 sm:mb-6 cabin-selector">
-              <h2 className="text-lg xs:text-xl lg:text-2xl font-display font-light text-primary mb-3 xs:mb-4">Select Accommodation</h2>
+              <h2 className="text-lg xs:text-xl lg:text-2xl font-display font-light text-primary mb-3 xs:mb-4">Time to choose a cozy bed..</h2>
               <CabinSelector 
                 accommodations={accommodations || []}
                 selectedAccommodationId={selectedAccommodation}

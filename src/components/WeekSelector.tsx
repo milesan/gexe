@@ -390,15 +390,17 @@ export function WeekSelector({
                 'relative p-2 xxs:p-2.5 xs:p-3 sm:p-4 border-2 transition-all duration-300',
                 'min-h-[80px] xxs:min-h-[90px] xs:min-h-[100px] sm:min-h-[110px]',
                 'shadow-sm hover:shadow-md',
-                'pixel-corners bg-surface',
-                // Selection states
-                isWeekSelected(week) && 'border-accent-primary shadow-lg',
-                !isWeekSelected(week) && selectedWeeks.length > 1 && isWeekBetweenSelection(week, selectedWeeks) && 'border-accent-primary/20',
+                'pixel-corners',
+                // Default background - applied when NOT selected and NOT covered by other border logic/status
+                !isWeekSelected(week) && !(selectedWeeks.length > 1 && isWeekBetweenSelection(week, selectedWeeks)) && !(isAdmin && (week.status === 'hidden' || week.status === 'deleted' || (week.status === 'visible' && week.isCustom))) && 'bg-surface/50 backdrop-blur-sm',
+                // Selection states (These should override the default bg)
+                isWeekSelected(week) && 'border-accent-primary shadow-lg bg-surface/50 backdrop-blur-sm', // ADDED blur effect to selected state
+                !isWeekSelected(week) && selectedWeeks.length > 1 && isWeekBetweenSelection(week, selectedWeeks) && 'border-accent-primary/20 bg-surface/50 backdrop-blur-sm', // Keep blur here too
                 // Opacity/cursor for non-selectable (content hiding handled below)
-                !isWeekSelectable(week, isAdmin, selectedWeeks) && !isAdmin && 'opacity-50 cursor-not-allowed', 
+                !isWeekSelectable(week, isAdmin, selectedWeeks) && !isAdmin && 'opacity-50 cursor-not-allowed',
                 // Hover/cursor for selectable admin view
-                isAdmin && isWeekSelectable(week, isAdmin, selectedWeeks) && 'cursor-pointer hover:border-blue-400', 
-                // Status colors - only for admin
+                isAdmin && isWeekSelectable(week, isAdmin, selectedWeeks) && 'cursor-pointer hover:border-blue-400',
+                // Status colors - only for admin (These might override bg too)
                 isAdmin && week.status === 'hidden' && 'border-yellow-400 bg-yellow-500/10',
                 isAdmin && week.status === 'deleted' && 'border-red-400 bg-red-500/10 border-dashed',
                 isAdmin && week.status === 'visible' && week.isCustom && 'border-blue-400',
@@ -642,8 +644,8 @@ export function WeekSelector({
                 </div>
               )}
 
-              {/* Add squiggly line for selected weeks */}
-              {isWeekSelected(week) && !week.isEdgeWeek && (
+              {/* Add squiggly line for selected weeks - only for those between start/end */}
+              {isWeekSelected(week) && isWeekBetweenSelection(week, selectedWeeks) && (
                 <svg
                   className="absolute inset-0 w-full h-full pointer-events-none"
                   preserveAspectRatio="none"

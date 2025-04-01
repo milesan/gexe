@@ -169,7 +169,7 @@ export function AnimatedTerminal({ onComplete }: Props) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.05 }}
-            className="absolute font-mono text-[#bac89b] text-xl"
+            className="absolute font-mono text-[#bf884d] text-xl"
             style={{
               ...getBorderPosition(index, dimensions),
               transform: 'translate(-50%, -50%)'
@@ -190,7 +190,7 @@ export function AnimatedTerminal({ onComplete }: Props) {
               <div className="w-full max-w-[400px] p-8">
                 <div className="bg-black p-8">
                   <div className="flex items-center justify-center gap-3 mb-8">
-                    <h1 className="text-base sm:text-xl font-mono text-[#bac89b] whitespace-nowrap">
+                    <h1 className="text-base sm:text-xl font-mono text-[#bf884d] whitespace-nowrap">
                       enter the garden
                     </h1>
                   </div>
@@ -205,7 +205,7 @@ export function AnimatedTerminal({ onComplete }: Props) {
                           list="email-list"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
-                          className="w-full min-w-[200px] bg-black text-[#bac89b] border-2 border-[#bac89b]/30 p-3 font-mono focus:outline-none focus:ring-2 focus:ring-[#bac89b]/50 placeholder-[#bac89b]/30"
+                          className="w-full min-w-[200px] bg-black text-[#bf884d] border-2 border-[#bf884d]/30 p-3 font-mono focus:outline-none focus:ring-2 focus:ring-[#bf884d]/50 placeholder-[#bf884d]/30"
                           style={{
                             clipPath: `polygon(
                               0 4px, 4px 4px, 4px 0,
@@ -230,7 +230,7 @@ export function AnimatedTerminal({ onComplete }: Props) {
                     )}
 
                     {success && (
-                      <div className="font-mono text-[#bac89b] text-sm">
+                      <div className="font-mono text-[#bf884d] text-sm">
                         {success}
                       </div>
                     )}
@@ -238,7 +238,7 @@ export function AnimatedTerminal({ onComplete }: Props) {
                     <button
                       type="submit"
                       disabled={isLoading}
-                      className="w-full bg-[#bac89b] text-black p-3 font-mono hover:bg-[#bac89b]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full bg-[#bf884d] text-black p-3 font-mono hover:bg-[#bf884d]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       style={{
                         clipPath: `polygon(
                           0 4px, 4px 4px, 4px 0,

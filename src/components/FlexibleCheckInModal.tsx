@@ -67,19 +67,19 @@ export function FlexibleCheckInModal({ week, isOpen, onClose, onDateSelect }: Pr
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-surface dark:bg-surface/95 light:bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl border border-border">
+    <div className="fixed inset-0 bg-overlay backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-gray-800/95 backdrop-blur-sm rounded-lg p-6 max-w-md w-full mx-4 shadow-xl border border-gray-500/30 text-white">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-primary font-regular">Select Check-in Date</h2>
+          <h2 className="text-xl font-semibold text-white font-regular">Select Check-in Date</h2>
           <button 
             onClick={handleClose}
-            className="text-secondary hover:text-primary rounded-full p-1 transition-colors"
+            className="text-gray-300 hover:text-white rounded-full p-1 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
         
-        <p className="text-secondary mb-4 font-regular">
+        <p className="text-gray-300 mb-4 font-regular">
           This week offers multiple check-in dates. Please select your preferred check-in date.
         </p>
         
@@ -88,7 +88,7 @@ export function FlexibleCheckInModal({ week, isOpen, onClose, onDateSelect }: Pr
             <button
               key={formatDateForDisplay(date)}
               onClick={() => handleDateSelect(date)}
-              className="w-full p-3 text-left border border-border rounded-lg bg-main hover:bg-[color-mix(in_srgb,_var(--color-accent-primary)_15%,_var(--color-bg-main))] hover:border-accent-primary transition-colors font-regular text-primary"
+              className="w-full p-3 text-left border border-gray-600 rounded-lg bg-gray-700/50 hover:bg-gray-600/70 hover:border-accent-primary transition-colors font-regular text-white"
             >
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-accent-primary" />
@@ -101,7 +101,7 @@ export function FlexibleCheckInModal({ week, isOpen, onClose, onDateSelect }: Pr
         <div className="mt-6 flex justify-end">
           <button
             onClick={handleClose}
-            className="px-4 py-2 text-secondary hover:text-primary transition-colors font-regular"
+            className="px-4 py-2 text-gray-300 hover:text-white transition-colors font-regular"
           >
             Cancel
           </button>

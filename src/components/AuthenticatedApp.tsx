@@ -1,23 +1,40 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { MyBookings } from './MyBookings';
 import { Book2Page } from '../pages/Book2Page';
 import { AdminPage } from '../pages/AdminPage';
 import { ConfirmationPage } from '../pages/ConfirmationPage';
 import { AcceptInvitePage } from '../pages/AcceptInvitePage';
+import { WhyPage } from '../pages/WhyPage';
 import { useSession } from '../hooks/useSession';
 import { supabase } from '../lib/supabase';
-import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
+import { Routes, Route, useNavigate, Navigate, Link } from 'react-router-dom';
 import { PaymentPage } from '../pages/PaymentPage';
 import { useAccommodations } from '../hooks/useAccommodations';
 import { WhitelistWelcomeModal } from './WhitelistWelcomeModal';
 import { Menu, X, Sun, Moon } from 'lucide-react';
 import { Footer } from './Footer';
 
+// Basic debounce function
+function debounce<T extends (...args: any[]) => void>(func: T, wait: number) {
+  let timeout: NodeJS.Timeout | null = null;
+  return (...args: Parameters<T>) => {
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+    timeout = setTimeout(() => {
+      func(...args);
+    }, wait);
+  };
+}
+
 export function AuthenticatedApp() {
   console.log('AuthenticatedApp: Initializing');
   const [currentPage, setCurrentPage] = useState<'calendar' | 'my-bookings' | 'admin'>('calendar');
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  // Header scroll state
+  const [showHeader, setShowHeader] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
   // THEME FUNCTIONALITY COMMENTED OUT - TO BE IMPLEMENTED LATER
   // const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const session = useSession();
@@ -32,9 +49,43 @@ export function AuthenticatedApp() {
     currentPage 
   });
 
+  // Scroll handler logic
+  const handleScroll = useCallback(() => {
+    const currentScrollY = window.scrollY;
+    const isAtTop = currentScrollY <= 10; // Small buffer for top
+
+    console.log(`Scroll Check: current=${currentScrollY}, last=${lastScrollY}, show=${showHeader}`);
+
+    if (isAtTop) {
+        console.log("Scroll: At top");
+        setShowHeader(true);
+    } else if (currentScrollY > lastScrollY && !isMobileMenuOpen) { // Scrolling down
+        console.log("Scroll: Down");
+        setShowHeader(false);
+    } else if (currentScrollY < lastScrollY) { // Scrolling up
+        console.log("Scroll: Up");
+        setShowHeader(true);
+    }
+
+    setLastScrollY(currentScrollY); // Update last scroll position
+
+  }, [lastScrollY, isMobileMenuOpen, showHeader]); // Added showHeader to dependencies as it's read now
+
+  // Debounced scroll handler
+  const debouncedScrollHandler = useCallback(debounce(handleScroll, 50), [handleScroll]); // Adjust debounce delay (50ms) if needed
+
   useEffect(() => {
     checkWhitelistStatus();
-  }, []);
+    // Attach scroll listener
+    window.addEventListener('scroll', debouncedScrollHandler);
+    console.log("Scroll listener attached");
+
+    // Cleanup listener on unmount
+    return () => {
+      window.removeEventListener('scroll', debouncedScrollHandler);
+      console.log("Scroll listener removed");
+    };
+  }, [debouncedScrollHandler]); // Re-attach if handler changes (it shouldn't often due to useCallback)
 
   // THEME FUNCTIONALITY COMMENTED OUT - TO BE IMPLEMENTED LATER
   // Effect to load saved theme from localStorage on mount
@@ -119,9 +170,22 @@ export function AuthenticatedApp() {
     setIsMobileMenuOpen(false);
   };
 
+  // Function to close mobile menu, used by Links
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false);
+  }
+
   return (
-    <div className="min-h-screen bg-main flex flex-col">
-      <header className="sticky top-0 z-50 bg-surface border-b border-border">
+    <div className="min-h-screen bg-main flex flex-col"
+      style={{
+        backgroundImage: `linear-gradient(rgba(31, 41, 55, 0.9), rgba(31, 41, 55, 0.9)), url(https://guquxpxxycfmmlqajdyw.supabase.co/storage/v1/object/public/background-image//fern-background-tiling-2.png)`,
+        backgroundSize: 'auto',
+        backgroundRepeat: 'repeat',
+        backgroundPosition: 'center',
+      }}
+    >
+      {/* Updated header classes - removed border-b */}
+      <header className={`fixed top-0 left-0 right-0 z-50 border-border/50 backdrop-blur-sm transition-all duration-300 ease-in-out bg-[var(--color-bg-surface-transparent)] ${!showHeader ? '-translate-y-full' : ''}`}>
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16 sm:h-20">
             <button 
@@ -161,7 +225,14 @@ export function AuthenticatedApp() {
                 )}
               </button>
               */}
-              <nav className="flex gap-6">
+              <nav className="flex gap-6 items-center">
+                <Link
+                  to="/why"
+                  onClick={closeMobileMenu}
+                  className="text-sm font-regular transition-colors text-secondary hover:text-accent-secondary"
+                >
+                  Why?
+                </Link>
                 <button
                   onClick={() => handleNavigation('my-bookings')}
                   className={`text-sm font-regular transition-colors ${
@@ -193,7 +264,7 @@ export function AuthenticatedApp() {
           {/* Mobile menu */}
           <div 
             className={`lg:hidden transition-all duration-300 ease-in-out ${
-              isMobileMenuOpen ? 'max-h-64 opacity-100' : 'max-h-0 opacity-0'
+              isMobileMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
             } overflow-hidden`}
           >
             <div className="py-4 space-y-4 border-t border-border">
@@ -215,6 +286,15 @@ export function AuthenticatedApp() {
                 )}
               </button>
               */}
+              <Link
+                to="/why"
+                onClick={closeMobileMenu}
+                className="block w-full text-left px-4 py-2 rounded-lg transition-colors text-sm font-regular text-secondary hover:bg-[var(--color-bg-surface-hover)]"
+              >
+                <span className="text-secondary">
+                  Why This App Exists
+                </span>
+              </Link>
               <button
                 onClick={() => handleNavigation('my-bookings')}
                 className={`w-full text-left px-4 py-2 rounded-lg transition-colors text-sm ${
@@ -244,13 +324,15 @@ export function AuthenticatedApp() {
         </div>
       </header>
 
-      <main className="relative flex-grow">
+      {/* Add padding to main content to prevent overlap with fixed header */}
+      <main className="relative flex-grow pt-16 sm:pt-20">
         <Routes>
           <Route path="/" element={<Book2Page />} />
           <Route path="/my-bookings" element={<MyBookings />} />
           <Route path="/admin" element={isAdmin ? <AdminPage /> : <Navigate to="/" />} />
           <Route path="/confirmation" element={<ConfirmationPage />} />
           <Route path="/payment" element={<PaymentPage />} />
+          <Route path="/why" element={<WhyPage />} />
         </Routes>
       </main>
 
@@ -260,6 +342,20 @@ export function AuthenticatedApp() {
         isOpen={showWelcomeModal}
         onClose={handleWelcomeClose}
       />
+
+      {/* Add CSS keyframes for the gradient animation */}
+      <style>
+        {`
+          @keyframes gradient-x {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+          }
+          .animate-gradient-x {
+            animation: gradient-x 5s ease infinite;
+          }
+        `}
+      </style>
     </div>
   );
 }
