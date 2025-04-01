@@ -81,7 +81,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
   if (isImageUpload) {
     return (
       <div className="space-y-4">
-        <h3 className="text-2xl font-display text-[#FFBF00]">
+        <h3 className="text-xl font-display text-[#FFBF00]">
           {question.text}
           <span className="text-red-500 ml-1">*</span>
         </h3>
@@ -95,7 +95,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
               const files = Array.from(e.target.files || []);
               handleFileUpload(files);
             }}
-            className="w-full bg-black/30 p-3 text-[#FFBF00] focus:outline-none focus:ring-2 focus:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30"
+            className="w-full bg-black p-3 text-[#FFBF00] focus:outline-none focus:ring-2 focus:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30"
             style={{
               clipPath: `polygon(
                 0 4px, 4px 4px, 4px 0,
@@ -153,7 +153,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
           value={value || ''}
           onChange={(e) => onChange(e.target.value)}
           onBlur={onBlur}
-          className="w-full bg-black/30 p-3 text-[#FFBF00] focus:outline-none focus:ring-2 focus:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30"
+          className="w-full bg-black p-3 text-[#FFBF00] focus:outline-none focus:ring-2 focus:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30"
           style={{
             clipPath: `polygon(
               0 4px, 4px 4px, 4px 0,
@@ -332,7 +332,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
             value={value || ''}
             onChange={(e) => onChange(e.target.value)}
             onBlur={onBlur}
-            className="w-full bg-black/30 p-3 text-[#FFBF00] focus:outline-none focus:ring-2 focus:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30"
+            className="w-full bg-black p-3 text-[#FFBF00] focus:outline-none focus:ring-2 focus:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30"
             rows={4}
             style={{
               clipPath: `polygon(
@@ -361,7 +361,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
           value={value || ''}
           onChange={(e) => onChange(e.target.value)}
           onBlur={onBlur}
-          className="w-full bg-black/30 p-3 text-[#FFBF00] focus:outline-none focus:ring-2 focus:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30"
+          className="w-full bg-black p-3 text-[#FFBF00] focus:outline-none focus:ring-2 focus:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30"
           style={{
             clipPath: `polygon(
               0 4px, 4px 4px, 4px 0,

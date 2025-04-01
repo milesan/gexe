@@ -44,7 +44,7 @@ export function PendingPage({ status = 'pending' }: Props) {
             {status === 'pending' ? 'Application Pending' : 'Application Not Accepted'}
           </h1>
 
-          <p className="text-secondary leading-relaxed">
+          <p className="text-secondary text-sm font-regular leading-relaxed">
             {status === 'pending' ? (
               "Thank you for applying to The Garden. Your application is currently being reviewed. We'll notify you by email once a decision has been made."
             ) : (
@@ -54,7 +54,7 @@ export function PendingPage({ status = 'pending' }: Props) {
 
           <button
             onClick={handleSignOut}
-            className="w-full bg-accent-primary text-white py-3 px-6 rounded-lg transition-colors"
+            className="w-full bg-accent-primary font-regular text-white py-3 px-6 rounded-lg transition-colors"
           >
             Sign Out
           </button>

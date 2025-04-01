@@ -53,7 +53,7 @@ export function WhitelistWelcomeModal({ isOpen, onClose }: Props) {
               className="w-12 h-12 mx-auto mb-4 invert"
             />
             <h2 className="text-[#FFBF00] text-2xl font-display mb-4">Welcome to The Garden</h2>
-            <p className="text-[#FFBF00]/60 mb-6">
+            <p className="font-regular text-sm text-[#FFBF00]/60 mb-6">
               You have been approved for 2025 and have bypassed the application.
             </p>
             <button
