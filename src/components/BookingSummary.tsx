@@ -843,7 +843,7 @@ export function BookingSummary({
                         <span className="text-accent-primary font-medium text-sm sm:text-base font-regular">
                           {selectedAccommodation.title === 'Van Parking' || 
                            selectedAccommodation.title === 'Your Own Tent' || 
-                           selectedAccommodation.title === '+1 Accommodation' || 
+                           selectedAccommodation.title === 'Staying with somebody' || 
                            selectedAccommodation.title === 'The Hearth' 
                            ? selectedAccommodation.title
                            : `The ${selectedAccommodation.title}`}
@@ -885,10 +885,16 @@ export function BookingSummary({
                 </div>
                 
                 <div className="space-y-2">
-                  <div className="flex justify-between gap-x-4 items-baseline">
-                    <span className="text-sm text-secondary font-regular">Accommodation <span className="whitespace-nowrap">({pricing.totalNights} nights)</span></span>
-                    <span className="text-base text-primary font-medium">{formatPriceDisplay(pricing.totalAccommodationCost)}</span>
-                  </div>
+                  {selectedAccommodation ? (
+                    <div className="flex justify-between gap-x-4 items-baseline">
+                      <span className="text-sm text-secondary font-regular">Accommodation <span className="whitespace-nowrap">({pricing.totalNights} nights)</span></span>
+                      <span className="text-sm text-primary font-regular">{formatPriceDisplay(pricing.totalAccommodationCost)}</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-baseline min-h-[1.25rem]">
+                      <span className="text-sm text-secondary font-regular italic">No accommodation selected</span>
+                    </div>
+                  )}
                   
                   <div className="flex justify-between gap-x-4 items-baseline">
                     <Tooltip.Provider>
