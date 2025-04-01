@@ -100,11 +100,11 @@ export function BookingModal({
           <div className="border-t border-b border-stone-200 py-4">
             <div className="flex justify-between mb-2">
               <span>Arrival</span>
-              <span>You may arrive {formatDate(checkIn)} from 3-6PM</span>
+              <span>You may arrive {formatDate(checkIn)} from 2-6PM</span>
             </div>
             <div className="flex justify-between">
               <span>Departure</span>
-              <span>You may depart {formatDate(checkOut)} by 12PM Noon</span>
+              <span>You may depart {formatDate(checkOut)} by 11AM</span>
             </div>
             <div className="flex justify-between mt-2 text-stone-600">
               <span>Duration</span>

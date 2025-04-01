@@ -469,6 +469,19 @@ export function isWeekSelectable(week: Week, isAdmin: boolean = false, selectedW
     return true;
   }
   
+  // Add check: Block non-admin bookings from November 1st onwards
+  const currentYear = new Date().getUTCFullYear();
+  // Use normalizeToUTCDate to ensure consistent midnight comparison
+  const cutoffDate = normalizeToUTCDate(new Date(Date.UTC(currentYear, 10, 1))); // Month is 0-indexed, so 10 = November
+  
+  if (week.startDate.getTime() >= cutoffDate.getTime()) {
+    console.log('[isWeekSelectable] Blocking selection: Week starts on or after November 1st', {
+      weekStartDate: formatDateForDisplay(week.startDate),
+      cutoffDate: formatDateForDisplay(cutoffDate)
+    });
+    return false;
+  }
+  
   // For normal users, check both status and start date
   const today = new Date();
   const weekStartDate = week.startDate;

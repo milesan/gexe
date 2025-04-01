@@ -51,75 +51,79 @@ export function MyBookings() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 sm:py-8">
-      <div className="flex justify-between items-start mb-8">
-        <div>
-          <h1 className="text-4xl font-display font-light text-primary mb-2">My Account</h1>
-          <div className="text-secondary">
-            <p className="font-regular">{session?.user?.email}</p>
+    <div className="max-w-7xl mx-auto py-6 sm:py-8">
+      <div className="grid grid-cols-1">
+        <div className="px-3 xs:px-4 sm:px-6">
+          <div className="flex justify-between items-start mb-8">
+            <div>
+              <h1 className="text-4xl font-display font-light text-primary mb-2">My Account</h1>
+              <div className="text-secondary">
+                <p className="font-regular">{session?.user?.email}</p>
+              </div>
+            </div>
           </div>
+          
+          {bookings.length === 0 ? (
+            <div className="text-center text-secondary">
+              No bookings found. Book your first stay!
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {bookings.map((booking) => (
+                <motion.div
+                  key={booking.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-surface p-6 rounded-xl shadow-sm border border-color"
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="text-xl font-display font-light mb-2 text-primary">
+                        {booking.accommodation?.title || 'Accommodation'}
+                      </h3>
+                      <div className="space-y-1 text-sm font-regular">
+                        <p>
+                          <span className="text-secondary">Check-in:</span>{' '}
+                          {format(parseISO(booking.check_in), 'PPP')}
+                        </p>
+                        <p>
+                          <span className="text-secondary">Check-out:</span>{' '}
+                          {format(parseISO(booking.check_out), 'PPP')}
+                        </p>
+                        <p>
+                          <span className="text-secondary">Total Price:</span>{' '}
+                          €{booking.total_price}
+                        </p>
+                        <a 
+                          href="https://gardening.notion.site/Welcome-to-The-Garden-2684f446b48e4b43b3f003d7fca33664?pvs=4"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-accent-primary hover:text-accent-hover transition-colors mt-2"
+                        >
+                          Welcome Guide
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                    </div>
+                    {booking.accommodation?.image_url && (
+                      <button
+                        onClick={() => setEnlargedImageUrl(booking.accommodation?.image_url || null)}
+                        className="focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-offset-2 rounded-lg transition-opacity hover:opacity-80"
+                      >
+                        <img
+                          src={booking.accommodation.image_url}
+                          alt={booking.accommodation.title}
+                          className="w-32 h-32 object-cover rounded-lg cursor-pointer"
+                        />
+                      </button>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
-      
-      {bookings.length === 0 ? (
-        <div className="text-center text-secondary">
-          No bookings found. Book your first stay!
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {bookings.map((booking) => (
-            <motion.div
-              key={booking.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-surface p-6 rounded-xl shadow-sm border border-color"
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="text-xl font-display font-light mb-2 text-primary">
-                    {booking.accommodation?.title || 'Accommodation'}
-                  </h3>
-                  <div className="space-y-1 text-sm font-regular">
-                    <p>
-                      <span className="text-secondary">Check-in:</span>{' '}
-                      {format(parseISO(booking.check_in), 'PPP')}
-                    </p>
-                    <p>
-                      <span className="text-secondary">Check-out:</span>{' '}
-                      {format(parseISO(booking.check_out), 'PPP')}
-                    </p>
-                    <p>
-                      <span className="text-secondary">Total Price:</span>{' '}
-                      €{booking.total_price}
-                    </p>
-                    <a 
-                      href="https://gardening.notion.site/Welcome-to-The-Garden-2684f446b48e4b43b3f003d7fca33664?pvs=4"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-accent-primary hover:text-accent-hover transition-colors mt-2"
-                    >
-                      Welcome Guide
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                  </div>
-                </div>
-                {booking.accommodation?.image_url && (
-                  <button
-                    onClick={() => setEnlargedImageUrl(booking.accommodation?.image_url || null)}
-                    className="focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-offset-2 rounded-lg transition-opacity hover:opacity-80"
-                  >
-                    <img
-                      src={booking.accommodation.image_url}
-                      alt={booking.accommodation.title}
-                      className="w-32 h-32 object-cover rounded-lg cursor-pointer"
-                    />
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      )}
 
       {enlargedImageUrl && (
         <div

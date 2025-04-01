@@ -48,7 +48,7 @@ export function generateBookingConfirmationEmail({
             <td style="width: 50%; padding-left: 15px; border-left: 1px solid #e2e8f0;">
               <strong style="${styles.label}">Check-out</strong>
               <div style="${styles.value}">${formattedCheckOut}</div>
-              <p style="${styles.timeNote}">By 11 PM</p>
+              <p style="${styles.timeNote}">By 11 AM</p>
             </td>
           </tr>
         </table>

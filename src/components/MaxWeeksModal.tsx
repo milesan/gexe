@@ -15,29 +15,34 @@ export function MaxWeeksModal({ isOpen, onClose }: Props) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+          className="fixed inset-0 bg-overlay backdrop-blur-sm flex items-center justify-center p-4 z-50"
+          onClick={onClose}
         >
           <motion.div
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-white rounded-lg max-w-md w-full p-6"
+            className="bg-bg-surface rounded-lg max-w-md w-full p-4 sm:p-6 border border-border text-text-primary shadow-xl relative max-h-[85vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-serif">Hold Your Horses!</h3>
-              <button 
-                onClick={onClose}
-                className="text-stone-400 hover:text-stone-600"
-              >
-                <X className="w-5 h-5" />
-              </button>
+            <button 
+              onClick={onClose}
+              className="absolute top-2 sm:top-4 right-2 sm:right-4 text-text-secondary hover:text-text-primary transition-colors z-[1]"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            <div className="mb-4 sm:mb-6">
+              <h3 className="text-lg sm:text-xl font-display">Hold Your Horses!</h3>
             </div>
-            <p className="text-stone-600 mb-6">
+
+            <p className="text-text-secondary mb-6 font-regular">
               You may only spend 3 months at the Garden every 6 months. Give the rest of the world a chance ❧
             </p>
+            
             <button
               onClick={onClose}
-              className="w-full bg-emerald-900 text-white py-2 transition-colors hover:bg-emerald-800"
+              className="w-full bg-accent-primary text-white py-2 rounded transition-colors hover:brightness-90 font-regular"
             >
               Cool
             </button>

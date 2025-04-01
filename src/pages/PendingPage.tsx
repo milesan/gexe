@@ -23,11 +23,11 @@ export function PendingPage({ status = 'pending' }: Props) {
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-main flex items-center justify-center p-4">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-md w-full bg-white rounded-2xl shadow-sm border border-stone-200 p-8"
+        className="max-w-md w-full bg-surface rounded-2xl shadow-sm border border p-8"
       >
         <div className="flex flex-col items-center text-center space-y-6">
           <img 
@@ -40,11 +40,11 @@ export function PendingPage({ status = 'pending' }: Props) {
             }}
           />
           
-          <h1 className="text-3xl font-display font-light text-stone-900">
+          <h1 className="text-3xl font-display font-light text-primary">
             {status === 'pending' ? 'Application Pending' : 'Application Not Accepted'}
           </h1>
 
-          <p className="text-stone-600 leading-relaxed">
+          <p className="text-secondary leading-relaxed">
             {status === 'pending' ? (
               "Thank you for applying to The Garden. Your application is currently being reviewed. We'll notify you by email once a decision has been made."
             ) : (
@@ -54,7 +54,7 @@ export function PendingPage({ status = 'pending' }: Props) {
 
           <button
             onClick={handleSignOut}
-            className="w-full bg-emerald-900 text-white py-3 px-6 rounded-lg hover:bg-emerald-800 transition-colors"
+            className="w-full bg-accent-primary text-white py-3 px-6 rounded-lg transition-colors"
           >
             Sign Out
           </button>

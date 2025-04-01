@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Wifi, Zap, BedDouble, WifiOff, ZapOff, Bath, Percent, Info } from 'lucide-react';
+import { Wifi, Zap, Bed, BedDouble, WifiOff, ZapOff, Bath, Percent, Info } from 'lucide-react';
 import clsx from 'clsx';
 import type { Accommodation } from '../types';
 import { Week } from '../types/calendar';
@@ -55,7 +55,9 @@ const HAS_WIFI = [
   'Writer\'s Room',
   'The Hearth',
   'Valleyview Room',
-  'Master\'s Suite'
+  'Master\'s Suite',
+  '3-Bed Dorm',
+  '6-Bed Dorm'
 ];
 
 export function CabinSelector({ 
@@ -436,6 +438,8 @@ export function CabinSelector({
               const finalCanSelect = canSelect && !isOutOfSeason; // Tent cannot be selected if out of season
 
               const finalPrice = calculateFinalPrice(acc.base_price, selectedWeeks, acc.title);
+              const currentDurationDiscount = getDurationDiscount(calculateDurationDiscountWeeks(selectedWeeks));
+              const currentSeasonalDiscount = calculateWeightedSeasonalDiscount(selectedWeeks, acc.title);
 
                 return (
                   <motion.div
@@ -592,7 +596,7 @@ export function CabinSelector({
                         <Tooltip.Provider delayDuration={50}>
                           <Tooltip.Root>
                             <Tooltip.Trigger asChild>
-                              <button className="flex items-center gap-1 cursor-help"><Bath size={12} /></button>
+                              <button className="flex items-center gap-1 cursor-help"><Bed size={12} /></button>
                             </Tooltip.Trigger>
                             <Tooltip.Portal>
                               <Tooltip.Content
@@ -625,8 +629,8 @@ export function CabinSelector({
                       {/* Discount Tooltip - only show if final price is not 0 and there are applicable discounts */}
                       {finalPrice !== 0 && (
                         (acc.title.includes('Dorm') 
-                          ? getDurationDiscount(calculateDurationDiscountWeeks(selectedWeeks)) > 0 
-                          : calculateWeightedSeasonalDiscount(selectedWeeks, acc.title) + getDurationDiscount(calculateDurationDiscountWeeks(selectedWeeks)) > 0
+                          ? currentDurationDiscount > 0 
+                          : currentSeasonalDiscount + currentDurationDiscount > 0
                         )
                       ) && (
                         <Tooltip.Provider delayDuration={50}>
@@ -720,14 +724,16 @@ export function CabinSelector({
                                   )}
                                   
                                   {/* Simplified duration discount */}
-                                  <div className="py-2"> 
-                                    <div className="flex justify-between items-center mb-1">
-                                      <span className="text-white font-medium">Duration discount:</span>
-                                      <span className="text-accent-primary font-medium">
-                                        -{Math.round(getDurationDiscount(calculateDurationDiscountWeeks(selectedWeeks)) * 100)}%
-                                      </span>
+                                  {currentDurationDiscount > 0 && (
+                                    <div className="py-2"> 
+                                      <div className="flex justify-between items-center mb-1">
+                                        <span className="text-white font-medium">Duration discount:</span>
+                                        <span className="text-accent-primary font-medium">
+                                          -{Math.round(currentDurationDiscount * 100)}%
+                                        </span>
+                                      </div>
                                     </div>
-                                  </div>
+                                  )}
                                 </div>
                               </Tooltip.Content>
                             </Tooltip.Portal>

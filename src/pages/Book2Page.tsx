@@ -673,38 +673,74 @@ export function Book2Page() {
   return (
     <div className="min-h-screen">
       <div className="container mx-auto py-4 xs:py-6 sm:py-8 px-4">
-        <h1 className="text-4xl xs:text-4xl font-display mb-3 xs:mb-4 text-primary">Book Your Stay</h1>
-        
-        <div className="lg:col-span-2 max-w-2xl bg-surface/50 backdrop-blur-sm border border-border/50 rounded-lg p-3 xs:p-4 sm:p-5 mb-4 xs:mb-6 sm:mb-8 shadow-sm">
-          <div className="flex items-center gap-2 mb-2 xs:mb-3">
-            <svg className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-accent-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <h2 className="text-xs xs:text-sm font-medium text-primary font-regular">Note!</h2>
-          </div>
-          <div className="flex flex-col gap-2 xs:gap-3 text-secondary">
-            <p className="flex items-start gap-2 xs:gap-2.5 text-xs xs:text-sm font-regular">
-              <span className="text-accent-primary mt-0.5">•</span>
-              The longer you stay, the less € you contribute on both lodging & base-rate
-            </p>
-            <p className="flex items-start gap-2 xs:gap-2.5 text-xs xs:text-sm font-regular">
-              <span className="text-accent-primary mt-0.5">•</span>
-              The quieter the time of year, the less € you contribute on lodging.
-            </p>
-          </div>
-        </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 xs:gap-5 sm:gap-6">
           {/* Left Column - Calendar and Cabin Selector */}
           <div className="lg:col-span-2">
-            {/* Move admin controls here - above the calendar white box */}
-            {isAdmin && (
-              <div className="flex justify-end mb-3 xs:mb-4">
-                {isAdminMode ? (
-                  <div className="flex items-center gap-2 xs:gap-3">
+            {/* == START: New wrapper div with horizontal padding == */}
+            <div className="px-3 xs:px-4 sm:px-6">
+              {/* Moved h1 inside wrapper - REMOVING px-* padding now */}
+              <h1 className="text-4xl xs:text-4xl font-display mb-3 xs:mb-4 text-primary">Calendar of Availabilities</h1>
+              
+              {/* Outer Note box keeps py-* padding */}
+              <div className="bg-surface/50 backdrop-blur-sm border border-border/50 rounded-lg py-3 xs:py-4 sm:py-6 mb-4 xs:mb-6 sm:mb-8 shadow-sm">
+                {/* Added inner wrapper for content padding */}
+                <div className="px-3 xs:px-4 sm:px-6">
+                  <div className="flex items-center gap-2 mb-2 xs:mb-3">
+                    <svg className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-accent-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <h2 className="text-xs xs:text-sm font-medium text-primary font-regular">Note!</h2>
+                  </div>
+                  <div className="flex flex-col gap-2 xs:gap-3 text-secondary">
+                    <p className="flex items-start gap-2 xs:gap-2.5 text-xs xs:text-sm font-regular">
+                      <span className="text-accent-primary mt-0.5">•</span>
+                      The longer you stay, the less € you contribute on both lodging & base-rate
+                    </p>
+                    <p className="flex items-start gap-2 xs:gap-2.5 text-xs xs:text-sm font-regular">
+                      <span className="text-accent-primary mt-0.5">•</span>
+                      The quieter the time of year, the less € you contribute on lodging.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              {/* == END: Moved Admin controls inside wrapper == */}
+
+              {/* Add the admin controls block here */}
+              {isAdmin && (
+                <div className="flex justify-end mb-3 xs:mb-4">
+                  {isAdminMode ? (
+                    <div className="flex items-center gap-2 xs:gap-3">
+                      <button
+                        onClick={() => setIsAdminMode(false)}
+                        className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-lg text-xs xs:text-sm bg-amber-600 text-white hover:bg-amber-700 transition-all duration-200 font-medium font-regular"
+                      >
+                        <svg 
+                          className="h-4 w-4 xs:h-5 xs:w-5" 
+                          xmlns="http://www.w3.org/2000/svg" 
+                          viewBox="0 0 24 24" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          strokeWidth="2" 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round"
+                        >
+                          <path d="M18 6L6 18M6 6l12 12"></path>
+                        </svg>
+                        <span>Exit Edit Mode</span>
+                      </button>
+                      
+                      <CalendarConfigButton 
+                        onConfigChanged={() => {
+                          // Refresh data when config changes
+                          setLastRefresh(Date.now());
+                        }} 
+                      />
+                    </div>
+                  ) : (
                     <button
-                      onClick={() => setIsAdminMode(false)}
-                      className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-lg text-xs xs:text-sm bg-amber-600 text-white hover:bg-amber-700 transition-all duration-200 font-medium font-regular"
+                      onClick={() => setIsAdminMode(true)}
+                      className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-lg text-xs xs:text-sm bg-accent-primary text-white hover:bg-accent-secondary transition-all duration-200 font-medium font-regular"
                     >
                       <svg 
                         className="h-4 w-4 xs:h-5 xs:w-5" 
@@ -716,155 +752,132 @@ export function Book2Page() {
                         strokeLinecap="round" 
                         strokeLinejoin="round"
                       >
-                        <path d="M18 6L6 18M6 6l12 12"></path>
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                       </svg>
-                      <span>Exit Edit Mode</span>
+                      <span>Edit Mode</span>
                     </button>
-                    
-                    <CalendarConfigButton 
-                      onConfigChanged={() => {
-                        // Refresh data when config changes
-                        setLastRefresh(Date.now());
-                      }} 
-                    />
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setIsAdminMode(true)}
-                    className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-lg text-xs xs:text-sm bg-accent-primary text-white hover:bg-accent-secondary transition-all duration-200 font-medium font-regular"
-                  >
-                    <svg 
-                      className="h-4 w-4 xs:h-5 xs:w-5" 
-                      xmlns="http://www.w3.org/2000/svg" 
-                      viewBox="0 0 24 24" 
-                      fill="none" 
-                      stroke="currentColor" 
-                      strokeWidth="2" 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round"
-                    >
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                    </svg>
-                    <span>Edit Mode</span>
-                  </button>
-                )}
-              </div>
-            )}
+                  )}
+                </div>
+              )}
 
-            <div className="bg-surface rounded-xl shadow-sm p-3 xs:p-4 sm:p-6 mb-4 xs:mb-5 sm:mb-6">
-              <div className="flex flex-col gap-3 mb-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <h2 className="text-lg xxs:text-xl sm:text-2xl font-display font-light text-primary">
-                    {selectedWeeks.length === 0 ? "When do you want to arrive?" : 
-                     selectedWeeks.length === 1 ? "One week selected! Any more?" : 
-                     "Ok! Time to scroll down"}
-                  </h2>
+              {/* Moved Calendar card inside wrapper - CHANGING p-* to py-* now */}
+              <div className="bg-surface rounded-xl shadow-sm py-3 xs:py-4 sm:py-6 mb-4 xs:mb-5 sm:mb-6">
+                {/* REMOVING px-* padding from this inner div */}
+                <div className="flex flex-col gap-3 mb-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <h2 className="text-lg xxs:text-xl sm:text-2xl font-display font-light text-primary">
+                      {selectedWeeks.length === 0 ? "When do you want to arrive?" : 
+                       selectedWeeks.length === 1 ? "One week selected! Any more?" : 
+                       "Ok! Time to scroll down"}
+                    </h2>
 
-                  <div className="flex items-center gap-2 xxs:gap-3">
-                    <button 
-                      className="p-1 xxs:p-1.5 sm:p-2 rounded-full hover:bg-[var(--color-bg-surface-hover)] text-accent-primary"
-                      onClick={() => setCurrentMonth(startOfMonth(new Date()))}
-                      aria-label="Return to current month"
-                      title="Return to today"
-                    >
-                      <Home className="h-3.5 w-3.5 xxs:h-4 xxs:w-4 sm:h-5 sm:w-5" />
-                    </button>
-
-                    <div className="flex items-center bg-surface/80 rounded-lg shadow-sm border border-border/50">
+                    <div className="flex items-center gap-2 xxs:gap-3">
                       <button 
-                        className="p-1 xxs:p-1.5 sm:p-2 rounded-l-lg hover:bg-[var(--color-bg-surface-hover)] border-r border-border/50"
-                        onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-                        aria-label="Previous month"
+                        className="p-1 xxs:p-1.5 sm:p-2 rounded-full hover:bg-[var(--color-bg-surface-hover)] text-accent-primary"
+                        onClick={() => setCurrentMonth(startOfMonth(new Date()))}
+                        aria-label="Return to current month"
+                        title="Return to today"
                       >
-                        <ChevronLeft className="h-3.5 w-3.5 xxs:h-4 xxs:w-4 sm:h-5 sm:w-5 text-secondary" />
+                        <Home className="h-3.5 w-3.5 xxs:h-4 xxs:w-4 sm:h-5 sm:w-5" />
                       </button>
-                      <div className="px-2 xxs:px-3 sm:px-4 text-center text-primary font-medium whitespace-nowrap text-[10px] xxs:text-xs sm:text-sm font-regular min-w-[120px] xxs:min-w-[140px] sm:min-w-[160px]">
-                        {format(currentMonth, 'MMMM yyyy')}
+
+                      <div className="flex items-center bg-surface/80 rounded-lg shadow-sm border border-border/50">
+                        <button 
+                          className="p-1 xxs:p-1.5 sm:p-2 rounded-l-lg hover:bg-[var(--color-bg-surface-hover)] border-r border-border/50"
+                          onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+                          aria-label="Previous month"
+                        >
+                          <ChevronLeft className="h-3.5 w-3.5 xxs:h-4 xxs:w-4 sm:h-5 sm:w-5 text-secondary" />
+                        </button>
+                        <div className="px-2 xxs:px-3 sm:px-4 text-center text-primary font-medium whitespace-nowrap text-[10px] xxs:text-xs sm:text-sm font-regular min-w-[120px] xxs:min-w-[140px] sm:min-w-[160px]">
+                          {format(currentMonth, 'MMMM yyyy')}
+                        </div>
+                        <button 
+                          className="p-1 xxs:p-1.5 sm:p-2 rounded-r-lg hover:bg-[var(--color-bg-surface-hover)] border-l border-border/50"
+                          onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+                          aria-label="Next month"
+                        >
+                          <ChevronRight className="h-3.5 w-3.5 xxs:h-4 xxs:w-4 sm:h-5 sm:w-5 text-secondary" />
+                        </button>
                       </div>
-                      <button 
-                        className="p-1 xxs:p-1.5 sm:p-2 rounded-r-lg hover:bg-[var(--color-bg-surface-hover)] border-l border-border/50"
-                        onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-                        aria-label="Next month"
-                      >
-                        <ChevronRight className="h-3.5 w-3.5 xxs:h-4 xxs:w-4 sm:h-5 sm:w-5 text-secondary" />
-                      </button>
                     </div>
                   </div>
+
+                  {selectedWeeks.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5 xxs:gap-2">
+                      <Tooltip.Provider delayDuration={50}>
+                        <Tooltip.Root>
+                          <Tooltip.Trigger asChild>
+                            <button
+                              onClick={() => setShowDiscountModal(true)}
+                              className="group flex items-center gap-1 xxs:gap-1.5 px-2 xxs:px-2.5 py-1 xxs:py-1.5 text-[10px] xxs:text-xs sm:text-sm font-medium border rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 relative font-regular text-accent-primary bg-[color-mix(in_srgb,_var(--color-accent-primary)_10%,_transparent)] border-[color-mix(in_srgb,_var(--color-accent-primary)_30%,_transparent)] hover:bg-[color-mix(in_srgb,_var(--color-accent-primary)_20%,_transparent)] hover:border-[color-mix(in_srgb,_var(--color-accent-primary)_40%,_transparent)]"
+                            >
+                              <span>{combinedDiscount > 0 ? `Discount: ${seasonBreakdown?.hasMultipleSeasons ? '~' : ''}${Math.round(combinedDiscount * 100)}%` : 'Discounts'}</span>
+                              <HelpCircle className="w-3 h-3 xxs:w-3.5 xxs:h-3.5 sm:w-4 sm:h-4 text-accent-primary" />
+                            </button>
+                          </Tooltip.Trigger>
+                          <Tooltip.Portal>
+                            <Tooltip.Content
+                              sideOffset={5}
+                              className="tooltip-content !font-regular"
+                            >
+                              Click for detailed breakdown
+                              <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
+                            </Tooltip.Content>
+                          </Tooltip.Portal>
+                        </Tooltip.Root>
+                      </Tooltip.Provider>
+                      <button
+                        onClick={handleClearSelection}
+                        className={clsx(
+                          "flex items-center gap-0.5 xxs:gap-1 px-2 xxs:px-2.5 py-1 xxs:py-1.5 text-[10px] xxs:text-xs sm:text-sm font-medium border rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 font-regular",
+                          "text-accent-primary bg-[color-mix(in_srgb,_var(--color-accent-primary)_10%,_transparent)] border-[color-mix(in_srgb,_var(--color-accent-primary)_30%,_transparent)] hover:bg-[color-mix(in_srgb,_var(--color-accent-primary)_20%,_transparent)] hover:border-[color-mix(in_srgb,_var(--color-accent-primary)_40%,_transparent)]"
+                        )}
+                        aria-label="Clear week selection"
+                      >
+                        <X size={12} className="xxs:w-3.5 xxs:h-3.5 sm:w-4 sm:h-4" />
+                        <span>Clear Dates</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
 
-                {selectedWeeks.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-1.5 xxs:gap-2">
-                    <Tooltip.Provider delayDuration={50}>
-                      <Tooltip.Root>
-                        <Tooltip.Trigger asChild>
-                          <button
-                            onClick={() => setShowDiscountModal(true)}
-                            className="group flex items-center gap-1 xxs:gap-1.5 px-2 xxs:px-2.5 py-1 xxs:py-1.5 text-[10px] xxs:text-xs sm:text-sm font-medium border rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 relative font-regular text-accent-primary bg-[color-mix(in_srgb,_var(--color-accent-primary)_10%,_transparent)] border-[color-mix(in_srgb,_var(--color-accent-primary)_30%,_transparent)] hover:bg-[color-mix(in_srgb,_var(--color-accent-primary)_20%,_transparent)] hover:border-[color-mix(in_srgb,_var(--color-accent-primary)_40%,_transparent)]"
-                          >
-                            <span>{combinedDiscount > 0 ? `Discount: ${seasonBreakdown?.hasMultipleSeasons ? '~' : ''}${Math.round(combinedDiscount * 100)}%` : 'Discounts'}</span>
-                            <HelpCircle className="w-3 h-3 xxs:w-3.5 xxs:h-3.5 sm:w-4 sm:h-4 text-accent-primary" />
-                          </button>
-                        </Tooltip.Trigger>
-                        <Tooltip.Portal>
-                          <Tooltip.Content
-                            sideOffset={5}
-                            className="tooltip-content !font-regular"
-                          >
-                            Click for detailed breakdown
-                            <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
-                          </Tooltip.Content>
-                        </Tooltip.Portal>
-                      </Tooltip.Root>
-                    </Tooltip.Provider>
-                    <button
-                      onClick={handleClearSelection}
-                      className={clsx(
-                        "flex items-center gap-0.5 xxs:gap-1 px-2 xxs:px-2.5 py-1 xxs:py-1.5 text-[10px] xxs:text-xs sm:text-sm font-medium border rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 font-regular",
-                        "text-accent-primary bg-[color-mix(in_srgb,_var(--color-accent-primary)_10%,_transparent)] border-[color-mix(in_srgb,_var(--color-accent-primary)_30%,_transparent)] hover:bg-[color-mix(in_srgb,_var(--color-accent-primary)_20%,_transparent)] hover:border-[color-mix(in_srgb,_var(--color-accent-primary)_40%,_transparent)]"
-                      )}
-                      aria-label="Clear week selection"
-                    >
-                      <X size={12} className="xxs:w-3.5 xxs:h-3.5 sm:w-4 sm:h-4" />
-                      <span>Clear Dates</span>
-                    </button>
+                {isLoading ? (
+                  <div className="h-48 xs:h-56 sm:h-64 flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-8 w-8 xs:h-10 xs:w-10 border-t-2 border-b-2 border-accent-primary"></div>
                   </div>
+                ) : (
+                  <WeekSelector 
+                    weeks={weeks}
+                    selectedWeeks={selectedWeeks}
+                    onWeekSelect={handleWeekSelect}
+                    onWeeksDeselect={handleWeeksDeselect}
+                    isAdmin={isAdminMode}
+                    onDateSelect={handleFlexDateSelect}
+                    currentMonth={currentMonth}
+                    onMonthChange={setCurrentMonth}
+                    accommodationTitle={accommodationTitle}
+                  />
                 )}
-              </div>
-
-              {isLoading ? (
-                <div className="h-48 xs:h-56 sm:h-64 flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-8 w-8 xs:h-10 xs:w-10 border-t-2 border-b-2 border-accent-primary"></div>
-                </div>
-              ) : (
-                <WeekSelector 
-                  weeks={weeks}
+              </div> {/* Closing Calendar card div */}
+              
+              {/* Outer Cabin Selector keeps py-* padding */}
+              <div className="bg-surface rounded-xl shadow-sm py-3 xs:py-4 sm:py-6 mb-4 xs:mb-5 sm:mb-6 cabin-selector">
+                {/* REMOVING px-* padding from this h2 */}
+                <h2 className="text-lg xs:text-xl lg:text-2xl font-display font-light text-primary mb-3 xs:mb-4">Time to choose a cozy bed..</h2>
+                <CabinSelector 
+                  accommodations={accommodations || []}
+                  selectedAccommodationId={selectedAccommodation}
+                  onSelectAccommodation={setSelectedAccommodation}
                   selectedWeeks={selectedWeeks}
-                  onWeekSelect={handleWeekSelect}
-                  onWeeksDeselect={handleWeeksDeselect}
-                  isAdmin={isAdminMode}
-                  onDateSelect={handleFlexDateSelect}
                   currentMonth={currentMonth}
-                  onMonthChange={setCurrentMonth}
-                  accommodationTitle={accommodationTitle}
+                  isLoading={accommodationsLoading}
+                  isDisabled={selectedWeeks.length === 0}
                 />
-              )}
-            </div>
-            
-            {/* Cabin Selector - Under the calendar */}
-            <div className="bg-surface rounded-xl shadow-sm p-3 xs:p-4 sm:p-6 mb-4 xs:mb-5 sm:mb-6 cabin-selector">
-              <h2 className="text-lg xs:text-xl lg:text-2xl font-display font-light text-primary mb-3 xs:mb-4">Time to choose a cozy bed..</h2>
-              <CabinSelector 
-                accommodations={accommodations || []}
-                selectedAccommodationId={selectedAccommodation}
-                onSelectAccommodation={setSelectedAccommodation}
-                selectedWeeks={selectedWeeks}
-                currentMonth={currentMonth}
-                isLoading={accommodationsLoading}
-                isDisabled={selectedWeeks.length === 0}
-              />
-            </div>
-          </div>
+              </div> {/* Closing Cabin Selector div */}
+            </div> {/* == END: New wrapper div == */}
+          </div> {/* Closing lg:col-span-2 div */}
 
           {/* Right Column - Booking Summary (becomes a bottom column on mobile/tablet) */}
           <div>

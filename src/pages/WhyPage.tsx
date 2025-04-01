@@ -12,8 +12,7 @@ export function WhyPage() {
       <main className="flex-grow container mx-auto px-4 py-8 sm:py-12">
         <div className="bg-surface rounded-lg shadow-lg p-6 sm:p-10 max-w-3xl mx-auto border border-border">
           <h1
-            className="text-3xl sm:text-4xl font-['VT323'] mb-6 text-center bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 text-transparent bg-clip-text animate-gradient-x"
-            style={{ backgroundSize: '200% 200%' }} // Needed for animation
+            className="text-3xl sm:text-4xl font-['VT323'] mb-6 text-center text-white"
           >
             Why This App Exists
           </h1>
