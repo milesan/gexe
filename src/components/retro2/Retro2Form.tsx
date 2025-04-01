@@ -154,16 +154,7 @@ export function Retro2Form({ questions, onSubmit }: Props) {
         <div className="max-w-2xl mx-auto px-4">
           <div className="flex items-center justify-between py-4">
             <div className="flex items-center gap-3">
-              <img 
-                src="https://raw.githubusercontent.com/milesan/synesthesia/refs/heads/main/Enso%20Zen%20Soto%20Symbol.png"
-                alt="Enso Logo"
-                className="w-6 h-6"
-                style={{ 
-                  filter: 'brightness(0) invert(0.75) sepia(0.6) saturate(400%) hue-rotate(360deg)',
-                  opacity: 0.9
-                }}
-              />
-              <h1 className="text-xl font-display">The Garden</h1>
+              <h1 className="text-2xl font-['VT323']">The Garden</h1>
             </div>
             <button
               onClick={handleLogout}
