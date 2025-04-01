@@ -47,6 +47,14 @@ const formatNumber = (num: number, decimals: number = 1): string => {
   return num.toFixed(decimals);
 };
 
+// Helper function to format price display, showing "Free" for zero
+const formatPriceDisplay = (price: number): React.ReactNode => {
+  if (price === 0) {
+    return <span className="text-accent-primary text-sm font-regular">Free</span>;
+  }
+  return `€${price.toFixed(2)}`;
+};
+
 // Helper function to calculate pricing details
 interface PricingDetails {
   totalNights: number;
@@ -732,7 +740,7 @@ export function BookingSummary({
 
       {/* Summary of Stay section - Changes from sticky right positioning on mobile to regular flow */}
       <div className="lg:sticky lg:top-4 w-full max-w-md lg:max-w-lg mx-auto">
-        <div className="bg-surface p-5 sm:p-6 lg:p-8 pixel-corners">
+        <div className="bg-transparent p-5 sm:p-6 lg:p-8 pixel-corners">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-6">
             <div className="flex items-center justify-between w-full sm:w-auto">
               <h2 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-display font-light text-primary">
@@ -751,9 +759,14 @@ export function BookingSummary({
           )}
 
           {selectedWeeks.length > 0 && (
-            <div className="space-y-6">
+            <div className="space-y-6 bg-surface/50 backdrop-blur-sm rounded-xl shadow-sm">
               {/* Stay Details Section */}
-              <div className="bg-surface p-4 sm:p-5 rounded-xl border border-color shadow-sm pixel-corners overflow-hidden relative">
+              <motion.div 
+                className="p-4 sm:p-5 rounded-xl border border-border/50 shadow-sm pixel-corners overflow-hidden relative"
+                initial={{ y: 10, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.3 }}
+              >
                 <button
                   onClick={onClearWeeks}
                   className="absolute top-0.5 right-0.5 p-1.5 text-secondary hover:text-error hover:bg-error-muted-hover rounded-md transition-colors"
@@ -763,25 +776,25 @@ export function BookingSummary({
                 </button>
                 <div className="space-y-4 sm:space-y-5">
                   {/* Arrival Information */}
-                  <div className="bg-surface border border-color rounded-lg shadow-sm p-3 sm:p-4">
+                  <div className="bg-surface/50 backdrop-blur-sm border border-border rounded-lg shadow-sm p-3 sm:p-4">
                     <h4 className="font-medium text-primary mb-2 font-regular text-base sm:text-lg">Arrival</h4>
-                    <div className="space-y-1">
-                      <p className="text-accent-primary text-sm sm:text-base font-regular">{formatDateWithDay(selectedWeeks[0].startDate)}</p>
-                      <p className="text-accent-primary text-sm sm:text-base font-regular">3PM-8PM</p>
+                    <div className="space-y-1"> 
+                      <p className="text-accent-primary text-sm font-regular">{formatDateWithDay(selectedWeeks[0].startDate)}</p>
+                      <p className="text-accent-primary text-sm font-regular">2PM-6PM</p>
                     </div>
                   </div>
                   
                   {/* Departure Information */}
-                  <div className="bg-surface border border-color rounded-lg shadow-sm p-3 sm:p-4">
+                  <div className="bg-surface/50 backdrop-blur-sm border border-border rounded-lg shadow-sm p-3 sm:p-4">
                     <h4 className="font-medium text-primary mb-2 font-regular text-base sm:text-lg">Begone by</h4>
                     <div className="space-y-1">
-                      <p className="text-secondary text-sm sm:text-base font-regular">{formatDateWithOrdinal(selectedWeeks[selectedWeeks.length - 1].endDate)}</p>
-                      <p className="text-secondary text-sm sm:text-base font-regular">12PM Noon</p>
+                      <p className="text-secondary text-sm font-regular">{formatDateWithOrdinal(selectedWeeks[selectedWeeks.length - 1].endDate)}</p>
+                      <p className="text-secondary text-sm font-regular">11AM</p>
                     </div>
                   </div>
                   
                   {/* Duration */}
-                  <div className="bg-accent-muted p-4 rounded-lg border border-color">
+                  <div className="bg-accent-muted p-4 rounded-lg border border-border">
                     <div className="hidden xl:flex xl:justify-between xl:items-center">
                       <div className="w-full text-center">
                         <span className="text-accent-primary font-medium font-regular text-sm sm:text-base">
@@ -801,12 +814,12 @@ export function BookingSummary({
                     </div>
                   </div>
                 </div>
-              </div>
+              </motion.div>
 
               {/* Accommodation Section */}
               {selectedAccommodation && (
                 <motion.div 
-                  className="bg-surface p-4 sm:p-5 rounded-lg border border-color shadow-sm relative"
+                  className="p-4 sm:p-5 rounded-lg border border-border/50 shadow-sm relative"
                   initial={{ y: 10, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ duration: 0.3 }}
@@ -825,7 +838,7 @@ export function BookingSummary({
                   </div>
                   
                   <div className="space-y-3">
-                    <div className="bg-accent-muted p-3 sm:p-4 rounded-lg border border-color">
+                    <div className="bg-surface/50 backdrop-blur-sm p-3 sm:p-4 rounded-lg border border-border">
                       <div className="text-center">
                         <span className="text-accent-primary font-medium text-sm sm:text-base font-regular">
                           {selectedAccommodation.title === 'Van Parking' || 
@@ -858,13 +871,13 @@ export function BookingSummary({
                       </Tooltip.Trigger>
                       <Tooltip.Portal>
                         <Tooltip.Content
-                          className="bg-gray-800/95 p-3 rounded-lg shadow-lg border border-gray-500/30 max-w-xs z-50 backdrop-blur-sm text-white"
+                          className="tooltip-content !font-regular"
                           sideOffset={5}
                           side="top"
                           align="end"
                         >
-                          <Tooltip.Arrow className="fill-gray-800 stroke-gray-500/30" width={11} height={5} />
-                          <span className="text-white">See discounts applied</span>
+                          <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
+                          <span className="text-white text-sm">See discounts applied</span>
                         </Tooltip.Content>
                       </Tooltip.Portal>
                     </Tooltip.Root>
@@ -872,34 +885,34 @@ export function BookingSummary({
                 </div>
                 
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm sm:text-base">
-                    <span className="text-secondary">Accommodation ({pricing.totalNights} nights)</span>
-                    <span className="text-primary">€{pricing.totalAccommodationCost.toFixed(2)}</span>
+                  <div className="flex justify-between gap-x-4 items-baseline">
+                    <span className="text-sm text-secondary font-regular">Accommodation <span className="whitespace-nowrap">({pricing.totalNights} nights)</span></span>
+                    <span className="text-base text-primary font-medium">{formatPriceDisplay(pricing.totalAccommodationCost)}</span>
                   </div>
                   
-                  <div className="flex justify-between text-sm sm:text-base">
+                  <div className="flex justify-between gap-x-4 items-baseline">
                     <Tooltip.Provider>
                       <Tooltip.Root delayDuration={50}>
                         <Tooltip.Trigger asChild>
-                          <span className="text-secondary flex items-center cursor-help">
+                          <span className="text-sm text-secondary flex items-center cursor-help font-regular">
                             Food & Facilities
                             <Info className="w-3 h-3 ml-1 opacity-70" />
                           </span>
                         </Tooltip.Trigger>
                         <Tooltip.Portal>
                           <Tooltip.Content
-                            className="bg-gray-800/95 p-3 rounded-lg shadow-lg border border-gray-500/30 max-w-xs z-50 backdrop-blur-sm text-white"
+                            className="tooltip-content !font-regular"
                             sideOffset={5}
                             side="top"
                             align="end"
                           >
-                            <Tooltip.Arrow className="fill-gray-800 stroke-gray-500/30" width={11} height={5} />
-                            <span className="text-white">Community meals & operations costs</span>
+                            <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
+                            <span className="text-white text-sm">Community meals & operations costs</span>
                           </Tooltip.Content>
                         </Tooltip.Portal>
                       </Tooltip.Root>
                     </Tooltip.Provider>
-                    <span className="text-primary">€{pricing.totalFoodAndFacilitiesCost.toFixed(2)}</span>
+                    <span className="text-base text-primary font-regular text-sm">{formatPriceDisplay(pricing.totalFoodAndFacilitiesCost)}</span>
                   </div>
 
    
@@ -908,7 +921,7 @@ export function BookingSummary({
                   {foodContribution !== null && selectedWeeks.length > 0 && (
                     <div className="pt-4">
                       <div className="flex justify-between items-center mb-2">
-                         <label htmlFor="food-contribution" className="text-sm text-secondary">Food & Facilities Contribution (€/week)</label>
+                         <label htmlFor="food-contribution" className="text-sm text-secondary font-regular">Food & Facilities Contribution (€/week)</label>
                           <Tooltip.Provider>
                               <Tooltip.Root delayDuration={50}>
                                   <Tooltip.Trigger asChild>
@@ -919,12 +932,12 @@ export function BookingSummary({
                                   <Tooltip.Portal>
                                       <Tooltip.Content
                                           sideOffset={5}
-                                          className="bg-gray-800/95 p-3 rounded-lg shadow-lg border border-gray-500/30 max-w-xs z-50 backdrop-blur-sm text-white"
+                                          className="tooltip-content !font-regular text-sm"
                                           side="top"
                                           align="end"
                                       >
                                           Adjust your contribution based on your means. Minimum varies by stay length.
-                                          <Tooltip.Arrow className="fill-gray-800 stroke-gray-500/30" width={11} height={5} />
+                                          <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
                                       </Tooltip.Content>
                                   </Tooltip.Portal>
                               </Tooltip.Root>
@@ -942,7 +955,7 @@ export function BookingSummary({
                         onChange={(e) => setFoodContribution(Number(e.target.value))}
                         className="w-full h-2 bg-border rounded-lg appearance-none cursor-pointer accent-accent-primary"
                       />
-                       <div className="flex justify-between text-xs text-secondary mt-1">
+                       <div className="flex justify-between text-xs text-secondary mt-1 font-regular">
                           <span>
                             Min: €{pricing.totalNights <= 6
                               ? Math.round(345 * (1 - pricing.durationDiscountPercent / 100))
@@ -961,15 +974,15 @@ export function BookingSummary({
 
               {/* Final Total */}
               <div className="border-t border-color pt-4 mt-4">
-                <div className="flex justify-between items-baseline">
-                  <span className="text-lg sm:text-xl font-semibold text-primary">Total</span>
-                  <span className="text-lg sm:text-xl font-semibold text-primary">€{pricing.totalAmount.toFixed(2)}</span>
+                <div className="flex font-regular justify-between items-baseline">
+                  <span className="text-lg font-semibold text-primary">Total</span>
+                  <span className="text-xl font-semibold text-primary">{formatPriceDisplay(pricing.totalAmount)}</span>
                 </div>
-                 <p className="text-xs text-secondary mt-1">Includes accommodation, food, facilities, and discounts.</p>
+                 <p className="text-xs text-secondary mt-1 font-regular">Includes accommodation, food, facilities, and discounts.</p>
               </div>
 
               {/* Confirm Button */}
-              <div className="mt-6 sm:mt-8">
+              <div className="mt-6 font-regular sm:mt-8">
                 <button
                   onClick={handleConfirmClick}
                   disabled={isBooking || !selectedAccommodation || selectedWeeks.length === 0}
@@ -996,7 +1009,7 @@ export function BookingSummary({
                       }`}
                   >
                     <span className="pixel-corners--content">
-                       {isBooking ? 'Confirming...' : 'Admin Confirm (No Payment)'}
+                       {isBooking ? 'Confirming...' : <span>Admin Confirm<br />(No Payment)</span>}
                     </span>
                   </button>
                 )}
@@ -1004,15 +1017,15 @@ export function BookingSummary({
                 {/* Admin Test Payment Area */}
                 {isAdmin && (
                   <div className="mt-4 p-3 border border-dashed border-color rounded-md bg-surface">
-                    <label htmlFor="test-payment" className="block text-xs font-medium text-secondary mb-1">Admin: Set Test Payment Amount (€)</label>
-                    <div className="flex items-center gap-2">
+                    <label htmlFor="test-payment" className="block text-xs font-regular text-secondary mb-1">Admin: Set Test Payment Amount (€)</label>
+                    <div className="flex items-center gap-2 ">
                       <input
                         type="number"
                         id="test-payment"
                         value={testPaymentAmount === null ? '' : String(testPaymentAmount)}
                         onChange={(e) => setTestPaymentAmount(e.target.value === '' ? null : Number(e.target.value))}
                         placeholder="Total amount"
-                        className="flex-grow px-2 py-1 border border-color rounded-md text-sm bg-main text-primary focus:ring-accent-primary focus:border-accent-primary"
+                        className="flex-grow px-2 py-1 border border-color text-sm rounded-md bg-main text-primary focus:ring-accent-primary focus:border-accent-primary"
                       />
                       <button
                         onClick={() => setTestPaymentAmount(null)}
@@ -1028,7 +1041,7 @@ export function BookingSummary({
           )}
 
           {selectedWeeks.length === 0 && (
-            <div className="text-center py-10">
+            <div className="text-center py-10 bg-surface/50 backdrop-blur-sm rounded-xl shadow-sm">
               <Calendar className="w-12 h-12 mx-auto text-secondary mb-4" />
               <p className="text-secondary text-sm sm:text-base">Select your dates to see the summary</p>
             </div>

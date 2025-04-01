@@ -43,12 +43,12 @@ export function generateBookingConfirmationEmail({
             <td style="width: 50%; padding-right: 15px;">
               <strong style="${styles.label}">Check-in</strong>
               <div style="${styles.value}">${formattedCheckIn}</div>
-              <p style="${styles.timeNote}">Available 3-8 PM</p>
+              <p style="${styles.timeNote}">Available 2-6 PM</p>
             </td>
             <td style="width: 50%; padding-left: 15px; border-left: 1px solid #e2e8f0;">
               <strong style="${styles.label}">Check-out</strong>
               <div style="${styles.value}">${formattedCheckOut}</div>
-              <p style="${styles.timeNote}">By 12 PM (Noon)</p>
+              <p style="${styles.timeNote}">By 11 PM</p>
             </td>
           </tr>
         </table>

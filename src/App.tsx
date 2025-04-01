@@ -26,8 +26,25 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [isWhitelisted, setIsWhitelisted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentDate, setCurrentDate] = useState(() => normalizeToUTCDate(new Date()));
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [screenWidth, setScreenWidth] = useState(window.innerWidth);
+
+  // Effect to track screen width
+  useEffect(() => {
+    const handleResize = () => {
+      setScreenWidth(window.innerWidth);
+      console.log(`App: Screen resized to ${window.innerWidth}px`);
+    };
+
+    window.addEventListener('resize', handleResize);
+    console.log(`App: Initial screen width ${screenWidth}px. Resize listener added.`);
+
+    // Cleanup listener on unmount
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      console.log('App: Resize listener removed.');
+    };
+  }, []); // Empty dependency array ensures this runs only on mount and unmount
 
   useEffect(() => {
     // Handle auth callback from URL
@@ -138,6 +155,29 @@ export default function App() {
       }
     }
   };
+
+  // --- Screen Width Check ---
+  if (screenWidth < 800) {
+    console.log('App: Screen width < 800px, showing mobile message.');
+    return (
+      <div 
+        className="min-h-screen flex items-center justify-center text-center p-4 font-mono"
+        style={{
+          backgroundImage: `linear-gradient(rgba(31, 41, 55, 0.95), rgba(31, 41, 55, 0.95)), url(https://guquxpxxycfmmlqajdyw.supabase.co/storage/v1/object/public/background-image//fern-background-tiling-2.png)`,
+          backgroundSize: 'auto',
+          backgroundRepeat: 'repeat',
+          backgroundPosition: 'center',
+        }}
+      >
+        <div>
+          <p className="text-2xl text-[#bf884d] font-['VT323'] mb-4 animate-pulse">The Garden Awaits...</p>
+          <p className="text-gray-300 mb-2">Please view on a larger screen for the full experience.</p>
+          <p className="text-gray-400 text-sm">A dedicated mobile path is currently cultivating.</p>
+        </div>
+      </div>
+    );
+  }
+  // --- End Screen Width Check ---
 
   if (isLoading) {
     console.log('App: Loading state');

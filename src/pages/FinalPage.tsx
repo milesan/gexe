@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+/* Dead code */
+
+/*import React, { useState } from 'react';
 import { Trees } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { WeekSelector } from '../components/WeekSelector';

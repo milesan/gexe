@@ -30,6 +30,7 @@
   /* Dark mode defaults */
   --color-bg-main: #1e2734;
   --color-bg-surface: #2c3444;
+  --color-bg-surface-transparent: rgba(44, 52, 68, 0.8); /* Semi-transparent surface color */
   --color-text-primary: #f1f5f9;
   --color-text-secondary: #94a3b8;
   --color-border: #475569;
@@ -62,6 +63,12 @@
   --color-emerald-800: #065f46; /* Added for button hover (original) */
   --color-emerald-900: #065f46;
   --color-bg-overlay: rgba(0, 0, 0, 0.80); /* Reduced opacity from 0.95 */
+
+  /* Tooltip Specific Variables */
+  --color-tooltip-bg: color-mix(in srgb, var(--color-bg-surface) 90%, black 10%); /* Slightly darker surface */
+  --color-tooltip-border: color-mix(in srgb, var(--color-border) 50%, transparent);
+  --color-tooltip-accent-border: color-mix(in srgb, var(--color-accent-primary) 30%, transparent);
+  --color-tooltip-text: var(--color-white); /* Explicitly white for dark tooltips */
 }
 
 .light-mode {
@@ -94,6 +101,12 @@
   --color-emerald-50: #ecfdf5;
   --color-emerald-800: #065f46;
   --color-bg-overlay: rgba(255, 255, 255, 0.80); /* Reduced opacity from 0.95 for consistency */
+
+  /* Tooltip Specific Variables */
+  --color-tooltip-bg: color-mix(in srgb, var(--color-bg-surface) 90%, black 10%); /* Darker tooltip even in light mode for contrast */
+  --color-tooltip-border: color-mix(in srgb, var(--color-border) 50%, transparent);
+  --color-tooltip-accent-border: color-mix(in srgb, var(--color-accent-primary) 30%, transparent);
+  --color-tooltip-text: var(--color-white); /* Keep text white for dark tooltips */
 }
 
 @layer base {
@@ -224,6 +237,30 @@
     html {
       height: -webkit-fill-available;
     }
+  }
+
+  /* Tooltip Base Styles */
+  .tooltip-content {
+    @apply p-3 rounded-lg shadow-lg border max-w-xs z-50 backdrop-blur-sm;
+    background-color: var(--color-tooltip-bg);
+    border-color: var(--color-tooltip-border);
+    color: var(--color-tooltip-text); /* Use specific tooltip text color */
+    font-family: var(--font-regular); /* Ensure consistent font */
+  }
+
+  .tooltip-arrow {
+    fill: var(--color-tooltip-bg);
+    stroke: var(--color-tooltip-border);
+    @apply stroke-1; /* Explicitly set stroke width */
+  }
+
+  /* Tooltip Accent Modifier */
+  .tooltip-content--accent {
+    border-color: var(--color-tooltip-accent-border);
+  }
+
+  .tooltip-arrow--accent {
+    stroke: var(--color-tooltip-accent-border);
   }
 }
 
