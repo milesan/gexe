@@ -1,0 +1,67 @@
+/* src/components/admin/WeekCustomizationModal.css */
+
+/* Apply dark theme styles when the .dark class is present on a parent */
+.dark .react-day-picker-container .rdp {
+  --rdp-cell-size: 36px; /* Adjust size as needed */
+  --rdp-accent-color: #60a5fa; /* Tailwind's blue-400 */
+  --rdp-background-color: #4b5563e0; /* Tailwind's gray-600 with some transparency */
+  
+  --rdp-accent-color-dark: #3b82f6; /* Tailwind's blue-500 */
+  --rdp-background-color-dark: #374151; /* Tailwind's gray-700 */
+  
+  --rdp-outline: 2px solid var(--rdp-accent-color); /* Focus ring */
+  --rdp-outline-selected: 3px solid var(--rdp-accent-color); /* Selected focus ring */
+  
+  --rdp-selected-color: #ffffff; /* White text for selected */
+}
+
+/* General DayPicker styling within the dark container */
+.dark .react-day-picker-container .rdp-caption {
+  color: #d1d5db; /* gray-300 */
+  border-bottom: 1px solid #4b5563; /* gray-600 */
+}
+
+.dark .react-day-picker-container .rdp-nav_button {
+  color: #9ca3af; /* gray-400 */
+  width: var(--rdp-cell-size);
+  height: var(--rdp-cell-size);
+}
+.dark .react-day-picker-container .rdp-nav_button:hover {
+  background-color: #4b5563; /* gray-600 */
+}
+
+.dark .react-day-picker-container .rdp-head_cell {
+  color: #9ca3af; /* gray-400 */
+  font-size: 0.75em;
+}
+
+.dark .react-day-picker-container .rdp-day {
+  color: #d1d5db; /* gray-300 */
+}
+.dark .react-day-picker-container .rdp-day:hover {
+  background-color: #4b5563; /* gray-600 */
+}
+
+.dark .react-day-picker-container .rdp-day_selected,
+.dark .react-day-picker-container .rdp-day_selected:hover {
+  background-color: var(--rdp-accent-color);
+  color: var(--rdp-selected-color);
+  font-weight: bold;
+}
+
+.dark .react-day-picker-container .rdp-day_outside {
+  color: #6b7280; /* gray-500 */
+}
+
+.dark .react-day-picker-container .rdp-day_disabled {
+  color: #4b5563; /* gray-600 */
+  cursor: not-allowed;
+}
+
+/* Ensure the container itself has a decent background in dark mode */
+.dark .react-day-picker-container {
+  background-color: #1f2937; /* gray-800 */
+  border-radius: 0.375rem; /* rounded-md */
+  padding: 0.5rem; /* p-2 */
+  border: 1px solid #4b5563; /* border-gray-600 */
+} 

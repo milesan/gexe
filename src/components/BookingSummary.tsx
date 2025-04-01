@@ -738,9 +738,11 @@ export function BookingSummary({
         )}
       </AnimatePresence>
 
-      {/* Summary of Stay section - Changes from sticky right positioning on mobile to regular flow */}
+      {/* Summary of Stay section - Outer sticky wrapper */}
       <div className="lg:sticky lg:top-4 w-full max-w-md lg:max-w-lg mx-auto">
-        <div className="bg-transparent p-5 sm:p-6 lg:p-8 pixel-corners">
+
+        {/* Actual Content Container (Ensure Transparent Background) */}
+        <div className="relative p-3 xs:p-4 sm:p-6 bg-transparent"> 
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-6">
             <div className="flex items-center justify-between w-full sm:w-auto">
               <h2 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-display font-light text-primary">
@@ -757,153 +759,141 @@ export function BookingSummary({
               </button>
             </div>
           )}
-
+          
           {selectedWeeks.length > 0 && (
-            <div className="space-y-6 bg-surface/50 backdrop-blur-sm rounded-xl shadow-sm">
-              {/* Stay Details Section */}
+            <div className="">
+              {/* Stay Details Section - Outer div handles layout/animation */}
+              {/* REMOVED visuals, ADDED mb-6 */}
               <motion.div 
-                className="p-4 sm:p-5 rounded-xl border border-border/50 shadow-sm pixel-corners overflow-hidden relative"
+                className="relative mb-6" 
                 initial={{ y: 10, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ duration: 0.3 }}
               >
-                <button
-                  onClick={onClearWeeks}
-                  className="absolute top-0.5 right-0.5 p-1.5 text-secondary hover:text-error hover:bg-error-muted-hover rounded-md transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                  <span className="sr-only">Clear Selected Dates</span>
-                </button>
-                <div className="space-y-4 sm:space-y-5">
-                  {/* Arrival Information */}
-                  <div className="bg-surface/50 backdrop-blur-sm border border-border rounded-lg shadow-sm p-3 sm:p-4">
-                    <h4 className="font-medium text-primary mb-2 font-regular text-base sm:text-lg">Arrival</h4>
-                    <div className="space-y-1"> 
-                      <p className="text-accent-primary text-sm font-regular">{formatDateWithDay(selectedWeeks[0].startDate)}</p>
-                      <p className="text-accent-primary text-sm font-regular">2PM-6PM</p>
-                    </div>
-                  </div>
-                  
-                  {/* Departure Information */}
-                  <div className="bg-surface/50 backdrop-blur-sm border border-border rounded-lg shadow-sm p-3 sm:p-4">
-                    <h4 className="font-medium text-primary mb-2 font-regular text-base sm:text-lg">Begone by</h4>
-                    <div className="space-y-1">
-                      <p className="text-secondary text-sm font-regular">{formatDateWithOrdinal(selectedWeeks[selectedWeeks.length - 1].endDate)}</p>
-                      <p className="text-secondary text-sm font-regular">11AM</p>
-                    </div>
-                  </div>
-                  
-                  {/* Duration */}
-                  <div className="bg-accent-muted p-4 rounded-lg border border-border">
-                    <div className="hidden xl:flex xl:justify-between xl:items-center">
-                      <div className="w-full text-center">
-                        <span className="text-accent-primary font-medium font-regular text-sm sm:text-base">
-                          {totalWeeksDisplay} {totalWeeksDisplay === 1 ? 'week' : 'weeks'}
-                        </span>
+                {/* Middle div handles border, padding, visuals */}
+                <div className="relative p-4 sm:p-5 rounded-xl border border-border/50 shadow-sm overflow-hidden bg-transparent">
+                  {/* Inner Blur Layer */}
+                  <div className="absolute inset-0 -z-10 backdrop-blur-sm bg-surface/50 rounded-xl"></div>
+
+                  {/* Clear Button (relative to middle div) */}
+                  <button
+                    onClick={onClearWeeks}
+                    className="absolute top-0.5 right-0.5 p-1.5 text-secondary hover:text-error hover:bg-error-muted-hover rounded-md transition-colors z-20" /* Ensure button is above content */
+                  >
+                    <X className="w-4 h-4" />
+                    <span className="sr-only">Clear Selected Dates</span>
+                  </button>
+
+                  {/* Content Wrapper (maybe add relative z-10 if needed) */}
+                  <div className="relative z-10 space-y-4 sm:space-y-5"> 
+                    {/* Arrival Information */}
+                    <div className="border border-border rounded-lg shadow-sm p-3 sm:p-4">
+                      <h4 className="font-medium text-primary mb-2 font-regular text-base sm:text-lg">Arrive By</h4>
+                      <div className="space-y-1">
+                        <p className="text-accent-primary text-sm font-regular">{formatDateWithDay(selectedWeeks[0].startDate)}</p>
+                        <p className="text-accent-primary text-sm font-regular">2PM-6PM</p>
                       </div>
                     </div>
                     
-                    <div className="flex items-center xl:hidden">
-                      <div className="bg-accent-subtle p-2.5 rounded-lg mr-3 flex-shrink-0 self-start mt-1">
-                        <Home className="w-5 h-5 text-accent-primary" />
+                    {/* Departure Information */}
+                    <div className="border border-border rounded-lg shadow-sm p-3 sm:p-4">
+                      <h4 className="font-medium text-primary mb-2 font-regular text-base sm:text-lg">Begone by</h4>
+                      <div className="space-y-1">
+                        <p className="text-secondary text-sm font-regular">{formatDateWithOrdinal(selectedWeeks[selectedWeeks.length - 1].endDate)}</p>
+                        <p className="text-secondary text-sm font-regular">11AM</p>
                       </div>
-                      <div>
-                        <h4 className="font-medium text-primary font-regular text-base sm:text-lg">Total Stay</h4>
-                        <p className="text-accent-primary text-sm sm:text-base font-regular mt-0.5">{pricing.totalNights} nights</p>
+                    </div>
+                    
+                    {/* Duration */}
+                    <div className="p-4 rounded-lg border border-border">
+                      <div className="hidden xl:flex xl:justify-between xl:items-center">
+                        <div className="w-full text-center">
+                          <span className="text-accent-primary font-medium font-regular text-sm sm:text-base">
+                            {totalWeeksDisplay} {totalWeeksDisplay === 1 ? 'week' : 'weeks'}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center xl:hidden">
+                        <div className="p-2.5 rounded-lg mr-3 flex-shrink-0 self-start mt-1">
+                          <Home className="w-5 h-5 text-accent-primary" />
+                        </div>
+                        <div className="">
+                          <h4 className="font-medium text-primary font-regular text-base sm:text-lg">Total Stay</h4>
+                          <p className="text-accent-primary text-sm sm:text-base font-regular mt-0.5">{pricing.totalNights} nights</p>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
               </motion.div>
 
-              {/* Accommodation Section */}
+              {/* Accommodation Section - Outer div handles layout/animation */}
               {selectedAccommodation && (
+                /* REMOVED visuals, ADDED mt-6 */
                 <motion.div 
-                  className="p-4 sm:p-5 rounded-lg border border-border/50 shadow-sm relative"
+                  className="relative mt-6" 
                   initial={{ y: 10, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <button
-                    onClick={onClearAccommodation}
-                    className="absolute top-3 right-3 p-1.5 text-secondary hover:text-error hover:bg-error-muted-hover rounded-md transition-colors"
-                  >
-                    <X className="w-4 h-4" />
-                    <span className="sr-only">Clear Selected Accommodation</span>
-                  </button>
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-base sm:text-lg text-primary flex items-center font-regular">
-                      Thy Kingdom
-                    </h3>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    <div className="bg-surface/50 backdrop-blur-sm p-3 sm:p-4 rounded-lg border border-border">
-                      <div className="text-center">
-                        <span className="text-accent-primary font-medium text-sm sm:text-base font-regular">
-                          {selectedAccommodation.title === 'Van Parking' || 
-                           selectedAccommodation.title === 'Your Own Tent' || 
-                           selectedAccommodation.title === 'Staying with somebody' || 
-                           selectedAccommodation.title === 'The Hearth' 
-                           ? selectedAccommodation.title
-                           : `The ${selectedAccommodation.title}`}
-                        </span>
+                  {/* Middle div handles border, padding, visuals */}
+                  <div className="relative p-4 sm:p-5 rounded-lg border border-border/50 shadow-sm bg-transparent overflow-hidden"> {/* Added overflow-hidden here too */} 
+                    {/* Inner Blur Layer */}
+                    <div className="absolute inset-0 -z-10 backdrop-blur-sm bg-surface/50 rounded-lg"></div>
+                    
+                    {/* Clear Button (relative to middle div) */}
+                    <button
+                      onClick={onClearAccommodation}
+                      className="absolute top-3 right-3 p-1.5 text-secondary hover:text-error hover:bg-error-muted-hover rounded-md transition-colors z-20" /* Ensure button is above content */
+                    >
+                      <X className="w-4 h-4" />
+                      <span className="sr-only">Clear Selected Accommodation</span>
+                    </button>
+
+                    {/* Content Wrapper (maybe add relative z-10 if needed) */} 
+                    <div className="relative z-10">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-base sm:text-lg text-primary flex items-center font-regular">
+                          Thy Kingdom
+                        </h3>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        <div className="p-3 sm:p-4 rounded-lg border border-border">
+                          <div className="text-center">
+                            <span className="text-accent-primary font-medium text-sm sm:text-base font-regular">
+                              {selectedAccommodation.title === 'Van Parking' || 
+                               selectedAccommodation.title === 'Your Own Tent' || 
+                               selectedAccommodation.title === 'Staying with somebody' || 
+                               selectedAccommodation.title === 'The Hearth' 
+                               ? selectedAccommodation.title
+                               : `The ${selectedAccommodation.title}`}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </motion.div>
               )}
 
-              {/* Price Breakdown */}
-              <div className="border-t border-color pt-3 sm:pt-4 mt-3 sm:mt-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-medium text-primary font-regular text-base sm:text-lg">Price Breakdown</h3>
-                  <Tooltip.Provider>
-                    <Tooltip.Root delayDuration={50}>
-                      <Tooltip.Trigger asChild>
-                        <button
-                          onClick={() => setShowDiscountModal(true)}
-                          className="p-1.5 text-secondary hover:text-accent-hover hover:bg-accent-muted rounded-md transition-colors"
-                        >
-                          <Info className="w-4 h-4" />
-                          <span className="sr-only">View Discount Details</span>
-                        </button>
-                      </Tooltip.Trigger>
-                      <Tooltip.Portal>
-                        <Tooltip.Content
-                          className="tooltip-content !font-regular"
-                          sideOffset={5}
-                          side="top"
-                          align="end"
-                        >
-                          <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
-                          <span className="text-white text-sm">See discounts applied</span>
-                        </Tooltip.Content>
-                      </Tooltip.Portal>
-                    </Tooltip.Root>
-                  </Tooltip.Provider>
-                </div>
-                
-                <div className="space-y-2">
-                  {selectedAccommodation ? (
-                    <div className="flex justify-between gap-x-4 items-baseline">
-                      <span className="text-sm text-secondary font-regular">Accommodation <span className="whitespace-nowrap">({pricing.totalNights} nights)</span></span>
-                      <span className="text-sm text-primary font-regular">{formatPriceDisplay(pricing.totalAccommodationCost)}</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-baseline min-h-[1.25rem]">
-                      <span className="text-sm text-secondary font-regular italic">No accommodation selected</span>
-                    </div>
-                  )}
-                  
-                  <div className="flex justify-between gap-x-4 items-baseline">
+              {/* NEW Wrapper for Solid Background Sections - Make sure this is TRANSPARENT */}
+              <div className="bg-transparent mt-6"> 
+                {/* Price Breakdown */}
+                <div className="border-t border-border pt-3 sm:pt-4"> 
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-medium text-primary font-regular text-base sm:text-lg">Price Breakdown</h3>
                     <Tooltip.Provider>
                       <Tooltip.Root delayDuration={50}>
                         <Tooltip.Trigger asChild>
-                          <span className="text-sm text-secondary flex items-center cursor-help font-regular">
-                            Food & Facilities
-                            <Info className="w-3 h-3 ml-1 opacity-70" />
-                          </span>
+                          <button
+                            onClick={() => setShowDiscountModal(true)}
+                            className="p-1.5 text-secondary hover:text-green-600 hover:bg-accent-muted rounded-md transition-colors"
+                          >
+                            <Info className="w-4 h-4" />
+                            <span className="sr-only">View Discount Details</span>
+                          </button>
                         </Tooltip.Trigger>
                         <Tooltip.Portal>
                           <Tooltip.Content
@@ -913,141 +903,176 @@ export function BookingSummary({
                             align="end"
                           >
                             <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
-                            <span className="text-white text-sm">Community meals & operations costs</span>
+                            <span className="text-white text-sm">See discounts applied</span>
                           </Tooltip.Content>
                         </Tooltip.Portal>
                       </Tooltip.Root>
                     </Tooltip.Provider>
-                    <span className="text-base text-primary font-regular text-sm">{formatPriceDisplay(pricing.totalFoodAndFacilitiesCost)}</span>
                   </div>
-
-   
-
-                  {/* Optional Contribution Slider */}
-                  {foodContribution !== null && selectedWeeks.length > 0 && (
-                    <div className="pt-4">
-                      <div className="flex justify-between items-center mb-2">
-                         <label htmlFor="food-contribution" className="text-sm text-secondary font-regular">Food & Facilities Contribution (€/week)</label>
-                          <Tooltip.Provider>
-                              <Tooltip.Root delayDuration={50}>
-                                  <Tooltip.Trigger asChild>
-                                      <button className="text-secondary hover:text-secondary-hover">
-                                          <Info className="w-4 h-4" />
-                                      </button>
-                                  </Tooltip.Trigger>
-                                  <Tooltip.Portal>
-                                      <Tooltip.Content
-                                          sideOffset={5}
-                                          className="tooltip-content !font-regular text-sm"
-                                          side="top"
-                                          align="end"
-                                      >
-                                          Adjust your contribution based on your means. Minimum varies by stay length.
-                                          <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
-                                      </Tooltip.Content>
-                                  </Tooltip.Portal>
-                              </Tooltip.Root>
-                          </Tooltip.Provider>
+                  
+                  <div className="space-y-2">
+                    {selectedAccommodation ? (
+                      <div className="flex justify-between gap-x-4 items-baseline">
+                        <span className="text-sm text-secondary font-regular">Accommodation <span className="whitespace-nowrap">({pricing.totalNights} nights)</span></span>
+                        <span className="text-sm text-primary font-regular">{formatPriceDisplay(pricing.totalAccommodationCost)}</span>
                       </div>
-                      <input
-                        id="food-contribution"
-                        type="range"
-                        min={pricing.totalNights <= 6
-                          ? Math.round(345 * (1 - pricing.durationDiscountPercent / 100)) // Min for 1 week
-                          : Math.round(240 * (1 - pricing.durationDiscountPercent / 100)) // Min for 2+ weeks
-                        }
-                        max={Math.round(390 * (1 - pricing.durationDiscountPercent / 100))} // Max is same regardless of length
-                        value={foodContribution}
-                        onChange={(e) => setFoodContribution(Number(e.target.value))}
-                        className="w-full h-2 bg-border rounded-lg appearance-none cursor-pointer accent-accent-primary"
-                      />
-                       <div className="flex justify-between text-xs text-secondary mt-1 font-regular">
-                          <span>
-                            Min: €{pricing.totalNights <= 6
-                              ? Math.round(345 * (1 - pricing.durationDiscountPercent / 100))
-                              : Math.round(240 * (1 - pricing.durationDiscountPercent / 100))
-                            }
-                          </span>
-                           <span>Current: €{foodContribution}</span>
-                          <span>
-                            Max: €{Math.round(390 * (1 - pricing.durationDiscountPercent / 100))}
-                          </span>
-                       </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Final Total */}
-              <div className="border-t border-color pt-4 mt-4">
-                <div className="flex font-regular justify-between items-baseline">
-                  <span className="text-lg font-semibold text-primary">Total</span>
-                  <span className="text-xl font-semibold text-primary">{formatPriceDisplay(pricing.totalAmount)}</span>
-                </div>
-                 <p className="text-xs text-secondary mt-1 font-regular">Includes accommodation, food, facilities, and discounts.</p>
-              </div>
-
-              {/* Confirm Button */}
-              <div className="mt-6 font-regular sm:mt-8">
-                <button
-                  onClick={handleConfirmClick}
-                  disabled={isBooking || !selectedAccommodation || selectedWeeks.length === 0}
-                  className={`w-full flex items-center justify-center pixel-corners--wrapper relative overflow-hidden px-6 py-3.5 sm:py-4 text-base sm:text-lg font-medium rounded-md transition-colors duration-200
-                    ${isBooking || !selectedAccommodation || selectedWeeks.length === 0
-                      ? 'bg-border text-secondary cursor-not-allowed'
-                      : 'bg-accent-primary text-white hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent-primary'
-                    }`}
-                >
-                  <span className="pixel-corners--content">
-                    {isBooking ? 'Processing...' : 'Confirm & Pay'}
+                    ) : (
+                      <div className="flex items-baseline min-h-[1.25rem]">
+                        <span className="text-sm text-secondary font-regular italic">No accommodation selected</span>
+                      </div>
+                    )}
                     
-                  </span>
-                </button>
-                
-                {isAdmin && (
+                    <div className="flex justify-between gap-x-4 items-baseline">
+                      <Tooltip.Provider>
+                        <Tooltip.Root delayDuration={50}>
+                          <Tooltip.Trigger asChild>
+                            <span className="text-sm text-secondary flex items-center cursor-help font-regular">
+                              Food & Facilities
+                              <Info className="w-3 h-3 ml-1 opacity-70" />
+                            </span>
+                          </Tooltip.Trigger>
+                          <Tooltip.Portal>
+                            <Tooltip.Content
+                              className="tooltip-content !font-regular"
+                              sideOffset={5}
+                              side="top"
+                              align="end"
+                            >
+                              <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
+                              <span className="text-white text-sm">Community meals & operations costs</span>
+                            </Tooltip.Content>
+                          </Tooltip.Portal>
+                        </Tooltip.Root>
+                      </Tooltip.Provider>
+                      <span className="text-base text-primary font-regular text-sm">{formatPriceDisplay(pricing.totalFoodAndFacilitiesCost)}</span>
+                    </div>
+
+                    {/* Optional Contribution Slider */}
+                    {foodContribution !== null && selectedWeeks.length > 0 && (
+                      <div className="pt-4">
+                        <div className="flex justify-between items-center mb-2">
+                           <label htmlFor="food-contribution" className="text-sm text-secondary font-regular">Food & Facilities Contribution (€/week)</label>
+                            <Tooltip.Provider>
+                                <Tooltip.Root delayDuration={50}>
+                                    <Tooltip.Trigger asChild>
+                                        <button className="text-secondary hover:text-secondary-hover">
+                                            <Info className="w-4 h-4" />
+                                        </button>
+                                    </Tooltip.Trigger>
+                                    <Tooltip.Portal>
+                                        <Tooltip.Content
+                                            sideOffset={5}
+                                            className="tooltip-content !font-regular text-sm"
+                                            side="top"
+                                            align="end"
+                                        >
+                                            Adjust your contribution based on your means. Minimum varies by stay length.
+                                            <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
+                                        </Tooltip.Content>
+                                    </Tooltip.Portal>
+                                </Tooltip.Root>
+                            </Tooltip.Provider>
+                        </div>
+                        <input
+                          id="food-contribution"
+                          type="range"
+                          min={pricing.totalNights <= 6
+                            ? Math.round(345 * (1 - pricing.durationDiscountPercent / 100)) // Min for 1 week
+                            : Math.round(240 * (1 - pricing.durationDiscountPercent / 100)) // Min for 2+ weeks
+                          }
+                          max={Math.round(390 * (1 - pricing.durationDiscountPercent / 100))} // Max is same regardless of length
+                          value={foodContribution}
+                          onChange={(e) => setFoodContribution(Number(e.target.value))}
+                          className="w-full h-2 bg-border rounded-lg appearance-none cursor-pointer accent-accent-primary"
+                        />
+                         <div className="flex justify-between text-xs text-secondary mt-1 font-regular">
+                            <span>
+                              Min: €{pricing.totalNights <= 6
+                                ? Math.round(345 * (1 - pricing.durationDiscountPercent / 100))
+                                : Math.round(240 * (1 - pricing.durationDiscountPercent / 100))
+                              }
+                            </span>
+                             <span>Current: €{foodContribution}</span>
+                            <span>
+                              Max: €{Math.round(390 * (1 - pricing.durationDiscountPercent / 100))}
+                            </span>
+                         </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Final Total */}
+                <div className="border-t border-border pt-4 mt-4">
+                  <div className="flex font-regular justify-between items-baseline">
+                    <span className="text-lg font-semibold text-primary">Total</span>
+                    <span className="text-xl font-semibold text-primary">{formatPriceDisplay(pricing.totalAmount)}</span>
+                  </div>
+                   <p className="text-xs text-secondary mt-1 font-regular">Includes accommodation, food, facilities, and discounts.</p>
+                </div>
+
+                {/* Confirm Button */}
+                <div className="mt-6 font-regular sm:mt-8">
                   <button
-                    onClick={handleAdminConfirm}
+                    onClick={handleConfirmClick}
                     disabled={isBooking || !selectedAccommodation || selectedWeeks.length === 0}
-                    className={`w-full mt-3 flex items-center justify-center pixel-corners--wrapper relative overflow-hidden px-6 py-3.5 sm:py-4 text-base sm:text-lg font-medium rounded-md transition-colors duration-200
+                    className={`w-full flex items-center justify-center pixel-corners--wrapper relative overflow-hidden px-6 py-3.5 sm:py-4 text-base sm:text-lg font-medium rounded-md transition-colors duration-200
                       ${isBooking || !selectedAccommodation || selectedWeeks.length === 0
                         ? 'bg-border text-secondary cursor-not-allowed'
-                        : 'bg-secondary-muted text-white hover:bg-secondary-muted-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary-muted'
+                        : 'bg-accent-primary text-white hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent-primary'
                       }`}
                   >
                     <span className="pixel-corners--content">
-                       {isBooking ? 'Confirming...' : <span>Admin Confirm<br />(No Payment)</span>}
+                      {isBooking ? 'Processing...' : 'Confirm & Pay'}
+                      
                     </span>
                   </button>
-                )}
-                
-                {/* Admin Test Payment Area */}
-                {isAdmin && (
-                  <div className="mt-4 p-3 border border-dashed border-color rounded-md bg-surface">
-                    <label htmlFor="test-payment" className="block text-xs font-regular text-secondary mb-1">Admin: Set Test Payment Amount (€)</label>
-                    <div className="flex items-center gap-2 ">
-                      <input
-                        type="number"
-                        id="test-payment"
-                        value={testPaymentAmount === null ? '' : String(testPaymentAmount)}
-                        onChange={(e) => setTestPaymentAmount(e.target.value === '' ? null : Number(e.target.value))}
-                        placeholder="Total amount"
-                        className="flex-grow px-2 py-1 border border-color text-sm rounded-md bg-main text-primary focus:ring-accent-primary focus:border-accent-primary"
-                      />
-                      <button
-                        onClick={() => setTestPaymentAmount(null)}
-                        className="px-2 py-1 text-xs bg-border text-secondary rounded hover:bg-border-hover"
-                      >
-                        Clear
-                      </button>
+                  
+                  {isAdmin && (
+                    <button
+                      onClick={handleAdminConfirm}
+                      disabled={isBooking || !selectedAccommodation || selectedWeeks.length === 0}
+                      className={`w-full mt-3 flex items-center justify-center pixel-corners--wrapper relative overflow-hidden px-6 py-3.5 sm:py-4 text-base sm:text-lg font-medium rounded-md transition-colors duration-200
+                        ${isBooking || !selectedAccommodation || selectedWeeks.length === 0
+                          ? 'bg-border text-secondary cursor-not-allowed'
+                          : 'bg-secondary-muted text-white hover:bg-secondary-muted-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary-muted'
+                        }`}
+                    >
+                      <span className="pixel-corners--content">
+                         {isBooking ? 'Confirming...' : <span>Admin Confirm<br />(No Payment)</span>}
+                      </span>
+                    </button>
+                  )}
+                  
+                  {/* Admin Test Payment Area */}
+                  {isAdmin && (
+                    <div className="mt-4 p-3 border border-dashed border-color rounded-md bg-surface">
+                      <label htmlFor="test-payment" className="block text-xs font-regular text-secondary mb-1">Admin: Set Test Payment Amount (€)</label>
+                      <div className="flex items-center gap-2 ">
+                        <input
+                          type="number"
+                          id="test-payment"
+                          value={testPaymentAmount === null ? '' : String(testPaymentAmount)}
+                          onChange={(e) => setTestPaymentAmount(e.target.value === '' ? null : Number(e.target.value))}
+                          placeholder="Total amount"
+                          className="flex-grow px-2 py-1 border border-color text-sm rounded-md bg-main text-primary focus:ring-accent-primary focus:border-accent-primary"
+                        />
+                        <button
+                          onClick={() => setTestPaymentAmount(null)}
+                          className="px-2 py-1 text-xs bg-border text-secondary rounded hover:bg-border-hover"
+                        >
+                          Clear
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              </div> {/* End of Wrapper (now transparent) */}
             </div>
           )}
 
           {selectedWeeks.length === 0 && (
-            <div className="text-center py-10 bg-surface/50 backdrop-blur-sm rounded-xl shadow-sm">
+            <div className="text-center py-10 bg-surface/50 rounded-xl shadow-sm">
               <Calendar className="w-12 h-12 mx-auto text-secondary mb-4" />
               <p className="text-secondary text-sm sm:text-base">Select your dates to see the summary</p>
             </div>
