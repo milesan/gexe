@@ -79,32 +79,19 @@ serve(async (req) => {
       to: email,
       subject: 'Garden Application Status',
       html: `
-        <div style="${styles.container}">
-          <h1 style="${styles.heading}">Welcome to The Garden!</h1>
-          
-          <div style="${styles.card}">
-            <h2 style="${styles.heading}">Your Application Has Been Approved</h2>
-            
-            <p style="${styles.value}">Callooh, callay! O frabjous day!</p>
-            <p style="${styles.value}">Your application has been approved and we're excited to have you join our community.</p>
-            
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${acceptanceUrl}" style="${styles.button}">
-                Accept Invitation
-              </a>
-            </div>
-            
-            <p style="${styles.value}">If the button doesn't work, copy and paste this link into your browser:</p>
-            <p style="${styles.value}">${acceptanceUrl}</p>
-            <p style="${styles.value}">Welcome aboard, sailors, scientists, and sirens of the seas</p>
-          </div>
-          
-          <div style="${styles.infoCard}">
-            <h3 style="${styles.heading}" style="margin-top: 0;">Important Information</h3>
-            <ul style="color: #115e59; padding-left: 20px; margin: 15px 0;">
-              <li style="margin-bottom: 8px;">This invitation link will expire in 14 days</li>
-              <li style="margin-bottom: 8px;">Please complete your registration to access all Garden features</li>
+        <div style="${styles.container || 'padding: 20px; font-family: sans-serif;'}">
+          <a href="${acceptanceUrl}" target="_blank" style="display: block; text-align: center;">
+            <img src="https://guquxpxxycfmmlqajdyw.supabase.co/storage/v1/object/public/email-assets//acceptance-image.jpg" alt="Welcome to The Garden - Click to Accept Invitation" style="display: inline-block; max-width: 100%; height: auto; border: 0;"/>
+          </a>
+          <div style="padding: 20px 0; text-align: center; color: #555; font-size: 14px;">
+            <ul style="list-style: none; padding: 0; margin: 0 0 20px 0; display: inline-block; text-align: left;">
+              <li style="margin-bottom: 8px;">Spaces are first come, first serve</li>
+              <li style="margin-bottom: 8px;">Valid for 14 days</li>
             </ul>
+            <p style="margin-top: 20px; font-size: 12px; color: #777;">
+              If the image above doesn't work, click here: <br/>
+              <a href="${acceptanceUrl}" target="_blank" style="color: #115e59; text-decoration: underline;">${acceptanceUrl}</a>
+            </p>
           </div>
         </div>
       `

@@ -251,7 +251,7 @@ export function AuthenticatedApp() {
                 {isAdmin && (
                   <button
                     onClick={() => handleNavigation('admin')}
-                    className={`bg-accent-secondary text-white px-4 py-2 rounded-lg hover:bg-accent-primary transition-colors text-sm font-regular ${
+                    className={`bg-accent-secondary text-stone-800 px-4 py-2 rounded-lg hover:bg-accent-primary transition-colors text-sm font-regular ${
                         location.pathname === '/admin' ? 'ring-2 ring-offset-2 ring-accent-primary ring-offset-surface' : ''
                     }`}
                   >
@@ -319,7 +319,7 @@ export function AuthenticatedApp() {
               {isAdmin && (
                 <button
                   onClick={() => handleNavigation('admin')}
-                  className={`w-full text-left bg-accent-secondary text-white px-4 py-2 rounded-lg hover:bg-accent-primary transition-colors text-sm font-regular ${
+                  className={`w-full text-left bg-accent-secondary text-stone-800 px-4 py-2 rounded-lg hover:bg-accent-primary transition-colors text-sm font-regular ${
                     location.pathname === '/admin' ? 'ring-2 ring-offset-2 ring-accent-primary ring-offset-surface' : ''
                   }`}
                 >
