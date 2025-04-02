@@ -173,7 +173,7 @@ export function WhitelistSignupPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-md"
+          className="w-full max-w-md overflow-y-auto max-h-[90vh] p-1"
         >
           <div className="text-center mb-8">
             <Terminal className="w-12 h-12 mx-auto mb-4" />
