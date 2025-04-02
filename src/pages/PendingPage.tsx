@@ -54,7 +54,7 @@ export function PendingPage({ status = 'pending' }: Props) {
 
           <button
             onClick={handleSignOut}
-            className="w-full bg-accent-primary font-regular text-white py-3 px-6 rounded-lg transition-colors"
+            className="w-full bg-accent-primary font-regular text-stone-800 py-3 px-6 rounded-lg transition-colors"
           >
             Sign Out
           </button>
