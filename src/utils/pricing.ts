@@ -1,5 +1,7 @@
-import { isBefore, differenceInDays } from 'date-fns';
-import { normalizeToUTCDate } from './dates';
+import { isBefore, differenceInDays, isAfter } from 'date-fns';
+import { normalizeToUTCDate, calculateDurationDiscountWeeks } from './dates';
+import { Accommodation } from '../types';
+import { Week } from '../types/calendar';
 
 // Helper function to centralize season logic based solely on date
 function _getSeasonInfoByDate(date: Date): { name: string, baseDiscount: number } {
@@ -136,4 +138,94 @@ export function getSeasonBreakdown(checkIn: Date, checkOut: Date): { hasMultiple
 
   // Return only the seasons that actually have nights in the stay
   return { hasMultipleSeasons, seasons: seasonsWithNights };
+}
+
+/**
+ * Calculate the final weekly price for an accommodation after applying discounts.
+ * @param accommodation The accommodation object
+ * @param selectedWeeks Array of selected Week objects
+ * @param referenceDate A reference date (e.g., start of the current month) for calculating seasonal discount if no weeks are selected.
+ * @returns The final weekly price, rounded to the nearest integer.
+ */
+export function calculateWeeklyAccommodationPrice(
+  accommodation: Accommodation,
+  selectedWeeks: Week[],
+  referenceDate: Date
+): number {
+  const basePrice = accommodation.base_price ?? 0;
+  const accommodationType = accommodation.title ?? '';
+
+  console.log('[calculateWeeklyAccommodationPrice] Starting:', { 
+    basePrice, 
+    accommodationType, 
+    selectedWeeksCount: selectedWeeks.length, 
+    referenceDate: referenceDate.toISOString() 
+  });
+
+  if (basePrice === 0) {
+    console.log('[calculateWeeklyAccommodationPrice] Base price is 0, returning 0.');
+    return 0;
+  }
+
+  // 1. Calculate Weighted Average Seasonal Discount
+  let averageSeasonalDiscount = 0;
+  if (accommodationType.toLowerCase().includes('dorm')) {
+    console.log('[calculateWeeklyAccommodationPrice] Dorm room, skipping seasonal discount.');
+    averageSeasonalDiscount = 0;
+  } else if (selectedWeeks.length === 0) {
+    // If no weeks selected, use the reference date
+    averageSeasonalDiscount = getSeasonalDiscount(referenceDate, accommodationType);
+    console.log('[calculateWeeklyAccommodationPrice] No weeks selected, using reference date for seasonal discount:', { averageSeasonalDiscount });
+  } else {
+    // Calculate based on selected weeks
+    let totalDiscountSum = 0;
+    let totalDaysCount = 0;
+    const allDays: Date[] = [];
+
+    // Iterate through each selected week
+    selectedWeeks.forEach(week => {
+      const weekStartDate = normalizeToUTCDate(week.startDate);
+      const weekEndDate = normalizeToUTCDate(week.endDate);
+      
+      let currentDay = new Date(weekStartDate); // Clone start date
+      // Loop from start date up to (but not including) the end date
+      while (currentDay.getTime() < weekEndDate.getTime()) {
+        allDays.push(new Date(currentDay)); // Add a clone of the day
+        currentDay.setUTCDate(currentDay.getUTCDate() + 1);
+      }
+    });
+
+    totalDaysCount = allDays.length;
+
+    if (totalDaysCount > 0) {
+      allDays.forEach(day => {
+        totalDiscountSum += getSeasonalDiscount(day, accommodationType);
+      });
+      averageSeasonalDiscount = totalDiscountSum / totalDaysCount;
+      console.log('[calculateWeeklyAccommodationPrice] Calculated weighted seasonal discount:', { totalDaysCount, totalDiscountSum, averageSeasonalDiscount });
+    } else {
+      // Fallback if no days calculated (should not happen with valid weeks)
+      console.warn('[calculateWeeklyAccommodationPrice] No days found in selected weeks, falling back to reference date for seasonal discount.');
+      averageSeasonalDiscount = getSeasonalDiscount(referenceDate, accommodationType);
+    }
+  }
+
+  // 2. Calculate Duration Discount Percentage (using COMPLETE weeks)
+  const completeWeeks = calculateDurationDiscountWeeks(selectedWeeks);
+  const durationDiscountPercent = getDurationDiscount(completeWeeks); // Uses Math.floor internally
+  console.log('[calculateWeeklyAccommodationPrice] Calculated duration discount:', { completeWeeks, durationDiscountPercent });
+
+  // 3. Apply discounts multiplicatively
+  const finalPrice = basePrice * (1 - averageSeasonalDiscount) * (1 - durationDiscountPercent);
+  const roundedFinalPrice = Math.round(finalPrice);
+
+  console.log('[calculateWeeklyAccommodationPrice] Final calculation:', { 
+    basePrice, 
+    averageSeasonalDiscount, 
+    durationDiscountPercent, 
+    finalPrice, 
+    roundedFinalPrice 
+  });
+
+  return roundedFinalPrice;
 }
