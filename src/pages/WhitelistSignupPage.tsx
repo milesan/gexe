@@ -199,7 +199,16 @@ export function WhitelistSignupPage() {
                     ...prev,
                     firstName: e.target.value
                   }))}
-                  className="w-full bg-white/5 border border-[#FFBF00]/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#FFBF00]/40"
+                  className="w-full bg-black p-3 text-[#FFBF00] focus:outline-none focus:ring-2 focus:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30"
+                  style={{
+                    clipPath: `polygon(
+                      0 4px, 4px 4px, 4px 0,
+                      calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
+                      100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
+                      calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
+                      0 calc(100% - 4px)
+                    )`
+                  }}
                 />
               </div>
               <div>
@@ -212,7 +221,16 @@ export function WhitelistSignupPage() {
                     ...prev,
                     lastName: e.target.value
                   }))}
-                  className="w-full bg-white/5 border border-[#FFBF00]/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#FFBF00]/40"
+                  className="w-full bg-black p-3 text-[#FFBF00] focus:outline-none focus:ring-2 focus:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30"
+                  style={{
+                    clipPath: `polygon(
+                      0 4px, 4px 4px, 4px 0,
+                      calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
+                      100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
+                      calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
+                      0 calc(100% - 4px)
+                    )`
+                  }}
                 />
               </div>
             </div>
@@ -229,7 +247,16 @@ export function WhitelistSignupPage() {
                       type: e.target.value as any
                     }
                   }))}
-                  className="bg-white/5 border border-[#FFBF00]/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#FFBF00]/40 [&>option]:bg-zinc-900 [&>option]:text-white"
+                  className="bg-black p-3 text-[#FFBF00] focus:outline-none focus:ring-2 focus:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30 [&>option]:bg-zinc-900 [&>option]:text-white"
+                  style={{
+                    clipPath: `polygon(
+                      0 4px, 4px 4px, 4px 0,
+                      calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
+                      100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
+                      calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
+                      0 calc(100% - 4px)
+                    )`
+                  }}
                 >
                   <option value="whatsapp">WhatsApp</option>
                   <option value="telegram">Telegram</option>
@@ -247,7 +274,16 @@ export function WhitelistSignupPage() {
                       value: e.target.value
                     }
                   }))}
-                  className="w-full bg-white/5 border border-[#FFBF00]/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#FFBF00]/40"
+                  className="w-full bg-black p-3 text-[#FFBF00] focus:outline-none focus:ring-2 focus:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30"
+                  style={{
+                    clipPath: `polygon(
+                      0 4px, 4px 4px, 4px 0,
+                      calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
+                      100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
+                      calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
+                      0 calc(100% - 4px)
+                    )`
+                  }}
                 />
               </div>
             </div>
@@ -266,7 +302,16 @@ export function WhitelistSignupPage() {
                   type="file"
                   accept="image/*"
                   onChange={handleAvatarChange}
-                  className="w-full bg-white/5 border border-[#FFBF00]/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#FFBF00]/40"
+                  className="w-full bg-black p-3 text-[#FFBF00] focus:outline-none focus:ring-2 focus:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30"
+                  style={{
+                    clipPath: `polygon(
+                      0 4px, 4px 4px, 4px 0,
+                      calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
+                      100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
+                      calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
+                      0 calc(100% - 4px)
+                    )`
+                  }}
                 />
               </div>
             </div>
