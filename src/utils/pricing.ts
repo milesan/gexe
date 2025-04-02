@@ -30,8 +30,10 @@ export function getSeasonName(date: Date): string {
 }
 
 export function getDurationDiscount(numberOfWeeks: number): number {
-  // Round down to nearest whole week
+  console.log('[getDurationDiscount] Received weeks (decimal):', numberOfWeeks);
+  // Round down to nearest whole week to determine discount tier
   const completeWeeks = Math.floor(numberOfWeeks);
+  console.log('[getDurationDiscount] Calculated complete weeks for discount logic:', completeWeeks);
 
   if (completeWeeks < 3) return 0;
 

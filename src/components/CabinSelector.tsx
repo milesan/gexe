@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Wifi, Zap, Bed, BedDouble, WifiOff, ZapOff, Bath, Percent, Info } from 'lucide-react';
+import { Wifi, Zap, Bed, BedDouble, WifiOff, ZapOff, Bath, Percent, Info, Ear } from 'lucide-react';
 import clsx from 'clsx';
 import type { Accommodation } from '../types';
 import { Week } from '../types/calendar';
-import { getSeasonalDiscount, getDurationDiscount, getSeasonBreakdown } from '../utils/pricing';
+import { getSeasonalDiscount, getDurationDiscount, getSeasonBreakdown, calculateWeeklyAccommodationPrice } from '../utils/pricing';
 import { useWeeklyAccommodations } from '../hooks/useWeeklyAccommodations';
 import { addDays, isDate, isBefore } from 'date-fns';
 import * as Tooltip from '@radix-ui/react-tooltip';
@@ -100,8 +100,6 @@ export function CabinSelector({
   });
 
   // --- Normalization Step ---
-  // Create a date representing midnight UTC of the received currentMonth's date.
-  // This ensures consistency whether the prop was local midnight or the UTC midnight default.
   const normalizedCurrentMonth = new Date(Date.UTC(
     currentMonth.getUTCFullYear(),
     currentMonth.getUTCMonth(),
@@ -310,7 +308,7 @@ export function CabinSelector({
       const daysInWeek: Date[] = [];
       let currentDay = new Date(startDate); // Start with the normalized UTC start date
       
-      while (currentDay <= endDate) {
+      while (currentDay < endDate) {
         daysInWeek.push(new Date(currentDay)); // Add a *copy* of the current day
         // Increment the day using UTC methods
         currentDay.setUTCDate(currentDay.getUTCDate() + 1);
@@ -373,32 +371,6 @@ export function CabinSelector({
     isTentSeason: isTentSeason
   });
 
-  // Calculate final price with both seasonal and duration discounts
-  const calculateFinalPrice = (basePrice: number, weeks: Week[], accommodationType?: string): number => {
-    if (weeks.length === 0) return basePrice;
-    
-    const seasonalDiscount = calculateWeightedSeasonalDiscount(weeks, accommodationType);
-    
-    // Calculate duration discount using utility functions
-    const completeWeeks = calculateDurationDiscountWeeks(weeks);
-    const durationDiscount = getDurationDiscount(completeWeeks);
-    
-    // Apply both discounts multiplicatively (not additively)
-    const finalPrice = basePrice * (1 - seasonalDiscount) * (1 - durationDiscount);
-    
-    console.log('[CabinSelector] Price calculation:', {
-      basePrice,
-      seasonalDiscount: `${(seasonalDiscount * 100).toFixed(1)}%`,
-      durationDiscount: `${(durationDiscount * 100).toFixed(1)}%`,
-      finalPrice,
-      totalNights: calculateTotalNights(weeks),
-      completeWeeks,
-      accommodationType
-    });
-    
-    return finalPrice;
-  };
-
   return (
     <div className="space-y-6">
       {/* Filter options could be added here in the future */}
@@ -422,8 +394,8 @@ export function CabinSelector({
           <p className="text-secondary font-regular">Please adjust your dates or check back later.</p>
         </div>
       ) : (
-        <div className="max-w-2xl">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-4">
             {visibleAccommodations.map((acc) => {
               const isSelected = selectedAccommodationId === acc.id;
               const availability = availabilityMap[acc.id];
@@ -432,23 +404,25 @@ export function CabinSelector({
               const spotsAvailable = availability?.availableCapacity;
               const canSelect = !isDisabled && !isFullyBooked;
 
-              // Re-introduce tent season logic checks
               const isTent = acc.type === 'tent';
-                const isOutOfSeason = isTent && !isTentSeason && selectedWeeks.length > 0;
-              const finalCanSelect = canSelect && !isOutOfSeason; // Tent cannot be selected if out of season
+              const isOutOfSeason = isTent && !isTentSeason && selectedWeeks.length > 0;
+              const finalCanSelect = canSelect && !isOutOfSeason;
 
-              const finalPrice = calculateFinalPrice(acc.base_price, selectedWeeks, acc.title);
-              const currentDurationDiscount = getDurationDiscount(calculateDurationDiscountWeeks(selectedWeeks));
+              const weeklyPrice = calculateWeeklyAccommodationPrice(acc, selectedWeeks, normalizedCurrentMonth);
+
+              const completeWeeksForDiscount = calculateDurationDiscountWeeks(selectedWeeks);
+              const currentDurationDiscount = getDurationDiscount(completeWeeksForDiscount);
               const currentSeasonalDiscount = calculateWeightedSeasonalDiscount(selectedWeeks, acc.title);
+              const hasAnyDiscount = (currentSeasonalDiscount > 0 && !acc.title.toLowerCase().includes('dorm')) || currentDurationDiscount > 0;
 
-                return (
-                  <motion.div
+              return (
+                <motion.div
                   key={acc.id}
                   layout
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.2 }}
-                    className={clsx(
+                  className={clsx(
                     'relative rounded-xl border overflow-hidden transition-all duration-200 flex flex-col justify-between group',
                     // Selected State: Accent border, slight scale, shadow, AND subtle background highlight
                     isSelected ? 
@@ -495,7 +469,7 @@ export function CabinSelector({
                     
                     {/* Selected Indicator */}
                     {isSelected && (
-                      <div className="text-xs font-medium px-3 py-1 rounded-full shadow-md bg-accent-primary text-white font-regular border border-white/30">Selected</div>
+                      <div className="text-xs font-medium px-3 py-1 rounded-full shadow-md bg-accent-primary text-stone-800 font-regular border border-white/30">Selected</div>
                     )}
                   </div>
 
@@ -533,7 +507,7 @@ export function CabinSelector({
                     <div>
                       <h3 className="font-medium mb-1 text-primary font-regular">{acc.title}</h3>
                       <div className="flex items-center gap-3 text-secondary text-xs mb-2">
-                        {acc.capacity !== undefined && acc.capacity !== null && acc.capacity > 1 && (
+                        {acc.capacity !== undefined && acc.capacity !== null && acc.capacity > 1 && acc.type !== 'tent' && (
                           <Tooltip.Provider delayDuration={50}>
                             <Tooltip.Root>
                               <Tooltip.Trigger asChild>
@@ -554,24 +528,27 @@ export function CabinSelector({
                           </Tooltip.Provider>
                         )}
                         
-                        <Tooltip.Provider delayDuration={50}>
-                          <Tooltip.Root>
-                            <Tooltip.Trigger asChild>
-                              <span className="flex items-center gap-1 cursor-help" title={hasElectricity(acc.title) ? 'Has Electricity' : 'No Electricity'}>
-                                {hasElectricity(acc.title) ? <Zap size={12} /> : <ZapOff size={12} className="opacity-50"/>}
-                              </span>
-                            </Tooltip.Trigger>
-                            <Tooltip.Portal>
-                              <Tooltip.Content
-                                sideOffset={5}
-                                className="tooltip-content !font-regular"
-                              >
-                                <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
-                                <span className="text-white">{hasElectricity(acc.title) ? 'Has Electricity' : 'No Electricity'}</span>
-                              </Tooltip.Content>
-                            </Tooltip.Portal>
-                          </Tooltip.Root>
-                        </Tooltip.Provider>
+                        {/* Conditionally render the Electricity/No Electricity Tooltip - hide for Van Parking */}
+                        {acc.title !== 'Van Parking' && (
+                          <Tooltip.Provider delayDuration={50}>
+                            <Tooltip.Root>
+                              <Tooltip.Trigger asChild>
+                                <span className="flex items-center gap-1 cursor-help" title={hasElectricity(acc.title) ? 'Has Electricity' : 'No Electricity'}>
+                                  {hasElectricity(acc.title) ? <Zap size={12} /> : <ZapOff size={12} className="opacity-50"/>}
+                                </span>
+                              </Tooltip.Trigger>
+                              <Tooltip.Portal>
+                                <Tooltip.Content
+                                  sideOffset={5}
+                                  className="tooltip-content !font-regular"
+                                >
+                                  <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
+                                  <span className="text-white">{hasElectricity(acc.title) ? 'Has Electricity' : 'No Electricity'}</span>
+                                </Tooltip.Content>
+                              </Tooltip.Portal>
+                            </Tooltip.Root>
+                          </Tooltip.Provider>
+                        )}
                         
                         <Tooltip.Provider delayDuration={50}>
                           <Tooltip.Root>
@@ -612,27 +589,62 @@ export function CabinSelector({
                             </Tooltip.Portal>
                           </Tooltip.Root>
                         </Tooltip.Provider>
+
+                        {/* NEW: Quiet Zone Tooltip for Microcabins */}
+                        {acc.title.includes('Microcabin') && (
+                          <Tooltip.Provider delayDuration={50}>
+                            <Tooltip.Root>
+                              <Tooltip.Trigger asChild>
+                                <button className="flex items-center gap-1 cursor-help text-secondary"><Ear size={12} /></button>
+                              </Tooltip.Trigger>
+                              <Tooltip.Portal>
+                                <Tooltip.Content
+                                  sideOffset={5}
+                                  className="tooltip-content !font-regular"
+                                >
+                                  <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
+                                  <span className="text-white">We invite those who seek quiet to stay here.</span>
+                                </Tooltip.Content>
+                              </Tooltip.Portal>
+                            </Tooltip.Root>
+                          </Tooltip.Provider>
+                        )}
+
+                        {/* NEW: Power Hookup Tooltip for Van Parking */}
+                        {acc.title === 'Van Parking' && (
+                          <Tooltip.Provider delayDuration={50}>
+                            <Tooltip.Root>
+                              <Tooltip.Trigger asChild>
+                                <button className="flex items-center gap-1 cursor-help text-secondary"><Zap size={12} /></button>
+                              </Tooltip.Trigger>
+                              <Tooltip.Portal>
+                                <Tooltip.Content
+                                  sideOffset={5}
+                                  className="tooltip-content !font-regular"
+                                >
+                                  <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
+                                  <span className="text-white">Power hook-ups available on request</span>
+                                </Tooltip.Content>
+                              </Tooltip.Portal>
+                            </Tooltip.Root>
+                          </Tooltip.Provider>
+                        )}
                       </div>
                     </div>
                     
                     <div className="flex justify-between items-end">
                       <div className="text-primary font-medium font-regular">
-                        {finalPrice === 0 ? (
+                        {weeklyPrice === 0 ? (
                           <span className="text-accent-primary">Free</span>
                         ) : (
                           <>
-                            €{Math.round(finalPrice)}
+                            €{Math.round(weeklyPrice)} 
                             <span className="text-sm text-secondary font-regular"> / week</span>
                           </>
                         )}
                       </div>
-                      {/* Discount Tooltip - only show if final price is not 0 and there are applicable discounts */}
-                      {finalPrice !== 0 && (
-                        (acc.title.includes('Dorm') 
-                          ? currentDurationDiscount > 0 
-                          : currentSeasonalDiscount + currentDurationDiscount > 0
-                        )
-                      ) && (
+                      
+                      {weeklyPrice > 0 && hasAnyDiscount && (
                         <Tooltip.Provider delayDuration={50}>
                           <Tooltip.Root>
                             <Tooltip.Trigger asChild>
@@ -646,95 +658,44 @@ export function CabinSelector({
                                 className="tooltip-content tooltip-content--accent !font-regular"
                               >
                                 <Tooltip.Arrow className="tooltip-arrow tooltip-arrow--accent" width={11} height={5} />
-                                <h4 className="font-medium font-regular text-white mb-2">Booking Details</h4>
-                                <div className="text-sm">
-                                  {/* Seasonal discount with season info - don't show for dorms */}
-                                  {!acc.title.includes('Dorm') && (
-                                    <div className="py-2 border-b border-gray-600">
-                                      {/* Enhanced season breakdown with discounted prices */}
-                                      <div className="text-gray-300">
-                                        {(() => {
-                                          const seasonBreakdown = getSeasonBreakdown(
-                                            selectedWeeks[0]?.startDate || new Date(),
-                                            selectedWeeks[selectedWeeks.length - 1]?.endDate || new Date()
-                                          );
-                                          
-                                          if (seasonBreakdown.hasMultipleSeasons) {
-                                            return (
-                                              <div className="space-y-3">
-                                                <div className="font-medium text-white mb-1">Mixed Season Rates</div>
-                                                {seasonBreakdown.seasons.map((season, index) => (
-                                                  <div key={index} className="mb-2">
-                                                    <div className="flex justify-between items-center mb-1">
-                                                      <span className="font-medium">
-                                                        {season.name === 'Summer Season' ? 'High' : 
-                                                         season.name === 'Medium Season' ? 'Mid' : 'Low'} Season:
-                                                      </span>
-                                                      {/* Conditionally render discount % only if > 0 */}
-                                                      {season.discount > 0 && (
-                                                        <span className="text-accent-primary font-medium">
-                                                          -{Math.round(season.discount * 100)}%
-                                                        </span>
-                                                      )}
-                                                    </div>
-                                                    <div className="text-xs text-gray-400 pl-2">
-                                                      {(() => {
-                                                        const weeksValue = season.nights / 7;
-                                                        const formattedWeeks = weeksValue % 1 === 0 ? 
-                                                          Math.round(weeksValue) : 
-                                                          weeksValue.toFixed(1);
-                                                        return `${formattedWeeks} week${formattedWeeks === "1" ? "" : "s"}`;
-                                                      })()} × €{Math.round(acc.base_price * (1 - season.discount))}
-                                                    </div>
-                                                  </div>
-                                                ))}
-                                              </div>
-                                            );
-                                          } else {
-                                            const seasonName = seasonalDiscount > 0.3 ? 'Low' : 
-                                                               seasonalDiscount > 0.1 ? 'Mid' : 'High';
-                                            const discountedPrice = acc.base_price * (1 - seasonalDiscount);
-                                            return (
-                                              <div>
-                                                <div className="font-medium text-white mb-2">{seasonName} Season Rate</div>
-                                                {/* Conditionally render the discount line only if > 0 */}
-                                                {seasonalDiscount > 0 && (
-                                                  <div className="flex justify-between items-center mb-1">
-                                                    <span>Discount:</span>
-                                                    <span className="text-accent-primary font-medium">
-                                                      -{Math.round(seasonalDiscount * 100)}%
-                                                    </span>
-                                                  </div>
-                                                )}
-                                                <div className="text-xs text-gray-400 pl-2">
-                                                  {(() => {
-                                                    const weeksValue = calculateDurationDiscountWeeks(selectedWeeks);
-                                                    const formattedWeeks = weeksValue % 1 === 0 ? 
-                                                      Math.round(weeksValue) : 
-                                                      weeksValue.toFixed(1);
-                                                    return `${formattedWeeks} week${formattedWeeks === "1" ? "" : "s"}`;
-                                                  })()} × €{discountedPrice.toFixed(2)}
-                                                </div>
-                                              </div>
-                                            );
-                                          }
-                                        })()}
-                                      </div>
+                                <h4 className="font-medium font-regular text-white mb-2">Weekly Rate Breakdown</h4>
+                                <div className="text-sm space-y-2">
+                                   {/* Base Price */}
+                                   <div className="flex justify-between items-center text-gray-300">
+                                      <span>Base Rate:</span>
+                                      <span>€{Math.round(acc.base_price)} / week</span>
+                                   </div>
+                                  
+                                  {/* Seasonal Discount - percentages are fine */}
+                                  {!acc.title.toLowerCase().includes('dorm') && currentSeasonalDiscount > 0 && (
+                                    <div className="flex justify-between items-center">
+                                      <span className="text-gray-300">Seasonal Discount:</span>
+                                      <span className="text-accent-primary font-medium">
+                                        -{Math.round(currentSeasonalDiscount * 100)}%
+                                      </span>
                                     </div>
                                   )}
                                   
-                                  {/* Simplified duration discount */}
+                                  {/* Duration Discount - percentages are fine */}
                                   {currentDurationDiscount > 0 && (
-                                    <div className="py-2"> 
-                                      <div className="flex justify-between items-center mb-1">
-                                        <span className="text-white font-medium">Duration discount:</span>
-                                        <span className="text-accent-primary font-medium">
-                                          -{Math.round(currentDurationDiscount * 100)}%
-                                        </span>
-                                      </div>
+                                    <div className="flex justify-between items-center">
+                                      <span className="text-gray-300">Duration Discount ({completeWeeksForDiscount} wks):</span>
+                                      <span className="text-accent-primary font-medium">
+                                        -{Math.round(currentDurationDiscount * 100)}%
+                                      </span>
                                     </div>
                                   )}
+
+                                  {/* Separator */}
+                                   <div className="border-t border-gray-600 my-1"></div>
+
+                                   {/* Final Weekly Price */}
+                                   <div className="flex justify-between items-center font-medium text-white">
+                                      <span>Final Weekly Rate:</span>
+                                      <span>€{Math.round(weeklyPrice)}</span>
+                                   </div>
                                 </div>
+                                 <p className="text-xs text-gray-400 mt-2 font-regular">Discounts applied multiplicatively.</p>
                               </Tooltip.Content>
                             </Tooltip.Portal>
                           </Tooltip.Root>
@@ -743,9 +704,9 @@ export function CabinSelector({
                     </div>
                   </div>
                 </motion.div>
-                );
-              })}
-            </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

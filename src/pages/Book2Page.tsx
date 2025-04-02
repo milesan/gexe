@@ -17,7 +17,7 @@ import { useCalendar } from '../hooks/useCalendar';
 import { Week, WeekStatus } from '../types/calendar';
 import { CalendarService } from '../services/CalendarService';
 import { CalendarConfigButton } from '../components/admin/CalendarConfigButton';
-import { getSeasonalDiscount, getDurationDiscount, getSeasonBreakdown } from '../utils/pricing';
+import { getSeasonalDiscount, getDurationDiscount, getSeasonBreakdown, calculateWeeklyAccommodationPrice } from '../utils/pricing';
 import { areSameWeeks } from '../utils/dates';
 import { clsx } from 'clsx';
 import { calculateDaysBetween } from '../utils/dates';
@@ -47,9 +47,11 @@ export function Book2Page() {
   const [lastRefresh, setLastRefresh] = useState(Date.now());
   const [showDiscountModal, setShowDiscountModal] = useState(false);
   const [seasonBreakdown, setSeasonBreakdown] = useState<SeasonBreakdown | undefined>(undefined);
+  const [finalWeeklyAccommodationPrice, setFinalWeeklyAccommodationPrice] = useState<number | null>(null);
 
   // Calculate combined discount
   const calculateCombinedDiscount = useCallback((weeks: Week[]): number => {
+    console.log('[Book2Page] Calculating combined discount...');
     // Find the accommodation object first
     const accommodation = selectedAccommodation && accommodations
         ? accommodations.find(a => a.id === selectedAccommodation)
@@ -57,27 +59,53 @@ export function Book2Page() {
     const accommodationTitle = accommodation?.title || '';
     const accommodationPrice = accommodation?.base_price ?? 0;
 
-    if (weeks.length === 0) return 0;
+    if (!accommodation || weeks.length === 0) {
+      console.log('[Book2Page] No accommodation or weeks selected, combined discount is 0.');
+      return 0;
+    }
 
-    // Calculate duration discount using complete weeks
-    const totalDays = calculateDaysBetween(weeks[0].startDate, weeks[weeks.length - 1].endDate, true);
-    const completeWeeks = Math.floor(totalDays / 7);
+    // === ALIGN DURATION CALCULATION ===
+    // Use the consistent utility function
+    const completeWeeks = calculateDurationDiscountWeeks(weeks);
     const durationDiscount = getDurationDiscount(completeWeeks);
+    console.log('[Book2Page] Combined Discount - Duration:', { completeWeeks, durationDiscount });
 
-    // Calculate seasonal discount - only if it's not a dorm
-    let seasonalDiscount = 0;
-    if (accommodationPrice > 0 && !accommodationTitle.toLowerCase().includes('dorm')) {
-      const seasonBreakdown = getSeasonBreakdown(weeks[0].startDate, weeks[weeks.length - 1].endDate);
-      // Calculate weighted average seasonal discount
-      const totalNights = seasonBreakdown.seasons.reduce((sum, season) => sum + season.nights, 0);
-      seasonalDiscount = seasonBreakdown.seasons.reduce((sum, season) => 
-        sum + (season.discount * season.nights), 0) / totalNights;
+    // === ALIGN SEASONAL CALCULATION (mimic useDiscounts logic) ===
+    let averageSeasonalDiscount = 0;
+    // Get breakdown based on the actual selected weeks
+    const checkInDate = weeks[0].startDate;
+    const checkOutDate = weeks[weeks.length - 1].endDate;
+    const seasonBreakdown = getSeasonBreakdown(checkInDate, checkOutDate);
+    
+    // Determine if seasonal discount applies (same conditions as modal)
+    const showSeasonalSection = accommodationPrice > 0 
+        && seasonBreakdown.seasons.length > 0 
+        && !accommodationTitle.toLowerCase().includes('dorm');
+
+    if (showSeasonalSection) {
+       const totalNightsInSeasons = seasonBreakdown.seasons.reduce((sum, season) => sum + season.nights, 0);
+       if (totalNightsInSeasons > 0) {
+           averageSeasonalDiscount = seasonBreakdown.seasons.reduce((sum, season) => 
+              sum + (season.discount * season.nights), 0) / totalNightsInSeasons;
+           console.log('[Book2Page] Combined Discount - Seasonal (Calculated):', { totalNightsInSeasons, averageSeasonalDiscount, breakdown: seasonBreakdown.seasons });
+       } else {
+          averageSeasonalDiscount = 0; 
+          console.warn("[Book2Page] Combined Discount - Calculated zero nights in seasons for seasonal discount.");
+       }
+    } else {
+        console.log('[Book2Page] Combined Discount - Seasonal (Not Applicable):', { accommodationPrice, hasSeasons: seasonBreakdown.seasons.length > 0, isDorm: accommodationTitle.toLowerCase().includes('dorm') });
     }
     
     // Calculate combined discount (multiplicative)
-    return 1 - (1 - seasonalDiscount) * (1 - durationDiscount);
-  }, [selectedAccommodation, accommodations]);
+    const combined = 1 - (1 - averageSeasonalDiscount) * (1 - durationDiscount);
+    console.log('[Book2Page] Combined Discount - Final Calculation:', { averageSeasonalDiscount, durationDiscount, combined });
+    
+    // Return the combined discount factor (0 to 1)
+    return combined;
+    // The display logic will handle converting this to a percentage and rounding.
+  }, [selectedAccommodation, accommodations, selectedWeeks]); // Added selectedWeeks dependency
 
+  // This state holds the result of the calculation above
   const combinedDiscount = calculateCombinedDiscount(selectedWeeks);
 
   const session = useSession();
@@ -670,6 +698,38 @@ export function Book2Page() {
   }, [selectedAccommodation, accommodations]); // Dependencies
   console.log('[Book2Page] Selected Accommodation Details:', selectedAccommodationDetails);
 
+  // NEW: Effect to calculate the final weekly price for the selected accommodation
+  useEffect(() => {
+    console.log('[Book2Page] useEffect - Calculating final weekly accommodation price triggered.');
+    
+    const accommodationDetails = selectedAccommodation && accommodations 
+      ? accommodations.find(a => a.id === selectedAccommodation) 
+      : null;
+
+    // Normalize currentMonth to UTC midnight before passing to calculation
+    const normalizedCurrentMonth = normalizeToUTCDate(currentMonth);
+
+    if (accommodationDetails) {
+      console.log('[Book2Page] Calculating weekly price for:', { 
+        accommodationId: accommodationDetails.id, 
+        title: accommodationDetails.title,
+        weeksCount: selectedWeeks.length,
+        normalizedCurrentMonth: normalizedCurrentMonth.toISOString() 
+      });
+      const weeklyPrice = calculateWeeklyAccommodationPrice(
+        accommodationDetails, 
+        selectedWeeks,
+        normalizedCurrentMonth // Use normalized date
+      );
+      console.log('[Book2Page] Calculated weekly price:', weeklyPrice);
+      setFinalWeeklyAccommodationPrice(weeklyPrice);
+    } else {
+      console.log('[Book2Page] No accommodation selected or details not found, clearing weekly price.');
+      setFinalWeeklyAccommodationPrice(null); // Clear price if no accommodation is selected
+    }
+  // Dependencies: selected accommodation ID, the weeks array, the list of all accommodations, and currentMonth
+  }, [selectedAccommodation, selectedWeeks, accommodations, currentMonth]); 
+
   return (
     <div className="min-h-screen">
       <div className="container mx-auto py-4 xs:py-6 sm:py-8 px-4">
@@ -686,12 +746,6 @@ export function Book2Page() {
               <div className="bg-surface/50 backdrop-blur-sm border border-border/50 rounded-lg py-3 xs:py-4 sm:py-6 mb-4 xs:mb-6 sm:mb-8 shadow-sm">
                 {/* Added inner wrapper for content padding */}
                 <div className="px-3 xs:px-4 sm:px-6">
-                  <div className="flex items-center gap-2 mb-2 xs:mb-3">
-                    <svg className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-accent-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                      <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    <h2 className="text-xs xs:text-sm font-medium text-primary font-regular">Note!</h2>
-                  </div>
                   <div className="flex flex-col gap-2 xs:gap-3 text-secondary">
                     <p className="flex items-start gap-2 xs:gap-2.5 text-xs xs:text-sm font-regular">
                       <span className="text-accent-primary mt-0.5">•</span>
@@ -713,7 +767,7 @@ export function Book2Page() {
                     <div className="flex items-center gap-2 xs:gap-3">
                       <button
                         onClick={() => setIsAdminMode(false)}
-                        className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-lg text-xs xs:text-sm bg-amber-600 text-white hover:bg-amber-700 transition-all duration-200 font-medium font-regular"
+                        className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-lg text-xs xs:text-sm bg-amber-600 text-stone-800 hover:bg-amber-700 transition-all duration-200 font-medium font-regular"
                       >
                         <svg 
                           className="h-4 w-4 xs:h-5 xs:w-5" 
@@ -740,7 +794,7 @@ export function Book2Page() {
                   ) : (
                     <button
                       onClick={() => setIsAdminMode(true)}
-                      className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-lg text-xs xs:text-sm bg-accent-primary text-white hover:bg-accent-secondary transition-all duration-200 font-medium font-regular"
+                      className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-lg text-xs xs:text-sm bg-accent-primary text-stone-800 hover:bg-accent-secondary transition-all duration-200 font-medium font-regular"
                     >
                       <svg 
                         className="h-4 w-4 xs:h-5 xs:w-5" 
@@ -767,7 +821,7 @@ export function Book2Page() {
                 <div className="flex flex-col gap-3 mb-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <h2 className="text-lg xxs:text-xl sm:text-2xl font-display font-light text-primary">
-                      {selectedWeeks.length === 0 ? "When do you want to arrive?" : 
+                      {selectedWeeks.length === 0 ? "When do you wish to arrive?" : 
                        selectedWeeks.length === 1 ? "One week selected! Any more?" : 
                        "Ok! Time to scroll down"}
                     </h2>
@@ -811,7 +865,7 @@ export function Book2Page() {
                           <Tooltip.Trigger asChild>
                             <button
                               onClick={() => setShowDiscountModal(true)}
-                              className="group flex items-center gap-1 xxs:gap-1.5 px-2 xxs:px-2.5 py-1 xxs:py-1.5 text-[10px] xxs:text-xs sm:text-sm font-medium border rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 relative font-regular text-accent-primary bg-[color-mix(in_srgb,_var(--color-accent-primary)_10%,_transparent)] border-[color-mix(in_srgb,_var(--color-accent-primary)_30%,_transparent)] hover:bg-[color-mix(in_srgb,_var(--color-accent-primary)_20%,_transparent)] hover:border-[color-mix(in_srgb,_var(--color-accent-primary)_40%,_transparent)]"
+                              className="group flex items-center gap-1 xxs:gap-1.5 px-2 xxs:px-2.5 py-1 xxs:py-1.5 text-[10px] xxs:text-xs sm:text-sm font-medium border rounded-md transition-colors duration-200 relative font-regular text-accent-primary bg-[color-mix(in_srgb,_var(--color-accent-primary)_10%,_transparent)] border-[color-mix(in_srgb,_var(--color-accent-primary)_30%,_transparent)] hover:bg-[color-mix(in_srgb,_var(--color-accent-primary)_20%,_transparent)] hover:border-[color-mix(in_srgb,_var(--color-accent-primary)_40%,_transparent)]"
                             >
                               <span>{combinedDiscount > 0 ? `Discount: ${seasonBreakdown?.hasMultipleSeasons ? '~' : ''}${Math.round(combinedDiscount * 100)}%` : 'Discounts'}</span>
                               <HelpCircle className="w-3 h-3 xxs:w-3.5 xxs:h-3.5 sm:w-4 sm:h-4 text-accent-primary" />
@@ -831,7 +885,7 @@ export function Book2Page() {
                       <button
                         onClick={handleClearSelection}
                         className={clsx(
-                          "flex items-center gap-0.5 xxs:gap-1 px-2 xxs:px-2.5 py-1 xxs:py-1.5 text-[10px] xxs:text-xs sm:text-sm font-medium border rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 font-regular",
+                          "flex items-center gap-0.5 xxs:gap-1 px-2 xxs:px-2.5 py-1 xxs:py-1.5 text-[10px] xxs:text-xs sm:text-sm font-medium border rounded-md transition-colors duration-200 font-regular",
                           "text-accent-primary bg-[color-mix(in_srgb,_var(--color-accent-primary)_10%,_transparent)] border-[color-mix(in_srgb,_var(--color-accent-primary)_30%,_transparent)] hover:bg-[color-mix(in_srgb,_var(--color-accent-primary)_20%,_transparent)] hover:border-[color-mix(in_srgb,_var(--color-accent-primary)_40%,_transparent)]"
                         )}
                         aria-label="Clear week selection"
@@ -893,6 +947,7 @@ export function Book2Page() {
                     onClearWeeks={() => setSelectedWeeks([])}
                     onClearAccommodation={() => setSelectedAccommodation(null)}
                     seasonBreakdown={seasonBreakdown}
+                    calculatedWeeklyAccommodationPrice={finalWeeklyAccommodationPrice}
                   />
                 ) : (
                   <div className="text-secondary text-xs xs:text-sm font-regular">

@@ -738,6 +738,35 @@ export function calculateDurationDiscountWeeks(selectedWeeks: Week[]): number {
 }
 
 /**
+ * Calculate the total duration in weeks, rounded to one decimal place.
+ * Uses the total number of days (inclusive) and divides by 7.
+ * @param selectedWeeks Array of selected Week objects
+ * @returns Total duration in weeks (e.g., 3.4)
+ */
+export function calculateTotalWeeksDecimal(selectedWeeks: Week[]): number {
+  console.log('[calculateTotalWeeksDecimal] Calculating for:', {
+    weeks: selectedWeeks.map(w => ({
+      id: w.id,
+      startDate: formatDateForDisplay(w.startDate),
+      endDate: formatDateForDisplay(w.endDate)
+    }))
+  });
+  if (selectedWeeks.length === 0) return 0;
+
+  const totalDays = calculateTotalDays(selectedWeeks);
+  console.log('[calculateTotalWeeksDecimal] totalDays:', totalDays);
+
+  if (totalDays <= 0) return 0;
+
+  const weeksDecimal = totalDays / 7;
+  // Round to one decimal place
+  const roundedWeeks = Math.round(weeksDecimal * 10) / 10;
+
+  console.log('[calculateTotalWeeksDecimal] returning:', roundedWeeks);
+  return roundedWeeks;
+}
+
+/**
  * Converts a Date object (assumed to be UTC midnight) to a new Date object
  * representing midnight in the local timezone for the same calendar day.
  * Useful for displaying UTC dates in components that use local time.
