@@ -50,7 +50,11 @@ export function WhitelistWelcomeModal({ isOpen, onClose }: Props) {
             <img 
               src="https://raw.githubusercontent.com/milesan/synesthesia/refs/heads/main/Enso%20Zen%20Soto%20Symbol.png" 
               alt="Logo" 
-              className="w-12 h-12 mx-auto mb-4 invert"
+              className="w-12 h-12 mx-auto mb-4"
+              style={{ 
+                filter: 'brightness(0) invert(0.75) sepia(0.6) saturate(400%) hue-rotate(360deg)',
+                opacity: 0.9
+              }}
             />
             <h2 className="text-[#FFBF00] text-2xl font-display mb-4">Welcome to The Garden</h2>
             <p className="font-regular text-sm text-[#FFBF00]/60 mb-6">

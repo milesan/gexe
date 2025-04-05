@@ -14,47 +14,72 @@ export function formatDateOnly(date: Date): string {
 export { startOfDay };
 
 /**
- * Normalizes a date to UTC midnight to ensure consistent date handling across timezones.
- * This prevents date shifting issues when converting between timezones.
- * 
- * @param date The date to normalize
- * @returns A new Date object at UTC midnight
+ * Normalizes any date input into a Date object representing midnight UTC
+ * on the **same calendar day** as perceived in the **UTC timezone**.
+ *
+ * Example: '2024-05-01T14:30:00Z' (May 1st UTC)
+ * will result in a Date object representing '2024-05-01T00:00:00Z'.
+ *
+ * @param date The date to normalize (Date object or string parsable by `new Date()`)
+ * @returns A new Date object representing midnight UTC, or an Invalid Date if input is invalid.
  */
 export function normalizeToUTCDate(date: Date | string): Date {
   const inputDate = typeof date === 'string' ? new Date(date) : date;
-  return new Date(Date.UTC(
-    inputDate.getUTCFullYear(),
-    inputDate.getUTCMonth(),
-    inputDate.getUTCDate(),
-    0, 0, 0, 0
-  ));
+
+  // Check for invalid date input
+  if (isNaN(inputDate.getTime())) {
+     console.warn('[normalizeToUTCDate] Received invalid date:', date);
+     return new Date(NaN); // Return Invalid Date object
+  }
+
+  // Get calendar date components using UTC methods
+  const utcYear = inputDate.getUTCFullYear();
+  const utcMonth = inputDate.getUTCMonth(); // 0-indexed
+  const utcDay = inputDate.getUTCDate();
+
+  // Calculate the UTC timestamp corresponding to 00:00:00 on that UTC calendar day.
+  const utcTimestamp = Date.UTC(utcYear, utcMonth, utcDay, 0, 0, 0, 0);
+  
+  // Create a new Date object from this specific UTC timestamp.
+  const returnDate = new Date(utcTimestamp);
+  console.log('[normalizeToUTCDate] Normalized date:', {
+    inputDate: inputDate.toISOString(),
+    returnDate: returnDate.toISOString()
+  });
+  // Add a log to trace specific conversions if needed during debugging
+  // console.log(`[normalizeToUTCDate UTC] Input: ${date instanceof Date ? date.toISOString() : date} -> Output: ${returnDate.toISOString()}`);
+
+  return returnDate;
 }
 
 /**
- * Safely parses a date string to a Date object, ensuring consistent behavior
- * regardless of the user's timezone.
- * 
- * @param dateString The date string to parse (ISO format preferred)
- * @returns A normalized Date object at UTC midnight
+ * Converts a Date object (typically from a date picker, representing local midnight)
+ * into a Date object representing midnight UTC on the *same calendar day*
+ * as perceived in the local timezone.
+ * Use this when handling user input from date pickers that operate in local time.
+ *
+ * @param localDate The Date object representing a local calendar day (time component is ignored). Can be null or undefined.
+ * @returns A new Date object representing midnight UTC for that local calendar day, or null if input is invalid/null/undefined.
  */
-export function safeParseDate(dateString: string): Date {
-  console.log(`[safeParseDate] Input string: '${dateString}'`);
-  try {
-    // First try to parse as ISO
-    const parsedDate = parseISO(dateString);
-    console.log(`[safeParseDate] Parsed with parseISO (local assumed): ${parsedDate.toISOString()}`);
-    const normalizedDate = normalizeToUTCDate(parsedDate);
-    console.log(`[safeParseDate] After normalizeToUTCDate: ${normalizedDate.toISOString()}`);
-    return normalizedDate;
-  } catch (e) {
-    // Fallback to regular Date constructor with normalization
-    console.warn(`[safeParseDate] Failed parseISO, falling back to new Date('${dateString}')`);
-    const fallbackDate = new Date(dateString);
-    console.log(`[safeParseDate] Fallback parsed with new Date(): ${fallbackDate.toISOString()}`);
-    const normalizedFallback = normalizeToUTCDate(fallbackDate);
-    console.log(`[safeParseDate] Fallback after normalizeToUTCDate: ${normalizedFallback.toISOString()}`);
-    return normalizedFallback;
+export function localDayToUTCMidnight(localDate: Date | null | undefined): Date | null {
+  if (!localDate || isNaN(localDate.getTime())) {
+    // Handle null, undefined, or invalid dates appropriately
+    console.warn('[localDayToUTCMidnight] Received invalid/null date:', localDate);
+    return null;
   }
+
+  // Get calendar date components using the browser's local timezone interpretation
+  const localYear = localDate.getFullYear();
+  const localMonth = localDate.getMonth(); // 0-indexed
+  const localDay = localDate.getDate();
+
+  // Calculate the UTC timestamp corresponding to 00:00:00 on that local calendar day.
+  const utcTimestamp = Date.UTC(localYear, localMonth, localDay, 0, 0, 0, 0);
+
+  // Create a new Date object from this specific UTC timestamp.
+  const returnDate = new Date(utcTimestamp);
+  // console.log(`[localDayToUTCMidnight] Converted local ${localDate.toString()} -> ${returnDate.toISOString()}`);
+  return returnDate;
 }
 
 /**
@@ -759,11 +784,12 @@ export function calculateTotalWeeksDecimal(selectedWeeks: Week[]): number {
   if (totalDays <= 0) return 0;
 
   const weeksDecimal = totalDays / 7;
-  // Round to one decimal place
-  const roundedWeeks = Math.round(weeksDecimal * 10) / 10;
+  // REMOVE ROUNDING HERE - Return full precision
+  // const roundedWeeks = Math.round(weeksDecimal * 10) / 10;
 
-  console.log('[calculateTotalWeeksDecimal] returning:', roundedWeeks);
-  return roundedWeeks;
+  console.log('[calculateTotalWeeksDecimal] returning (full precision):', weeksDecimal);
+  // return roundedWeeks; // OLD
+  return weeksDecimal; // NEW
 }
 
 /**

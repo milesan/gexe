@@ -4,7 +4,6 @@ import type { AvailabilityResult } from '../types/availability';
 import type { Database } from '../types/database';
 import { addDays, startOfWeek, endOfWeek, isBefore, isEqual } from 'date-fns';
 import { normalizeToUTCDate, safeParseDate, formatDateOnly } from '../utils/dates';
-import { convertToUTC1 } from '../utils/timezone';
 import { getFrontendUrl } from '../lib/environment';
 
 type AccommodationType = Database['public']['Tables']['accommodations']['Row'];
@@ -190,12 +189,12 @@ class BookingService {
       // Safely parse and normalize dates
       const checkInDate = booking.checkIn instanceof Date 
         ? normalizeToUTCDate(booking.checkIn) 
-        : safeParseDate(booking.checkIn as string);
+        : normalizeToUTCDate(booking.checkIn as string);
       console.log(`[BookingService] Processed checkInDate object: ${checkInDate.toISOString()}`);
       
       const checkOutDate = booking.checkOut instanceof Date 
         ? normalizeToUTCDate(booking.checkOut) 
-        : safeParseDate(booking.checkOut as string);
+        : normalizeToUTCDate(booking.checkOut as string);
       console.log(`[BookingService] Processed checkOutDate object: ${checkOutDate.toISOString()}`);
       
       // Format as YYYY-MM-DD
@@ -301,140 +300,6 @@ class BookingService {
       console.error('Error fetching user bookings:', error);
       throw error;
     }
-  }
-
-  async createWeeklyBooking(
-    accommodationId: string,
-    weeks: Date[],
-    totalPrice: number
-  ) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
-
-    // Normalize dates to UTC
-    const normalizedWeeks = weeks.map(w => normalizeToUTCDate(w));
-    const firstWeek = normalizedWeeks[0];
-    const lastWeek = normalizedWeeks[normalizedWeeks.length - 1];
-    
-    // Format as YYYY-MM-DD
-    const checkIn = formatDateOnly(startOfWeek(firstWeek));
-    const checkOut = formatDateOnly(addDays(endOfWeek(lastWeek), 1));
-
-    console.log('[BookingService] Creating weekly booking:', {
-      accommodationId,
-      weeksCount: normalizedWeeks.length,
-      checkIn,
-      checkOut,
-      totalPrice
-    });
-
-    // Validate total_price is non-negative (matching database constraint)
-    if (totalPrice < 0) {
-      throw new Error('Total price must be non-negative');
-    }
-
-    try {
-      const { data: booking, error: bookingError } = await supabase
-        .from('bookings')
-        .insert({
-          accommodation_id: accommodationId,
-          user_id: user.id,
-          check_in: checkIn,
-          check_out: checkOut,
-          total_price: totalPrice,
-          status: 'confirmed',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .select()
-        .single();
-
-      if (bookingError) throw bookingError;
-
-      // Mark dates as booked in availability
-      const dates = [];
-      let currentDate = safeParseDate(checkIn);
-      const endDate = safeParseDate(checkOut);
-      
-      while (isBefore(currentDate, endDate)) {
-        dates.push(formatDateOnly(currentDate));
-        currentDate = addDays(currentDate, 1);
-      }
-
-      const { error: availabilityError } = await supabase
-        .from('availability')
-        .insert(
-          dates.map(date => ({
-            accommodation_id: accommodationId,
-            date,
-            status: 'BOOKED'
-          }))
-        );
-
-      if (availabilityError) throw availabilityError;
-
-      // Get accommodation details for email
-      const { data: accommodation } = await supabase
-        .from('accommodations')
-        .select('title, capacity')
-        .eq('id', accommodationId)
-        .single();
-
-      // Send booking confirmation email
-      if (user.email) {
-        console.log('[BookingService] Sending booking confirmation email to:', user.email);
-        const { error: emailError } = await supabase.functions.invoke('send-booking-confirmation', {
-          body: { 
-            email: user.email,
-            bookingId: booking.id,
-            checkIn: checkIn,
-            checkOut: checkOut,
-            accommodation: accommodation?.title || 'Accommodation',
-            totalPrice: totalPrice,
-            frontendUrl: getFrontendUrl()
-          }
-        });
-        console.log('[BookingService] Email sending result:', { emailError });
-      }
-
-      return booking;
-    } catch (error) {
-      console.error('Error creating booking:', error);
-      throw error;
-    }
-  }
-
-  async updateBooking(id: string, updates: Partial<Booking>) {
-    // Validate check_out is after check_in if both are being updated
-    if (updates.check_in && updates.check_out) {
-      const checkInDate = safeParseDate(updates.check_in);
-      const checkOutDate = safeParseDate(updates.check_out);
-        if (isEqual(checkInDate, checkOutDate) || isBefore(checkOutDate, checkInDate)) {
-        throw new Error('Check-out date must be after check-in date');
-      }
-    }
-
-    // Validate total_price is non-negative if being updated
-    if (updates.total_price !== undefined && updates.total_price < 0) {
-      throw new Error('Total price must be non-negative');
-    }
-
-    const { data, error } = await supabase
-      .from('bookings')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  }
-
-  async cancelBooking(id: string) {
-    return this.updateBooking(id, { status: 'cancelled' });
   }
 }
 

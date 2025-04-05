@@ -8,6 +8,7 @@ interface Props {
 }
 
 export function PendingPage({ status = 'pending' }: Props) {
+  console.log(`PendingPage: Rendering with status - ${status}`);
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
@@ -15,8 +16,8 @@ export function PendingPage({ status = 'pending' }: Props) {
       console.log('PendingPage: Signing out user');
       await supabase.auth.signOut();
       
-      // Force refresh the page to reset app state
-      window.location.href = '/';
+      // Use navigate for smoother transition
+      navigate('/');
     } catch (error) {
       console.error('Error signing out:', error);
     }
@@ -40,15 +41,17 @@ export function PendingPage({ status = 'pending' }: Props) {
             }}
           />
           
-          <h1 className="text-3xl font-display font-light text-primary">
-            {status === 'pending' ? 'Application Pending' : 'Application Not Accepted'}
-          </h1>
+          {status === 'pending' && (
+            <h1 className="text-3xl font-display font-light text-primary">
+              Application Pending
+            </h1>
+          )}
 
           <p className="text-secondary text-sm font-regular leading-relaxed">
             {status === 'pending' ? (
               "Thank you for applying to The Garden. Your application is currently being reviewed. We'll notify you by email once a decision has been made."
             ) : (
-              'Unfortunately, your application was not accepted at this time. We appreciate your interest in The Garden and wish you the best in your journey.'
+              'All full, try again next year <3'
             )}
           </p>
 

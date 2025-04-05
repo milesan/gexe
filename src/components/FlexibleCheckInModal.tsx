@@ -35,26 +35,27 @@ export function FlexibleCheckInModal({ week, isOpen, onClose, onDateSelect }: Pr
     // Sort the dates chronologically 
     .sort((a, b) => a.getTime() - b.getTime());
 
-  const handleDateSelect = (date: Date) => {
-    // --- Log the originally clicked date object --- 
-    console.log('[DATE_TRACE] FlexibleCheckInModal: Date clicked (raw):', { dateObj: date, iso: date?.toISOString?.() });
+  const handleDateSelect = (selectedUTCDate: Date) => {
+    // --- Log the originally clicked date object (which IS the normalized UTC date here) ---
+    console.log('[DATE_TRACE] FlexibleCheckInModal: Date clicked (already normalized):', { dateObj: selectedUTCDate, iso: selectedUTCDate?.toISOString?.() });
 
-    const normalizedDate = normalizeToUTCDate(date);
+    // const normalizedDate = normalizeToUTCDate(date); // REMOVED: This was redundant
 
-    // --- Log the normalized date before sending --- 
-    console.log('[DATE_TRACE] FlexibleCheckInModal: Normalized date before sending:', { dateObj: normalizedDate, iso: normalizedDate?.toISOString?.() });
-    
+    // --- Log the normalized date before sending (it's just selectedUTCDate now) ---
+    // Renamed variable in log for clarity
+    console.log('[DATE_TRACE] FlexibleCheckInModal: Using date before sending:', { dateObj: selectedUTCDate, iso: selectedUTCDate?.toISOString?.() });
+
     console.log('[FlexibleCheckInModal] Check-in date selected:', {
       weekId: week.id,
-      selectedDate: formatDateForDisplay(normalizedDate),
+      selectedDate: formatDateForDisplay(selectedUTCDate), // Use selectedUTCDate
       availableDates: week.flexibleDates?.map(d => formatDateForDisplay(d)),
-      isValidSelection: week.flexibleDates?.some(d => 
-        isSameDay(normalizeToUTCDate(d), normalizedDate)
+      isValidSelection: week.flexibleDates?.some(d =>
+        isSameDay(normalizeToUTCDate(d), selectedUTCDate) // Use selectedUTCDate
       )
     });
 
-    // Pass both the date and the week to the parent component
-    onDateSelect(normalizedDate, week);
+    // Pass the already normalized date and the week to the parent component
+    onDateSelect(selectedUTCDate, week); // Use selectedUTCDate
     onClose();
   };
 

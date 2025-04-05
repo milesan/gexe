@@ -4,8 +4,8 @@ import { Week, WeekStatus } from '../../types/calendar';
 import { 
   formatDateForDisplay, 
   normalizeToUTCDate, 
+  localDayToUTCMidnight,
   isDateInWeek,
-  safeParseDate,
   utcToLocalMidnight
 } from '../../utils/dates';
 import { AlertTriangle, Info, Calendar } from 'lucide-react';
@@ -43,6 +43,11 @@ interface Props {
  * - Reset a customized week to default
  */
 export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, onDelete }: Props) {
+  console.log("Modal received week:", {
+    id: week.id,
+    flexDates: week.flexibleDates?.map(d => d?.toISOString())
+  });
+
   // State for form fields
   const [startDate, setStartDate] = useState(formatDateForDisplay(week.startDate));
   const [endDate, setEndDate] = useState(formatDateForDisplay(week.endDate));
@@ -94,8 +99,8 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
   useEffect(() => {
     if (!calendarConfig) return;
     
-    const start = safeParseDate(startDate);
-    const end = safeParseDate(endDate);
+    const start = normalizeToUTCDate(startDate);
+    const end = normalizeToUTCDate(endDate);
     
     // Check if dates align with check-in/check-out days
     if (start.getUTCDay() !== calendarConfig.checkInDay) {
@@ -116,8 +121,8 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
       return;
     }
     
-    const start = safeParseDate(startDate);
-    const end = safeParseDate(endDate);
+    const start = normalizeToUTCDate(startDate);
+    const end = normalizeToUTCDate(endDate);
     
     // Check if all selected dates are within the week
     const invalidDates = selectedFlexDates.filter(date => {
@@ -134,8 +139,8 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
   const handleSave = useCallback(async () => {
     try {
       // Parse and normalize dates
-      const normalizedStartDate = safeParseDate(startDate);
-      const normalizedEndDate = safeParseDate(endDate);
+      const normalizedStartDate = normalizeToUTCDate(startDate);
+      const normalizedEndDate = normalizeToUTCDate(endDate);
       const normalizedFlexDates = selectedFlexDates.map(date => normalizeToUTCDate(date));
 
       // Validate dates
@@ -222,29 +227,57 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
       setHasFlexDatesChanged(week.flexibleDates?.length !== 0);
     }
   };
-  console.log('[WeekCustomizationModal] safeParseDate(startDate)', safeParseDate(startDate));
-  console.log('[WeekCustomizationModal] safeParseDate(endDate)', safeParseDate(endDate));
-  console.log('[WeekCustomizationModal] endDate', endDate);
-  console.log('[WeekCustomizationModal] startDate', startDate);
-  // Handle flexible dates selection
+   // Handle flexible dates selection
   const handleFlexDatesSelect = (dates: Date[] | undefined) => {
-    // Normalize dates *from* the picker (local midnight) back to UTC midnight
-    const normalizedDates = Array.isArray(dates) 
-      ? dates.map(d => normalizeToUTCDate(d))
+    console.log("--- DayPicker onSelect ---");
+    console.log("Raw dates from picker:", dates?.map(d => d?.toString()));
+    console.log("Raw ISO dates from picker:", dates?.map(d => d?.toISOString()));
+
+    const convertedDates = Array.isArray(dates)
+      ? dates.map(d => {
+          const converted = localDayToUTCMidnight(d);
+          console.log(`Converting local ${d?.toString()} -> ${converted?.toISOString()}`);
+          return converted;
+        }).filter(d => d !== null) as Date[]
       : [];
-    
-    // Check if the selection has changed
-    const hasChanged = normalizedDates.length !== selectedFlexDates.length ||
-      normalizedDates.some(d => !selectedFlexDates.some(sd => isSameDay(sd, d)));
-    
-    setSelectedFlexDates(normalizedDates);
-    
+
+    console.log("Converted dates for state:", convertedDates.map(d => d?.toISOString()));
+    console.log("--- End DayPicker onSelect ---");
+
+    const currentTimestamps = selectedFlexDates.map(d => d.getTime()).sort();
+    const newTimestamps = convertedDates.map(d => d.getTime()).sort();
+    const hasChanged = currentTimestamps.length !== newTimestamps.length ||
+                       currentTimestamps.some((ts, index) => ts !== newTimestamps[index]);
+
+    setSelectedFlexDates(convertedDates);
+
     if (hasChanged) {
       setHasFlexDatesChanged(true);
       setFlexDatesWarning(null);
     }
   };
 
+  // Update DayPicker's disabled prop to ensure consistency
+  const disabledBounds = {
+      before: utcToLocalMidnight(normalizeToUTCDate(startDate)),
+      after: utcToLocalMidnight(normalizeToUTCDate(endDate))
+  };
+  const validDisabledDates = Object.entries(disabledBounds)
+      .filter(([_, date]) => date !== null)
+      .map(([key, date]) => ({ [key]: date as Date }))
+      .reduce((acc, obj) => ({ ...acc, ...obj }), {});
+
+  // Add logging to verify disabled bounds calculation
+  console.log("--- DayPicker Disabled Bounds ---");
+  console.log("Start Date String:", startDate);
+  console.log("End Date String:", endDate);
+  // Add checks for null before calling toISOString
+  const normalizedStartLog = normalizeToUTCDate(startDate);
+  const normalizedEndLog = normalizeToUTCDate(endDate);
+  console.log("Normalized Start UTC:", normalizedStartLog ? normalizedStartLog.toISOString() : 'Invalid/Null');
+  console.log("Normalized End UTC:", normalizedEndLog ? normalizedEndLog.toISOString() : 'Invalid/Null');
+  // Add checks for null before calling toString
+  console.log("Calculated 'before' boundary (Local):", disabledBounds.before ? disabledBounds.before.toString() : 'Invalid/Null');
   // Get status hint for UI
   const getStatusHint = () => {
     if (week?.status === 'deleted') {
@@ -286,6 +319,10 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
   const primaryButtonClasses = `${buttonBaseClasses} bg-blue-600 text-white hover:bg-blue-700 dark:hover:bg-blue-500 focus:ring-blue-500 dark:focus:ring-blue-400`;
   const secondaryButtonClasses = `${buttonBaseClasses} text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 focus:ring-gray-400`;
   const dangerButtonClasses = `${buttonBaseClasses} text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 focus:ring-red-500 dark:focus:ring-red-400 mr-auto`; // Added mr-auto here
+
+  console.log("State before render - selectedFlexDates (UTC):", selectedFlexDates.map(d => d?.toISOString()));
+  const datesForPicker = selectedFlexDates.map(d => utcToLocalMidnight(d));
+  console.log("Dates passed to DayPicker selected prop (Local):", datesForPicker.map(d => d?.toString()));
 
   return (
     <div className={modalOverlayClasses}>
@@ -395,20 +432,14 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
 
           {/* Flexible Check-in Date Picker */}
           {isFlexibleCheckin && (
-            <div className="mb-4 react-day-picker-container"> {/* Added container class */}
+            <div className="mb-4 react-day-picker-container">
               <DayPicker
                 mode="multiple"
-                // Convert selected UTC dates to local midnight for display
                 selected={selectedFlexDates.map(d => utcToLocalMidnight(d))}
-                // Convert defaultMonth UTC date to local midnight
-                defaultMonth={utcToLocalMidnight(safeParseDate(startDate))}
+                defaultMonth={utcToLocalMidnight(normalizeToUTCDate(startDate))}
                 onSelect={handleFlexDatesSelect}
-                // Convert disabled boundary UTC dates to local midnight
-                disabled={[
-                  { before: utcToLocalMidnight(safeParseDate(startDate)) },
-                  { after: utcToLocalMidnight(safeParseDate(endDate)) }
-                ]}
-                className="border-0" // Keep border-0, styling handled by CSS
+                disabled={validDisabledDates}
+                className="border-0"
                 classNames={{
                   // Add any necessary class overrides here if base CSS isn't enough
                 }}

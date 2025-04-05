@@ -935,8 +935,9 @@ export function Book2Page() {
 
           {/* Right Column - Booking Summary (becomes a bottom column on mobile/tablet) */}
           <div>
-            {/* Use regular position on small screens and sticky on large screens */}
-            <div className="lg:sticky lg:top-8">
+            {/* Re-add sticky, add max-height and overflow for independent scrolling on large screens */}
+            <div className="lg:sticky lg:top-8 lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto">
+              {/* This inner div now just handles the styling */}
               <div className="bg-surface rounded-xl shadow-sm p-3 xs:p-4 sm:p-6 mb-4 xs:mb-5 sm:mb-6">
                 {selectedWeeks.length > 0 ? (
                   <BookingSummary 

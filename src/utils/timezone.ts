@@ -28,40 +28,6 @@ export function convertToUTC1(date: Date, hour: number): Date {
 }
 
 /**
- * Safely parses a date string to a Date object, ensuring consistent behavior
- * regardless of the user's timezone.
- * 
- * @param dateString The date string to parse (ISO format preferred)
- * @returns A Date object
- */
-export function safeParseDate(dateString: string): Date {
-  // First try to parse as ISO
-  try {
-    return parseISO(dateString);
-  } catch (e) {
-    // Fallback to regular Date constructor
-    return new Date(dateString);
-  }
-}
-
-/**
- * Converts a date string from API to a consistent Date object
- * This helps prevent timezone issues when working with dates from APIs
- * 
- * @param dateString The date string from API (typically ISO format)
- * @returns A normalized Date object at UTC midnight
- */
-export function apiDateToUTC(dateString: string): Date {
-  const date = safeParseDate(dateString);
-  return new Date(Date.UTC(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate(),
-    0, 0, 0, 0
-  ));
-}
-
-/**
  * Formats a date according to the specified format string, adjusted to UTC+1 timezone.
  * 
  * @param date The date to format

@@ -494,7 +494,8 @@ export function WeekSelector({
                             const lastSelected = selectedWeeks[selectedWeeks.length - 1];
                             const isFirstSelected = areSameWeeks(week, firstSelected);
                             const isLastSelected = areSameWeeks(week, lastSelected);
-                            const isIntermediary = selectedWeeks.some(sw => areSameWeeks(week, sw)) && !isFirstSelected && !isLastSelected;
+                            // Check if the current week is ANY of the selected weeks (first, last, or intermediate)
+                            const isAnySelectedWeek = selectedWeeks.some(sw => areSameWeeks(week, sw));
 
                             if (isFirstSelected && effectiveStartDate) { // Use effectiveStartDate here
                               console.log('[WeekSelector Render] Displaying effectiveStartDate (first selected):', {
@@ -522,10 +523,35 @@ export function WeekSelector({
                                 </div>
                               );
                             }
-                            if (isIntermediary) {
-                              return null; // Intermediary weeks display nothing specific
+                            // If it's an intermediary selected week (between first and last)
+                            if (isAnySelectedWeek && !isFirstSelected && !isLastSelected) {
+                              console.log('[WeekSelector Render] Displaying null for intermediary selected week:', { weekId: week.id });
+                              return null; // Intermediary selected weeks display nothing specific
                             }
-                            // Fallthrough for non-selected weeks in multi-select mode handled below
+
+                            // --- START: Modified logic for NON-SELECTED WEEKS when multiple are selected ---
+                            if (!isAnySelectedWeek) {
+                              // If this non-selected week comes AFTER the first selected week
+                              if (isAfter(week.startDate, firstSelected.startDate)) {
+                                console.log('[WeekSelector Render] Displaying potential checkout date (multi-select, after first):', {
+                                  weekId: week.id,
+                                  endDate: formatDateForDisplay(week.endDate)
+                                });
+                                return (
+                                  <div className="flex items-center justify-center text-primary">
+                                    {/* Display the END date */}
+                                    <span>{formatInTimeZone(week.endDate, 'UTC', 'MMM d')}</span>
+                                  </div>
+                                );
+                              } else {
+                                // If this non-selected week comes BEFORE the first selected week,
+                                // fall through to the default display logic below (showing earliest check-in).
+                                console.log('[WeekSelector Render] Non-selected week before first selection. Falling back to default.', { weekId: week.id });
+                              }
+                            }
+                            // --- END: Modified logic ---
+
+                            // Fallthrough for weeks before the first selected will reach the default logic below.
                           }
 
                           // If a single week is selected

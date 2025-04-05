@@ -51,11 +51,14 @@ const formatNumber = (num: number, decimals: number = 1): string => {
 // Helper function to format price display, showing "Free" for zero
 // UPDATED: Round to nearest integer for non-zero prices
 const formatPriceDisplay = (price: number): React.ReactNode => {
+  console.log('[formatPriceDisplay] Input price:', price);
   if (price === 0) {
     return <span className="text-accent-primary text-sm font-regular">Free</span>;
   }
   // Round to nearest integer and format
-  return `€${Math.round(price)}`; 
+  const roundedPrice = Math.round(price);
+  console.log('[formatPriceDisplay] Rounded price:', roundedPrice);
+  return `€${roundedPrice}`;
 };
 
 // Helper function to calculate pricing details
@@ -69,47 +72,44 @@ interface PricingDetails {
   subtotal: number;
   durationDiscountAmount: number;
   durationDiscountPercent: number;
-  weeksStaying: number;
+  weeksStaying: number; // This will now store the DISPLAY (rounded) weeks
   totalAmount: number;
   totalAmountInCents: number;
   seasonalDiscount: number;
 }
 
 // === REVISED HELPER ===
-// Calculates BASE food cost (per week * weeks) and total nights
+// Accepts pre-calculated rounded weeks for consistency with display
 const calculateBaseFoodCost = (
-  selectedWeeks: Week[],
+  totalNights: number, // Pass totalNights in
+  displayWeeks: number, // Use the rounded weeks for calculation
   foodContribution?: number | null
-): { totalNights: number; totalBaseFoodCost: number; effectiveWeeklyRate: number } => {
+): { totalBaseFoodCost: number; effectiveWeeklyRate: number } => {
   console.log('[calculateBaseFoodCost] Inputs:', {
-    selectedWeeksCount: selectedWeeks.length,
+    totalNights, // Log received nights
+    displayWeeks, // Log received rounded weeks
     foodContribution,
   });
-
-  const totalNights = calculateTotalNights(selectedWeeks);
-  // === Calculate complete weeks ===
-  const completeWeeks = calculateDurationDiscountWeeks(selectedWeeks);
 
   // Determine BASE weekly food & facilities rate
   let weeklyFoodRate: number;
   const defaultWeeklyRate = 345; // Default weekly rate
 
   if (foodContribution !== null && foodContribution !== undefined) {
-    weeklyFoodRate = foodContribution; // Use the contribution directly as the weekly rate
+    weeklyFoodRate = foodContribution;
     console.log('[calculateBaseFoodCost] Using food contribution for weekly rate:', { foodContribution, weeklyFoodRate });
   } else {
     weeklyFoodRate = defaultWeeklyRate;
     console.log('[calculateBaseFoodCost] Using default weekly food rate:', weeklyFoodRate);
   }
 
-  // === Use DECIMAL weeks for BASE cost calculation ===
-  const totalWeeksDecimal = calculateTotalWeeksDecimal(selectedWeeks);
-  const totalBaseFoodCost = weeklyFoodRate * totalWeeksDecimal;
-  console.log('[calculateBaseFoodCost] Results:', { totalNights, totalWeeksDecimal, weeklyFoodRate, totalBaseFoodCost });
+  // === Use the provided DISPLAY (rounded) weeks for BASE cost calculation ===
+  const totalBaseFoodCost = weeklyFoodRate * displayWeeks; // Use passed-in rounded weeks
+  console.log('[calculateBaseFoodCost] Results:', { displayWeeks, weeklyFoodRate, totalBaseFoodCost });
 
   return {
-    totalNights,
-    totalBaseFoodCost, // Return the undiscounted cost calculated with decimal weeks
+    // totalNights is calculated outside now
+    totalBaseFoodCost, // Return the undiscounted cost calculated with rounded weeks
     effectiveWeeklyRate: weeklyFoodRate // Return the base rate used
   };
 };
@@ -313,32 +313,39 @@ export function BookingSummary({
       foodContribution,
     });
 
-    // === Calculate number of nights, COMPLETE weeks (for discount %), and DECIMAL weeks (for costs/display) ===
+    // === Calculate fundamental values: nights, complete weeks (for discount), exact decimal weeks ===
     const totalNights = calculateTotalNights(selectedWeeks);
-    const completeWeeks = calculateDurationDiscountWeeks(selectedWeeks);
-    const weeksStayingDecimal = calculateTotalWeeksDecimal(selectedWeeks);
-    console.log('[BookingSummary] useMemo: Calculated Weeks:', { completeWeeks, weeksStayingDecimal });
+    const completeWeeks = calculateDurationDiscountWeeks(selectedWeeks); // Uses floor(days/7)
+    const exactWeeksDecimal = calculateTotalWeeksDecimal(selectedWeeks); // Returns full precision days/7
 
-    // === Calculate Accommodation Cost using DECIMAL weeks (weekly price already includes discounts) ===
+    // === NEW: Calculate weeks rounded for display (WYSIWYG) ===
+    const displayWeeks = selectedWeeks.length > 0 ? Math.round(exactWeeksDecimal * 10) / 10 : 0;
+    console.log('[BookingSummary] useMemo: Calculated Weeks:', { totalNights, completeWeeks, exactWeeksDecimal, displayWeeks });
+
+    // === Calculate Accommodation Cost using EXACT decimal weeks (weekly price already includes discounts) ===
     const weeklyAccPrice = calculatedWeeklyAccommodationPrice ?? 0;
-    const totalAccommodationCost = weeklyAccPrice * weeksStayingDecimal;
-    console.log('[BookingSummary] useMemo: Calculated Accommodation Cost (using decimal weeks):', { weeklyAccPrice, weeksStayingDecimal, totalAccommodationCost });
+    // Use exact weeks here for accuracy as accommodation pricing might have its own logic
+    const totalAccommodationCost = weeklyAccPrice * exactWeeksDecimal;
+    console.log('[BookingSummary] useMemo: Calculated Accommodation Cost (using exact decimal weeks):', { weeklyAccPrice, exactWeeksDecimal, totalAccommodationCost });
 
-    // === Calculate BASE Food Cost using DECIMAL weeks ===
+    // === Calculate BASE Food Cost using DISPLAY (rounded) weeks ===
     const { totalBaseFoodCost, effectiveWeeklyRate } = calculateBaseFoodCost(
-        selectedWeeks,
+        totalNights, // Pass totalNights
+        displayWeeks, // Pass rounded display weeks
         foodContribution
-    ); // This now uses decimal weeks internally
-    console.log('[BookingSummary] useMemo: Calculated Base Food Cost (based on decimal weeks):', { totalBaseFoodCost, effectiveWeeklyRate });
+    );
+    console.log('[BookingSummary] useMemo: Calculated Base Food Cost (based on rounded display weeks):', { totalBaseFoodCost, effectiveWeeklyRate });
 
     // === Determine Duration Discount % using COMPLETE weeks ===
-    const durationDiscountPercent = getDurationDiscount(completeWeeks);
-    console.log('[BookingSummary] useMemo: Determined Duration Discount % (using complete weeks):', { durationDiscountPercent });
+    const rawDurationDiscountPercent = getDurationDiscount(completeWeeks);
+    // === NEW: Round the discount factor to match display (WYSIWYG) ===
+    const roundedDiscountFactor = Math.round(rawDurationDiscountPercent * 100) / 100;
+    console.log('[BookingSummary] useMemo: Determined Duration Discount % (using complete weeks):', { rawDurationDiscountPercent, roundedDiscountFactor });
 
-    // === Apply Discount % to BASE Food Cost ===
-    const foodDiscountAmount = totalBaseFoodCost * durationDiscountPercent;
-    const finalFoodCost = totalBaseFoodCost * (1 - durationDiscountPercent);
-    console.log('[BookingSummary] useMemo: Calculated Final Food Cost:', { totalBaseFoodCost, durationDiscountPercent, foodDiscountAmount, finalFoodCost });
+    // === Apply ROUNDED Discount % to BASE Food Cost (which was calculated using rounded weeks) ===
+    const foodDiscountAmount = totalBaseFoodCost * roundedDiscountFactor; // Use rounded factor
+    const finalFoodCost = totalBaseFoodCost * (1 - roundedDiscountFactor); // Use rounded factor
+    console.log('[BookingSummary] useMemo: Calculated Final Food Cost:', { totalBaseFoodCost, roundedDiscountFactor, foodDiscountAmount, finalFoodCost });
 
     // 4. Combine results
     const subtotal = totalAccommodationCost + finalFoodCost; // Use discounted food cost
@@ -347,23 +354,34 @@ export function BookingSummary({
     console.log('[BookingSummary] useMemo: Calculated Totals:', { totalAccommodationCost, finalFoodCost, subtotal, totalAmount, totalAmountInCents });
 
     // 5. Construct the final object
-    // --- Use calculated weeksStayingDecimal --- 
+    // --- Use calculated displayWeeks for 'weeksStaying' to match UI ---
     const calculatedPricingDetails: PricingDetails = {
       totalNights,
-      totalAccommodationCost,
-      totalFoodAndFacilitiesCost: finalFoodCost, // Use the final discounted food cost here
+      totalAccommodationCost, // Still based on exact weeks
+      totalFoodAndFacilitiesCost: finalFoodCost, // Based on rounded weeks * contribution * rounded discount
       subtotal,
       totalAmount,
       totalAmountInCents,
-      weeksStaying: weeksStayingDecimal, // Store the decimal weeks
+      weeksStaying: displayWeeks, // Store the rounded weeks for display consistency
       effectiveBaseRate: effectiveWeeklyRate, // Base weekly rate for slider reference
-      nightlyAccommodationRate: totalNights > 0 ? +(totalAccommodationCost / totalNights).toFixed(2) : 0, // This is still based on total cost / total nights
+      nightlyAccommodationRate: totalNights > 0 ? +(totalAccommodationCost / totalNights).toFixed(2) : 0, // Based on exact accommodation cost
       baseAccommodationRate: selectedAccommodation?.base_price || 0,
       // --- Discount fields should reflect the logic applied ---
-      durationDiscountAmount: foodDiscountAmount, // Reflects only food discount amount applied to food cost
-      durationDiscountPercent: durationDiscountPercent * 100, // Overall duration discount % determined by COMPLETE weeks
+      durationDiscountAmount: foodDiscountAmount, // Reflects food discount amount applied to food cost (calculated from rounded weeks & rounded discount)
+      durationDiscountPercent: roundedDiscountFactor * 100, // Store the rounded percentage determined by COMPLETE weeks
       seasonalDiscount: 0, // Accommodation seasonal discount is already baked into weekly price
     };
+
+    // ADDED LOG BLOCK: Values right before returning details
+    console.log('[BookingSummary] useMemo: Final Calculation Values for Food Cost', {
+      displayWeeks, // The rounded weeks used
+      foodContribution, // The input from the slider
+      totalBaseFoodCost, // displayWeeks * foodContribution
+      completeWeeks, // For discount lookup
+      rawDurationDiscountPercent, // Raw discount %
+      roundedDiscountFactor, // Discount % rounded to 2 decimals
+      finalFoodCost_unrounded: finalFoodCost, // Base * (1 - roundedDiscount) BEFORE final display rounding
+    });
 
     console.log('[BookingSummary] useMemo: Pricing calculation COMPLETE. Result:', calculatedPricingDetails);
     console.log('[BookingSummary] --- Finished Pricing Recalculation (useMemo) ---');
@@ -536,25 +554,37 @@ export function BookingSummary({
 
       // Calculate check-out date based on the selected check-in date
       const totalDays = calculateTotalDays(selectedWeeks);
-      const checkOut = addDays(selectedCheckInDate, totalDays);
+      const checkOut = addDays(selectedCheckInDate, totalDays-1);
 
       console.log('[Booking Summary] Starting booking process...');
+      console.log('[Booking Summary] handleBookingSuccess: Raw Dates:', { // ADDED LOG BLOCK
+        selectedCheckInDate_ISO: selectedCheckInDate.toISOString(),
+        selectedCheckInDate_Raw: selectedCheckInDate,
+        checkOut_ISO: checkOut.toISOString(),
+        checkOut_Raw: checkOut
+      });
       setIsBooking(true);
       setError(null);
       
       try {
-        console.log('[Booking Summary] Creating booking:', {
+        // Calculate rounded total ONCE
+        const roundedTotal = Math.round(pricing.totalAmount);
+        console.log('[Booking Summary] Calculated rounded total for booking/confirmation:', roundedTotal);
+
+        const formattedCheckIn = formatInTimeZone(selectedCheckInDate, 'UTC', 'yyyy-MM-dd');
+        const formattedCheckOut = formatInTimeZone(checkOut, 'UTC', 'yyyy-MM-dd');
+        console.log('[Booking Summary] Creating booking with FORMATTED (UTC) dates and ROUNDED total:', { 
+          formattedCheckIn,
+          formattedCheckOut,
           accommodationId: selectedAccommodation.id,
-          checkIn: formatInTimeZone(selectedCheckInDate, 'UTC', 'yyyy-MM-dd'), 
-          checkOut: formatInTimeZone(checkOut, 'UTC', 'yyyy-MM-dd'),
-          totalPrice: pricing.totalAmount
+          totalPrice: roundedTotal // Use rounded total
         });
 
         const booking = await bookingService.createBooking({
           accommodationId: selectedAccommodation.id,
-          checkIn: formatInTimeZone(selectedCheckInDate, 'UTC', 'yyyy-MM-dd'),
-          checkOut: formatInTimeZone(checkOut, 'UTC', 'yyyy-MM-dd'),
-          totalPrice: pricing.totalAmount
+          checkIn: formattedCheckIn,
+          checkOut: formattedCheckOut,
+          totalPrice: roundedTotal // Use rounded total
         });
 
         console.log('[Booking Summary] Booking created:', booking);
@@ -566,7 +596,7 @@ export function BookingSummary({
               ...booking,
               accommodation: selectedAccommodation.title,
               guests: selectedAccommodation.capacity,
-              totalPrice: pricing.totalAmount,
+              totalPrice: roundedTotal, // Use rounded total
               checkIn: selectedCheckInDate,
               checkOut: checkOut
             }
@@ -586,6 +616,7 @@ export function BookingSummary({
 
   const handleConfirmClick = async () => {
     console.log('[Booking Summary] Confirm button clicked.');
+    console.log('[Booking Summary] handleConfirmClick: Initial selectedCheckInDate:', selectedCheckInDate?.toISOString(), selectedCheckInDate); // ADDED LOG
     setError(null); // Clear previous errors
 
     if (!validateCheckInDate()) {
@@ -630,6 +661,7 @@ export function BookingSummary({
 
   const handleAdminConfirm = async () => {
     console.log('[Booking Summary] Admin confirm button clicked.');
+    console.log('[Booking Summary] handleAdminConfirm: Initial selectedCheckInDate:', selectedCheckInDate?.toISOString(), selectedCheckInDate); // ADDED LOG
     setError(null);
 
     if (!validateCheckInDate()) {
@@ -702,7 +734,7 @@ export function BookingSummary({
 
               <StripeCheckoutForm
                 authToken={authToken}
-                total={testPaymentAmount !== null && isAdmin ? testPaymentAmount : pricing.totalAmount}
+                total={testPaymentAmount !== null && isAdmin ? testPaymentAmount : Math.round(pricing.totalAmount)}
                 description={`${selectedAccommodation?.title || 'Accommodation'} for ${pricing.totalNights} nights${testPaymentAmount !== null && isAdmin ? ' (TEST PAYMENT)' : ''}`}
                 onSuccess={handleBookingSuccess}
               />
@@ -712,7 +744,7 @@ export function BookingSummary({
       </AnimatePresence>
 
       {/* Summary of Stay section - Outer sticky wrapper */}
-      <div className="lg:sticky lg:top-4 w-full max-w-md lg:max-w-lg mx-auto">
+      <div className="w-full max-w-md lg:max-w-lg mx-auto">
 
         {/* Actual Content Container (Ensure Transparent Background) */}
         <div className="relative p-3 xs:p-4 sm:p-6 bg-transparent"> 
@@ -887,6 +919,7 @@ export function BookingSummary({
                     {selectedAccommodation ? (
                       <div className="flex justify-between gap-x-4 items-baseline">
                         <span className="text-sm text-secondary font-regular">
+                          {/* Use formatNumber on the rounded weeksStaying value */}
                           Accommodation <span className="whitespace-nowrap">({formatNumber(pricing.weeksStaying)} {pricing.weeksStaying === 1 ? 'week' : 'weeks'})</span>
                         </span>
                         <span className="text-sm text-primary font-regular">{formatPriceDisplay(pricing.totalAccommodationCost)}</span>

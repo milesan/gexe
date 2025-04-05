@@ -228,6 +228,8 @@ export default function App() {
   const hasCompletedWhitelistSignup = session?.user?.user_metadata?.has_completed_whitelist_signup === true;
   const isApproved = session?.user?.user_metadata?.approved === true || 
                      session?.user?.user_metadata?.application_status === 'approved';
+  // Read application status, default to 'pending' if not present
+  const applicationStatus = session?.user?.user_metadata?.application_status || 'pending';
   
   console.log('App: Checking user status:', { 
     isWhitelisted, 
@@ -236,10 +238,23 @@ export default function App() {
     hasApplied, 
     hasCompletedWhitelistSignup,
     isAdmin,
+    applicationStatus, // Log the status we read
     metadata: session?.user?.user_metadata
   });
 
+  // --- Decision Logs Start ---
+  console.log(`App: Evaluating routing conditions for user ${session?.user?.email}`, {
+    isAdmin,
+    isApproved,
+    isWhitelisted,
+    isWhitelistedUser,
+    hasCompletedWhitelistSignup,
+    hasApplied,
+    applicationStatus,
+  });
+
   // If user is admin, show full app immediately
+  console.log("App: Checking isAdmin...");
   if (isAdmin) {
     console.log('App: User is admin, showing full app');
     return (
@@ -259,6 +274,7 @@ export default function App() {
   }
 
   // If user is approved, treat them as whitelisted
+  console.log("App: Checking isApproved...");
   if (isApproved) {
     console.log('App: User is approved, treating as whitelisted');
     
@@ -280,6 +296,7 @@ export default function App() {
   }
 
   // If user is whitelisted but hasn't completed signup, show signup page
+  console.log("App: Checking isWhitelisted/isWhitelistedUser AND !hasCompletedWhitelistSignup...");
   if ((isWhitelisted || isWhitelistedUser) && !hasCompletedWhitelistSignup) {
     console.log('App: Showing whitelist signup page');
     return (
@@ -297,6 +314,7 @@ export default function App() {
   }
 
   // If user is whitelisted and has completed signup, show full app
+  console.log("App: Checking isWhitelisted/isWhitelistedUser AND hasCompletedWhitelistSignup...");
   if ((isWhitelisted || isWhitelistedUser) && hasCompletedWhitelistSignup) {
     console.log('App: Rendering whitelisted view');
     return (
@@ -317,6 +335,7 @@ export default function App() {
   }
 
   // For users with no application or rejected
+  console.log("App: Checking !hasApplied...");
   if (!hasApplied) {
     console.log('App: User has not applied yet, showing application flow');
     return (
@@ -340,14 +359,15 @@ export default function App() {
   }
 
   // For users who have applied but aren't whitelisted or admin
-  console.log('App: User has applied but is not whitelisted or admin, showing pending status');
+  console.log("App: Entering final block for applied but not approved/whitelisted/admin users.");
+  console.log('App: User has applied but is not whitelisted or admin, showing pending/rejected status');
   return (
     <ErrorBoundary>
       <ThemeProvider>
         <Router>
           <Routes>
             <Route path="/" element={<Navigate to="/pending" replace />} />
-            <Route path="/pending" element={<PendingPage />} />
+            <Route path="/pending" element={<PendingPage status={applicationStatus as 'pending' | 'rejected'} />} />
             <Route path="/confirmation" element={<ConfirmationPage />} />
             <Route path="/retro2" element={<Retro2Page />} />
             <Route

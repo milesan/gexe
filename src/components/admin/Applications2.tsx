@@ -99,6 +99,8 @@ export function Applications2() {
       } else if (status === 'rejected') {
         const application = applications.find(app => app.id === id);
         console.log('Applications2: Rejecting application', { id, email: application?.user_email });
+        console.log('type of id', typeof id);
+        console.log('Is valid UUID?', /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
         const { error } = await supabase.rpc('reject_application', {
           p_application_id: id
         });
