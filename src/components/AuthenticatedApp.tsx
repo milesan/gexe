@@ -13,6 +13,7 @@ import { useAccommodations } from '../hooks/useAccommodations';
 import { WhitelistWelcomeModal } from './WhitelistWelcomeModal';
 import { Menu, X, Sun, Moon } from 'lucide-react';
 import { Footer } from './Footer';
+import { BugReportFAB } from './BugReportFAB';
 
 // Basic debounce function
 function debounce<T extends (...args: any[]) => void>(func: T, wait: number) {
@@ -355,6 +356,8 @@ export function AuthenticatedApp() {
         isOpen={showWelcomeModal}
         onClose={handleWelcomeClose}
       />
+
+      <BugReportFAB />
 
       {/* Add CSS keyframes for the gradient animation */}
       <style>
