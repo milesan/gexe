@@ -236,7 +236,7 @@ export function Applications2() {
                 <div className="flex items-center gap-4">
                   <button
                     onClick={() => setSelectedApplication(application)}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] transition-colors font-regular text-sm"
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-primary)] hover:bg-[var(--color-button-secondary-bg-hover)] transition-colors font-regular text-sm"
                   >
                     <Eye className="w-4 h-4" />
                     View

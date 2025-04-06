@@ -93,25 +93,25 @@ export function ApplicationDetails({ application, onClose }: ApplicationDetailsP
   return (
     <>
       <div 
-        className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+        className="fixed inset-0 bg-[var(--color-overlay)] backdrop-blur-sm flex items-center justify-center p-4 z-50"
         onClick={onClose}
       >
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col"
+          className="bg-[var(--color-bg-main)] rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex items-center justify-between p-6 border-b">
+          <div className="flex items-center justify-between p-6 border-b border-[var(--color-border)]">
             <div>
-              <h2 className="text-xl font-medium">
+              <h2 className="text-xl font-medium text-[var(--color-text-primary)]">
                 {firstName} {lastName}
               </h2>
-              <p className="text-sm text-stone-600">{application.user_email}</p>
+              <p className="text-sm text-[var(--color-text-secondary)]">{application.user_email}</p>
             </div>
             <button 
               onClick={onClose} 
-              className="text-stone-400 hover:text-stone-600 transition-colors"
+              className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
             >
               <X className="w-6 h-6" />
             </button>
@@ -121,7 +121,7 @@ export function ApplicationDetails({ application, onClose }: ApplicationDetailsP
             <div className="p-6">
               {sections.map((section) => (
                 <div key={section} className="mb-8">
-                  <h3 className="text-lg font-medium text-stone-900 mb-4">{section}</h3>
+                  <h3 className="text-lg font-medium text-[var(--color-text-primary)] mb-4">{section}</h3>
                   <div className="space-y-6">
                     {questions
                       .filter(q => q.section === section)
@@ -138,11 +138,11 @@ export function ApplicationDetails({ application, onClose }: ApplicationDetailsP
                         });
                         
                         return (
-                          <div key={question.id} className="bg-stone-50 p-4 rounded-lg">
-                            <h4 className="text-sm font-medium text-stone-900 mb-2">
+                          <div key={question.id} className="bg-[var(--color-bg-subtle)] p-4 rounded-lg">
+                            <h4 className="text-sm font-medium text-[var(--color-text-primary)] mb-2">
                               {question.text}
                             </h4>
-                            <div className="text-stone-600 whitespace-pre-wrap">
+                            <div className="text-[var(--color-text-secondary)] whitespace-pre-wrap">
                               {question.type === 'file' ? (
                                 renderPhotoGrid(answer)
                               ) : (

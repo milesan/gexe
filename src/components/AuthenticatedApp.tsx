@@ -352,7 +352,13 @@ export function AuthenticatedApp() {
         </Routes>
       </main>
 
-      <Footer />
+      <Footer 
+        wrapperClassName={
+          location.pathname === '/admin' 
+            ? "bg-[var(--color-bg-main)] border-t border-border mt-auto py-6"
+            : undefined // Use default classes if not admin
+        }
+      />
 
       <WhitelistWelcomeModal
         isOpen={showWelcomeModal}
