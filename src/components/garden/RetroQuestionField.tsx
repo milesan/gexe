@@ -87,13 +87,13 @@ export function RetroQuestionField({ question, value, onChange, onAutoAdvance, t
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.65 }}
               >
-                <div className="space-y-4 font-display text-lg leading-relaxed max-w-lg">
+                <div className="space-y-4 font-display text-sm leading-relaxed max-w-lg">
                   <p className="text-[#FFBF00]/60">This is a curated place, unlike any other.</p>
                   <p className="text-[#FFBF00]/70">We seek those with the attention span & curiosity 
                   to complete this application.</p>
                   <p className="text-[#FFBF00]/80">We're not impressed by your followers, fortune, 
                   or fame [though none of those exclude you].</p>
-                  <p className="text-[#FFBF00] text-2xl">We seek the realest.</p>
+                  <p className="text-[#FFBF00] text-xl">We seek the realest.</p>
                 </div>
               </motion.div>
             </div>
@@ -115,7 +115,7 @@ export function RetroQuestionField({ question, value, onChange, onAutoAdvance, t
                   <button 
                     key={option} 
                     onClick={() => handleChange(option)}
-                    className="bg-[#FFBF00] text-black px-6 py-3 text-lg transition-colors hover:bg-[#FFBF00]/90"
+                    className="bg-[#FFBF00] text-black px-6 py-3 text-base transition-colors hover:bg-[#FFBF00]/90"
                     style={{
                       clipPath: `polygon(
                         0 4px, 4px 4px, 4px 0,

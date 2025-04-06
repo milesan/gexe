@@ -97,17 +97,32 @@ export function Retro2Form({ questions, onSubmit }: Props) {
       isImageUpload: Array.isArray(value) && value.length > 0 && value[0]?.url,
       value: Array.isArray(value) && value.length > 0 && value[0]?.url ? 'Image URLs' : value
     });
-    const newFormData = {
-      ...formData,
-      [questionId]: value
-    };
-    setFormData(newFormData);
+    // const newFormData = {
+    //   ...formData,
+    //   [questionId]: value
+    // };
+    // setFormData(newFormData);
 
-    // Save after state update
-    setTimeout(() => {
-      console.log('💾 Auto-saving after field change');
-      saveData(newFormData);  // Use newFormData instead of formData to ensure we have latest
-    }, 0);
+    // Use functional update to ensure we're working with the latest state
+    setFormData(prevFormData => {
+      const updatedFormData = {
+        ...prevFormData,
+        [questionId]: value
+      };
+
+      // Save the updated data. Passing it directly avoids potential closure issues
+      // with the previous setTimeout approach.
+      console.log('💾 Queuing auto-save after field change');
+      saveData(updatedFormData); 
+
+      return updatedFormData; // Return the new state for setFormData
+    });
+
+    // Save after state update - Moved inside the functional update
+    // setTimeout(() => {
+    //   console.log('💾 Auto-saving after field change');
+    //   saveData(newFormData);  // Use newFormData instead of formData to ensure we have latest
+    // }, 0);
 
     // If this is the consent question and user consents, auto-advance
     const consentQuestion = questions.find(q => q.section === 'intro');

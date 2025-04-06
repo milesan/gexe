@@ -88,7 +88,7 @@ export function RetroQuestionField({ question, value, onChange, onAutoAdvance, t
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.65 }}
               >
-                <div className="space-y-4 font-display text-lg leading-relaxed max-w-lg">
+                <div className="space-y-4 font-display text-base leading-relaxed max-w-lg">
                   <p className="text-[#FFBF00]/60">This is a curated place, unlike any other.</p>
                   <p className="text-[#FFBF00]/70">We seek those with the attention span & curiosity 
                   to complete this application.</p>
