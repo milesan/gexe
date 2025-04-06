@@ -55,12 +55,24 @@ export function PendingPage({ status = 'pending' }: Props) {
             )}
           </p>
 
-          <button
-            onClick={handleSignOut}
-            className="w-full bg-accent-primary font-regular text-stone-800 py-3 px-6 rounded-lg transition-colors"
-          >
-            Sign Out
-          </button>
+          <div className="flex w-full space-x-4 mt-6">
+            {status === 'pending' && (
+              <a
+                href="https://www.youtube.com/watch?v=9EYgKqjocO0"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-regular py-3 px-6 rounded-lg transition-colors text-center"
+              >
+                Continue
+              </a>
+            )}
+            <button
+              onClick={handleSignOut}
+              className={`${status === 'pending' ? 'flex-1' : 'w-full'} bg-accent-primary font-regular text-stone-800 py-3 px-6 rounded-lg transition-colors`}
+            >
+              Sign Out
+            </button>
+          </div>
         </div>
       </motion.div>
     </div>

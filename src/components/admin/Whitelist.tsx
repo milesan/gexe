@@ -242,7 +242,7 @@ export function Whitelist() {
   if (loading) {
     return (
       <div className="flex justify-center items-center p-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-900"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-accent-primary)]"></div>
       </div>
     );
   }
@@ -250,48 +250,48 @@ export function Whitelist() {
   return (
     <div className="p-6">
       {error && (
-        <div className="mb-6 p-4 bg-rose-50 text-rose-600 rounded-lg">
+        <div className="mb-6 p-4 bg-[var(--color-bg-error)] text-[var(--color-text-error)] rounded-lg">
           {error}
         </div>
       )}
 
-      <div className="bg-white p-6 rounded-lg border border-stone-200 mb-6">
+      <div className="bg-[var(--color-bg-surface)] p-6 rounded-lg border border-[var(--color-border)] mb-6">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium">Add to Whitelist</h3>
+          <h3 className="text-lg font-display font-medium text-[var(--color-text-primary)]">Add to Whitelist</h3>
           <button
             onClick={() => setShowUpload(true)}
-            className="flex items-center gap-2 text-emerald-600 hover:text-emerald-700"
+            className="flex font-regular text-sm items-center gap-2 text-[var(--color-accent-secondary)] hover:text-[var(--color-accent-secondary-hover)]"
           >
             <Upload className="w-4 h-4" />
             Upload CSV
           </button>
         </div>
 
-        <div className="flex gap-4">
+        <div className="flex gap-4 font-regular text-sm">
           <input
             type="email"
             value={newEmail}
             onChange={(e) => setNewEmail(e.target.value)}
             placeholder="Email address"
-            className="flex-1 p-2 border border-stone-200 rounded-lg focus:ring-2 focus:ring-emerald-900 focus:border-emerald-900"
+            className="flex-1 p-2 border border-[var(--color-border)] bg-[var(--color-bg-input)] text-[var(--color-text-primary)] rounded-lg focus:ring-2 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)]"
           />
           <input
             type="text"
             value={newNotes}
             onChange={(e) => setNewNotes(e.target.value)}
             placeholder="Notes (optional)"
-            className="flex-1 p-2 border border-stone-200 rounded-lg focus:ring-2 focus:ring-emerald-900 focus:border-emerald-900"
+            className="flex-1 p-2 border border-[var(--color-border)] bg-[var(--color-bg-input)] text-[var(--color-text-primary)] rounded-lg focus:ring-2 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)]"
           />
           <button
             onClick={addToWhitelist}
             disabled={isAdding || !newEmail}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-              isAdding || !newEmail 
-                ? 'bg-stone-300 cursor-not-allowed' 
-                : 'bg-emerald-900 text-white hover:bg-emerald-800'
+              isAdding || !newEmail
+                ? 'bg-[var(--color-button-disabled-bg)] text-[var(--color-button-disabled-text)] cursor-not-allowed'
+                : 'bg-[var(--color-button-primary-bg)] text-[var(--color-button-primary-text)] hover:bg-[var(--color-button-primary-bg-hover)]'
             }`}
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4 font-regular text-sm" />
             {isAdding ? 'Adding...' : 'Add'}
           </button>
         </div>
@@ -304,24 +304,24 @@ export function Whitelist() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="bg-white p-4 rounded-lg border border-stone-200 flex justify-between items-center"
+            className="bg-[var(--color-bg-surface)] p-4 rounded-lg border border-[var(--color-border)] flex justify-between items-center"
           >
             <div>
-              <div className="font-medium">{entry.email}</div>
+              <div className="font-medium text-[var(--color-text-primary)]">{entry.email}</div>
               {entry.notes && (
-                <div className="text-sm text-stone-600 mt-1">{entry.notes}</div>
+                <div className="text-sm text-[var(--color-text-secondary)] mt-1">{entry.notes}</div>
               )}
               <div className="flex gap-4 mt-2">
                 {entry.has_created_account ? (
                   <span className="text-sm text-emerald-600">Has Account</span>
                 ) : (
-                  <span className="text-sm text-stone-500">No Account Yet</span>
+                  <span className="text-sm text-[var(--color-text-secondary)]">No Account Yet</span>
                 )}
                 {entry.has_seen_welcome && (
                   <span className="text-sm text-emerald-600">Has Seen Welcome</span>
                 )}
                 {entry.last_login && (
-                  <span className="text-sm text-stone-500">
+                  <span className="text-sm text-[var(--color-text-secondary)]">
                     Last login: {new Date(entry.last_login).toLocaleString()}
                   </span>
                 )}
@@ -329,7 +329,7 @@ export function Whitelist() {
             </div>
             <button
               onClick={() => removeFromWhitelist(entry.id)}
-              className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+              className="p-2 text-[var(--color-text-error)] hover:bg-[var(--color-bg-error-hover)] rounded-lg transition-colors"
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -349,25 +349,25 @@ export function Whitelist() {
               initial={{ scale: 0.95 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.95 }}
-              className="bg-white rounded-lg max-w-md w-full p-6"
+              className="bg-[var(--color-bg-surface)] rounded-lg max-w-md w-full p-6"
             >
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium">Upload CSV</h3>
+                <h3 className="font-display text-lg font-medium text-[var(--color-text-primary)]">Upload CSV</h3>
                 <button
                   onClick={() => setShowUpload(false)}
-                  className="text-stone-400 hover:text-stone-600"
+                  className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
                 >
                   <X className="w-6 h-6" />
                 </button>
               </div>
-              <p className="text-stone-600 mb-4">
+              <p className="text-[var(--color-text-secondary)] mb-4">
                 Upload a CSV file containing one email address per line.
               </p>
               <input
                 type="file"
                 accept=".csv,text/csv"
                 onChange={handleFileUpload}
-                className="w-full"
+                className="w-full text-[var(--color-text-secondary)]"
               />
             </motion.div>
           </motion.div>

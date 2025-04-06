@@ -20,7 +20,7 @@ export function BugReportFAB() {
     <>
       <button
         onClick={openModal}
-        className="fixed bottom-4 left-4 border-2 border-[var(--color-text-primary,theme(colors.gray.100))] text-[var(--color-text-primary,theme(colors.gray.100))] rounded-full p-2.5 shadow-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring,var(--color-accent-primary))] focus:ring-offset-2 focus:ring-offset-[var(--color-focus-offset,theme(colors.gray.800))] transition-all hover:bg-[var(--color-primary-hover-faint,color-mix(in_srgb,_theme(colors.gray.100)_10%,_transparent))] z-50"
+        className="fixed bottom-4 left-4 z-50 p-2 rounded-full bg-[var(--color-button-secondary-bg)] text-secondary hover:text-primary hover:bg-[var(--color-button-secondary-bg-hover)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring,var(--color-accent-primary))] focus:ring-offset-2 focus:ring-offset-[var(--color-focus-offset,var(--color-bg-main))] shadow-lg"
         aria-label="Report a bug"
         title="Report an Issue or Bug"
       >

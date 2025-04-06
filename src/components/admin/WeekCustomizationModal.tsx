@@ -8,7 +8,7 @@ import {
   isDateInWeek,
   utcToLocalMidnight
 } from '../../utils/dates';
-import { AlertTriangle, Info, Calendar } from 'lucide-react';
+import { AlertTriangle, Info, Calendar, X } from 'lucide-react';
 import { CalendarService } from '../../services/CalendarService';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
@@ -262,10 +262,16 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
       before: utcToLocalMidnight(normalizeToUTCDate(startDate)),
       after: utcToLocalMidnight(normalizeToUTCDate(endDate))
   };
-  const validDisabledDates = Object.entries(disabledBounds)
-      .filter(([_, date]) => date !== null)
-      .map(([key, date]) => ({ [key]: date as Date }))
-      .reduce((acc, obj) => ({ ...acc, ...obj }), {});
+
+  // Construct the disabled matcher object, ensuring both before and after are defined
+  const disabledMatcher: { before: Date; after: Date } = {
+      before: (disabledBounds.before && !isNaN(disabledBounds.before.getTime())) 
+                  ? disabledBounds.before 
+                  : new Date(0), // Use epoch if no valid 'before' date
+      after: (disabledBounds.after && !isNaN(disabledBounds.after.getTime()))
+                 ? disabledBounds.after
+                 : new Date(8640000000000000) // Use max date if no valid 'after' date
+  };
 
   // Add logging to verify disabled bounds calculation
   console.log("--- DayPicker Disabled Bounds ---");
@@ -307,29 +313,39 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
 
   if (!isOpen) return null;
 
-  // Base modal classes
-  const modalOverlayClasses = "fixed inset-0 bg-black bg-opacity-30 dark:bg-overlay dark:backdrop-blur-sm flex items-center justify-center z-50 p-4"; // Added padding for safety
-  const contentContainerClasses = "rounded-lg max-w-md w-full shadow-xl border border-gray-300 dark:border-gray-500/30 max-h-[85vh] overflow-y-auto relative"; // Added max-h, overflow, relative
-  const contentPaddingClasses = "p-6"; // Separated padding
-  const contentBgClasses = "bg-white dark:bg-gray-800/95 dark:backdrop-blur-sm"; // Added dark:backdrop-blur-sm
-  const textBaseClasses = "text-gray-900 dark:text-white"; // Base text for light/dark
-  const textMutedClasses = "text-gray-700 dark:text-gray-300"; // Muted text for light/dark
-  const inputBaseClasses = "w-full p-2 border rounded bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 dark:focus:border-blue-400 dark:text-white dark:placeholder-gray-400";
+  // Base modal classes (consistent with DiscountModal)
+  const modalOverlayClasses = "fixed inset-0 bg-overlay backdrop-blur-sm flex items-center justify-center z-50 p-4"; // Match DiscountModal
+  const contentContainerClasses = "bg-gray-800/95 rounded-lg p-4 sm:p-6 max-w-md w-full relative z-[101] max-h-[90vh] overflow-y-auto shadow-xl border border-gray-500/30 text-white backdrop-blur-sm"; // Match DiscountModal styling
+  const contentPaddingClasses = ""; // Padding now part of contentContainerClasses
+  const contentBgClasses = ""; // Background now part of contentContainerClasses
+  const textBaseClasses = "text-white font-regular"; // Simplified dark styles
+  const textMutedClasses = "text-gray-300 font-regular"; // Simplified dark styles
+  const inputBaseClasses = "w-full p-2 border rounded bg-gray-700 border-gray-600 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400 disabled:opacity-50"; // Simplified dark styles, removed redundant dark prefixes
   const buttonBaseClasses = "px-4 py-2 rounded disabled:opacity-50 font-regular focus:outline-none focus:ring-2 focus:ring-offset-2";
-  const primaryButtonClasses = `${buttonBaseClasses} bg-blue-600 text-white hover:bg-blue-700 dark:hover:bg-blue-500 focus:ring-blue-500 dark:focus:ring-blue-400`;
-  const secondaryButtonClasses = `${buttonBaseClasses} text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 focus:ring-gray-400`;
-  const dangerButtonClasses = `${buttonBaseClasses} text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 focus:ring-red-500 dark:focus:ring-red-400 mr-auto`; // Added mr-auto here
+  const primaryButtonClasses = `${buttonBaseClasses} bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500 dark:focus:ring-blue-400`; // Removed redundant dark styles
+  const secondaryButtonClasses = `${buttonBaseClasses} text-gray-300 hover:text-white bg-gray-700 hover:bg-gray-600 focus:ring-gray-400 border border-gray-600`; // Added border, simplified dark styles
+  const dangerButtonClasses = `${buttonBaseClasses} text-red-400 hover:text-red-300 focus:ring-red-400 border border-transparent hover:border-red-500/50 mr-auto`; // Simplified dark styles, added hover border
+  const closeButtonClasses = "absolute top-2 sm:top-4 right-2 sm:right-4 text-gray-300 hover:text-white"; // Add this for consistency
 
   console.log("State before render - selectedFlexDates (UTC):", selectedFlexDates.map(d => d?.toISOString()));
   const datesForPicker = selectedFlexDates.map(d => utcToLocalMidnight(d));
   console.log("Dates passed to DayPicker selected prop (Local):", datesForPicker.map(d => d?.toString()));
 
   return (
-    <div className={modalOverlayClasses}>
+    <div className={modalOverlayClasses} onClick={onClose}>
       {/* Outer container for sizing, scrolling, and base background/border */}
-      <div className={`${contentContainerClasses} ${contentBgClasses} ${textBaseClasses}`}>
-        {/* Inner container for padding */}
-        <div className={contentPaddingClasses}>
+      <div 
+        className={`${contentContainerClasses} ${textBaseClasses}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Inner container for padding - REMOVED */}
+        {/* <div className={contentPaddingClasses}> */} 
+
+          {/* Add Close Button */}
+          <button onClick={onClose} className={closeButtonClasses} disabled={isSaving}>
+            <X className="h-5 w-5" />
+          </button>
+
           <h2 className={`text-xl font-bold mb-4 font-regular ${textBaseClasses}`}>Customize Week</h2>
           
           {/* Status Hint - Apply dark theme styles */}
@@ -438,7 +454,7 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
                 selected={selectedFlexDates.map(d => utcToLocalMidnight(d))}
                 defaultMonth={utcToLocalMidnight(normalizeToUTCDate(startDate))}
                 onSelect={handleFlexDatesSelect}
-                disabled={validDisabledDates}
+                disabled={disabledMatcher}
                 className="border-0"
                 classNames={{
                   // Add any necessary class overrides here if base CSS isn't enough
@@ -498,7 +514,7 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
               {isSaving ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
-        </div>
+        {/* </div> */}
       </div> {/* End content container */}
     </div>
   );

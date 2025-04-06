@@ -290,51 +290,51 @@ export function InventoryCalendar({ onClose }: Props) {
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
           transition={{ type: "spring", damping: 30, stiffness: 300 }}
-          className="absolute inset-0 bg-white"
+          className="absolute inset-0 bg-[var(--color-bg-surface)]"
         >
           <div className="h-screen flex flex-col">
-            <div className="p-4 border-b border-stone-200 flex justify-between items-center bg-white">
+            <div className="p-4 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg-surface)]">
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1))}
-                  className="p-2 hover:bg-gray-100 rounded-full"
+                  className="p-2 hover:bg-[var(--color-bg-surface-hover)] rounded-full text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
-                <h2 className="text-xl font-semibold">
+                <h2 className="text-lg font-display font-light text-[var(--color-text-primary)]">
                   {format(currentDate, 'MMMM yyyy')}
                 </h2>
                 <button
                   onClick={() => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1))}
-                  className="p-2 hover:bg-gray-100 rounded-full"
+                  className="p-2 hover:bg-[var(--color-bg-surface-hover)] rounded-full text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
                 >
                   <ChevronRight className="w-5 h-5" />
                 </button>
               </div>
 
               <div className="flex items-center gap-4">
-                <div className="flex items-center gap-4 text-sm">
+                <div className="flex items-center gap-4 text-xs text-[var(--color-text-secondary)]">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
-                    <span>Available</span>
+                    <span className="font-regular">Available</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
-                    <span>Hold</span>
+                    <span className="font-regular">Hold</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-black"></div>
-                    <span>Booked</span>
+                    <span className="font-regular">Booked</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-20 h-3 rounded-full bg-gradient-to-r from-emerald-500 to-black"></div>
-                    <span>Check-in →</span>
+                    <span className="font-regular">Check-in →</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-20 h-3 rounded-full bg-gradient-to-l from-emerald-500 to-black"></div>
-                    <span>Check-out →</span>
+                    <span className="font-regular">Check-out →</span>
                   </div>
-                  <div className="h-6 border-l border-stone-200 mx-2"></div>
+                  <div className="h-6 border-l border-[var(--color-border)] mx-2"></div>
                   <div className="flex items-center gap-2">
                     <div className="flex gap-1">
                       <div className="w-3 h-3 bg-emerald-500"></div>
@@ -343,13 +343,13 @@ export function InventoryCalendar({ onClose }: Props) {
                       <div className="w-3 h-3 bg-stone-950"></div>
                       <div className="w-3 h-3 bg-black"></div>
                     </div>
-                    <span>Dorm Occupancy (Available → Full)</span>
+                    <span className="font-regular">Dorm Occupancy (Available → Full)</span>
                   </div>
                 </div>
 
                 <button
                   onClick={onClose}
-                  className="p-2 hover:bg-stone-100 rounded-full text-stone-600 hover:text-stone-900 transition-colors"
+                  className="p-2 hover:bg-[var(--color-bg-surface-hover)] rounded-full text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
                 >
                   <X className="w-6 h-6" />
                 </button>
@@ -358,8 +358,8 @@ export function InventoryCalendar({ onClose }: Props) {
 
             <div className="flex-1 overflow-auto p-6">
               {error && (
-                <div className="mb-4 p-4 bg-red-50 border-l-4 border-red-500 rounded">
-                  <p className="text-red-700">{error}</p>
+                <div className="mb-4 p-4 bg-[var(--color-bg-error)] border-l-4 border-red-500 rounded">
+                  <p className="text-[var(--color-text-error)]">{error}</p>
                 </div>
               )}
 
@@ -369,17 +369,17 @@ export function InventoryCalendar({ onClose }: Props) {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full divide-y divide-gray-200" style={{ tableLayout: 'fixed' }}>
-                    <thead className="bg-gray-50">
+                  <table className="w-full divide-y divide-[var(--color-border)]" style={{ tableLayout: 'fixed' }}>
+                    <thead className="bg-[var(--color-bg-surface)]">
                       <tr>
-                        <th className="sticky left-0 bg-gray-50 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[200px]">
+                        <th className="sticky left-0 bg-[var(--color-bg-surface)] px-4 py-2 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider w-[200px]">
                           Accommodation
                         </th>
                         {daysInMonth.map(day => {
                           // Convert local day to UTC for display
                           const utcDay = normalizeToUTCDate(day);
                           return (
-                            <th key={utcDay.toISOString()} className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th key={utcDay.toISOString()} className="px-2 py-2 text-center text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
                               <div>{format(utcDay, 'd')}</div>
                               <div>{format(utcDay, 'EEE')}</div>
                             </th>
@@ -387,11 +387,11 @@ export function InventoryCalendar({ onClose }: Props) {
                         })}
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-[var(--color-bg-surface)] divide-y divide-[var(--color-border)]">
                       {accommodations.map((accommodation) => (
                         <tr key={accommodation.id}>
-                          <td className="sticky left-0 bg-white px-4 py-2 whitespace-nowrap border-r">
-                            <div className="text-sm font-medium text-gray-900">
+                          <td className="sticky left-0 bg-[var(--color-bg-surface)] px-4 py-2 whitespace-nowrap border-r border-[var(--color-border)]">
+                            <div className="text-sm font-medium text-[var(--color-text-primary)]">
                               {accommodation.title} ({accommodation.inventory_count})
                             </div>
                           </td>

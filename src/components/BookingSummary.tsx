@@ -792,7 +792,7 @@ export function BookingSummary({
                   {/* Content Wrapper (maybe add relative z-10 if needed) */}
                   <div className="relative z-10 space-y-4 sm:space-y-5"> 
                     {/* Arrival Information */}
-                    <div className="border border-border rounded-lg shadow-sm p-3 sm:p-4">
+                    <div className="border border-border rounded-lg shadow-sm p-3 sm:p-4 bg-card-highlight">
                       <h4 className="font-medium text-primary mb-2 font-regular text-base sm:text-lg">Arrive By</h4>
                       <div className="space-y-1">
                         <p className="text-accent-primary text-sm font-regular">{formatDateWithDay(selectedWeeks[0].startDate)}</p>
@@ -801,7 +801,7 @@ export function BookingSummary({
                     </div>
                     
                     {/* Departure Information */}
-                    <div className="border border-border rounded-lg shadow-sm p-3 sm:p-4">
+                    <div className="border border-border rounded-lg shadow-sm p-3 sm:p-4 bg-card-highlight">
                       <h4 className="font-medium text-primary mb-2 font-regular text-base sm:text-lg">Begone by</h4>
                       <div className="space-y-1">
                         <p className="text-secondary text-sm font-regular">{formatDateWithOrdinal(selectedWeeks[selectedWeeks.length - 1].endDate)}</p>
@@ -810,7 +810,7 @@ export function BookingSummary({
                     </div>
                     
                     {/* Duration */}
-                    <div className="p-4 rounded-lg border border-border">
+                    <div className="p-4 rounded-lg border border-border bg-card-highlight">
                       <div className="hidden xl:flex xl:justify-between xl:items-center">
                         <div className="w-full text-center">
                           <span className="text-accent-primary font-medium font-regular text-sm sm:text-base">
@@ -865,7 +865,7 @@ export function BookingSummary({
                       </div>
                       
                       <div className="space-y-3">
-                        <div className="p-3 sm:p-4 rounded-lg border border-border">
+                        <div className="p-3 sm:p-4 rounded-lg border border-border bg-card-highlight">
                           <div className="text-center">
                             <span className="text-accent-primary font-medium text-sm sm:text-base font-regular">
                               {selectedAccommodation.title === 'Van Parking' || 

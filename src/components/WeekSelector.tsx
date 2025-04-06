@@ -390,11 +390,13 @@ export function WeekSelector({
                 'relative p-2 xxs:p-2.5 xs:p-3 sm:p-4 border-2 transition-all duration-300',
                 'min-h-[80px] xxs:min-h-[90px] xs:min-h-[100px] sm:min-h-[110px]',
                 'shadow-sm hover:shadow-md',
-                // Default background - applied when NOT selected and NOT covered by other border logic/status
+                // Unconditionally add highlight class (CSS rule scopes it to light mode)
+                'bg-card-highlight',
+                // Default background
                 !isWeekSelected(week) && !(selectedWeeks.length > 1 && isWeekBetweenSelection(week, selectedWeeks)) && !(isAdmin && (week.status === 'hidden' || week.status === 'deleted' || (week.status === 'visible' && week.isCustom))) && 'bg-surface/50 backdrop-blur-sm',
                 // Selection states (These should override the default bg)
-                isWeekSelected(week) && 'border-accent-primary shadow-lg bg-surface/50 backdrop-blur-sm', // ADDED blur effect to selected state
-                !isWeekSelected(week) && selectedWeeks.length > 1 && isWeekBetweenSelection(week, selectedWeeks) && 'border-accent-primary/20 bg-surface/50 backdrop-blur-sm', // Keep blur here too
+                isWeekSelected(week) && 'border-accent-primary shadow-lg bg-surface/50 backdrop-blur-sm', 
+                !isWeekSelected(week) && selectedWeeks.length > 1 && isWeekBetweenSelection(week, selectedWeeks) && 'border-accent-primary/20 bg-surface/50 backdrop-blur-sm', 
                 // Opacity/cursor for non-selectable (content hiding handled below)
                 !isWeekSelectable(week, isAdmin, selectedWeeks) && !isAdmin && 'opacity-50 cursor-not-allowed',
                 // Hover/cursor for selectable admin view

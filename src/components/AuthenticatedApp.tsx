@@ -36,8 +36,8 @@ export function AuthenticatedApp() {
   // Header scroll state
   const [showHeader, setShowHeader] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
-  // THEME FUNCTIONALITY COMMENTED OUT - TO BE IMPLEMENTED LATER
-  // const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  // THEME FUNCTIONALITY RE-ENABLED
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const session = useSession();
   const navigate = useNavigate();
   const location = useLocation();
@@ -89,30 +89,30 @@ export function AuthenticatedApp() {
     };
   }, [debouncedScrollHandler]); // Re-attach if handler changes (it shouldn't often due to useCallback)
 
-  // THEME FUNCTIONALITY COMMENTED OUT - TO BE IMPLEMENTED LATER
+  // THEME FUNCTIONALITY RE-ENABLED
   // Effect to load saved theme from localStorage on mount
-  // useEffect(() => {
-  //   const savedTheme = localStorage.getItem('theme');
-  //   if (savedTheme === 'light') {
-  //     setTheme('light');
-  //     document.documentElement.classList.add('light-mode');
-  //   }
-  // }, []);
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'light') {
+      setTheme('light');
+      document.documentElement.classList.add('light-mode');
+    }
+  }, []);
 
   // Effect to apply theme changes
-  // useEffect(() => {
-  //   if (theme === 'light') {
-  //     document.documentElement.classList.add('light-mode');
-  //     localStorage.setItem('theme', 'light');
-  //   } else {
-  //     document.documentElement.classList.remove('light-mode');
-  //     localStorage.setItem('theme', 'dark');
-  //   }
-  // }, [theme]);
+  useEffect(() => {
+    if (theme === 'light') {
+      document.documentElement.classList.add('light-mode');
+      localStorage.setItem('theme', 'light');
+    } else {
+      document.documentElement.classList.remove('light-mode');
+      localStorage.setItem('theme', 'dark');
+    }
+  }, [theme]);
 
-  // const toggleTheme = () => {
-  //   setTheme(prevTheme => prevTheme === 'dark' ? 'light' : 'dark');
-  // };
+  const toggleTheme = () => {
+    setTheme(prevTheme => prevTheme === 'dark' ? 'light' : 'dark');
+  };
 
   const checkWhitelistStatus = async () => {
     try {
@@ -180,14 +180,16 @@ export function AuthenticatedApp() {
   return (
     <div className="min-h-screen bg-main flex flex-col"
       style={{
-        backgroundImage: `linear-gradient(rgba(31, 41, 55, 0.9), rgba(31, 41, 55, 0.9)), url(https://guquxpxxycfmmlqajdyw.supabase.co/storage/v1/object/public/background-image//fern-background-tiling-2.png)`,
+        backgroundImage: theme === 'light'
+          ? `linear-gradient(rgba(250, 250, 249, 0.92), rgba(250, 250, 249, 0.92)), url(https://guquxpxxycfmmlqajdyw.supabase.co/storage/v1/object/public/background-image//fern-background-tiling-2.png)` // Lighter overlay for light mode - Increased opacity
+          : `linear-gradient(rgba(31, 41, 55, 0.9), rgba(31, 41, 55, 0.9)), url(https://guquxpxxycfmmlqajdyw.supabase.co/storage/v1/object/public/background-image//fern-background-tiling-2.png)`, // Original dark overlay
         backgroundSize: 'auto',
         backgroundRepeat: 'repeat',
         backgroundPosition: 'center',
       }}
     >
       {/* Updated header classes - removed border-b */}
-      <header className={`fixed top-0 left-0 right-0 z-50 border-border/50 backdrop-blur-sm transition-all duration-300 ease-in-out bg-[var(--color-bg-surface-transparent)] ${!showHeader ? '-translate-y-full' : ''}`}>
+      <header className={`fixed top-0 left-0 right-0 z-50 border-border/50 backdrop-blur-sm transition-all duration-300 ease-in-out bg-[var(--color-bg-surface-transparent)] ${!showHeader ? '-translate-y-full' : ''} ${theme === 'light' ? 'border-b border-border/50' : ''}`}>
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-10 sm:h-14">
             <button 
@@ -214,7 +216,8 @@ export function AuthenticatedApp() {
 
             {/* Desktop navigation */}
             <div className="hidden lg:flex items-center gap-6">
-              {/* THEME TOGGLE BUTTON COMMENTED OUT - TO BE IMPLEMENTED LATER
+              {/* THEME TOGGLE BUTTON TEMPORARILY DISABLED */}
+              {/*
               <button
                 onClick={toggleTheme}
                 className="p-2 rounded-full bg-[var(--color-button-secondary-bg)] text-secondary hover:text-primary hover:bg-[var(--color-button-secondary-bg-hover)] transition-colors"
@@ -225,8 +228,7 @@ export function AuthenticatedApp() {
                 ) : (
                   <Moon className="w-5 h-5" />
                 )}
-              </button>
-              */}
+              </button>*/}
               <nav className="flex gap-6 items-center">
                 <Link
                   to="/why"
@@ -275,8 +277,9 @@ export function AuthenticatedApp() {
               isMobileMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
             } overflow-hidden`}
           >
-            <div className="py-4 space-y-4 border-t border-border">
-              {/* THEME TOGGLE BUTTON COMMENTED OUT - TO BE IMPLEMENTED LATER
+            {/* Add border-t only if light mode */} 
+            <div className={`py-4 space-y-4 ${theme === 'light' ? 'border-t border-border' : ''}`}>
+              {/* THEME TOGGLE BUTTON RE-ENABLED */}
               <button
                 onClick={toggleTheme}
                 className="flex items-center gap-2 w-full text-left px-4 py-2 rounded-lg text-secondary hover:bg-[var(--color-bg-surface-hover)] transition-colors text-sm"
@@ -293,7 +296,6 @@ export function AuthenticatedApp() {
                   </>
                 )}
               </button>
-              */}
               <Link
                 to="/why"
                 onClick={closeMobileMenu}

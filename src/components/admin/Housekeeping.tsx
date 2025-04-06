@@ -389,27 +389,27 @@ export function Housekeeping({ onClose }: Props) {
   }).some(Boolean) : false;
 
   return (
-    <div className="fixed inset-0 bg-white z-50 overflow-auto">
+    <div className="fixed inset-0 bg-[var(--color-bg-surface)] text-[var(--color-text-primary)] z-50 overflow-auto">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+        <div className="p-4 border-b border-[var(--color-border)] flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <h2 className="text-xl font-semibold">Housekeeping</h2>
+            <h2 className="font-display text-xl text-[var(--color-text-primary)]">Housekeeping</h2>
             <div className="flex items-center space-x-2">
               <button
                 onClick={handleJumpBackward}
-                className="p-1 hover:bg-gray-100 rounded"
+                className="p-1 hover:bg-[var(--color-bg-surface-hover)] rounded"
                 title="Jump back 4 weeks"
               >
                 <ChevronsLeft className="w-5 h-5" />
               </button>
               <button
                 onClick={handlePrevWeek}
-                className="p-1 hover:bg-gray-100 rounded"
+                className="p-1 hover:bg-[var(--color-bg-surface-hover)] rounded"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
-              <span className="text-sm font-mono w-[140px] text-center">
+              <span className="text-sm font-mono w-[140px] text-center text-[var(--color-text-secondary)]">
                 {weekStart && weekEnd ? (
                   `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d')}`
                 ) : (
@@ -418,13 +418,13 @@ export function Housekeeping({ onClose }: Props) {
               </span>
               <button
                 onClick={handleNextWeek}
-                className="p-1 hover:bg-gray-100 rounded"
+                className="p-1 hover:bg-[var(--color-bg-surface-hover)] rounded"
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
               <button
                 onClick={handleJumpForward}
-                className="p-1 hover:bg-gray-100 rounded"
+                className="p-1 hover:bg-[var(--color-bg-surface-hover)] rounded"
                 title="Jump forward 4 weeks"
               >
                 <ChevronsRight className="w-5 h-5" />
@@ -433,7 +433,7 @@ export function Housekeeping({ onClose }: Props) {
           </div>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
+            className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
           >
             <X className="w-5 h-5" />
           </button>
@@ -442,15 +442,15 @@ export function Housekeeping({ onClose }: Props) {
         {/* Content */}
         <div className="py-6">
           {loading ? (
-            <div className="text-center py-10">
+            <div className="text-center py-10 text-[var(--color-text-secondary)]">
               <p>Loading housekeeping data...</p>
             </div>
           ) : error ? (
-            <div className="text-center py-10 text-red-500">
+            <div className="text-center py-10 text-[var(--color-text-error)]">
               <p>{error}</p>
             </div>
           ) : !hasBookingsForWeek ? (
-            <div className="text-center py-10 text-gray-500">
+            <div className="text-center py-10 text-[var(--color-text-secondary)]">
               <p>No check-ins or check-outs this week</p>
             </div>
           ) : (
@@ -472,8 +472,8 @@ export function Housekeeping({ onClose }: Props) {
                 );
 
                 return (
-                  <div key={i} className="border rounded p-4 min-h-[200px]">
-                    <h3 className="font-medium text-center mb-2">
+                  <div key={i} className="border border-[var(--color-border)] bg-[var(--color-bg-surface)] rounded p-4 min-h-[200px]">
+                    <h3 className="font-medium text-center mb-2 text-[var(--color-text-primary)]">
                       {format(day, 'EEE, MMM d')}
                     </h3>
                     
@@ -483,9 +483,9 @@ export function Housekeeping({ onClose }: Props) {
                         <h4 className="text-sm font-medium text-green-600 mb-1">Check-ins</h4>
                         <ul className="space-y-2">
                           {checkIns.map(booking => (
-                            <li key={`in-${booking.id}`} className="text-xs p-2 bg-green-50 border border-green-100 rounded relative">
-                              <div className="font-semibold truncate">{booking.accommodation_title}</div>
-                              <div className="break-words min-h-[1.25rem]">{booking.user_name}</div>
+                            <li key={`in-${booking.id}`} className="text-xs p-2 bg-[var(--color-bg-success-subtle)] border border-[var(--color-border-success)] rounded relative">
+                              <div className="font-semibold truncate text-[var(--color-text-primary)]">{booking.accommodation_title}</div>
+                              <div className="break-words min-h-[1.25rem] text-[var(--color-text-primary)]">{booking.user_name}</div>
                               <button 
                                 onClick={() => {
                                   navigator.clipboard.writeText(booking.user_email);
@@ -493,7 +493,7 @@ export function Housekeeping({ onClose }: Props) {
                                   setTimeout(() => setCopiedId(null), 1000);
                                   console.log('[Housekeeping] Copied check-in email to clipboard:', booking.user_email);
                                 }}
-                                className="truncate block w-full text-left cursor-pointer text-gray-500 hover:text-blue-600"
+                                className="truncate block w-full text-left cursor-pointer text-[var(--color-text-secondary)] hover:text-[var(--color-accent-primary)]"
                                 title="Click to copy email address"
                               >
                                 {copiedId?.id === booking.id && copiedId?.type === 'in' ? 'Copied!' : booking.user_email}
@@ -510,9 +510,9 @@ export function Housekeeping({ onClose }: Props) {
                         <h4 className="text-sm font-medium text-red-600 mb-1">Check-outs</h4>
                         <ul className="space-y-2">
                           {checkOuts.map(booking => (
-                            <li key={`out-${booking.id}`} className="text-xs p-2 bg-red-50 border border-red-100 rounded relative">
-                              <div className="font-semibold truncate">{booking.accommodation_title}</div>
-                              <div className="break-words min-h-[1.25rem]">{booking.user_name}</div>
+                            <li key={`out-${booking.id}`} className="text-xs p-2 bg-[var(--color-bg-error-subtle)] border border-[var(--color-border-error)] rounded relative">
+                              <div className="font-semibold truncate text-[var(--color-text-primary)]">{booking.accommodation_title}</div>
+                              <div className="break-words min-h-[1.25rem] text-[var(--color-text-primary)]">{booking.user_name}</div>
                               <button 
                                 onClick={() => {
                                   navigator.clipboard.writeText(booking.user_email);
@@ -520,7 +520,7 @@ export function Housekeeping({ onClose }: Props) {
                                   setTimeout(() => setCopiedId(null), 1000);
                                   console.log('[Housekeeping] Copied check-out email to clipboard:', booking.user_email);
                                 }}
-                                className="truncate block w-full text-left cursor-pointer text-gray-500 hover:text-blue-600"
+                                className="truncate block w-full text-left cursor-pointer text-[var(--color-text-secondary)] hover:text-[var(--color-accent-primary)]"
                                 title="Click to copy email address"
                               >
                                 {copiedId?.id === booking.id && copiedId?.type === 'out' ? 'Copied!' : booking.user_email}
@@ -532,7 +532,7 @@ export function Housekeeping({ onClose }: Props) {
                     )}
                     
                     {checkIns.length === 0 && checkOuts.length === 0 && (
-                      <div className="text-xs text-gray-500 text-center">
+                      <div className="text-xs text-[var(--color-text-secondary)] text-center">
                         No activity
                       </div>
                     )}

@@ -30,14 +30,14 @@
   /* Dark mode defaults */
   --color-bg-main: #1e2734;
   --color-bg-surface: #2c3444;
-  --color-bg-surface-transparent: rgba(44, 52, 68, 0.8); /* Semi-transparent surface color */
+  --color-bg-surface-transparent: rgba(44, 52, 68, 0.8);
   --color-text-primary: #f1f5f9;
   --color-text-secondary: #94a3b8;
   --color-border: #475569;
-  --color-accent-primary: #FFD166;
+  --color-accent-primary: #FFD166; /* Yellow */
   --color-accent-secondary: #FFD166;
-  --color-accent-muted: rgba(16, 185, 129, 0.1);
-  --color-accent-subtle: rgba(16, 185, 129, 0.2);
+  --color-accent-muted: rgba(255, 209, 102, 0.1); /* Yellow at 10% */
+  --color-accent-subtle: rgba(255, 209, 102, 0.2); /* Yellow at 20% */
   --color-error: #f87171;
   --color-error-muted: rgba(248, 113, 113, 0.1);
   --color-button-secondary-bg: #334155;
@@ -73,14 +73,15 @@
 
 .light-mode {
   --color-bg-main: #f8fafc;
-  --color-bg-surface: #ffffff;
+  --color-bg-surface: var(--color-white); /* Changed from stone-50 for better contrast */
+  --color-bg-surface-transparent: rgba(250, 250, 249, 0.8); /* Semi-transparent off-white */
   --color-text-primary: #1e293b;
   --color-text-secondary: #64748b;
   --color-border: #e2e8f0;
-  --color-accent-primary: #059669;
+  --color-accent-primary: #059669; /* Green */
   --color-accent-secondary: #0284c7;
-  --color-accent-muted: rgba(5, 150, 105, 0.1);
-  --color-accent-subtle: rgba(5, 150, 105, 0.2);
+  --color-accent-muted: rgba(5, 150, 105, 0.1); /* Green at 10% */
+  --color-accent-subtle: rgba(5, 150, 105, 0.2); /* Green at 20% */
   --color-error: #ef4444;
   --color-error-muted: rgba(239, 68, 68, 0.1);
   --color-button-secondary-bg: #f1f5f9;
@@ -261,6 +262,11 @@
 
   .tooltip-arrow--accent {
     stroke: var(--color-tooltip-accent-border);
+  }
+
+  /* Light mode specific highlight for main cards */
+  .light-mode .bg-card-highlight {
+    background-color: color-mix(in srgb, var(--color-white) 90%, var(--color-accent-primary) 10%); /* Increased tint from 5% to 10% */
   }
 }
 

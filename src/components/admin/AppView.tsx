@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle, XCircle, X } from 'lucide-react';
-import { Housekeeping } from './Housekeeping';
 import { ImageModal } from '../shared/ImageModal';
 import { getFrontendUrl } from '../../lib/environment';
 import { ApplicationDetails } from './ApplicationDetails';
@@ -50,7 +49,7 @@ function AnswerTooltip({ children, content }: { children: React.ReactNode; conte
 
   return (
     <div className="relative">
-      <div 
+      <div
         onMouseEnter={() => setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}
         onClick={() => setShowTooltip(!showTooltip)}
@@ -59,7 +58,7 @@ function AnswerTooltip({ children, content }: { children: React.ReactNode; conte
         {children}
       </div>
       {showTooltip && (
-        <div className="absolute z-50 bg-black text-white p-4 rounded-lg shadow-lg max-w-md whitespace-pre-wrap">
+        <div className="absolute z-50 bg-[var(--color-bg-surface-raised)] text-[var(--color-text-primary)] p-4 rounded-lg shadow-lg max-w-md whitespace-pre-wrap font-regular">
           {renderContent(content)}
         </div>
       )}
@@ -100,7 +99,7 @@ export function AppView() {
     try {
       const { data, error: queryError } = await supabase
         .from('application_details')
-        .select('*')
+        .select('id, user_id, data, status, created_at, user_email')
         .order('created_at', { ascending: false });
 
       if (queryError) throw queryError;
@@ -235,31 +234,32 @@ export function AppView() {
 
     return (
       <motion.div
+        key={application.id}
         layout
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -20 }}
-        className="bg-white p-6 rounded-xl shadow-sm border border-stone-200 space-y-6"
+        className="bg-[var(--color-bg-surface)] p-6 rounded-xl shadow-sm border border-[var(--color-border)] hover:border-[var(--color-border-hover)] transition-colors space-y-6"
       >
         <div className="flex justify-between items-start">
           <div>
             <button
               onClick={() => setSelectedApplication(application)}
-              className="font-medium text-lg hover:text-emerald-600 transition-colors text-left group"
+              className="font-regular text-base text-[var(--color-text-primary)] hover:text-[var(--color-accent-primary)] transition-colors text-left group"
             >
               <span className="group-hover:underline">
                 {firstName} {lastName}
               </span>
             </button>
-            <p className="text-stone-600">{application.user_email}</p>
+            <p className="text-[var(--color-text-secondary)] font-regular">{application.user_email}</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
             {application.status === 'pending' && (
               <>
                 <button
                   onClick={() => updateApplicationStatus(application.id, 'approved')}
                   disabled={loadingStates[application.id]}
-                  className={`p-2 rounded-lg bg-emerald-100 text-emerald-600 hover:bg-emerald-200 transition-colors ${
+                  className={`p-2 rounded-lg bg-emerald-700 text-white hover:bg-emerald-800 transition-colors ${
                     loadingStates[application.id] ? 'opacity-50 cursor-not-allowed' : ''
                   }`}
                 >
@@ -268,7 +268,7 @@ export function AppView() {
                 <button
                   onClick={() => updateApplicationStatus(application.id, 'rejected')}
                   disabled={loadingStates[application.id]}
-                  className={`p-2 rounded-lg bg-rose-100 text-rose-600 hover:bg-rose-200 transition-colors ${
+                  className={`p-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors ${
                     loadingStates[application.id] ? 'opacity-50 cursor-not-allowed' : ''
                   }`}
                 >
@@ -276,7 +276,7 @@ export function AppView() {
                 </button>
               </>
             )}
-            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+            <span className={`px-3 py-1 rounded-full text-xs font-medium font-regular ${
               application.status === 'pending'
                 ? 'bg-yellow-100 text-yellow-800'
                 : application.status === 'approved'
@@ -292,51 +292,51 @@ export function AppView() {
 
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
-            <span className="text-stone-500">Astrology:</span>
+            <span className="text-[var(--color-text-secondary)] font-regular">Astrology:</span>
             <AnswerTooltip content={astrology}>
-              <p className="mt-1 line-clamp-2">{renderAnswer(astrology)}</p>
+              <p className="mt-1 line-clamp-2 font-regular">{renderAnswer(astrology)}</p>
             </AnswerTooltip>
           </div>
           <div>
-            <span className="text-stone-500">MBTI:</span>
+            <span className="text-[var(--color-text-secondary)] font-regular">MBTI:</span>
             <AnswerTooltip content={mbti}>
-              <p className="mt-1 line-clamp-2">{renderAnswer(mbti)}</p>
+              <p className="mt-1 line-clamp-2 font-regular">{renderAnswer(mbti)}</p>
             </AnswerTooltip>
           </div>
           <div>
-            <span className="text-stone-500">Conspiracy Theory:</span>
+            <span className="text-[var(--color-text-secondary)] font-regular">Conspiracy Theory:</span>
             <AnswerTooltip content={conspiracy}>
-              <p className="mt-1 line-clamp-2">{renderAnswer(conspiracy)}</p>
+              <p className="mt-1 line-clamp-2 font-regular">{renderAnswer(conspiracy)}</p>
             </AnswerTooltip>
           </div>
           <div>
-            <span className="text-stone-500">Logic Puzzle:</span>
+            <span className="text-[var(--color-text-secondary)] font-regular">Logic Puzzle:</span>
             <AnswerTooltip content={logicPuzzle}>
-              <p className="mt-1 line-clamp-2">{renderAnswer(logicPuzzle)}</p>
+              <p className="mt-1 line-clamp-2 font-regular">{renderAnswer(logicPuzzle)}</p>
             </AnswerTooltip>
           </div>
           <div>
-            <span className="text-stone-500">Unique Belief:</span>
+            <span className="text-[var(--color-text-secondary)] font-regular">Unique Belief:</span>
             <AnswerTooltip content={uniqueBelief}>
-              <p className="mt-1 line-clamp-2">{renderAnswer(uniqueBelief)}</p>
+              <p className="mt-1 line-clamp-2 font-regular">{renderAnswer(uniqueBelief)}</p>
             </AnswerTooltip>
           </div>
           <div>
-            <span className="text-stone-500">Getting to Know People:</span>
+            <span className="text-[var(--color-text-secondary)] font-regular">Getting to Know People:</span>
             <AnswerTooltip content={gettingToKnow}>
-              <p className="mt-1 line-clamp-2">{renderAnswer(gettingToKnow)}</p>
+              <p className="mt-1 line-clamp-2 font-regular">{renderAnswer(gettingToKnow)}</p>
             </AnswerTooltip>
           </div>
           <div>
-            <span className="text-stone-500">Identity:</span>
+            <span className="text-[var(--color-text-secondary)] font-regular">Identity:</span>
             <AnswerTooltip content={identity}>
-              <p className="mt-1 line-clamp-2">{renderAnswer(identity)}</p>
+              <p className="mt-1 line-clamp-2 font-regular">{renderAnswer(identity)}</p>
             </AnswerTooltip>
           </div>
           <div>
-            <span className="text-stone-500">If we really knew you:</span>
+            <span className="text-[var(--color-text-secondary)] font-regular">If we really knew you:</span>
             <AnswerTooltip content={reallyKnowYou}>
-              <p className="mt-1 line-clamp-2">{renderAnswer(reallyKnowYou)}</p>
+              <p className="mt-1 line-clamp-2 font-regular">{renderAnswer(reallyKnowYou)}</p>
             </AnswerTooltip>
           </div>
         </div>
@@ -347,14 +347,14 @@ export function AppView() {
   if (loading) {
     return (
       <div className="flex justify-center items-center p-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-900"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-accent-primary)]"></div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="p-6 text-rose-600 bg-rose-50 rounded-lg">
+      <div className="p-6 bg-[var(--color-bg-error)] text-[var(--color-text-error)] rounded-lg font-regular">
         {error}
       </div>
     );
@@ -364,15 +364,15 @@ export function AppView() {
 
   return (
     <div className="space-y-6">
-      <div className="flex gap-4 mb-6">
+      <div className="flex gap-4 mb-6 mt-4 ml-4">
         {(['pending', 'approved', 'rejected'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 rounded-lg transition-colors ${
+            className={`px-4 py-2 rounded-lg transition-colors text-sm font-regular ${
               activeTab === tab
                 ? 'bg-emerald-900 text-white'
-                : 'bg-white text-stone-600 hover:bg-stone-50 border border-stone-200'
+                : 'bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] border border-[var(--color-border)]'
             }`}
           >
             {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -380,12 +380,10 @@ export function AppView() {
         ))}
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <AnimatePresence>
           {filteredApplications.map(app => (
-            <div key={app.id}>
-              {renderApplicationCard(app)}
-            </div>
+            renderApplicationCard(app)
           ))}
         </AnimatePresence>
       </div>

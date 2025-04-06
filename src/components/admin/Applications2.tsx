@@ -38,6 +38,7 @@ export function Applications2() {
         .from('application_details')
         .select(`
           id,
+          user_id,
           data,
           status,
           created_at,
@@ -136,7 +137,7 @@ export function Applications2() {
   if (loading) {
     return (
       <div className="flex justify-center items-center p-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-900"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-accent-primary)]"></div>
       </div>
     );
   }
@@ -144,7 +145,7 @@ export function Applications2() {
   return (
     <div className="p-6">
       {error && (
-        <div className="mb-6 p-4 bg-rose-50 text-rose-600 rounded-lg">
+        <div className="mb-6 p-4 bg-[var(--color-bg-error)] text-[var(--color-text-error)] rounded-lg">
           {error}
         </div>
       )}
@@ -152,20 +153,20 @@ export function Applications2() {
       <div className="flex gap-4 mb-6">
         <button
           onClick={() => setFilter('all')}
-          className={`px-4 py-2 rounded-lg transition-colors ${
+          className={`px-3 py-1.5 rounded-lg transition-colors text-sm ${
             filter === 'all'
-              ? 'bg-emerald-900 text-white'
-              : 'bg-white text-stone-600 hover:bg-stone-50 border border-stone-200'
+              ? 'bg-emerald-900 text-white font-regular'
+              : 'bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] border border-[var(--color-border)] font-regular'
           }`}
         >
           All
         </button>
         <button
           onClick={() => setFilter('pending')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm ${
             filter === 'pending'
-              ? 'bg-emerald-900 text-white'
-              : 'bg-white text-stone-600 hover:bg-stone-50 border border-stone-200'
+              ? 'bg-emerald-900 text-white font-regular'
+              : 'bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] border border-[var(--color-border)] font-regular'
           }`}
         >
           <Clock className="w-4 h-4" />
@@ -173,10 +174,10 @@ export function Applications2() {
         </button>
         <button
           onClick={() => setFilter('approved')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm ${
             filter === 'approved'
-              ? 'bg-emerald-900 text-white'
-              : 'bg-white text-stone-600 hover:bg-stone-50 border border-stone-200'
+              ? 'bg-emerald-900 text-white font-regular'
+              : 'bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] border border-[var(--color-border)] font-regular'
           }`}
         >
           <CheckCircle className="w-4 h-4" />
@@ -184,10 +185,10 @@ export function Applications2() {
         </button>
         <button
           onClick={() => setFilter('rejected')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm ${
             filter === 'rejected'
-              ? 'bg-emerald-900 text-white'
-              : 'bg-white text-stone-600 hover:bg-stone-50 border border-stone-200'
+              ? 'bg-emerald-900 text-white font-regular'
+              : 'bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] border border-[var(--color-border)] font-regular'
           }`}
         >
           <XCircle className="w-4 h-4" />
@@ -203,13 +204,13 @@ export function Applications2() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="bg-white p-6 rounded-lg border border-stone-200 hover:border-emerald-900/20 transition-colors"
+              className="bg-[var(--color-bg-surface)] p-6 rounded-lg border border-[var(--color-border)] hover:border-[var(--color-border-hover)] transition-colors"
             >
               <div className="flex justify-between items-start">
                 <div>
                   <button
                     onClick={() => setSelectedApplication(application)}
-                    className="font-medium text-lg hover:text-emerald-600 transition-colors text-left group"
+                    className="font-medium font-regular text-base text-[var(--color-text-primary)] hover:text-[var(--color-accent-primary)] transition-colors text-left group"
                   >
                     <span className="group-hover:underline">
                       {questions.length > 0 && application.data && (
@@ -219,11 +220,11 @@ export function Applications2() {
                       )}
                     </span>
                   </button>
-                  <p className="text-sm text-stone-600">
+                  <p className="text-sm text-[var(--color-text-secondary)] font-regular">
                     {application.user_email}
                   </p>
                   {application.linked_name && (
-                    <div className="mt-2 text-sm text-stone-500">
+                    <div className="mt-2 text-sm text-[var(--color-text-secondary)] font-regular">
                       Linked with: {application.linked_name} ({application.linked_email})
                       {application.linked_application_id && (
                         <span className="ml-2 text-emerald-600">• Applied</span>
@@ -235,7 +236,7 @@ export function Applications2() {
                 <div className="flex items-center gap-4">
                   <button
                     onClick={() => setSelectedApplication(application)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-stone-100 text-stone-600 hover:bg-stone-200 transition-colors"
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] transition-colors font-regular text-sm"
                   >
                     <Eye className="w-4 h-4" />
                     View
@@ -246,7 +247,7 @@ export function Applications2() {
                       <button
                         onClick={() => updateApplicationStatus(application.id, 'approved')}
                         disabled={loadingStates[application.id]}
-                        className={`p-2 rounded-lg bg-emerald-100 text-emerald-600 hover:bg-emerald-200 transition-colors ${
+                        className={`p-2 rounded-lg bg-emerald-700 text-white hover:bg-emerald-800 transition-colors ${
                           loadingStates[application.id] ? 'opacity-50 cursor-not-allowed' : ''
                         }`}
                       >
@@ -255,7 +256,7 @@ export function Applications2() {
                       <button
                         onClick={() => updateApplicationStatus(application.id, 'rejected')}
                         disabled={loadingStates[application.id]}
-                        className={`p-2 rounded-lg bg-rose-100 text-rose-600 hover:bg-rose-200 transition-colors ${
+                        className={`p-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors ${
                           loadingStates[application.id] ? 'opacity-50 cursor-not-allowed' : ''
                         }`}
                       >
@@ -264,7 +265,7 @@ export function Applications2() {
                     </div>
                   )}
 
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium font-regular ${
                     application.status === 'pending'
                       ? 'bg-yellow-100 text-yellow-800'
                       : application.status === 'approved'

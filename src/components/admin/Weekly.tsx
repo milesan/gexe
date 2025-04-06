@@ -337,27 +337,27 @@ export function Weekly({ onClose }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 bg-white z-50 overflow-auto">
+    <div className="fixed inset-0 bg-[var(--color-bg-surface)] z-50 overflow-auto">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+        <div className="p-4 border-b border-[var(--color-border)] flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <h2 className="text-xl font-semibold">Weekly View</h2>
+            <h2 className="text-xl font-display font-light text-[var(--color-text-primary)]">Weekly View</h2>
             <div className="flex items-center space-x-2">
               <button
                 onClick={handleJumpBackward}
-                className="p-1 hover:bg-gray-100 rounded"
+                className="p-1 hover:bg-[var(--color-bg-surface-hover)] rounded text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
                 title="Jump back 4 weeks"
               >
                 <ChevronsLeft className="w-5 h-5" />
               </button>
               <button
                 onClick={handlePrevWeek}
-                className="p-1 hover:bg-gray-100 rounded"
+                className="p-1 hover:bg-[var(--color-bg-surface-hover)] rounded text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
-              <span className="text-sm w-40 text-center">
+              <span className="text-sm font-regular w-52 text-center text-[var(--color-text-secondary)]">
                 {weekStart && weekEnd ? (
                   `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d, yyyy')}`
                 ) : (
@@ -366,13 +366,13 @@ export function Weekly({ onClose }: Props) {
               </span>
               <button
                 onClick={handleNextWeek}
-                className="p-1 hover:bg-gray-100 rounded"
+                className="p-1 hover:bg-[var(--color-bg-surface-hover)] rounded text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
               <button
                 onClick={handleJumpForward}
-                className="p-1 hover:bg-gray-100 rounded"
+                className="p-1 hover:bg-[var(--color-bg-surface-hover)] rounded text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
                 title="Jump forward 4 weeks"
               >
                 <ChevronsRight className="w-5 h-5" />
@@ -385,7 +385,7 @@ export function Weekly({ onClose }: Props) {
 
             <button
               onClick={onClose}
-              className="text-gray-500 hover:text-gray-700"
+              className="font-regular text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
             >
               Close
             </button>
@@ -395,11 +395,11 @@ export function Weekly({ onClose }: Props) {
         {/* Content */}
         <div className="py-6">
           {loading ? (
-            <div className="text-center py-10">
+            <div className="text-center py-10 text-[var(--color-text-secondary)]">
               <p>Loading weekly view...</p>
             </div>
           ) : error ? (
-            <div className="text-center py-10 text-red-500">
+            <div className="text-center py-10 text-[var(--color-text-error)]">
               <p>{error}</p>
             </div>
           ) : (
@@ -410,13 +410,13 @@ export function Weekly({ onClose }: Props) {
                 const dayBookings = getBookingsForDay(day);
                 
                 return (
-                  <div key={i} className="border rounded p-4 min-h-[200px]">
-                    <h3 className="font-medium text-center mb-2">
+                  <div key={i} className="border border-[var(--color-border)] rounded p-4 min-h-[200px]">
+                    <h3 className="font-medium text-center mb-2 text-[var(--color-text-primary)]">
                       {format(day, 'EEE, MMM d')}
                     </h3>
                     
                     {loadingBookings ? (
-                      <div className="text-sm text-gray-500 text-center">
+                      <div className="text-sm text-[var(--color-text-secondary)] text-center">
                         Loading bookings...
                       </div>
                     ) : dayBookings.length > 0 ? (
@@ -439,7 +439,7 @@ export function Weekly({ onClose }: Props) {
                         })}
                       </div>
                     ) : (
-                      <div className="text-sm text-gray-500 text-center">
+                      <div className="text-sm text-[var(--color-text-secondary)] text-center">
                         No bookings
                       </div>
                     )}

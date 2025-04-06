@@ -427,7 +427,7 @@ export function CabinSelector({
                     // Selected State: Accent border, slight scale, shadow, AND subtle background highlight
                     isSelected ? 
                       'border-accent-primary scale-[1.01] shadow-lg bg-[color-mix(in_srgb,_var(--color-bg-surface)_95%,_var(--color-accent-primary)_5%)]' : 
-                      'border-border hover:border-accent-primary/50 bg-surface/50 backdrop-blur-sm', // Default state uses the new background
+                      'border-border hover:border-accent-primary/50 bg-surface', // Default state: Use theme surface color, removed /50 and backdrop-blur
                     // Pointer state:
                     finalCanSelect && !isDisabled && 'cursor-pointer'
                   )}
@@ -469,7 +469,7 @@ export function CabinSelector({
                     
                     {/* Selected Indicator */}
                     {isSelected && (
-                      <div className="text-xs font-medium px-3 py-1 rounded-full shadow-md bg-accent-primary text-stone-800 font-regular border border-white/30">Selected</div>
+                      <div className="text-xs font-medium px-3 py-1 rounded-full shadow-md bg-accent-primary text-stone-800 font-regular border border-yellow-500">Selected</div>
                     )}
                   </div>
 
