@@ -47,7 +47,7 @@ export function Book2Page() {
   const [lastRefresh, setLastRefresh] = useState(Date.now());
   const [showDiscountModal, setShowDiscountModal] = useState(false);
   const [seasonBreakdown, setSeasonBreakdown] = useState<SeasonBreakdown | undefined>(undefined);
-  const [finalWeeklyAccommodationPrice, setFinalWeeklyAccommodationPrice] = useState<number | null>(null);
+  const [weeklyAccommodationInfo, setWeeklyAccommodationInfo] = useState<Record<string, { price: number | null; avgSeasonalDiscount: number | null }>>({});
 
   // Calculate combined discount
   const calculateCombinedDiscount = useCallback((weeks: Week[]): number => {
@@ -698,37 +698,68 @@ export function Book2Page() {
   }, [selectedAccommodation, accommodations]); // Dependencies
   console.log('[Book2Page] Selected Accommodation Details:', selectedAccommodationDetails);
 
-  // NEW: Effect to calculate the final weekly price for the selected accommodation
+  // NEW: Effect to calculate weekly prices AND average seasonal discounts for ALL accommodations
   useEffect(() => {
-    console.log('[Book2Page] useEffect - Calculating final weekly accommodation price triggered.');
+    console.log('[Book2Page] useEffect - Calculating ALL weekly accommodation info triggered.');
     
-    const accommodationDetails = selectedAccommodation && accommodations 
-      ? accommodations.find(a => a.id === selectedAccommodation) 
-      : null;
-
-    // Normalize currentMonth to UTC midnight before passing to calculation
     const normalizedCurrentMonth = normalizeToUTCDate(currentMonth);
+    const newInfo: Record<string, { price: number | null; avgSeasonalDiscount: number | null }> = {};
 
-    if (accommodationDetails) {
-      console.log('[Book2Page] Calculating weekly price for:', { 
-        accommodationId: accommodationDetails.id, 
-        title: accommodationDetails.title,
-        weeksCount: selectedWeeks.length,
-        normalizedCurrentMonth: normalizedCurrentMonth.toISOString() 
+    if (accommodations && accommodations.length > 0) {
+      accommodations.forEach(acc => {
+        if ((acc as any).parent_accommodation_id) return;
+
+        try {
+          // 2. Calculate average seasonal discount separately FIRST (for both display and calculation)
+          let avgSeasonalDiscount: number = 0; // Default to number, handle null later if needed
+          if (selectedWeeks.length > 0 && !acc.title.toLowerCase().includes('dorm') && acc.base_price > 0) {
+            const breakdown = getSeasonBreakdown(selectedWeeks[0].startDate, selectedWeeks[selectedWeeks.length - 1].endDate);
+            const totalNightsInSeasons = breakdown.seasons.reduce((sum, season) => sum + season.nights, 0);
+            if (totalNightsInSeasons > 0) {
+              // Weighted average based on nights in each season
+              avgSeasonalDiscount = Math.round(breakdown.seasons.reduce((sum, season) => 
+                sum + (season.discount * season.nights), 0) / totalNightsInSeasons * 100) / 100;
+            } else {
+               avgSeasonalDiscount = 0; // Or handle as needed if no nights found
+            }
+          } else if (!acc.title.toLowerCase().includes('dorm') && acc.base_price > 0) {
+            // Fallback for no selected weeks - use reference date
+             avgSeasonalDiscount = getSeasonalDiscount(normalizedCurrentMonth, acc.title);
+          } else {
+            // Dorms or free accommodations have no seasonal discount
+            avgSeasonalDiscount = 0;
+          }
+
+          // 1. Calculate final weekly price using the pre-calculated seasonal discount
+          const weeklyPrice = calculateWeeklyAccommodationPrice(
+            acc, 
+            selectedWeeks,
+            // Pass the calculated avgSeasonalDiscount here
+            avgSeasonalDiscount 
+          );
+          
+          // Store both the final price and the definitive seasonal discount used
+          newInfo[acc.id] = { price: weeklyPrice, avgSeasonalDiscount };
+
+        } catch (error) {
+          console.error(`[Book2Page] Error calculating info for ${acc.title} (ID: ${acc.id}):`, error);
+          newInfo[acc.id] = { price: null, avgSeasonalDiscount: null }; // Set defaults on error
+        }
       });
-      const weeklyPrice = calculateWeeklyAccommodationPrice(
-        accommodationDetails, 
-        selectedWeeks,
-        normalizedCurrentMonth // Use normalized date
-      );
-      console.log('[Book2Page] Calculated weekly price:', weeklyPrice);
-      setFinalWeeklyAccommodationPrice(weeklyPrice);
     } else {
-      console.log('[Book2Page] No accommodation selected or details not found, clearing weekly price.');
-      setFinalWeeklyAccommodationPrice(null); // Clear price if no accommodation is selected
+      console.log('[Book2Page] No accommodations loaded, clearing info.');
     }
-  // Dependencies: selected accommodation ID, the weeks array, the list of all accommodations, and currentMonth
-  }, [selectedAccommodation, selectedWeeks, accommodations, currentMonth]); 
+    
+    console.log('[Book2Page] Setting updated weekly info state:', newInfo);
+    setWeeklyAccommodationInfo(newInfo);
+
+  }, [selectedWeeks, accommodations, currentMonth]); 
+
+  // NEW: Memoized lookup function returns the info object
+  const getDisplayInfo = useCallback((accommodationId: string): { price: number | null; avgSeasonalDiscount: number | null } | null => {
+    const info = weeklyAccommodationInfo[accommodationId];
+    return info ?? null;
+  }, [weeklyAccommodationInfo]);
 
   return (
     <div className="min-h-screen">
@@ -928,6 +959,7 @@ export function Book2Page() {
                   currentMonth={currentMonth}
                   isLoading={accommodationsLoading}
                   isDisabled={selectedWeeks.length === 0}
+                  displayWeeklyAccommodationPrice={getDisplayInfo}
                 />
               </div> {/* Closing Cabin Selector div */}
             </div> {/* == END: New wrapper div == */}
@@ -948,7 +980,7 @@ export function Book2Page() {
                     onClearWeeks={() => setSelectedWeeks([])}
                     onClearAccommodation={() => setSelectedAccommodation(null)}
                     seasonBreakdown={seasonBreakdown}
-                    calculatedWeeklyAccommodationPrice={finalWeeklyAccommodationPrice}
+                    calculatedWeeklyAccommodationPrice={selectedAccommodation ? weeklyAccommodationInfo[selectedAccommodation]?.price ?? null : null}
                   />
                 ) : (
                   <div className="text-secondary text-xs xs:text-sm font-regular">
@@ -986,6 +1018,8 @@ export function Book2Page() {
           checkOutDate={selectedWeeks[selectedWeeks.length - 1]?.endDate || new Date()}
           accommodationName={selectedAccommodationDetails?.title || ''}
           basePrice={selectedAccommodationDetails?.price || 0}
+          calculatedWeeklyPrice={selectedAccommodation ? weeklyAccommodationInfo[selectedAccommodation]?.price ?? null : null}
+          averageSeasonalDiscount={selectedAccommodation ? weeklyAccommodationInfo[selectedAccommodation]?.avgSeasonalDiscount ?? null : null}
         />
       )}
     </div>

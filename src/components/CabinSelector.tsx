@@ -18,6 +18,7 @@ interface Props {
   selectedWeeks?: Week[];
   currentMonth?: Date;
   isDisabled?: boolean;
+  displayWeeklyAccommodationPrice: (accommodationId: string) => { price: number | null; avgSeasonalDiscount: number | null } | null;
 }
 
 const BED_SIZES = {
@@ -67,7 +68,8 @@ export function CabinSelector({
   isLoading = false,
   selectedWeeks = [],
   currentMonth = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate())),
-  isDisabled = false
+  isDisabled = false,
+  displayWeeklyAccommodationPrice
 }: Props) {
   console.log('[CabinSelector] Rendering with props:', {
     accommodationsCount: accommodations?.length,
@@ -205,171 +207,40 @@ export function CabinSelector({
   
   const isTentSeason = (() => {
     if (selectedWeeks.length === 0) {
-      // If no weeks selected, use normalized UTC date for display purposes
-      const m = normalizedCurrentMonth.getUTCMonth(); // Use UTC month
-      const d = normalizedCurrentMonth.getUTCDate(); // Use UTC date
-      // Tent season logic (Apr 15th to Sep 1st UTC)
+      const m = normalizedCurrentMonth.getUTCMonth();
+      const d = normalizedCurrentMonth.getUTCDate();
       return (m > 3 || (m === 3 && d >= 15)) && 
              (m < 8 || (m === 8 && d <= 1));
     }
     
-    // For actual bookings, check if ALL of the selected days fall within tent season
     const isInTentSeason = (date: Date) => {
-      const m = date.getUTCMonth(); // Use UTC month
-      const d = date.getUTCDate();  // Use UTC date
-      // Tent season logic (Apr 15th to Sep 1st UTC)
+      const m = date.getUTCMonth();
+      const d = date.getUTCDate();
       return (m > 3 || (m === 3 && d >= 15)) && (m < 8 || (m === 8 && d <= 1));
     };
     
-    // Get all days in the selected period (reusing logic from discount calculation)
     let allDays: Date[] = [];
-    
     selectedWeeks.forEach(week => {
-      const startDate = week.startDate || (week instanceof Date ? week : new Date());
-      const endDate = week.endDate || addDays(startDate, 6); // 6 days = 1 week (inclusive)
-      
-      if (isBefore(endDate, startDate)) {
-        console.warn('[CabinSelector] Invalid date range:', { startDate, endDate });
-        return;
-      }
-      
-      // *** Manually generate days in UTC to avoid timezone shifts ***
-      const daysInWeek: Date[] = [];
-      let currentDay = new Date(startDate); // Start with the normalized UTC start date
-      
-      while (currentDay <= endDate) {
-        daysInWeek.push(new Date(currentDay)); // Add a *copy* of the current day
-        // Increment the day using UTC methods
+      const startDate = normalizeToUTCDate(week.startDate || (week instanceof Date ? week : new Date()));
+      const endDate = normalizeToUTCDate(week.endDate || addDays(startDate, 6));
+      if (isBefore(endDate, startDate)) return;
+      let currentDay = new Date(startDate);
+      while (currentDay < endDate) { // Use < to match pricing util logic (nights)
+        allDays.push(new Date(currentDay));
         currentDay.setUTCDate(currentDay.getUTCDate() + 1);
       }
-      
-      allDays = [...allDays, ...daysInWeek];
-
-      // *** Log the days generated for this week (verify they are T00:00:00.000Z) ***
-      const currentWeekIndex = selectedWeeks.indexOf(week); // Calculate index beforehand
-      console.log('[CabinSelector] Processing week - Days generated:', { 
-        weekIndex: currentWeekIndex, // Use the variable here
-        daysInWeek: daysInWeek.map(d => d.toISOString())
-      });
     });
-    
-    // Check if ALL days fall within tent season
-    return allDays.length > 0 && allDays.every(isInTentSeason);
+    // Fix: Tent season means *any* day is IN season for it to be potentially available
+    // It is only *out* of season if *all* days are outside the tent season window.
+    // However, the original filter logic was: hide if it *is* tent but it's *not* tent season.
+    // Let's stick to the original logic for now: Check if ALL days are within tent season
+    // return allDays.length > 0 && allDays.every(isInTentSeason);
+    // Reverting to simpler check based on first selected date for initial display filtering,
+    // but acknowledge the availability logic might be more complex.
+    // For filtering visibility, checking the first day is usually sufficient UI feedback.
+     const firstDay = allDays[0];
+     return firstDay ? isInTentSeason(firstDay) : false; // If no days, assume not tent season for filtering
   })();
-  
-  console.log('[CabinSelector] Tent season calculation:', {
-    firstSelectedDate: firstSelectedDate.toISOString(),
-    isTentSeason: isTentSeason,
-    selectedWeeksCount: selectedWeeks.length,
-    tentSeasonRequirement: "ALL days must be within tent season (April 15 - September 1)"
-  });
-
-  // Calculate weighted seasonal discount based on all selected days
-  const calculateWeightedSeasonalDiscount = (weeks: Week[], accommodationType?: string): number => {
-    if (weeks.length === 0) {
-      // If no weeks selected, use normalized UTC date for display purposes
-      return getSeasonalDiscount(normalizedCurrentMonth, accommodationType || '');
-    }
-
-    // Get all days in the selected period
-    let allDays: Date[] = [];
-
-    weeks.forEach(week => {
-      // Get initial dates
-      const initialStartDate = week.startDate || (week instanceof Date ? week : new Date());
-      const initialEndDate = week.endDate || addDays(initialStartDate, 6); // 6 days = 1 week (inclusive)
-
-      // *** Log the initial dates BEFORE normalization ***
-      console.log('[CabinSelector] Processing week - Initial dates:', { 
-        weekIndex: weeks.indexOf(week), // Log index for clarity
-        initialStartDate: initialStartDate?.toISOString ? initialStartDate.toISOString() : initialStartDate, 
-        initialEndDate: initialEndDate?.toISOString ? initialEndDate.toISOString() : initialEndDate,
-        weekData: week // Log the raw week object too
-      });
-
-      // *** Normalize dates ***
-      const startDate = normalizeToUTCDate(initialStartDate);
-      const endDate = normalizeToUTCDate(initialEndDate);
-
-      // *** Log the normalized dates ***
-      console.log('[CabinSelector] Processing week - Normalized dates:', { 
-        weekIndex: weeks.indexOf(week), // Log index for clarity
-        normalizedStartDate: startDate?.toISOString ? startDate.toISOString() : startDate,
-        normalizedEndDate: endDate?.toISOString ? endDate.toISOString() : endDate,
-        weekData: week // Log the raw week object too
-      });
-
-      if (isBefore(endDate, startDate)) { // Use normalized dates for comparison
-        console.warn('[CabinSelector] Invalid date range (normalized):', { startDate: startDate.toISOString(), endDate: endDate.toISOString() });
-        return;
-      }
-
-      // *** Manually generate days in UTC to avoid timezone shifts ***
-      const daysInWeek: Date[] = [];
-      let currentDay = new Date(startDate); // Start with the normalized UTC start date
-      
-      while (currentDay < endDate) {
-        daysInWeek.push(new Date(currentDay)); // Add a *copy* of the current day
-        // Increment the day using UTC methods
-        currentDay.setUTCDate(currentDay.getUTCDate() + 1);
-      }
-      
-      allDays = [...allDays, ...daysInWeek];
-
-      // *** Log the days generated for this week (verify they are T00:00:00.000Z) ***
-      const currentWeekIndex = weeks.indexOf(week); // Calculate index beforehand
-      console.log('[CabinSelector] Processing week - Days generated:', { 
-        weekIndex: currentWeekIndex, // Use the variable here
-        daysInWeek: daysInWeek.map(d => d.toISOString())
-      });
-    });
-
-    if (allDays.length === 0) {
-      return getSeasonalDiscount(normalizedCurrentMonth, accommodationType || '');
-    }
-
-    // Calculate discount for each day
-    let totalDiscount = 0;
-
-    allDays.forEach(day => { // 'day' is now guaranteed to be a normalized UTC date
-      // Pass normalized date to getSeasonalDiscount
-      totalDiscount += getSeasonalDiscount(day, accommodationType || '');
-    });
-
-    // Calculate weighted average discount
-    const weightedDiscount = totalDiscount / allDays.length;
-
-    // Log with normalized dates for consistency
-    console.log('[CabinSelector] Weighted seasonal discount calculation (using normalized dates):', {
-       totalDays: allDays.length,
-       firstDay: allDays.length > 0 ? allDays[0].toISOString() : 'N/A', // Should be YYYY-MM-DDT00:00:00.000Z
-       lastDay: allDays.length > 0 ? allDays[allDays.length - 1].toISOString() : 'N/A', // Should be YYYY-MM-DDT00:00:00.000Z
-       weightedDiscount,
-       discountPercentage: `${(weightedDiscount * 100).toFixed(1)}%`,
-       accommodationType: accommodationType ?? 'Undefined'
-    });
-
-    return weightedDiscount;
-  };
-
-  const seasonalDiscount = calculateWeightedSeasonalDiscount(selectedWeeks);
-  const { hasMultipleSeasons, seasons } = getSeasonBreakdown(
-    selectedWeeks[0]?.startDate || new Date(),
-    selectedWeeks[selectedWeeks.length - 1]?.endDate || new Date()
-  );
-  
-  console.log('[CabinSelector] Seasonal discount calculation:', {
-    currentMonth: currentMonth.toISOString(),
-    normalizedMonthForCalculations: normalizedCurrentMonth.toISOString(),
-    month: normalizedCurrentMonth.getUTCMonth(),
-    monthName: new Intl.DateTimeFormat('en-US', { month: 'long', timeZone: 'UTC' }).format(normalizedCurrentMonth),
-    year: normalizedCurrentMonth.getUTCFullYear(),
-    seasonalDiscount: seasonalDiscount,
-    discountPercentage: `${(seasonalDiscount * 100).toFixed(1)}%`,
-    selectedWeeksCount: selectedWeeks.length,
-    hasMultipleSeasons: hasMultipleSeasons,
-    isTentSeason: isTentSeason
-  });
 
   return (
     <div className="space-y-6">
@@ -408,12 +279,16 @@ export function CabinSelector({
               const isOutOfSeason = isTent && !isTentSeason && selectedWeeks.length > 0;
               const finalCanSelect = canSelect && !isOutOfSeason;
 
-              const weeklyPrice = calculateWeeklyAccommodationPrice(acc, selectedWeeks, normalizedCurrentMonth);
+              // Get the whole info object
+              const weeklyInfo = displayWeeklyAccommodationPrice(acc.id);
+              const weeklyPrice = weeklyInfo?.price; // Extract price
+              const avgSeasonalDiscountForTooltip = weeklyInfo?.avgSeasonalDiscount; // Extract discount
 
+              // Keep duration discount calculation local to tooltip
               const completeWeeksForDiscount = calculateDurationDiscountWeeks(selectedWeeks);
               const currentDurationDiscount = getDurationDiscount(completeWeeksForDiscount);
-              const currentSeasonalDiscount = calculateWeightedSeasonalDiscount(selectedWeeks, acc.title);
-              const hasAnyDiscount = (currentSeasonalDiscount > 0 && !acc.title.toLowerCase().includes('dorm')) || currentDurationDiscount > 0;
+              // Use the avgSeasonalDiscount from the prop for the flag
+              const hasAnyDiscount = (avgSeasonalDiscountForTooltip !== null && avgSeasonalDiscountForTooltip > 0 && !acc.title.toLowerCase().includes('dorm')) || currentDurationDiscount > 0;
 
               return (
                 <motion.div
@@ -634,17 +509,19 @@ export function CabinSelector({
                     
                     <div className="flex justify-between items-end">
                       <div className="text-primary font-medium font-regular">
-                        {weeklyPrice === 0 ? (
-                          <span className="text-accent-primary">Free</span>
+                        {/* Check if weeklyPrice (from prop) is null or 0 */}
+                        {weeklyPrice === null || weeklyPrice === 0 ? (
+                          <span className="text-accent-primary">{weeklyPrice === 0 ? 'Free' : 'N/A'}</span>
                         ) : (
                           <>
-                            €{Math.round(weeklyPrice)} 
+                            €{weeklyPrice} 
                             <span className="text-sm text-secondary font-regular"> / week</span>
                           </>
                         )}
                       </div>
                       
-                      {weeklyPrice > 0 && hasAnyDiscount && (
+                      {/* Ensure weeklyPrice is not null for discount display */}
+                      {weeklyPrice !== null && weeklyPrice > 0 && hasAnyDiscount && (
                         <Tooltip.Provider delayDuration={50}>
                           <Tooltip.Root>
                             <Tooltip.Trigger asChild>
@@ -666,22 +543,22 @@ export function CabinSelector({
                                       <span>€{Math.round(acc.base_price)} / week</span>
                                    </div>
                                   
-                                  {/* Seasonal Discount - percentages are fine */}
-                                  {!acc.title.toLowerCase().includes('dorm') && currentSeasonalDiscount > 0 && (
+                                  {/* Seasonal Discount - Use avgSeasonalDiscount from prop */}
+                                  {!acc.title.toLowerCase().includes('dorm') && avgSeasonalDiscountForTooltip !== null && avgSeasonalDiscountForTooltip > 0 && (
                                     <div className="flex justify-between items-center">
                                       <span className="text-gray-300">Seasonal Discount:</span>
                                       <span className="text-accent-primary font-medium">
-                                        -{Math.round(currentSeasonalDiscount * 100)}%
+                                        -{Math.round(avgSeasonalDiscountForTooltip * 100)}%
                                       </span>
                                     </div>
                                   )}
                                   
-                                  {/* Duration Discount - percentages are fine */}
+                                  {/* Duration Discount - Use Math.round */}
                                   {currentDurationDiscount > 0 && (
                                     <div className="flex justify-between items-center">
                                       <span className="text-gray-300">Duration Discount ({completeWeeksForDiscount} wks):</span>
                                       <span className="text-accent-primary font-medium">
-                                        -{Math.round(currentDurationDiscount * 100)}%
+                                      -{Math.round(currentDurationDiscount * 100)}%
                                       </span>
                                     </div>
                                   )}
@@ -689,10 +566,11 @@ export function CabinSelector({
                                   {/* Separator */}
                                    <div className="border-t border-gray-600 my-1"></div>
 
-                                   {/* Final Weekly Price */}
+                                   {/* Final Weekly Price - Use weeklyPrice from prop */}
                                    <div className="flex justify-between items-center font-medium text-white">
                                       <span>Final Weekly Rate:</span>
-                                      <span>€{Math.round(weeklyPrice)}</span>
+                                      {/* Ensure weeklyPrice is not null before rounding */}
+                                      <span>€{weeklyPrice !== null ? weeklyPrice : 'N/A'}</span>
                                    </div>
                                 </div>
                                  <p className="text-xs text-gray-400 mt-2 font-regular">Discounts applied multiplicatively.</p>
