@@ -157,6 +157,7 @@ export default function App() {
   };
 
   // --- Screen Width Check ---
+  /*
   if (screenWidth < 800) {
     console.log('App: Screen width < 800px, showing mobile message.');
     return (
@@ -177,6 +178,7 @@ export default function App() {
       </div>
     );
   }
+  */
   // --- End Screen Width Check ---
 
   if (isLoading) {
