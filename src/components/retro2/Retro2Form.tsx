@@ -271,7 +271,7 @@ export function Retro2Form({ questions, onSubmit }: Props) {
             type="submit"
             disabled={isSubmitting || !isCurrentSectionComplete()}
             onClick={handleSubmit}
-            className={`group flex items-center gap-2 bg-[#FFBF00] text-black px-6 py-3 text-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ml-auto`}
+            className={`group flex items-center justify-center gap-2 bg-[#FFBF00] text-black px-4 py-2 text-base transition-colors disabled:opacity-50 disabled:cursor-not-allowed ml-auto min-w-44`}
             style={{
               clipPath: `polygon(
                 0 4px, 4px 4px, 4px 0,

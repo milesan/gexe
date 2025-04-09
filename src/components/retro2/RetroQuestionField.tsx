@@ -363,7 +363,8 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
               <p className="text-sm text-[#FFBF00]/60 -mt-1 mb-6">
                 We value data privacy.
               </p>
-              <div className="flex justify-center gap-8">
+              {/* Make container flex-col by default, sm:flex-row, and adjust gap */}
+              <div className="flex flex-col sm:flex-row justify-center gap-4 sm:gap-8">
                 <button 
                   onClick={() => handleChange('As you wish.')}
                   className="bg-[#FFBF00] text-black px-8 py-4 text-xl transition-colors hover:bg-[#FFBF00]/90"
