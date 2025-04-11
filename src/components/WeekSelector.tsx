@@ -4,7 +4,7 @@ import { formatInTimeZone } from 'date-fns-tz';
 import { WeekBox } from './WeekBox';
 import clsx from 'clsx';
 import { Week } from '../types/calendar';
-import { isWeekSelectable, formatWeekRange, formatDateForDisplay, normalizeToUTCDate, generateWeekId, canDeselectArrivalWeek, getWeeksToDeselect } from '../utils/dates';
+import { isWeekSelectable, formatWeekRange, formatDateForDisplay, normalizeToUTCDate, generateWeekId, canDeselectArrivalWeek, getWeeksToDeselect, calculateTotalWeeksDecimal } from '../utils/dates';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, X, ChevronDown, ChevronUp } from 'lucide-react';
@@ -38,6 +38,7 @@ interface WeekSelectorProps {
   onMonthChange?: (newMonth: Date) => void;
   onDateSelect: (date: Date, week: Week) => void;
   accommodationTitle: string;
+  onMaxWeeksReached?: () => void;
 }
 
 // Season legend component
@@ -73,6 +74,7 @@ export function WeekSelector({
   onMonthChange,
   onDateSelect,
   accommodationTitle,
+  onMaxWeeksReached,
 }: WeekSelectorProps) {
   console.log('[WeekSelector] Rendering weeks:', weeks?.map(w => getSimplifiedWeekInfo(w, isAdmin, selectedWeeks)));
 
@@ -186,6 +188,23 @@ export function WeekSelector({
         weekStartDate: formatDateForDisplay(week.startDate)
       });
       return;
+    }
+
+    // Check for maximum weeks allowed (only for non-admin users)
+    const MAX_WEEKS_ALLOWED = 12;
+    
+    // Create a temp array that includes the current week to simulate selection
+    const potentialSelectedWeeks = [...selectedWeeks, week];
+    const totalWeeksDecimal = calculateTotalWeeksDecimal(potentialSelectedWeeks);
+    
+    if (!isAdmin && totalWeeksDecimal > MAX_WEEKS_ALLOWED) {
+      console.log('[WeekSelector] Maximum weeks limit reached:', {
+        current: selectedWeeks.length,
+        potentialTotal: potentialSelectedWeeks.length,
+        calculatedWeeks: totalWeeksDecimal,
+        max: MAX_WEEKS_ALLOWED
+      });
+      return; // Prevent selecting more weeks
     }
 
     // If we're in admin mode, always go directly to week customization
@@ -382,13 +401,26 @@ export function WeekSelector({
           });
           // --- END: Added log ---
 
+          // Debug log for min-height class
+          const isSelectableForHeightClass = isWeekSelectable(week, isAdmin, selectedWeeks);
+          const minHeightClass = (!isSelectableForHeightClass && !isAdmin) 
+            ? 'min-h-[50px] xxs:min-h-[90px] xs:min-h-[100px] sm:min-h-[110px]' 
+            : 'min-h-[80px] xxs:min-h-[90px] xs:min-h-[100px] sm:min-h-[110px]';
+          
+          console.log(`[WeekSelector Height Debug] Week ${index}:`, {
+            id: week.id,
+            isSelectable: isSelectableForHeightClass,
+            isAdmin,
+            appliedHeightClass: minHeightClass.substring(0, minHeightClass.indexOf(' ')) // Just log the mobile height part
+          });
+
           return (
             <button
               key={week.id || `week-${index}`}
               onClick={() => handleWeekClick(week)}
               className={clsx(
                 'relative p-2 xxs:p-2.5 xs:p-3 sm:p-4 border-2 transition-all duration-300',
-                'min-h-[80px] xxs:min-h-[90px] xs:min-h-[100px] sm:min-h-[110px]',
+                minHeightClass,
                 'shadow-sm hover:shadow-md',
                 // Unconditionally add highlight class (CSS rule scopes it to light mode)
                 'bg-card-highlight',

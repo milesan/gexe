@@ -212,16 +212,16 @@ export function Retro2Form({ questions, onSubmit }: Props) {
 
       <div 
         ref={contentRef}
-        className="fixed top-[140px] bottom-[80px] left-0 right-0 overflow-y-auto"
+        className="fixed top-[140px] bottom-[120px] left-0 right-0 overflow-y-auto"
       >
-        <div className="max-w-2xl mx-auto px-4">
+        <div className="max-w-2xl mx-auto px-4 relative">
           <motion.div
             key={currentSectionName}
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.2 }}
-            className="space-y-12 pb-12"
+            className="space-y-12 pb-4"
           >
             {questions
               .filter(q => {
@@ -246,88 +246,96 @@ export function Retro2Form({ questions, onSubmit }: Props) {
         </div>
       </div>
 
-      <div className="fixed bottom-4 right-4 left-4 flex justify-between items-center max-w-2xl mx-auto">
-        {currentSection > 0 && (
-          <button
-            type="button"
-            onClick={() => setCurrentSection(prev => Math.max(0, prev - 1))}
-            className="group px-4 py-2 text-base transition-all bg-[#FFBF00]/10 hover:bg-[#FFBF00]/20 text-[#FFBF00]"
-            style={{
-              clipPath: `polygon(
-                0 4px, 4px 4px, 4px 0,
-                calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
-                100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
-                calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
-                0 calc(100% - 4px)
-              )`
-            }}
-          >
-            Previous
-          </button>
-        )}
+      <div className="fixed bottom-0 left-0 right-0 z-40 pointer-events-none">
+        <div className="max-w-2xl mx-auto px-4 flex flex-col items-center">
+          <div className="w-full flex justify-center mb-2 pointer-events-auto">
+            <AutosaveNotification 
+              show={showSaveNotification} 
+              onClose={() => setShowSaveNotification(false)} 
+            />
+          </div>
 
-        {currentSection === sectionNames.length - 1 ? (
-          <button
-            type="submit"
-            disabled={isSubmitting || !isCurrentSectionComplete()}
-            onClick={handleSubmit}
-            className={`group flex items-center justify-center gap-2 bg-[#FFBF00] text-black px-4 py-2 text-base transition-colors disabled:opacity-50 disabled:cursor-not-allowed ml-auto min-w-44`}
-            style={{
-              clipPath: `polygon(
-                0 4px, 4px 4px, 4px 0,
-                calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
-                100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
-                calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
-                0 calc(100% - 4px)
-              )`
-            }}
-          >
-            {isSubmitting ? (
-              <>
-                <div className="animate-spin rounded-full h-5 w-5 border-2 border-black border-t-transparent" />
-                Processing...
-              </>
-            ) : (
-              <>
-                <Send className="w-5 h-5" />
-                Submit
-              </>
-            )}
-          </button>
-        ) : currentSection === 0 ? null : (
-          <button
-            type="button"
-            onClick={() => isCurrentSectionComplete() && setCurrentSection(prev => prev + 1)}
-            disabled={!isCurrentSectionComplete()}
-            className={`group flex items-center gap-2 px-4 py-2 text-base transition-all ${
-              isCurrentSectionComplete() 
-                ? 'bg-[#FFBF00] text-black' 
-                : 'bg-[#FFBF00]/10 text-[#FFBF00]'
-            } disabled:opacity-50 disabled:cursor-not-allowed`}
-            style={{
-              clipPath: `polygon(
-                0 4px, 4px 4px, 4px 0,
-                calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
-                100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
-                calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
-                0 calc(100% - 4px)
-              )`
-            }}
-          >
-            <span>Next</span>
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        )}
+          <div className="flex justify-between items-center w-full pointer-events-auto pb-4">
+            <div className="pointer-events-auto"> 
+              {currentSection > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setCurrentSection(prev => Math.max(0, prev - 1))}
+                  className="group px-4 py-2 text-base transition-all bg-[#FFBF00]/10 hover:bg-[#FFBF00]/20 text-[#FFBF00]"
+                  style={{
+                    clipPath: `polygon(
+                      0 4px, 4px 4px, 4px 0,
+                      calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
+                      100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
+                      calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
+                      0 calc(100% - 4px)
+                    )`
+                  }}
+                >
+                  Previous
+                </button>
+              ) : (
+                <div className="w-[98px]"></div>
+              )}
+            </div>
+
+            <div className="pointer-events-auto"> 
+              {currentSection === sectionNames.length - 1 ? (
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !isCurrentSectionComplete()}
+                  onClick={handleSubmit}
+                  className={`group flex items-center justify-center gap-2 bg-[#FFBF00] text-black px-4 py-2 text-base transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-w-44`}
+                  style={{
+                    clipPath: `polygon(
+                      0 4px, 4px 4px, 4px 0,
+                      calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
+                      100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
+                      calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
+                      0 calc(100% - 4px)
+                    )`
+                  }}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-black border-t-transparent" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-5 h-5" />
+                      Submit
+                    </>
+                  )}
+                </button>
+              ) : currentSection < sectionNames.length - 1 ? (
+                 <button
+                    type="button"
+                    onClick={() => isCurrentSectionComplete() && setCurrentSection(prev => prev + 1)}
+                    disabled={!isCurrentSectionComplete()}
+                    className={`group flex items-center gap-2 px-4 py-2 text-base transition-all ${
+                      isCurrentSectionComplete() 
+                        ? 'bg-[#FFBF00] text-black' 
+                        : 'bg-[#FFBF00]/10 text-[#FFBF00]'
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                    style={{
+                      clipPath: `polygon(
+                        0 4px, 4px 4px, 4px 0,
+                        calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
+                      100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
+                        calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
+                        0 calc(100% - 4px)
+                      )`
+                    }}
+                  >
+                    <span>Next</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+              ) : null}
+            </div>
+          </div>
+        </div>
       </div>
-
-      <div className="fixed bottom-4 left-4 text-[#FFBF00]/20">
-        <Terminal className="w-5 h-5" />
-      </div>
-
-      <AutosaveNotification 
-        show={showSaveNotification} 
-        onClose={() => setShowSaveNotification(false)} 
-      />
     </div>
   );
 }

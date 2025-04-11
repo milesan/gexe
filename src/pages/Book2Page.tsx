@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Calendar, ChevronLeft, ChevronRight, Home, X, HelpCircle } from 'lucide-react';
 import { isSameWeek, addWeeks, isAfter, isBefore, startOfMonth, format, addMonths, subMonths, startOfDay, isSameDay, addDays, differenceInDays } from 'date-fns';
 import { WeekSelector } from '../components/WeekSelector';
-import { formatDateForDisplay, normalizeToUTCDate, doDateRangesOverlap, calculateDurationDiscountWeeks } from '../utils/dates';
+import { formatDateForDisplay, normalizeToUTCDate, doDateRangesOverlap, calculateDurationDiscountWeeks, calculateTotalWeeksDecimal } from '../utils/dates';
 import { CabinSelector } from '../components/CabinSelector';
 import { BookingSummary, SeasonBreakdown } from '../components/BookingSummary';
 import { MaxWeeksModal } from '../components/MaxWeeksModal';
@@ -168,6 +168,18 @@ export function Book2Page() {
     return isFirstOrLastSelectedHelper(week, selectedWeeks);
   }, [selectedWeeks, isFirstOrLastSelectedHelper]);
 
+  // Add a wrapped setCurrentMonth function with logging
+  const handleMonthChange = useCallback((newMonth: Date) => {
+    console.log('[Book2Page] Changing month:', {
+      from: currentMonth ? formatDateForDisplay(currentMonth) : 'undefined',
+      to: formatDateForDisplay(newMonth),
+      selectedWeeksCount: selectedWeeks.length,
+      calculatedWeeksDecimal: calculateTotalWeeksDecimal(selectedWeeks)
+    });
+    
+    setCurrentMonth(newMonth);
+  }, [currentMonth, selectedWeeks]);
+
   // Main handleWeekSelect function simplified
   const handleWeekSelect = useCallback((week: Week) => {
     console.log('[Book2Page] Handling week selection:', {
@@ -309,7 +321,15 @@ export function Book2Page() {
       })));
 
       // Check if we've exceeded the maximum number of allowed weeks
-      if (newWeeks.length > 12) {
+      const MAX_WEEKS_ALLOWED = 12;
+      const totalWeeksDecimal = calculateTotalWeeksDecimal(newWeeks);
+      
+      if (totalWeeksDecimal > MAX_WEEKS_ALLOWED) {
+        console.log('[Book2Page] Maximum weeks limit reached:', {
+          weeksCount: newWeeks.length,
+          calculatedWeeks: totalWeeksDecimal,
+          max: MAX_WEEKS_ALLOWED
+        });
         setShowMaxWeeksModal(true);
         return currentSelection;
       }
@@ -941,8 +961,9 @@ export function Book2Page() {
                     isAdmin={isAdminMode}
                     onDateSelect={handleFlexDateSelect}
                     currentMonth={currentMonth}
-                    onMonthChange={setCurrentMonth}
+                    onMonthChange={handleMonthChange}
                     accommodationTitle={accommodationTitle}
+                    onMaxWeeksReached={() => setShowMaxWeeksModal(true)}
                   />
                 )}
               </div> {/* Closing Calendar card div */}
