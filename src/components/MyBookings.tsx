@@ -127,7 +127,7 @@ export function MyBookings() {
 
       {enlargedImageUrl && (
         <div
-          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
           onClick={() => setEnlargedImageUrl(null)}
         >
           <div
@@ -137,7 +137,7 @@ export function MyBookings() {
             <img
               src={enlargedImageUrl}
               alt="Enlarged booking accommodation"
-              className="max-w-lg max-h-[80vh] w-auto h-auto object-contain rounded-lg shadow-2xl"
+              className="max-w-full max-h-[80vh] w-auto h-auto object-contain rounded-lg shadow-2xl"
             />
             <button
               onClick={() => setEnlargedImageUrl(null)}

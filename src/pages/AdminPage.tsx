@@ -7,10 +7,11 @@ import { Weekly } from '../components/admin/Weekly';
 import { Whitelist } from '../components/admin/Whitelist';
 import { Housekeeping } from '../components/admin/Housekeeping';
 import { Accommodations } from '../components/admin/Accommodations';
-import { ClipboardList, Calendar, Users, LayoutGrid, ListChecks, UserPlus, Home, Building2 } from 'lucide-react';
+import { ClipboardList, Calendar, Users, LayoutGrid, ListChecks, UserPlus, Home, Building2, ArrowLeft } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom';
 
-type AdminView = 'applications' | 'appview' | 'bookings' | 'calendar' | 'weekly' | 'whitelist' | 'accommodations';
+type AdminView = 'applications' | 'appview' | 'bookings' | 'calendar' | 'weekly' | 'whitelist' | 'housekeeping' | 'accommodations';
 
 export function AdminPage() {
   const [currentView, setCurrentView] = useState<AdminView>('applications');
@@ -137,6 +138,38 @@ export function AdminPage() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Mobile Warning Overlay - Updated */}
+      <div className="md:hidden fixed inset-0 bg-gray-900/90 backdrop-blur-sm z-50 flex items-center justify-center p-8">
+        <div className="text-center text-white max-w-sm">
+          <h2 className="text-2xl font-display mb-4 text-accent-secondary animate-yellow-shift">
+            Admin Area Not Fit for Small Screens Yet
+          </h2>
+          <p className="text-lg font-regular text-gray-200 mb-8">
+            Wait until further development.
+          </p>
+          <Link 
+            to="/" 
+            className="inline-flex items-center gap-2 font-regular px-6 py-2 rounded-lg bg-accent-primary text-emerald-950 hover:bg-accent-secondary font-medium transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Return to Booking
+          </Link>
+        </div>
+      </div>
+
+      {/* Add CSS for yellow shift animation */}
+      <style>
+        {`
+          @keyframes yellow-shift {
+            0%, 100% { color: var(--color-accent-secondary); }
+            50% { color: #fde047; } /* Lighter yellow (Tailwind yellow-400) */
+          }
+          .animate-yellow-shift {
+            animation: yellow-shift 3s ease-in-out infinite;
+          }
+        `}
+      </style>
     </div>
   );
 }

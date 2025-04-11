@@ -279,7 +279,8 @@ export function AuthenticatedApp() {
           >
             {/* Add border-t only if light mode */} 
             <div className={`py-4 space-y-4 ${theme === 'light' ? 'border-t border-border' : ''}`}>
-              {/* THEME TOGGLE BUTTON RE-ENABLED */}
+              {/* THEME TOGGLE BUTTON TEMPORARILY DISABLED */}
+              {/*
               <button
                 onClick={toggleTheme}
                 className="flex items-center gap-2 w-full text-left px-4 py-2 rounded-lg text-secondary hover:bg-[var(--color-bg-surface-hover)] transition-colors text-sm"
@@ -296,6 +297,7 @@ export function AuthenticatedApp() {
                   </>
                 )}
               </button>
+              */}
               <Link
                 to="/why"
                 onClick={closeMobileMenu}
@@ -311,7 +313,7 @@ export function AuthenticatedApp() {
               </Link>
               <button
                 onClick={() => handleNavigation('my-bookings')}
-                className={`w-full text-left px-4 py-2 rounded-lg transition-colors text-sm ${
+                className={`w-full text-left px-4 py-2 font-regular rounded-lg transition-colors text-sm ${
                   location.pathname === '/my-bookings'
                     ? 'bg-[color-mix(in_srgb,_var(--color-accent-secondary)_20%,_transparent)] text-accent-secondary font-medium'
                     : 'text-secondary hover:bg-[var(--color-bg-surface-hover)]'

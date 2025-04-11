@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Footer } from '../components/Footer';
@@ -7,6 +7,8 @@ import { Footer } from '../components/Footer';
 console.log('WhyPage: Component rendering');
 
 export function WhyPage() {
+  const [enlargedImageUrl, setEnlargedImageUrl] = useState<string | null>(null);
+  
   return (
     <div className="min-h-screen bg-main flex flex-col">
       <main className="flex-grow container mx-auto px-4 py-8 sm:py-12">
@@ -33,20 +35,53 @@ export function WhyPage() {
             <p className="text-secondary font-medium mb-4 text-base font-regular">
               Remember the days before? The overflowing inbox...
             </p>
-            <img
-              src="https://guquxpxxycfmmlqajdyw.supabase.co/storage/v1/object/public/other//email-before.jpg"
-              alt="A whimsical depiction of an overflowing email inbox"
-              className="rounded-lg shadow-md mx-auto max-w-full h-auto border border-border"
-              // Add loading="lazy" for performance if image is large
-              onError={(e) => {
-                console.error('WhyPage: Failed to load image', e);
-                // Optionally display a placeholder or error message
-                (e.target as HTMLImageElement).style.display = 'none';
-              }}
-            />
+            <button
+              onClick={() => setEnlargedImageUrl("https://guquxpxxycfmmlqajdyw.supabase.co/storage/v1/object/public/other//email-before.jpg")}
+              className="focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-offset-2 rounded-lg transition-opacity hover:opacity-80"
+            >
+              <img
+                src="https://guquxpxxycfmmlqajdyw.supabase.co/storage/v1/object/public/other//email-before.jpg"
+                alt="A whimsical depiction of an overflowing email inbox"
+                className="rounded-lg shadow-md mx-auto max-w-full h-auto border border-border cursor-pointer"
+                // Add loading="lazy" for performance if image is large
+                onError={(e) => {
+                  console.error('WhyPage: Failed to load image', e);
+                  // Optionally display a placeholder or error message
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+            </button>
           </div>
         </div>
       </main>
+
+      {/* Image Modal - Matched with MyBookings.tsx */}
+      {enlargedImageUrl && (
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setEnlargedImageUrl(null)}
+        >
+          <div
+            className="relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={enlargedImageUrl}
+              alt="Enlarged image"
+              className="max-w-full max-h-[80vh] w-auto h-auto object-contain rounded-lg shadow-2xl"
+            />
+            <button
+              onClick={() => setEnlargedImageUrl(null)}
+              className="absolute -top-2 -right-2 bg-surface rounded-full p-1 text-secondary hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary"
+              aria-label="Close enlarged image"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Add CSS for gradient animation */}
       {/* Tailwind handles the animation via animate-gradient-x if configured */}

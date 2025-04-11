@@ -1120,6 +1120,10 @@ export function BookingSummary({
         accommodationName={selectedAccommodation?.title || ''}
         basePrice={selectedAccommodation?.base_price || 0}
         calculatedWeeklyPrice={calculatedWeeklyAccommodationPrice}
+        averageSeasonalDiscount={seasonBreakdownState && seasonBreakdownState.seasons.length > 0 
+          ? seasonBreakdownState.seasons.reduce((sum, season) => sum + (season.discount * season.nights), 0) / 
+            seasonBreakdownState.seasons.reduce((sum, season) => sum + season.nights, 0)
+          : null}
       />
     </>
   );

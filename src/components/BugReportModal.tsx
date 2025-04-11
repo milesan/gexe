@@ -128,7 +128,7 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
                         placeholder="Describe the problem you encountered..."
                         required
                         rows={4}
-                        className="w-full bg-[var(--color-input-bg,theme(colors.gray.700/0.5))] border border-[var(--color-input-border,theme(colors.gray.600))] rounded-md p-2 text-sm text-[var(--color-text-primary,theme(colors.white))] focus:ring-1 focus:ring-[var(--color-focus-ring,theme(colors.accent-primary))] focus:border-[var(--color-focus-ring,theme(colors.accent-primary))] placeholder-[var(--color-text-placeholder,theme(colors.gray.400))] disabled:opacity-70"
+                        className="w-full bg-[var(--color-input-bg,theme(colors.gray.700/0.5))] border border-[var(--color-input-border,theme(colors.gray.600))] rounded-md p-2 text-sm text-[var(--color-text-primary,theme(colors.white))] focus:ring-1 focus:ring-[var(--color-focus-ring,theme(colors.accent-primary))] focus:border-[var(--color-focus-ring,theme(colors.accent-primary))] placeholder:text-[10px] xs:placeholder:text-xs sm:placeholder:text-sm placeholder-[var(--color-text-placeholder,theme(colors.gray.400))] disabled:opacity-70"
                         disabled={status === 'submitting'}
                       />
                     </div>
@@ -139,9 +139,9 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
                          id="stepsToReproduce"
                          value={stepsToReproduce}
                          onChange={(e) => setStepsToReproduce(e.target.value)}
-                         placeholder="How can we make this happen? e.g.&#10;1. Go to page X&#10;2. Click button Y&#10;3. See error Z"
+                         placeholder="How to reproduce:&#10;1. Go to page X&#10;2. Click Y&#10;3. See error Z"
                          rows={4}
-                         className="w-full bg-[var(--color-input-bg,theme(colors.gray.700/0.5))] border border-[var(--color-input-border,theme(colors.gray.600))] rounded-md p-2 text-sm text-[var(--color-text-primary,theme(colors.white))] focus:ring-1 focus:ring-[var(--color-focus-ring,theme(colors.accent-primary))] focus:border-[var(--color-focus-ring,theme(colors.accent-primary))] placeholder-[var(--color-text-placeholder,theme(colors.gray.400))] disabled:opacity-70"
+                         className="w-full bg-[var(--color-input-bg,theme(colors.gray.700/0.5))] border border-[var(--color-input-border,theme(colors.gray.600))] rounded-md p-2 text-sm text-[var(--color-text-primary,theme(colors.white))] focus:ring-1 focus:ring-[var(--color-focus-ring,theme(colors.accent-primary))] focus:border-[var(--color-focus-ring,theme(colors.accent-primary))] placeholder:text-[10px] xs:placeholder:text-xs sm:placeholder:text-sm placeholder-[var(--color-text-placeholder,theme(colors.gray.400))] disabled:opacity-70"
                          disabled={status === 'submitting'}
                        />
                     </div>
