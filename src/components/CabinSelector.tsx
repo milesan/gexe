@@ -386,9 +386,13 @@ export function CabinSelector({
                           <Tooltip.Provider delayDuration={50}>
                             <Tooltip.Root>
                               <Tooltip.Trigger asChild>
-                                <span className="flex items-center gap-1 cursor-help" title={`Capacity: ${acc.capacity ?? 'N/A'}`}> 
+                                <button 
+                                  className="flex items-center gap-1 cursor-help bg-transparent border-none p-0.5" 
+                                  title={`Capacity: ${acc.capacity ?? 'N/A'}`}
+                                  onTouchStart={(e) => e.preventDefault()}
+                                > 
                                   <BedDouble size={12} /> {acc.capacity} 
-                                </span>
+                                </button>
                               </Tooltip.Trigger>
                               <Tooltip.Portal>
                                 <Tooltip.Content
@@ -408,9 +412,13 @@ export function CabinSelector({
                           <Tooltip.Provider delayDuration={50}>
                             <Tooltip.Root>
                               <Tooltip.Trigger asChild>
-                                <span className="flex items-center gap-1 cursor-help" title={hasElectricity(acc.title) ? 'Has Electricity' : 'No Electricity'}>
+                                <button 
+                                  className="flex items-center gap-1 cursor-help bg-transparent border-none p-0.5" 
+                                  title={hasElectricity(acc.title) ? 'Has Electricity' : 'No Electricity'}
+                                  onTouchStart={(e) => e.preventDefault()}
+                                >
                                   {hasElectricity(acc.title) ? <Zap size={12} /> : <ZapOff size={12} className="opacity-50"/>}
-                                </span>
+                                </button>
                               </Tooltip.Trigger>
                               <Tooltip.Portal>
                                 <Tooltip.Content
@@ -428,9 +436,13 @@ export function CabinSelector({
                         <Tooltip.Provider delayDuration={50}>
                           <Tooltip.Root>
                             <Tooltip.Trigger asChild>
-                              <span className="flex items-center gap-1 cursor-help" title={hasWifi(acc.title) ? 'Has WiFi' : 'No WiFi'}>
+                              <button 
+                                className="flex items-center gap-1 cursor-help bg-transparent border-none p-0.5" 
+                                title={hasWifi(acc.title) ? 'Has WiFi' : 'No WiFi'}
+                                onTouchStart={(e) => e.preventDefault()}
+                              >
                                 {hasWifi(acc.title) ? <Wifi size={12} /> : <WifiOff size={12} className="opacity-50"/>}
-                              </span>
+                              </button>
                             </Tooltip.Trigger>
                             <Tooltip.Portal>
                               <Tooltip.Content
@@ -448,7 +460,12 @@ export function CabinSelector({
                         <Tooltip.Provider delayDuration={50}>
                           <Tooltip.Root>
                             <Tooltip.Trigger asChild>
-                              <button className="flex items-center gap-1 cursor-help"><Bed size={12} /></button>
+                              <button 
+                                className="flex items-center gap-1 cursor-help bg-transparent border-none p-0.5"
+                                onTouchStart={(e) => e.preventDefault()}
+                              >
+                                <Bed size={12} />
+                              </button>
                             </Tooltip.Trigger>
                             <Tooltip.Portal>
                               <Tooltip.Content
