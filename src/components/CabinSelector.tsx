@@ -281,14 +281,26 @@ export function CabinSelector({
 
               // Get the whole info object
               const weeklyInfo = displayWeeklyAccommodationPrice(acc.id);
-              const weeklyPrice = weeklyInfo?.price; // Extract price
-              const avgSeasonalDiscountForTooltip = weeklyInfo?.avgSeasonalDiscount; // Extract discount
+              // Ensure weeklyInfo and its properties are defined before accessing
+              let weeklyPrice = weeklyInfo?.price ?? null; // Use null as default if undefined
+              const avgSeasonalDiscountForTooltip = weeklyInfo?.avgSeasonalDiscount ?? null; // Use null as default
 
               // Keep duration discount calculation local to tooltip
               const completeWeeksForDiscount = calculateDurationDiscountWeeks(selectedWeeks);
               const currentDurationDiscount = getDurationDiscount(completeWeeksForDiscount);
-              // Use the avgSeasonalDiscount from the prop for the flag
-              const hasAnyDiscount = (avgSeasonalDiscountForTooltip !== null && avgSeasonalDiscountForTooltip > 0 && !acc.title.toLowerCase().includes('dorm')) || currentDurationDiscount > 0;
+              
+              // --- START TEST ACCOMMODATION OVERRIDE ---
+              let isTestAccommodation = acc.type === 'test';
+              if (isTestAccommodation) {
+                weeklyPrice = 0.01; // Override price
+              }
+              // --- END TEST ACCOMMODATION OVERRIDE ---
+
+              // Use the avgSeasonalDiscount from the prop for the flag, exclude test accommodations
+              // Original check: (avgSeasonalDiscountForTooltip !== null && avgSeasonalDiscountForTooltip > 0 && !acc.title.toLowerCase().includes('dorm')) || currentDurationDiscount > 0;
+              const hasSeasonalDiscount = avgSeasonalDiscountForTooltip !== null && avgSeasonalDiscountForTooltip > 0 && !acc.title.toLowerCase().includes('dorm');
+              const hasDurationDiscount = currentDurationDiscount > 0;
+              const hasAnyDiscount = !isTestAccommodation && (hasSeasonalDiscount || hasDurationDiscount); // <-- Modified: Exclude test type
 
               return (
                 <motion.div
@@ -526,18 +538,19 @@ export function CabinSelector({
                     
                     <div className="flex justify-between items-end">
                       <div className="text-primary font-medium font-regular">
-                        {/* Check if weeklyPrice (from prop) is null or 0 */}
+                        {/* Check if weeklyPrice (from prop) is null or 0, handle 0.01 specifically */}
                         {weeklyPrice === null || weeklyPrice === 0 ? (
                           <span className="text-accent-primary">{weeklyPrice === 0 ? 'Free' : 'N/A'}</span>
                         ) : (
                           <>
-                            €{weeklyPrice} 
+                            €{/* Display 0.01 without rounding, otherwise format normally */}
+                            {weeklyPrice === 0.01 ? '0.01' : weeklyPrice.toFixed(2)} 
                             <span className="text-sm text-secondary font-regular"> / week</span>
                           </>
                         )}
                       </div>
                       
-                      {/* Ensure weeklyPrice is not null for discount display */}
+                      {/* Ensure weeklyPrice is not null for discount display, and check hasAnyDiscount flag */}
                       {weeklyPrice !== null && weeklyPrice > 0 && hasAnyDiscount && (
                         <Tooltip.Provider delayDuration={50}>
                           <Tooltip.Root>
@@ -560,8 +573,8 @@ export function CabinSelector({
                                       <span>€{Math.round(acc.base_price)} / week</span>
                                    </div>
                                   
-                                  {/* Seasonal Discount - Use avgSeasonalDiscount from prop */}
-                                  {!acc.title.toLowerCase().includes('dorm') && avgSeasonalDiscountForTooltip !== null && avgSeasonalDiscountForTooltip > 0 && (
+                                  {/* Seasonal Discount - Use avgSeasonalDiscount from prop, ensure not null */}
+                                  {hasSeasonalDiscount && avgSeasonalDiscountForTooltip !== null && ( // Added null check here
                                     <div className="flex justify-between items-center">
                                       <span className="text-gray-300">Seasonal Discount:</span>
                                       <span className="text-accent-primary font-medium">
@@ -570,8 +583,8 @@ export function CabinSelector({
                                     </div>
                                   )}
                                   
-                                  {/* Duration Discount - Use Math.round */}
-                                  {currentDurationDiscount > 0 && (
+                                  {/* Duration Discount - Use Math.round, check hasDurationDiscount */}
+                                  {hasDurationDiscount && ( // Check flag
                                     <div className="flex justify-between items-center">
                                       <span className="text-gray-300">Duration Discount ({completeWeeksForDiscount} wks):</span>
                                       <span className="text-accent-primary font-medium">
@@ -583,11 +596,11 @@ export function CabinSelector({
                                   {/* Separator */}
                                    <div className="border-t border-gray-600 my-1"></div>
 
-                                   {/* Final Weekly Price - Use weeklyPrice from prop */}
+                                   {/* Final Weekly Price - Use weeklyPrice from prop, ensure not null */}
                                    <div className="flex justify-between items-center font-medium text-white">
                                       <span>Final Weekly Rate:</span>
                                       {/* Ensure weeklyPrice is not null before rounding */}
-                                      <span>€{weeklyPrice !== null ? weeklyPrice : 'N/A'}</span>
+                                      <span>€{weeklyPrice !== null ? (weeklyPrice === 0.01 ? '0.01' : weeklyPrice.toFixed(2)) : 'N/A'}</span>
                                    </div>
                                 </div>
                                  <p className="text-xs text-gray-400 mt-2 font-regular">Discounts applied multiplicatively.</p>

@@ -754,8 +754,15 @@ export function BookingSummary({
 
               <StripeCheckoutForm
                 authToken={authToken}
-                total={testPaymentAmount !== null && isAdmin ? testPaymentAmount : pricing.totalAmount}
-                description={`${selectedAccommodation?.title || 'Accommodation'} for ${pricing.totalNights} nights${testPaymentAmount !== null && isAdmin ? ' (TEST PAYMENT)' : ''}`}
+                // --- TEST ACCOMMODATION OVERRIDE FOR PAYMENT --- 
+                total={
+                  selectedAccommodation?.type === 'test' 
+                  ? 0.50 // Force 0.50 if it's the test type (Stripe minimum)
+                  : testPaymentAmount !== null && isAdmin 
+                    ? testPaymentAmount // Otherwise use admin test amount if set
+                    : pricing.totalAmount // Otherwise use the calculated total
+                }
+                description={`${selectedAccommodation?.title || 'Accommodation'} for ${pricing.totalNights} nights${testPaymentAmount !== null && isAdmin ? ' (TEST PAYMENT)' : (selectedAccommodation?.type === 'test' ? ' (TEST ACCOMMODATION - 0.50 EUR)' : '')}`}
                 onSuccess={handleBookingSuccess}
               />
             </motion.div>
@@ -1073,29 +1080,6 @@ export function BookingSummary({
                          {isBooking ? 'Confirming...' : <span>Admin Confirm<br />(No Payment)</span>}
                       </span>
                     </button>
-                  )}
-                  
-                  {/* Admin Test Payment Area */}
-                  {isAdmin && (
-                    <div className="mt-4 p-3 border border-dashed border-color rounded-md bg-surface">
-                      <label htmlFor="test-payment" className="block text-xs font-regular text-secondary mb-1">Admin: Set Test Payment Amount (€)</label>
-                      <div className="flex items-center gap-2 ">
-                        <input
-                          type="number"
-                          id="test-payment"
-                          value={testPaymentAmount === null ? '' : String(testPaymentAmount)}
-                          onChange={(e) => setTestPaymentAmount(e.target.value === '' ? null : Number(e.target.value))}
-                          placeholder="Total amount"
-                          className="flex-grow px-2 py-1 border border-color text-sm rounded-md bg-main text-primary focus:ring-accent-primary focus:border-accent-primary"
-                        />
-                        <button
-                          onClick={() => setTestPaymentAmount(null)}
-                          className="px-2 py-1 text-xs bg-border text-secondary rounded hover:bg-border-hover"
-                        >
-                          Clear
-                        </button>
-                      </div>
-                    </div>
                   )}
                 </div>
               </div> {/* End of Wrapper (now transparent) */}

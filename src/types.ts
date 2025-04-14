@@ -1,4 +1,4 @@
-export type AccommodationType = 'room' | 'dorm' | 'cabin' | 'tent' | 'parking' | 'addon';
+export type AccommodationType = 'room' | 'dorm' | 'cabin' | 'tent' | 'parking' | 'addon' | 'test';
 export type BookingStatus = 'pending' | 'confirmed' | 'cancelled';
 
 export interface Accommodation {
