@@ -30,7 +30,8 @@ export default {
         serif: ['Playfair Display', 'serif'],
         body: ['Lora', 'serif'],
         lettra: ['PP Lettra Mono Thin', 'monospace'],
-        regular: ['Space Mono', 'monospace']
+        regular: ['Space Mono', 'monospace'],
+        'lettra-bold': ['PP Lettra Mono Bold', 'monospace']
       }
     },
   },

@@ -49,7 +49,7 @@ export function Auth() {
             className="w-10 h-10"
           />
           <div>
-            <h1 className="text-3xl font-display font-light text-primary">The Garden</h1>
+            <h1 className="text-xl sm:text-2xl font-lettra-bold text-primary">THE GARDEN</h1>
           </div>
         </div>
         <p className="text-secondary font-body">Welcome to reality</p>
