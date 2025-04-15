@@ -106,7 +106,7 @@ export function DiscountModal({
                      <>              
                          {/* Base Rate Section */}
                          <div className="text-center border border-gray-600/50 rounded-md p-3">
-                            <div className="text-xs text-gray-400 font-regular mb-1">Accommodation Base Weekly Rate</div>
+                            <div className="text-xs text-gray-400 font-regular mb-1">Accommodation Weekly Rate</div>
                             <div className="text-lg font-medium text-white font-regular">€{Math.round(basePrice)}</div>
                          </div>
                          
@@ -155,7 +155,6 @@ export function DiscountModal({
                         <div className="text-center border border-accent-primary/60 rounded-md p-3 bg-accent-primary/10">
                             <div className="text-xs text-accent-primary/80 font-regular mb-1">Final Accommodation Weekly Rate</div>
                             <div className="text-lg font-medium text-accent-primary font-regular">€{calculatedWeeklyPrice ?? 'N/A'}</div>
-                            <p className="text-[10px] sm:text-xs text-gray-400 mt-2">Base Rate × (1 - Seasonal) × (1 - Duration)</p>
                          </div>
 
                          {/* Separator if duration discount also applies to F&F */}    

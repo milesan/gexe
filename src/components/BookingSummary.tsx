@@ -1000,7 +1000,7 @@ export function BookingSummary({
                     {foodContribution !== null && selectedWeeks.length > 0 && (
                       <div className="pt-4">
                         <div className="flex justify-between items-center mb-2">
-                           <label htmlFor="food-contribution" className="text-sm text-secondary font-regular">Food & Facilities Contribution (€/week)</label>
+                           <label htmlFor="food-contribution" className="text-sm text-secondary font-regular">Contribution</label>
                             <Tooltip.Provider>
                                 <Tooltip.Root delayDuration={50}>
                                     <Tooltip.Trigger asChild>

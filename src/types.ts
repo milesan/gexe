@@ -11,6 +11,7 @@ export interface Accommodation {
   has_electricity: boolean;
   image_url: string | null;
   is_unlimited: boolean;
+  bed_size: string | null;
 }
 
 export interface Booking {

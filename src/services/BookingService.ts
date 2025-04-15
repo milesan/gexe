@@ -3,7 +3,7 @@ import type { Accommodation, Booking } from '../types';
 import type { AvailabilityResult } from '../types/availability';
 import type { Database } from '../types/database';
 import { addDays, startOfWeek, endOfWeek, isBefore, isEqual } from 'date-fns';
-import { normalizeToUTCDate, safeParseDate, formatDateOnly } from '../utils/dates';
+import { normalizeToUTCDate, formatDateOnly } from '../utils/dates';
 import { getFrontendUrl } from '../lib/environment';
 
 type AccommodationType = Database['public']['Tables']['accommodations']['Row'];
@@ -24,17 +24,7 @@ class BookingService {
     console.log('[BookingService] Fetching accommodations');
     const { data, error } = await supabase
       .from('accommodations')
-      .select(`
-        id,
-        title,
-        base_price,
-        type,
-        capacity,
-        has_wifi,
-        has_electricity,
-        image_url,
-        is_unlimited
-      `)
+      .select('*')
       .order('title');
 
     if (error) {

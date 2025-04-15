@@ -21,46 +21,6 @@ interface Props {
   displayWeeklyAccommodationPrice: (accommodationId: string) => { price: number | null; avgSeasonalDiscount: number | null } | null;
 }
 
-const BED_SIZES = {
-  '6-Bed Dorm': '90×200cm (35×79") - Single',
-  '3-Bed Dorm': '90×200cm (35×79") - Single',
-  'A-Frame Pod': '140×200cm (55×79") - Double',
-  'Microcabin Left': '140×200cm (55×79") - Double',
-  'Microcabin Middle': '140×200cm (55×79") - Double',
-  'Microcabin Right': '140×200cm (55×79") - Double',
-  'Writer\'s Room': '135×200cm (53×79") - Double',
-  'Valleyview Room': '160×200cm (63×79") - Queen',
-  'The Hearth': '180×200cm (71×79") - King',
-  'Master\'s Suite': '160×200cm (63×79") - Queen',
-  '2.2 Meter Tipi': '90×200cm (35×79") - Single',
-  '4 Meter Bell Tent': '140×200cm (55×79") - Double',
-  '5 Meter Bell Tent': '160×200cm (63×79") - Queen',
-  'Your Own Tent': 'Bring your own',
-  'Van Parking': 'Bring your own',
-  'I\'m staying with someone else / +1': 'N/A'
-} as const;
-
-const HAS_ELECTRICITY = [
-  'Microcabin Left',
-  'Microcabin Middle',
-  'Microcabin Right',
-  '6-Bed Dorm',
-  '3-Bed Dorm',
-  'Writer\'s Room',
-  'Valleyview Room',
-  'The Hearth',
-  'Master\'s Suite'
-];
-
-const HAS_WIFI = [
-  'Writer\'s Room',
-  'The Hearth',
-  'Valleyview Room',
-  'Master\'s Suite',
-  '3-Bed Dorm',
-  '6-Bed Dorm'
-];
-
 export function CabinSelector({ 
   accommodations, 
   selectedAccommodationId, 
@@ -121,9 +81,6 @@ export function CabinSelector({
     // For regular accommodations, show integer if whole number, otherwise two decimals
     return Number.isInteger(price) ? price.toString() : price.toFixed(2);
   };
-  
-  const hasWifi = (title: string) => HAS_WIFI.includes(title);
-  const hasElectricity = (title: string) => HAS_ELECTRICITY.includes(title);
 
   // Clear selection if selected accommodation becomes unavailable
   useEffect(() => {
@@ -437,10 +394,10 @@ export function CabinSelector({
                               <Tooltip.Trigger asChild>
                                 <button 
                                   className="flex items-center gap-1 cursor-help bg-transparent border-none p-0.5" 
-                                  title={hasElectricity(acc.title) ? 'Has Electricity' : 'No Electricity'}
+                                  title={acc.has_electricity ? 'Has Electricity' : 'No Electricity'}
                                   onTouchStart={(e) => e.preventDefault()}
                                 >
-                                  {hasElectricity(acc.title) ? <Zap size={12} /> : <ZapOff size={12} className="opacity-50"/>}
+                                  {acc.has_electricity ? <Zap size={12} /> : <ZapOff size={12} className="opacity-50"/>}
                                 </button>
                               </Tooltip.Trigger>
                               <Tooltip.Portal>
@@ -449,7 +406,7 @@ export function CabinSelector({
                                   className="tooltip-content !font-regular"
                                 >
                                   <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
-                                  <span className="text-white">{hasElectricity(acc.title) ? 'Has Electricity' : 'No Electricity'}</span>
+                                  <span className="text-white">{acc.has_electricity ? 'Has Electricity' : 'No Electricity'}</span>
                                 </Tooltip.Content>
                               </Tooltip.Portal>
                             </Tooltip.Root>
@@ -461,10 +418,10 @@ export function CabinSelector({
                             <Tooltip.Trigger asChild>
                               <button 
                                 className="flex items-center gap-1 cursor-help bg-transparent border-none p-0.5" 
-                                title={hasWifi(acc.title) ? 'Has WiFi' : 'No WiFi'}
+                                title={acc.has_wifi ? 'Has WiFi' : 'No WiFi'}
                                 onTouchStart={(e) => e.preventDefault()}
                               >
-                                {hasWifi(acc.title) ? <Wifi size={12} /> : <WifiOff size={12} className="opacity-50"/>}
+                                {acc.has_wifi ? <Wifi size={12} /> : <WifiOff size={12} className="opacity-50"/>}
                               </button>
                             </Tooltip.Trigger>
                             <Tooltip.Portal>
@@ -473,7 +430,7 @@ export function CabinSelector({
                                 className="tooltip-content !font-regular"
                               >
                                 <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
-                                <span className="text-white">{hasWifi(acc.title) ? 'Has WiFi' : 'No WiFi'}</span>
+                                <span className="text-white">{acc.has_wifi ? 'Has WiFi' : 'No WiFi'}</span>
                               </Tooltip.Content>
                             </Tooltip.Portal>
                           </Tooltip.Root>
@@ -498,7 +455,7 @@ export function CabinSelector({
                                 <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
                                 <h4 className="font-medium font-regular text-white mb-1">Bed Size</h4>
                                 <p className="text-sm text-gray-300 font-regular">
-                                  {BED_SIZES[acc.title as keyof typeof BED_SIZES] || 'N/A'}
+                                  {acc.bed_size || 'N/A'}
                                 </p>
                               </Tooltip.Content>
                             </Tooltip.Portal>

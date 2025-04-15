@@ -251,17 +251,6 @@ export function AuthenticatedApp() {
                 )}
               </button>*/}
               <nav className="flex gap-6 items-center">
-                <Link
-                  to="/why"
-                  onClick={closeMobileMenu}
-                  className={`text-sm font-regular transition-colors ${
-                    location.pathname === '/why'
-                      ? 'text-accent-secondary font-medium'
-                      : 'text-secondary hover:text-accent-secondary'
-                  }`}
-                >
-                  Why?
-                </Link>
                 <button
                   onClick={() => handleNavigation('my-bookings')}
                   className={`text-sm font-regular transition-colors ${
@@ -319,19 +308,6 @@ export function AuthenticatedApp() {
                 )}
               </button>
               */}
-              <Link
-                to="/why"
-                onClick={closeMobileMenu}
-                className={`block w-full text-left px-4 py-2 rounded-lg transition-colors text-sm font-regular ${
-                  location.pathname === '/why'
-                  ? 'bg-[color-mix(in_srgb,_var(--color-accent-secondary)_20%,_transparent)] text-accent-secondary font-medium'
-                  : 'text-secondary hover:bg-[var(--color-bg-surface-hover)]'
-                }`}
-              >
-                <span className="text-secondary">
-                  Why This App Exists
-                </span>
-              </Link>
               <button
                 onClick={() => handleNavigation('my-bookings')}
                 className={`w-full text-left px-4 py-2 font-regular rounded-lg transition-colors text-sm ${
