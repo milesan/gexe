@@ -1071,7 +1071,7 @@ export function BookingSummary({
                       ${
                         isBooking || !selectedAccommodation || selectedWeeks.length === 0
                           ? 'bg-border text-secondary cursor-not-allowed'
-                          : 'bg-accent-primary text-stone-800 hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent-primary'
+                          : 'bg-accent-primary text-stone-800 hover:bg-accent-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent-primary'
                       }`}
                   >
                     <span className="pixel-corners--content">

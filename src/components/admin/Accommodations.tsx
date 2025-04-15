@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Upload, Image as ImageIcon, X } from 'lucide-react';
+import { Upload, Image as ImageIcon, X, Check, Save, Pencil } from 'lucide-react';
 
 interface Accommodation {
   id: string;
@@ -22,6 +22,10 @@ export function Accommodations() {
   const [loading, setLoading] = useState(true);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [editingAccommodationId, setEditingAccommodationId] = useState<string | null>(null);
+  const [currentEditPrice, setCurrentEditPrice] = useState<string>('');
+  const [editLoading, setEditLoading] = useState<boolean>(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAccommodations();
@@ -43,13 +47,70 @@ export function Accommodations() {
     }
   };
 
+  const handleEditClick = (accommodationId: string, currentPrice: number) => {
+    console.log('Accommodation Edit Click:', { accommodationId, currentPrice });
+    setEditingAccommodationId(accommodationId);
+    setCurrentEditPrice(String(currentPrice));
+    setEditError(null);
+  };
+
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setCurrentEditPrice(e.target.value);
+  };
+
+  const handleCancelEdit = () => {
+    console.log('Accommodation Edit Cancelled');
+    setEditingAccommodationId(null);
+    setCurrentEditPrice('');
+    setEditError(null);
+    setEditLoading(false);
+  };
+
+  const handleSavePrice = async (accommodationId: string) => {
+    setEditLoading(true);
+    setEditError(null);
+    const newPriceString = currentEditPrice.trim();
+    const newPrice = parseInt(newPriceString, 10);
+
+    console.log('Accommodation Saving Price:', { accommodationId, newPrice, typeofNewPrice: typeof newPrice });
+
+    if (isNaN(newPrice) || newPrice < 0 || !Number.isInteger(newPrice) || String(newPrice) !== newPriceString) {
+      setEditError("Invalid price. Please enter a non-negative whole number.");
+      setEditLoading(false);
+      console.error('Accommodation Save Error: Invalid integer price input', { currentEditPrice });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('accommodations')
+        .update({ base_price: newPrice })
+        .eq('id', accommodationId);
+
+      if (error) throw error;
+
+      console.log('Accommodation Price Update Successful:', { accommodationId, newPrice });
+      setAccommodations(prev =>
+        prev.map(acc =>
+          acc.id === accommodationId ? { ...acc, base_price: newPrice } : acc
+        )
+      );
+
+      handleCancelEdit();
+    } catch (err: any) {
+      console.error('Accommodation Save Error:', err);
+      setEditError(err.message || "Failed to save price.");
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
   const handleImageUpload = async (file: File, accommodationId: string) => {
-    // Validate file type and size
     if (!file.type.startsWith('image/')) {
       setUploadError('Please upload only image files');
       return;
     }
-    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+    if (file.size > 5 * 1024 * 1024) {
       setUploadError('File size must be less than 5MB');
       return;
     }
@@ -77,7 +138,6 @@ export function Accommodations() {
 
       console.log('🔗 Generated public URL:', { publicUrl });
 
-      // Update accommodation record with new image URL
       const { error: updateError } = await supabase
         .from('accommodations')
         .update({ image_url: publicUrl })
@@ -103,7 +163,7 @@ export function Accommodations() {
       <h2 className="text-xl font-display mb-4 text-[var(--color-text-primary)]">Accommodations</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {accommodations.map((accommodation) => (
-          <div key={accommodation.id} className="bg-[var(--color-bg-surface)] rounded-lg shadow-sm border border-[var(--color-border)] p-4">
+          <div key={accommodation.id} className="bg-[var(--color-bg-surface)] rounded-lg shadow-sm border border-[var(--color-border)] p-4 flex flex-col">
             <div className="relative aspect-video mb-4 group">
               {accommodation.image_url ? (
                 <img
@@ -140,18 +200,67 @@ export function Accommodations() {
               )}
             </div>
             <h3 className="font-semi-bold font-regular mb-2 text-[var(--color-text-primary)]">{accommodation.title}</h3>
-            <div className="space-y-1 text-sm text-[var(--color-text-secondary)]">
+            <div className="space-y-1 text-sm text-[var(--color-text-secondary)] flex-grow">
               <p>Type: {accommodation.type}</p>
-              <p>Price: €{accommodation.base_price}</p>
+              <div className="flex items-center gap-2">
+                {editingAccommodationId === accommodation.id ? (
+                  <>
+                    <label htmlFor={`price-${accommodation.id}`} className="text-sm shrink-0">Price: €</label>
+                    <input
+                      type="number"
+                      id={`price-${accommodation.id}`}
+                      value={currentEditPrice}
+                      onChange={handlePriceChange}
+                      disabled={editLoading}
+                      className="w-16 px-2 py-1 border border-[var(--color-border)] rounded-md bg-[var(--color-input-bg)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-regular text-sm disabled:opacity-50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      step="1"
+                      min="0"
+                    />
+                    <button
+                      onClick={() => handleSavePrice(accommodation.id)}
+                      disabled={editLoading}
+                      className="p-1 text-green-500 hover:text-green-700 hover:bg-green-100 rounded-md transition-colors disabled:opacity-50"
+                      aria-label="Save price"
+                    >
+                      {editLoading ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div> : <Save className="w-4 h-4" />}
+                    </button>
+                    <button
+                      onClick={handleCancelEdit}
+                      disabled={editLoading}
+                      className="p-1 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-md transition-colors disabled:opacity-50"
+                      aria-label="Cancel edit"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p>
+                      Price: €{accommodation.base_price}
+                    </p>
+                    <button
+                      onClick={() => !editingAccommodationId && handleEditClick(accommodation.id, accommodation.base_price)}
+                      disabled={!!editingAccommodationId}
+                      className={`p-1 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
+                      aria-label="Edit price"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                  </>
+                )}
+              </div>
+              {editingAccommodationId === accommodation.id && editError && (
+                <p className="text-xs text-red-500 mt-1">{editError}</p>
+              )}
               <p>Capacity: {accommodation.capacity || 'N/A'}</p>
               <p>Bed Size: {accommodation.bed_size}</p>
               <p>Bathroom: {accommodation.bathroom_type} ({accommodation.bathrooms})</p>
               <div className="flex gap-2">
-                {accommodation.has_wifi && <span className="bg-[var(--color-bg-success-subtle)] text-[var(--color-text-success)] px-2 py-1 rounded">WiFi</span>}
-                {accommodation.has_electricity && <span className="bg-[var(--color-bg-success-subtle)] text-[var(--color-text-success)] px-2 py-1 rounded">Electricity</span>}
+                {accommodation.has_wifi && <span className="bg-[var(--color-bg-success-subtle)] text-[var(--color-text-success)] px-2 py-1 rounded text-xs">WiFi</span>}
+                {accommodation.has_electricity && <span className="bg-[var(--color-bg-success-subtle)] text-[var(--color-text-success)] px-2 py-1 rounded text-xs">Electricity</span>}
               </div>
             </div>
-            {uploadError && (
+            {uploadError && accommodation.id === editingAccommodationId && (
               <div className="mt-2 flex items-center text-[var(--color-text-error)] text-sm">
                 <X className="w-4 h-4 mr-2" />
                 {uploadError}

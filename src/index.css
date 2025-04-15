@@ -27,15 +27,15 @@
 @tailwind utilities;
 
 :root {
-  /* Dark mode defaults */
+  /* Dark mitsode defaults */
   --color-bg-main: #1e2734;
   --color-bg-surface: #2c3444;
   --color-bg-surface-transparent: rgba(44, 52, 68, 0.8);
   --color-text-primary: #f1f5f9;
   --color-text-secondary: #94a3b8;
   --color-border: #475569;
-  --color-accent-primary: #FFD166; /* Yellow */
-  --color-accent-secondary: #FFD166;
+  --color-accent-primary: #bac89b; /* Yellow */
+  --color-accent-secondary: #a4b088;
   --color-accent-muted: rgba(255, 209, 102, 0.1); /* Yellow at 10% */
   --color-accent-subtle: rgba(255, 209, 102, 0.2); /* Yellow at 20% */
   --color-error: #f87171;

@@ -139,7 +139,6 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
             options: finalOptions, // Use the filtered array
             required: formData.required,
             section: formData.section,
-            updated_at: new Date().toISOString(), // Explicitly set updated_at
           })
           .match({ id: question.id });
 
