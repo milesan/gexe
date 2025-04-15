@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, AlertCircle, CheckCircle } from 'lucide-react';
+import { X, AlertCircle, CheckCircle, Upload } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { logger } from '../utils/logging';
-import { supabase } from '../lib/supabase'; // Import Supabase client
+import { supabase } from '../lib/supabase';
+
+interface UploadedFileData {
+  url: string;
+  fileName: string;
+}
 
 interface BugReportModalProps {
   isOpen: boolean;
@@ -12,40 +17,200 @@ interface BugReportModalProps {
 
 type SubmitStatus = 'idle' | 'submitting' | 'success' | 'error';
 
+const IMAGE_LIMIT = 5;
+const MAX_FILE_SIZE_MB = 5;
+
 export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
   const [description, setDescription] = useState('');
   const [stepsToReproduce, setStepsToReproduce] = useState('');
   const [status, setStatus] = useState<SubmitStatus>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFileData[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
-  // Reset form only when modal is closed
   useEffect(() => {
-    if (!isOpen) { 
+    if (!isOpen) {
       const timer = setTimeout(() => {
         setDescription('');
         setStepsToReproduce('');
         setStatus('idle');
         setErrorMessage(null);
-      }, 300); // Delay reset slightly for exit animation
+        setUploadedFiles([]);
+        setUploadProgress(0);
+        setUploadError(null);
+        setIsDeleting(null);
+      }, 300);
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
 
+  const handleFileUpload = async (files: File[]) => {
+    setUploadError(null);
+    setUploadProgress(0);
+
+    const currentFileCount = uploadedFiles.length;
+    const filesToUpload = files.slice(0, IMAGE_LIMIT - currentFileCount);
+
+    if (files.length > filesToUpload.length && currentFileCount < IMAGE_LIMIT) {
+        const limitMessage = `You can only upload up to ${IMAGE_LIMIT} images in total. ${filesToUpload.length} more allowed.`;
+        setUploadError(limitMessage);
+        logger.warn('[BugReportModal] Upload limit check:', {
+            limit: IMAGE_LIMIT,
+            current: currentFileCount,
+            attempted: files.length,
+            allowedNow: filesToUpload.length,
+            message: limitMessage
+        });
+    } else if (filesToUpload.length === 0 && files.length > 0) {
+        const limitMessage = `You have already reached the limit of ${IMAGE_LIMIT} images.`;
+        setUploadError(limitMessage);
+        logger.warn('[BugReportModal] Upload skipped: Limit already reached.', { limit: IMAGE_LIMIT, current: currentFileCount });
+        return;
+    }
+
+    if (filesToUpload.length === 0) {
+        logger.log('[BugReportModal] No files selected or limit reached.');
+        return;
+    }
+
+    logger.log('[BugReportModal] Starting file upload:', {
+      numberOfFiles: filesToUpload.length,
+      uploadingFileNames: filesToUpload.map(f => f.name),
+      currentFileCount: currentFileCount
+    });
+
+    let accumulatedProgress = 0;
+
+    try {
+      const uploadPromises = filesToUpload.map(async (file) => {
+        if (!file.type.startsWith('image/')) {
+          logger.warn('[BugReportModal] Skipping non-image file:', file.name, file.type);
+          throw new Error(`Skipped '${file.name}': Only image files are allowed.`);
+        }
+        if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+          logger.warn('[BugReportModal] Skipping oversized file:', file.name, file.size);
+          throw new Error(`Skipped '${file.name}': File size must be less than ${MAX_FILE_SIZE_MB}MB.`);
+        }
+
+        const safeFileName = file.name.replace(/[^a-zA-Z0-9_.-]/g, '_').replace(/_{2,}/g, '_');
+        const fileName = `${Date.now()}-${safeFileName}`;
+        logger.log('[BugReportModal] Uploading to storage:', { bucket: 'bug-report-attachments', fileName });
+
+        const { data, error } = await supabase.storage
+          .from('bug-report-attachments')
+          .upload(`public/${fileName}`, file, {
+            upsert: false,
+            contentType: file.type
+          });
+
+        if (error) {
+          logger.error('[BugReportModal] Supabase upload error:', { fileName, error });
+          throw new Error(`Failed to upload ${file.name}: ${error.message}`);
+        }
+        logger.log('[BugReportModal] Upload successful:', { fileName, storagePath: data?.path });
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('bug-report-attachments')
+          .getPublicUrl(`public/${fileName}`);
+
+        logger.log('[BugReportModal] Generated public URL:', { publicUrl, fileName });
+
+        accumulatedProgress += 1;
+        setUploadProgress((accumulatedProgress / filesToUpload.length) * 100);
+
+        return { url: publicUrl, fileName };
+      });
+
+      const results = await Promise.allSettled(uploadPromises);
+
+      const successfulUploads: UploadedFileData[] = [];
+      let firstError: Error | null = null;
+
+      results.forEach(result => {
+          if (result.status === 'fulfilled' && result.value) {
+              successfulUploads.push(result.value);
+          } else if (result.status === 'rejected' && !firstError) {
+              firstError = result.reason instanceof Error ? result.reason : new Error(String(result.reason));
+              logger.error('[BugReportModal] Upload failed for one file:', { reason: result.reason });
+          }
+      });
+
+      if (successfulUploads.length > 0) {
+          setUploadedFiles(prevFiles => [...prevFiles, ...successfulUploads]);
+          logger.log('[BugReportModal] Files processed:', {
+              successCount: successfulUploads.length,
+              newTotal: uploadedFiles.length + successfulUploads.length,
+              successfulFilesData: successfulUploads,
+          });
+      }
+
+      if (firstError) {
+          throw firstError;
+      }
+
+      if (successfulUploads.length === filesToUpload.length) {
+        setUploadProgress(100);
+        setTimeout(() => setUploadProgress(0), 1500);
+      } else {
+        setUploadProgress(0);
+      }
+
+    } catch (err: any) {
+      logger.error('[BugReportModal] Upload process error:', err);
+      setUploadError(err.message || 'An error occurred during upload.');
+      setUploadProgress(0);
+    }
+  };
+
+  const handleFileDelete = async (fileNameToDelete: string) => {
+    if (isDeleting) return;
+
+    setUploadError(null);
+    setIsDeleting(fileNameToDelete);
+    logger.log('[BugReportModal] Attempting to delete file:', { bucket: 'bug-report-attachments', fileNameToDelete });
+
+    try {
+      const filePath = `public/${fileNameToDelete}`;
+      const { error } = await supabase.storage
+        .from('bug-report-attachments')
+        .remove([filePath]);
+
+      if (error) {
+        logger.error('[BugReportModal] Supabase deletion error:', { fileNameToDelete, error });
+        throw new Error(`Failed to delete ${fileNameToDelete}: ${error.message}`);
+      }
+
+      logger.log('[BugReportModal] File deleted from storage:', { fileNameToDelete });
+      setUploadedFiles(currentFiles =>
+        currentFiles.filter(file => file.fileName !== fileNameToDelete)
+      );
+      logger.log('[BugReportModal] State updated after deletion.');
+
+    } catch (err: any) {
+      logger.error('[BugReportModal] Deletion process error:', err);
+      setUploadError(err.message || 'Failed to delete image.');
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!description || status === 'submitting') return;
+    if (!description || status === 'submitting' || isUploading || !!isDeleting) return;
 
     setStatus('submitting');
     setErrorMessage(null);
     const submissionData = { 
       description, 
-      stepsToReproduce: stepsToReproduce || null, // Send null if empty
-      pageUrl: window.location.href 
+      stepsToReproduce: stepsToReproduce || null,
+      pageUrl: window.location.href,
+      attachments: uploadedFiles.map(file => file.url)
     };
     logger.log('[BugReportModal] Submitting bug report:', submissionData);
 
     try {
-      // --- Replace Placeholder with Actual API Call --- 
       const { data, error } = await supabase.functions.invoke('submit-bug-report', {
         body: submissionData,
       });
@@ -55,29 +220,40 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
         throw new Error(error.message || 'Failed to submit bug report via function.');
       }
       
-      // Check the function's specific success/error response if needed
-      // Example: assuming function returns { success: true/false, ... }
-      if (data && data.error) { // Check for application-level errors returned by the function
+      if (data && data.error) {
         logger.error('[BugReportModal] Function returned error:', data.error);
         throw new Error(data.error || 'Submission failed.');
       }
       
-      if (!data) { // Handle case where function returns no data unexpectedly
+      if (!data) {
         logger.error('[BugReportModal] Function returned no data.');
         throw new Error('Received an empty response from the server.');
       }
 
       logger.log('[BugReportModal] Bug report submitted successfully via function:', data);
       setStatus('success');
-      setTimeout(onClose, 2000); 
+      setTimeout(onClose, 2000);
 
     } catch (error) {
       logger.error('[BugReportModal] Error submitting bug report:', error);
       setStatus('error');
       setErrorMessage(error instanceof Error ? error.message : 'An unknown error occurred.');
+    } finally {
+       if (status === 'submitting' && errorMessage) {
+          setStatus('error');
+          logger.warn('[BugReportModal] Submission ended but status was still submitting, forced to error.');
+       } else if (status === 'submitting') {
+           setStatus('idle');
+           logger.warn('[BugReportModal] Submission ended unexpectedly in submitting state, reverted to idle.');
+       }
     }
-    // --- End API Call ---
   };
+
+  const currentFileCount = uploadedFiles.length;
+  const canUploadMore = currentFileCount < IMAGE_LIMIT;
+  const isUploading = uploadProgress > 0 && uploadProgress < 100;
+  const inputId = `bug-report-file-upload`;
+  const isUploadAreaDisabled = !canUploadMore || isUploading || !!isDeleting || status === 'submitting';
 
   return (
     <>
@@ -89,19 +265,19 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 bg-[var(--color-overlay,rgba(0,0,0,0.7))] backdrop-blur-sm flex items-center justify-center z-[100] p-4"
-              onClick={onClose} // Close on overlay click
+              onClick={onClose}
             >
               <motion.div
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.95, opacity: 0 }}
                 className="bg-[var(--color-surface-modal,theme(colors.gray.800))] rounded-lg p-4 sm:p-6 max-w-lg w-full relative z-[101] max-h-[90vh] overflow-y-auto shadow-xl border border-[var(--color-border-modal,theme(colors.gray.500/0.3))] text-[var(--color-text-primary,theme(colors.white))] backdrop-blur-sm flex flex-col"
-                onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside modal
+                onClick={(e) => e.stopPropagation()}
               >
                 <button
                   onClick={onClose}
                   className="absolute top-3 sm:top-4 right-3 sm:right-4 text-[var(--color-text-secondary,theme(colors.gray.400))] hover:text-[var(--color-text-primary,theme(colors.white))] disabled:opacity-50"
-                  disabled={status === 'submitting'}
+                  disabled={status === 'submitting' || isUploading || !!isDeleting}
                   aria-label="Close modal"
                 >
                   <X className="w-5 h-5" />
@@ -129,24 +305,110 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
                         required
                         rows={4}
                         className="w-full bg-[var(--color-input-bg,theme(colors.gray.700/0.5))] border border-[var(--color-input-border,theme(colors.gray.600))] rounded-md p-2 text-sm text-[var(--color-text-primary,theme(colors.white))] focus:ring-1 focus:ring-[var(--color-focus-ring,theme(colors.accent-primary))] focus:border-[var(--color-focus-ring,theme(colors.accent-primary))] placeholder:text-[10px] xs:placeholder:text-xs sm:placeholder:text-sm placeholder-[var(--color-text-placeholder,theme(colors.gray.400))] disabled:opacity-70"
-                        disabled={status === 'submitting'}
+                        disabled={status === 'submitting' || isUploading || !!isDeleting}
                       />
                     </div>
-                    
                     <div>
                        <label htmlFor="stepsToReproduce" className="block text-xs sm:text-sm font-medium text-[var(--color-text-secondary,theme(colors.gray.300))] mb-1">Steps to Reproduce (Optional)</label>
                        <textarea
                          id="stepsToReproduce"
                          value={stepsToReproduce}
                          onChange={(e) => setStepsToReproduce(e.target.value)}
-                         placeholder="How to reproduce:&#10;1. Go to page X&#10;2. Click Y&#10;3. See error Z"
+                         placeholder="How can we make this happen?&#10;1. Go to...&#10;2. Click...&#10;3. See..."
                          rows={4}
                          className="w-full bg-[var(--color-input-bg,theme(colors.gray.700/0.5))] border border-[var(--color-input-border,theme(colors.gray.600))] rounded-md p-2 text-sm text-[var(--color-text-primary,theme(colors.white))] focus:ring-1 focus:ring-[var(--color-focus-ring,theme(colors.accent-primary))] focus:border-[var(--color-focus-ring,theme(colors.accent-primary))] placeholder:text-[10px] xs:placeholder:text-xs sm:placeholder:text-sm placeholder-[var(--color-text-placeholder,theme(colors.gray.400))] disabled:opacity-70"
-                         disabled={status === 'submitting'}
+                         disabled={status === 'submitting' || isUploading || !!isDeleting}
                        />
                     </div>
 
-                    {status === 'error' && (
+                    <div className="space-y-3">
+                       <div className="flex justify-between items-baseline">
+                           <label htmlFor={inputId} className="block text-xs sm:text-sm font-medium text-[var(--color-text-secondary,theme(colors.gray.300))] mb-1">Attach Screenshots (Optional)</label>
+                           <span className="text-xs text-[var(--color-text-secondary,theme(colors.gray.400))]">
+                               {currentFileCount} / {IMAGE_LIMIT} added
+                           </span>
+                       </div>
+
+                       <label
+                         htmlFor={inputId}
+                         className={`relative block w-full border border-dashed border-[var(--color-input-border,theme(colors.gray.600))] rounded-md p-3 text-center cursor-pointer transition-colors ${
+                           isUploadAreaDisabled
+                             ? 'bg-[var(--color-input-bg-disabled,theme(colors.gray.700/0.3))] opacity-60 cursor-not-allowed'
+                             : 'bg-[var(--color-input-bg,theme(colors.gray.700/0.5))] hover:border-[var(--color-focus-ring,theme(colors.accent-primary))] hover:bg-[var(--color-input-bg-hover,theme(colors.gray.700/0.8))]'
+                         }`}
+                       >
+                         <input
+                           id={inputId}
+                           type="file"
+                           accept="image/*"
+                           multiple
+                           disabled={isUploadAreaDisabled}
+                           onChange={(e) => {
+                             const files = Array.from(e.target.files || []);
+                             if (files.length > 0) {
+                               handleFileUpload(files);
+                             }
+                             e.target.value = '';
+                           }}
+                           className="sr-only"
+                         />
+                         <div className="flex flex-col items-center justify-center text-[var(--color-text-secondary,theme(colors.gray.400))]">
+                            <Upload className="w-5 h-5 mb-1" />
+                            <span className="text-xs sm:text-sm font-medium">
+                               {isUploading ? `Uploading (${Math.round(uploadProgress)}%)...` : (isDeleting ? 'Deleting...' : (canUploadMore ? 'Click or drag to upload' : `Limit reached (${IMAGE_LIMIT})`))}
+                            </span>
+                            {!isUploadAreaDisabled && <p className="text-[10px] sm:text-xs mt-0.5">Max {MAX_FILE_SIZE_MB}MB per image</p>}
+                         </div>
+
+                         {isUploading && (
+                            <div className="absolute bottom-0 left-0 right-0 h-1 bg-[var(--color-focus-ring,theme(colors.accent-primary/0.3))] rounded-b-md overflow-hidden">
+                               <div
+                                 className="h-1 bg-[var(--color-focus-ring,theme(colors.accent-primary))] transition-all duration-300 ease-linear"
+                                 style={{ width: `${uploadProgress}%` }}
+                               />
+                            </div>
+                         )}
+                       </label>
+
+                       {uploadError && (
+                         <div className="flex items-center p-2 text-xs sm:text-sm bg-[var(--color-error-bg,theme(colors.red.600/0.2))] border border-[var(--color-error-border,theme(colors.red.500/0.5))] rounded-md text-[var(--color-error-text,theme(colors.red.300))]">
+                           <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
+                           <span className="font-regular">{uploadError}</span>
+                         </div>
+                       )}
+
+                       {uploadedFiles.length > 0 && (
+                         <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2 pt-2">
+                           {uploadedFiles.map((file, index) => (
+                             <div key={file.fileName} className="relative group aspect-square bg-gray-700/50 rounded border border-[var(--color-border-modal,theme(colors.gray.500/0.3))] overflow-hidden">
+                               <img
+                                 src={file.url}
+                                 alt={`Attachment ${index + 1}: ${file.fileName}`}
+                                 className="w-full h-full object-cover"
+                                 onError={(e) => (e.currentTarget.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7')}
+                               />
+                               <div className={`absolute inset-0 bg-black/60 flex items-center justify-center transition-opacity duration-200 ${isDeleting === file.fileName ? 'opacity-100 cursor-wait' : 'opacity-0 group-hover:opacity-100'}`}>
+                                 {isDeleting === file.fileName ? (
+                                   <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                                 ) : (
+                                   <button
+                                     type="button"
+                                     onClick={() => handleFileDelete(file.fileName)}
+                                     disabled={!!isDeleting || status === 'submitting'}
+                                     className="text-white hover:text-red-500 disabled:text-gray-500 disabled:cursor-not-allowed p-1 rounded-full bg-black/30 hover:bg-black/50 focus:outline-none focus:ring-1 focus:ring-white"
+                                     aria-label={`Remove image ${index + 1}: ${file.fileName}`}
+                                   >
+                                     <X className="w-4 h-4" />
+                                   </button>
+                                 )}
+                               </div>
+                             </div>
+                           ))}
+                         </div>
+                       )}
+                    </div>
+
+                    {status === 'error' && !uploadError && (
                       <div className="flex items-center p-2 text-xs sm:text-sm bg-[var(--color-error-bg,theme(colors.red.600/0.2))] border border-[var(--color-error-border,theme(colors.red.500/0.5))] rounded-md text-[var(--color-error-text,theme(colors.red.300))]">
                         <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
                         <span className="font-regular">{errorMessage || 'Submission failed. Please try again.'}</span>
@@ -154,18 +416,18 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
                     )}
 
                     <div className="mt-auto pt-4 flex justify-end space-x-3">
-                       <button 
+                       <button
                           type="button"
                           onClick={onClose}
                           className="px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium rounded-md text-[var(--color-button-secondary-text,theme(colors.gray.300))] bg-[var(--color-button-secondary-bg,theme(colors.gray.600/0.5))] hover:bg-[var(--color-button-secondary-bg-hover,theme(colors.gray.600/0.8))] focus:outline-none focus:ring-2 focus:ring-[var(--color-button-secondary-focus-ring,theme(colors.gray.500))] focus:ring-offset-2 focus:ring-offset-[var(--color-focus-offset,theme(colors.gray.800))] disabled:opacity-50 transition-colors font-regular"
-                          disabled={status === 'submitting'}
+                          disabled={status === 'submitting' || isUploading || !!isDeleting}
                        >
                          Cancel
                        </button>
-                       <button 
+                       <button
                           type="submit"
                           className="px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium rounded-md text-[var(--color-button-primary-text,theme(colors.stone.800))] bg-[var(--color-button-primary-bg,theme(colors.accent-primary))] hover:bg-[var(--color-button-primary-bg-hover,theme(colors.accent-primary/0.8))] focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring,theme(colors.accent-primary))] focus:ring-offset-2 focus:ring-offset-[var(--color-focus-offset,theme(colors.gray.800))] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center font-regular"
-                          disabled={!description || status === 'submitting'}
+                          disabled={!description || status === 'submitting' || isUploading || !!isDeleting}
                        >
                          {status === 'submitting' ? (
                            <>
@@ -190,4 +452,4 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
       )}
     </>
   );
-} 
+}

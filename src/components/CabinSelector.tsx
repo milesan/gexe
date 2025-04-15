@@ -111,6 +111,17 @@ export function CabinSelector({
 
   const { checkWeekAvailability, availabilityMap } = useWeeklyAccommodations();
   
+  // Helper function for consistent price formatting
+  const formatPrice = (price: number | null, isTest: boolean): string => {
+    if (price === null) return 'N/A';
+    if (price === 0) return 'Free';
+    if (price === 0.5) return '0.5'; // Preserve specific edge case
+    if (isTest) return price.toString(); // Show exact value for test accommodations
+
+    // For regular accommodations, show integer if whole number, otherwise two decimals
+    return Number.isInteger(price) ? price.toString() : price.toFixed(2);
+  };
+  
   const hasWifi = (title: string) => HAS_WIFI.includes(title);
   const hasElectricity = (title: string) => HAS_ELECTRICITY.includes(title);
 
@@ -540,11 +551,11 @@ export function CabinSelector({
                       <div className="text-primary font-medium font-regular">
                         {/* Check if weeklyPrice (from prop) is null or 0, handle 0.01 specifically */}
                         {weeklyPrice === null || weeklyPrice === 0 ? (
-                          <span className="text-accent-primary">{weeklyPrice === 0 ? 'Free' : 'N/A'}</span>
+                          <span className="text-accent-primary">{formatPrice(weeklyPrice, isTestAccommodation)}</span>
                         ) : (
                           <>
-                            €{/* Display 0.01 without rounding, otherwise format normally */}
-                            {weeklyPrice === 0.01 ? '0.01' : weeklyPrice.toFixed(2)} 
+                            €{/* Use formatPrice for consistent display */}
+                            {formatPrice(weeklyPrice, isTestAccommodation)}
                             <span className="text-sm text-secondary font-regular"> / week</span>
                           </>
                         )}
@@ -600,7 +611,7 @@ export function CabinSelector({
                                    <div className="flex justify-between items-center font-medium text-white">
                                       <span>Final Weekly Rate:</span>
                                       {/* Ensure weeklyPrice is not null before rounding */}
-                                      <span>€{weeklyPrice !== null ? (weeklyPrice === 0.01 ? '0.01' : weeklyPrice.toFixed(2)) : 'N/A'}</span>
+                                      <span>€{formatPrice(weeklyPrice, isTestAccommodation)}</span>
                                    </div>
                                 </div>
                                  <p className="text-xs text-gray-400 mt-2 font-regular">Discounts applied multiplicatively.</p>

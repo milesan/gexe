@@ -2,16 +2,17 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, SupabaseClient, User } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 
-console.log("Initializing submit-bug-report function v2 (with explicit user fetch)");
+console.log("Initializing submit-bug-report function v3 (with image_urls)");
 
 interface BugReportPayload {
   description: string;
   stepsToReproduce?: string;
   pageUrl: string;
+  image_urls?: string[] | null;
 }
 
 async function insertBugReport(supabaseClient: SupabaseClient, report: BugReportPayload, userId: string) {
-  console.log(`Attempting to insert bug report for user: ${userId}`);
+  console.log(`Attempting to insert bug report for user: ${userId} with image URLs:`, report.image_urls);
 
   const { data, error } = await supabaseClient
     .from('bug_reports')
@@ -21,6 +22,7 @@ async function insertBugReport(supabaseClient: SupabaseClient, report: BugReport
       steps_to_reproduce: report.stepsToReproduce,
       page_url: report.pageUrl,
       status: 'new',
+      image_urls: report.image_urls,
     })
     .select()
     .single();
@@ -43,7 +45,7 @@ serve(async (req) => {
 
   try {
     console.log(`Received ${req.method} request`);
-    const payload = await req.json() as BugReportPayload;
+    const payload: BugReportPayload = await req.json();
     console.log('Request payload:', payload);
 
     // Validate payload
@@ -53,6 +55,12 @@ serve(async (req) => {
     if (!payload.pageUrl) {
       console.warn('Missing pageUrl, setting to unknown');
       payload.pageUrl = 'unknown'; // Add default if missing
+    }
+    if (payload.image_urls === undefined) {
+        payload.image_urls = null;
+    } else if (Array.isArray(payload.image_urls) && payload.image_urls.some(url => typeof url !== 'string')) {
+        console.warn('Invalid image_urls format detected. Setting to null.');
+        payload.image_urls = null; 
     }
 
     // Create Supabase client
@@ -91,7 +99,7 @@ serve(async (req) => {
     console.log(`User ID retrieved: ${user.id}`);
     // --- End Get User ID ---
 
-    // Insert the bug report, passing the user ID
+    // Insert the bug report, passing the potentially modified payload and user ID
     const insertedData = await insertBugReport(supabaseClient, payload, user.id);
 
     return new Response(
@@ -117,4 +125,4 @@ serve(async (req) => {
   }
 });
 
-console.log('submit-bug-report function initialized successfully (v2)'); 
+console.log('submit-bug-report function initialized successfully (v3)'); 
