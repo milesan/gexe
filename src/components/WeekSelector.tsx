@@ -11,6 +11,7 @@ import { Calendar, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { FlexibleCheckInModal } from './FlexibleCheckInModal';
 import { areSameWeeks } from '../utils/dates';
 import { getSeasonalDiscount, getSeasonName } from '../utils/pricing';
+import { FitText } from './FitText';
 
 // Helper function to log week dates consistently without timezone confusion
 const getSimplifiedWeekInfo = (week: Week, isAdmin: boolean = false, selectedWeeks: Week[] = []) => {
@@ -447,10 +448,17 @@ export function WeekSelector({
                 <div className="text-center flex flex-col justify-center h-full">
                   {week.name ? (
                     <>
-                      <div className="text-lg xxs:text-xl xs:text-2xl sm:text-3xl font-display mb-1 xxs:mb-0.5 xs:mb-1 text-primary">
-                        {week.name}
+                      <div className="font-display text-primary mb-1 xxs:mb-0.5 xs:mb-1">
+                        <FitText 
+                          text={week.name} 
+                          minFontSizePx={12}
+                          maxFontSizePx={24}
+                        />
                       </div>
-                      <div className="font-mono text-xs xxs:text-sm xs:text-base sm:text-lg text-secondary flex items-center justify-center gap-0.5 xs:gap-1">
+                      <div className={clsx(
+                        "font-mono text-secondary flex items-center justify-center gap-0.5 xs:gap-1",
+                        "text-xs xxs:text-sm xs:text-base sm:text-base"
+                      )}>
                         <span>{formatInTimeZone(week.startDate, 'UTC', 'MMM d')}</span>
                         <svg className="w-2.5 h-2.5 xxs:w-3 xxs:h-3 xs:w-4 xs:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                           <path d="M4 12h16m0 0l-6-6m6 6l-6 6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
