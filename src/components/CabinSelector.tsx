@@ -292,7 +292,7 @@ export function CabinSelector({
               // --- START TEST ACCOMMODATION OVERRIDE ---
               let isTestAccommodation = acc.type === 'test';
               if (isTestAccommodation) {
-                weeklyPrice = 0.01; // Override price
+                weeklyPrice = 0.5; // Override price
               }
               // --- END TEST ACCOMMODATION OVERRIDE ---
 

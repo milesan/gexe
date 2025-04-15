@@ -166,8 +166,12 @@ export function BookingSummary({
     selectedAccommodationId: selectedAccommodation?.id,
     selectedAccommodationTitle: selectedAccommodation?.title,
     initialSeasonBreakdownProvided: !!initialSeasonBreakdown,
-    calculatedWeeklyAccommodationPrice,
+    calculatedWeeklyAccommodationPrice, // Log the prop value
   });
+  // Log specifically if it's the test accommodation
+  if (selectedAccommodation?.type === 'test') {
+    console.log('[BookingSummary] TEST ACCOMMODATION SELECTED - calculatedWeeklyAccommodationPrice:', calculatedWeeklyAccommodationPrice);
+  }
   console.log('[BookingSummary] Raw selectedWeeks:', selectedWeeks.map(w => ({ start: w.startDate?.toISOString(), end: w.endDate?.toISOString(), flex: w.selectedFlexDate?.toISOString() })));
 
   const [isBooking, setIsBooking] = useState(false);
@@ -402,6 +406,16 @@ export function BookingSummary({
       rawDurationDiscountPercent, // Raw discount %
       finalFoodCost_unrounded: finalFoodCost, // Base * (1 - Discount) BEFORE final display rounding
     });
+
+    // --- START TEST ACCOMMODATION OVERRIDE ---
+    if (selectedAccommodation?.type === 'test') {
+      console.log('[BookingSummary] useMemo: OVERRIDING costs for TEST accommodation.');
+      calculatedPricingDetails.totalFoodAndFacilitiesCost = 0;
+      calculatedPricingDetails.subtotal = calculatedPricingDetails.totalAccommodationCost; // Keep accom cost, just zero out food
+      calculatedPricingDetails.totalAmount = calculatedPricingDetails.totalAccommodationCost; // Total is just accom cost
+      calculatedPricingDetails.durationDiscountAmount = 0; // No food discount applicable
+    }
+    // --- END TEST ACCOMMODATION OVERRIDE ---
 
     console.log('[BookingSummary] useMemo: Pricing calculation COMPLETE. Result:', calculatedPricingDetails);
     console.log('[BookingSummary] --- Finished Pricing Recalculation (useMemo) ---');
