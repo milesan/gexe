@@ -10,7 +10,7 @@ interface ApplicationQuestion {
   id: string;
   order_number: number;
   text: string;
-  type: 'text' | 'textarea' | 'radio' | 'file' | 'tel';
+  type: 'text' | 'textarea' | 'radio' | 'tel'; // 'file' removed
   options?: string[];
   required: boolean;
   section: 'intro' | 'personal' | 'stay' | 'philosophy';
@@ -26,7 +26,7 @@ interface QuestionFormModalProps {
 }
 
 // Define allowed types and sections
-const QUESTION_TYPES: ApplicationQuestion['type'][] = ['text', 'textarea', 'radio', 'file', 'tel'];
+const QUESTION_TYPES: ApplicationQuestion['type'][] = ['text', 'textarea', 'radio', 'tel']; // 'file' removed
 const QUESTION_SECTIONS: ApplicationQuestion['section'][] = ['intro', 'personal', 'stay', 'philosophy'];
 
 export function QuestionFormModal({ question, allQuestions, onClose }: QuestionFormModalProps) {
@@ -235,7 +235,7 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
                             name="type"
                             value={formData.type}
                             onChange={handleChange}
-                            className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-input-bg)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-regular"
+                            className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-furface-modal,theme(colors.gray.800))] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-regular [&>option]:bg-[var(--color-furface-modal)] [&>option]:text-white"
                         >
                             {QUESTION_TYPES.map(type => (
                                 <option key={type} value={type}>{type}</option>
@@ -286,7 +286,7 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
                             name="section"
                             value={formData.section}
                             onChange={handleChange}
-                            className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-input-bg)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-regular"
+                            className="w-full px-3 py-2 border bg-[var(--color-furface-modal,theme(colors.gray.800))] rounded-md bg-[var(--color-input-bg)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-regular [&>option]:bg-[var(--color-furface-modal)] [&>option]:text-white"
                          >
                             {QUESTION_SECTIONS.map(section => (
                                 <option key={section} value={section}>{section}</option>
