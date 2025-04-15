@@ -7,11 +7,12 @@ import { Weekly } from '../components/admin/Weekly';
 import { Whitelist } from '../components/admin/Whitelist';
 import { Housekeeping } from '../components/admin/Housekeeping';
 import { Accommodations } from '../components/admin/Accommodations';
-import { ClipboardList, Calendar, Users, LayoutGrid, ListChecks, UserPlus, Home, Building2, ArrowLeft } from 'lucide-react';
+import { ApplicationQuestionsManager } from '../components/admin/ApplicationQuestionsManager';
+import { ClipboardList, Calendar, Users, LayoutGrid, ListChecks, UserPlus, Home, Building2, ArrowLeft, HelpCircle } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 
-type AdminView = 'applications' | 'appview' | 'bookings' | 'calendar' | 'weekly' | 'whitelist' | 'housekeeping' | 'accommodations';
+type AdminView = 'applications' | 'appview' | 'bookings' | 'calendar' | 'weekly' | 'whitelist' | 'housekeeping' | 'accommodations' | 'questions';
 
 export function AdminPage() {
   const [currentView, setCurrentView] = useState<AdminView>('applications');
@@ -116,6 +117,17 @@ export function AdminPage() {
             <Building2 className="w-4 h-4" />
             Accommodations
           </button>
+          <button
+            onClick={() => setCurrentView('questions')}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap font-regular text-sm ${
+              currentView === 'questions'
+                ? 'bg-emerald-900 text-white'
+                : 'bg-[var(--color-bg-surface)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-surface-hover)] border border-[var(--color-border)]'
+            }`}
+          >
+            <HelpCircle className="w-4 h-4" />
+            Questions
+          </button>
         </div>
 
         <div className="bg-[var(--color-bg-main)] rounded-xl border border-[var(--color-border)] shadow-sm">
@@ -124,6 +136,7 @@ export function AdminPage() {
           {currentView === 'bookings' && <BookingsList />}
           {currentView === 'whitelist' && <Whitelist />}
           {currentView === 'accommodations' && <Accommodations />}
+          {currentView === 'questions' && <ApplicationQuestionsManager />}
         </div>
 
         <AnimatePresence>
@@ -139,7 +152,6 @@ export function AdminPage() {
         </AnimatePresence>
       </div>
 
-      {/* Mobile Warning Overlay - Updated */}
       <div className="md:hidden fixed inset-0 bg-gray-900/90 backdrop-blur-sm z-50 flex items-center justify-center p-8">
         <div className="text-center text-white max-w-sm">
           <h2 className="text-2xl font-display mb-4 text-accent-secondary animate-yellow-shift">
@@ -158,12 +170,11 @@ export function AdminPage() {
         </div>
       </div>
 
-      {/* Add CSS for yellow shift animation */}
       <style>
         {`
           @keyframes yellow-shift {
             0%, 100% { color: var(--color-accent-secondary); }
-            50% { color: #fde047; } /* Lighter yellow (Tailwind yellow-400) */
+            50% { color: #fde047; }
           }
           .animate-yellow-shift {
             animation: yellow-shift 3s ease-in-out infinite;
