@@ -45,9 +45,9 @@ export function AuthenticatedApp() {
   const isAdmin = session?.user?.email ? adminEmails.includes(session.user.email) : false;
   const { accommodations } = useAccommodations();
 
-  console.log('AuthenticatedApp: User status', { 
+  console.log('AuthenticatedApp: User status check', { 
     email: session?.user?.email,
-    isAdmin,
+    isAdmin: isAdmin,
     currentPage 
   });
 
@@ -56,25 +56,20 @@ export function AuthenticatedApp() {
     const currentScrollY = window.scrollY;
     const isAtTop = currentScrollY <= 10; // Small buffer for top
 
-    console.log(`Scroll Check: current=${currentScrollY}, last=${lastScrollY}, show=${showHeader}`);
-
     if (isAtTop) {
-        console.log("Scroll: At top");
         setShowHeader(true);
     } else if (currentScrollY > lastScrollY && !isMobileMenuOpen) { // Scrolling down
-        console.log("Scroll: Down");
         setShowHeader(false);
     } else if (currentScrollY < lastScrollY) { // Scrolling up
-        console.log("Scroll: Up");
         setShowHeader(true);
     }
 
     setLastScrollY(currentScrollY); // Update last scroll position
 
-  }, [lastScrollY, isMobileMenuOpen, showHeader]); // Added showHeader to dependencies as it's read now
+  }, [lastScrollY, isMobileMenuOpen, showHeader]);
 
   // Debounced scroll handler
-  const debouncedScrollHandler = useCallback(debounce(handleScroll, 50), [handleScroll]); // Adjust debounce delay (50ms) if needed
+  const debouncedScrollHandler = useCallback(debounce(handleScroll, 50), [handleScroll]);
 
   useEffect(() => {
     checkWhitelistStatus();
@@ -87,7 +82,7 @@ export function AuthenticatedApp() {
       window.removeEventListener('scroll', debouncedScrollHandler);
       console.log("Scroll listener removed");
     };
-  }, [debouncedScrollHandler]); // Re-attach if handler changes (it shouldn't often due to useCallback)
+  }, [debouncedScrollHandler]);
 
   // THEME FUNCTIONALITY RE-ENABLED
   // Effect to load saved theme from localStorage on mount
@@ -116,15 +111,24 @@ export function AuthenticatedApp() {
 
   const checkWhitelistStatus = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user?.email) return;
+      // Ensure session and user email exist before proceeding
+      if (!session?.user?.email) {
+        console.log('checkWhitelistStatus: No session or email found, skipping.');
+        return;
+      }
+      const userEmail = session.user.email; // Use confirmed email
+      console.log(`checkWhitelistStatus: Checking for user ${userEmail}`);
 
       // Check if user is whitelisted and hasn't seen welcome
-      const { data: metadata } = await supabase.auth.getUser();
-      const { data: isWhitelisted } = await supabase.rpc('is_whitelisted', { 
-        user_email: metadata.user?.email 
+      // Directly use userEmail which is confirmed to exist
+      const { data: isWhitelisted, error: rpcError } = await supabase.rpc('is_whitelisted', { 
+        user_email: userEmail 
       });
-      const hasSeenWelcome = metadata.user?.user_metadata?.has_seen_welcome ?? false;
+      if (rpcError) throw rpcError; // Throw if RPC call fails
+
+      const hasSeenWelcome = session.user?.user_metadata?.has_seen_welcome ?? false;
+
+      console.log(`checkWhitelistStatus: Status for ${userEmail}`, { isWhitelisted, hasSeenWelcome });
 
       if (isWhitelisted && !hasSeenWelcome) {
         setShowWelcomeModal(true);
@@ -136,35 +140,52 @@ export function AuthenticatedApp() {
 
   const handleSignOut = async () => {
     try {
+      console.log('handleSignOut: Attempting sign out');
       await supabase.auth.signOut();
-      window.location.href = '/';
+      console.log('handleSignOut: Sign out successful, redirecting to / ');
+      // Use navigate for SPA navigation instead of forcing a full page reload
+      navigate('/'); 
+      // window.location.href = '/'; // Avoid full reload
     } catch (error) {
       console.error('Error signing out:', error);
     }
   };
 
   const handleWelcomeClose = async () => {
+    // Ensure session and user email exist before proceeding
+    if (!session?.user?.email) {
+      console.error('handleWelcomeClose: Cannot update metadata, no session/email.');
+      setShowWelcomeModal(false); // Close modal anyway
+      return;
+    }
+    const userEmail = session.user.email; // Use confirmed email
     try {
+      console.log(`handleWelcomeClose: Updating metadata for ${userEmail}`);
       await supabase.auth.updateUser({
         data: {
           has_seen_welcome: true
         }
       });
+      console.log(`handleWelcomeClose: User metadata updated for ${userEmail}`);
 
-      await supabase.rpc('mark_whitelist_welcome_seen', {
-        p_email: session?.user?.email
+      // Call the RPC function as well
+      console.log(`handleWelcomeClose: Calling RPC mark_whitelist_welcome_seen for ${userEmail}`);
+      const { error: rpcError } = await supabase.rpc('mark_whitelist_welcome_seen', {
+        p_email: userEmail
       });
+      if (rpcError) {
+        console.error(`handleWelcomeClose: RPC error for ${userEmail}:`, rpcError);
+        // Decide if you still want to close the modal despite the RPC error
+      } else {
+        console.log(`handleWelcomeClose: RPC call successful for ${userEmail}`);
+      }
 
       setShowWelcomeModal(false);
     } catch (err) {
       console.error('Error updating welcome status:', err);
-      setShowWelcomeModal(false);
+      setShowWelcomeModal(false); // Ensure modal closes even on error
     }
   };
-
-  if (!session) {
-    return <Navigate to="/" replace />;
-  }
 
   const handleNavigation = (page: 'calendar' | 'my-bookings' | 'admin') => {
     setCurrentPage(page);
