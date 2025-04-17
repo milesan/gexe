@@ -302,7 +302,7 @@ export function Accommodations() {
   }
 
   // Common input styles
-  const inputClassName = "w-full px-2 py-1 border border-[var(--color-border)] rounded-md bg-[var(--color-input-bg)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-regular text-sm disabled:opacity-50";
+  const inputClassName = "w-full px-2 py-1 border border-[var(--color-border)] rounded-md bg-[var(--color-input-bg)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono text-sm disabled:opacity-50";
   const numberInputClassName = inputClassName + " [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
   const labelClassName = "text-xs font-medium text-[var(--color-text-secondary)] mb-0.5 block"; // Added label style
   const checkboxLabelClassName = "flex items-center gap-2 text-sm text-[var(--color-text-primary)] cursor-pointer";
@@ -368,7 +368,7 @@ export function Accommodations() {
                         />
                     </div>
                 ) : (
-                  <h3 className="font-semi-bold font-regular text-[var(--color-text-primary)] mr-2 break-words flex-grow">{accommodation.title}</h3>
+                  <h3 className="font-semi-bold font-mono text-[var(--color-text-primary)] mr-2 break-words flex-grow">{accommodation.title}</h3>
                 )}
                 <div className="flex items-center space-x-1 shrink-0 mt-1"> 
                   {isEditingThis ? (

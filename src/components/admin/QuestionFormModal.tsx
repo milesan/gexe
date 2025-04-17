@@ -139,6 +139,7 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
             options: finalOptions, // Use the filtered array
             required: formData.required,
             section: formData.section,
+            updated_at: new Date().toISOString(), // Explicitly set updated_at
           })
           .match({ id: question.id });
 
@@ -205,7 +206,7 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
                 </div>
 
                 {error && (
-                    <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md text-sm flex items-center gap-2 font-regular">
+                    <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md text-sm flex items-center gap-2 font-mono">
                         <AlertCircle className="w-5 h-5 flex-shrink-0" />
                         <span>{error}</span>
                      </div>
@@ -214,7 +215,7 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {/* Text */}
                     <div>
-                        <label htmlFor="text" className="block text-sm font-medium text-[var(--color-text-secondary)] font-regular mb-1">Question Text</label>
+                        <label htmlFor="text" className="block text-sm font-medium text-[var(--color-text-secondary)] font-mono mb-1">Question Text</label>
                         <textarea
                             id="text"
                             name="text"
@@ -222,19 +223,19 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
                             required
                             value={formData.text}
                             onChange={handleChange}
-                            className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-input-bg)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-regular"
+                            className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-input-bg)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono"
                         />
                     </div>
 
                     {/* Type */}
                     <div>
-                        <label htmlFor="type" className="block text-sm font-medium text-[var(--color-text-secondary)] font-regular mb-1">Type</label>
+                        <label htmlFor="type" className="block text-sm font-medium text-[var(--color-text-secondary)] font-mono mb-1">Type</label>
                         <select
                             id="type"
                             name="type"
                             value={formData.type}
                             onChange={handleChange}
-                            className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-furface-modal,theme(colors.gray.800))] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-regular [&>option]:bg-[var(--color-furface-modal)] [&>option]:text-white"
+                            className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-furface-modal,theme(colors.gray.800))] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono [&>option]:bg-[var(--color-furface-modal)] [&>option]:text-white"
                         >
                             {QUESTION_TYPES.map(type => (
                                 <option key={type} value={type}>{type}</option>
@@ -245,7 +246,7 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
                      {/* Options (Conditional List) */}
                     {formData.type === 'radio' && (
                          <div className="space-y-3">
-                            <label className="block text-sm font-medium text-[var(--color-text-secondary)] font-regular">Options</label>
+                            <label className="block text-sm font-medium text-[var(--color-text-secondary)] font-mono">Options</label>
                             {formData.options.map((option, index) => (
                                 <div key={index} className="flex items-center gap-2">
                                     <input
@@ -253,7 +254,7 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
                                         value={option}
                                         onChange={(e) => handleOptionChange(index, e.target.value)}
                                         placeholder={`Option ${index + 1}`}
-                                        className="flex-grow px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-input-bg)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-regular text-sm"
+                                        className="flex-grow px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-input-bg)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono text-sm"
                                     />
                                     <button
                                         type="button"
@@ -279,13 +280,13 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
 
                     {/* Section */}
                     <div>
-                         <label htmlFor="section" className="block text-sm font-medium text-[var(--color-text-secondary)] font-regular mb-1">Section</label>
+                         <label htmlFor="section" className="block text-sm font-medium text-[var(--color-text-secondary)] font-mono mb-1">Section</label>
                         <select
                             id="section"
                             name="section"
                             value={formData.section}
                             onChange={handleChange}
-                            className="w-full px-3 py-2 border bg-[var(--color-furface-modal,theme(colors.gray.800))] rounded-md bg-[var(--color-input-bg)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-regular [&>option]:bg-[var(--color-furface-modal)] [&>option]:text-white"
+                            className="w-full px-3 py-2 border bg-[var(--color-furface-modal,theme(colors.gray.800))] rounded-md bg-[var(--color-input-bg)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono [&>option]:bg-[var(--color-furface-modal)] [&>option]:text-white"
                          >
                             {QUESTION_SECTIONS.map(section => (
                                 <option key={section} value={section}>{section}</option>
@@ -303,7 +304,7 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
                             onChange={handleChange}
                             className="h-4 w-4 text-emerald-600 border-[var(--color-border)] rounded focus:ring-emerald-500"
                         />
-                        <label htmlFor="required" className="ml-2 block text-sm text-[var(--color-text-secondary)] font-regular">Required Question</label>
+                        <label htmlFor="required" className="ml-2 block text-sm text-[var(--color-text-secondary)] font-mono">Required Question</label>
                     </div>
 
                     {/* Buttons */}
@@ -312,14 +313,14 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
                             type="button"
                             onClick={() => onClose(false)} 
                             disabled={loading}
-                            className="px-4 py-2 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] font-regular transition-colors disabled:opacity-50"
+                            className="px-4 py-2 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] font-mono transition-colors disabled:opacity-50"
                         >
                             Cancel
                          </button>
                          <button 
                             type="submit" 
                             disabled={loading}
-                            className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 font-regular transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[80px]" // Added min-width for loading state
+                            className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 font-mono transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[80px]" // Added min-width for loading state
                         >
                              {loading ? (
                                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>

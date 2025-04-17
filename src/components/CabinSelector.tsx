@@ -229,8 +229,8 @@ export function CabinSelector({
         </div>
       ) : visibleAccommodations.length === 0 ? (
         <div className="text-center py-12 bg-surface rounded-xl border border-border">
-          <h3 className="text-lg font-medium text-primary mb-2 font-regular">No accommodations available</h3>
-          <p className="text-secondary font-regular">Please adjust your dates or check back later.</p>
+          <h3 className="text-lg font-medium text-primary mb-2 font-mono">No accommodations available</h3>
+          <p className="text-secondary font-mono">Please adjust your dates or check back later.</p>
         </div>
       ) : (
         <div>
@@ -293,7 +293,7 @@ export function CabinSelector({
                   {/* 1. Disabled Overlay (highest priority) */}
                   {isDisabled && (
                     <div className="absolute inset-0 z-[4] flex items-center justify-center p-4"> {/* Positioning only */}
-                      <div className="bg-bg-surface text-text-primary px-4 py-2 rounded-md font-regular text-sm text-center border border-border shadow-md">
+                      <div className="bg-bg-surface text-text-primary px-4 py-2 rounded-md font-mono text-sm text-center border border-border shadow-md">
                         Select dates first
                       </div>
                     </div>
@@ -301,7 +301,7 @@ export function CabinSelector({
                   {/* 2. Fully Booked Overlay */}
                   {!isDisabled && isFullyBooked && (
                     <div className="absolute inset-0 z-[3] flex items-center justify-center p-4"> {/* Positioning only */}
-                      <div className="bg-bg-surface text-text-primary px-4 py-2 rounded-md font-regular text-sm text-center border border-border shadow-md">
+                      <div className="bg-bg-surface text-text-primary px-4 py-2 rounded-md font-mono text-sm text-center border border-border shadow-md">
                         Booked out
                       </div>
                     </div>
@@ -309,7 +309,7 @@ export function CabinSelector({
                   {/* 3. Out of Season Overlay */}
                   {!isDisabled && isOutOfSeason && !isFullyBooked && (
                     <div className="absolute inset-0 z-[2] flex items-center justify-center p-4"> {/* Positioning only */}
-                      <div className="bg-bg-surface text-text-primary px-4 py-2 rounded-md font-regular text-sm text-center border border-amber-500 dark:border-amber-600 shadow-md">
+                      <div className="bg-bg-surface text-text-primary px-4 py-2 rounded-md font-mono text-sm text-center border border-amber-500 dark:border-amber-600 shadow-md">
                         Seasonal<br />Apr 15 - Sep 1
                       </div>
                     </div>
@@ -319,12 +319,12 @@ export function CabinSelector({
                   <div className="absolute top-2 left-2 z-[5] flex flex-col gap-2"> 
                     {/* Spots Available Indicator */}
                     {spotsAvailable !== undefined && spotsAvailable !== null && spotsAvailable < (acc.capacity ?? Infinity) && !isFullyBooked && !isOutOfSeason && !isDisabled && (
-                      <div className="text-xs font-medium px-3 py-1 rounded-full shadow-lg bg-gray-600/90 text-white border border-white/30 font-regular">{spotsAvailable} {spotsAvailable === 1 ? 'spot' : 'spots'} available</div>
+                      <div className="text-xs font-medium px-3 py-1 rounded-full shadow-lg bg-gray-600/90 text-white border border-white/30 font-mono">{spotsAvailable} {spotsAvailable === 1 ? 'spot' : 'spots'} available</div>
                     )}
                     
                     {/* Selected Indicator */}
                     {isSelected && (
-                      <div className="text-xs font-medium px-3 py-1 rounded-full shadow-md bg-accent-primary text-stone-800 font-regular border border-yellow-500">Selected</div>
+                      <div className="text-xs font-medium px-3 py-1 rounded-full shadow-md bg-accent-primary text-stone-800 font-mono border border-yellow-500">Selected</div>
                     )}
                   </div>
 
@@ -360,14 +360,14 @@ export function CabinSelector({
                     (!isDisabled && isOutOfSeason && !isFullyBooked) && "blur-sm opacity-40 grayscale-[0.3]"
                   )}>
                     <div>
-                      <h3 className="font-medium mb-1 text-primary font-regular">{acc.title}</h3>
+                      <h3 className="font-medium mb-1 text-primary font-mono">{acc.title}</h3>
                       <div className="flex items-center gap-3 text-secondary text-xs mb-2">
                         {acc.capacity !== undefined && acc.capacity !== null && acc.capacity > 1 && acc.type !== 'tent' && (
                           <Tooltip.Provider delayDuration={50}>
                             <Tooltip.Root>
                               <Tooltip.Trigger asChild>
                                 <button 
-                                  className="flex items-center gap-1 cursor-help bg-transparent border-none p-0.5" 
+                                  className="flex font-mono items-center gap-1 cursor-help bg-transparent border-none p-0.5" 
                                   title={`Capacity: ${acc.capacity ?? 'N/A'}`}
                                   onTouchStart={(e) => e.preventDefault()}
                                 > 
@@ -377,7 +377,7 @@ export function CabinSelector({
                               <Tooltip.Portal>
                                 <Tooltip.Content
                                   sideOffset={5}
-                                  className="tooltip-content !font-regular"
+                                  className="tooltip-content !font-mono"
                                 >
                                   <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
                                   <span className="text-white">Capacity: {acc.capacity} persons</span>
@@ -403,7 +403,7 @@ export function CabinSelector({
                               <Tooltip.Portal>
                                 <Tooltip.Content
                                   sideOffset={5}
-                                  className="tooltip-content !font-regular"
+                                  className="tooltip-content !font-mono"
                                 >
                                   <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
                                   <span className="text-white">{acc.has_electricity ? 'Has Electricity' : 'No Electricity'}</span>
@@ -427,7 +427,7 @@ export function CabinSelector({
                             <Tooltip.Portal>
                               <Tooltip.Content
                                 sideOffset={5}
-                                className="tooltip-content !font-regular"
+                                className="tooltip-content !font-mono"
                               >
                                 <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
                                 <span className="text-white">{acc.has_wifi ? 'Has WiFi' : 'No WiFi'}</span>
@@ -450,11 +450,11 @@ export function CabinSelector({
                             <Tooltip.Portal>
                               <Tooltip.Content
                                 sideOffset={5}
-                                className="tooltip-content !font-regular"
+                                className="tooltip-content !font-mono"
                               >
                                 <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
-                                <h4 className="font-medium font-regular text-white mb-1">Bed Size</h4>
-                                <p className="text-sm text-gray-300 font-regular">
+                                <h4 className="font-medium font-mono text-white mb-1">Bed Size</h4>
+                                <p className="text-sm text-gray-300 font-mono">
                                   {acc.bed_size || 'N/A'}
                                 </p>
                               </Tooltip.Content>
@@ -472,7 +472,7 @@ export function CabinSelector({
                               <Tooltip.Portal>
                                 <Tooltip.Content
                                   sideOffset={5}
-                                  className="tooltip-content !font-regular"
+                                  className="tooltip-content !font-mono"
                                 >
                                   <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
                                   <span className="text-white">We invite those who seek quiet to stay here.</span>
@@ -492,7 +492,7 @@ export function CabinSelector({
                               <Tooltip.Portal>
                                 <Tooltip.Content
                                   sideOffset={5}
-                                  className="tooltip-content !font-regular"
+                                  className="tooltip-content !font-mono"
                                 >
                                   <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
                                   <span className="text-white">Power hook-ups available on request</span>
@@ -505,7 +505,7 @@ export function CabinSelector({
                     </div>
                     
                     <div className="flex justify-between items-end">
-                      <div className="text-primary font-medium font-regular">
+                      <div className="text-primary font-medium font-mono">
                         {/* Check if weeklyPrice (from prop) is null or 0, handle 0.01 specifically */}
                         {weeklyPrice === null || weeklyPrice === 0 ? (
                           <span className="text-accent-primary">{formatPrice(weeklyPrice, isTestAccommodation)}</span>
@@ -513,7 +513,7 @@ export function CabinSelector({
                           <>
                             €{/* Use formatPrice for consistent display */}
                             {formatPrice(weeklyPrice, isTestAccommodation)}
-                            <span className="text-sm text-secondary font-regular"> / week</span>
+                            <span className="text-sm text-secondary font-mono"> / week</span>
                           </>
                         )}
                       </div>
@@ -530,10 +530,10 @@ export function CabinSelector({
                             <Tooltip.Portal>
                               <Tooltip.Content
                                 sideOffset={5}
-                                className="tooltip-content tooltip-content--accent !font-regular"
+                                className="tooltip-content tooltip-content--accent !font-mono"
                               >
                                 <Tooltip.Arrow className="tooltip-arrow tooltip-arrow--accent" width={11} height={5} />
-                                <h4 className="font-medium font-regular text-white mb-2">Weekly Rate Breakdown</h4>
+                                <h4 className="font-medium font-mono text-white mb-2">Weekly Rate Breakdown</h4>
                                 <div className="text-sm space-y-2">
                                    {/* Base Price */}
                                    <div className="flex justify-between items-center text-gray-300">
@@ -571,7 +571,7 @@ export function CabinSelector({
                                       <span>€{formatPrice(weeklyPrice, isTestAccommodation)}</span>
                                    </div>
                                 </div>
-                                 <p className="text-xs text-gray-400 mt-2 font-regular">Discounts applied multiplicatively.</p>
+                                 <p className="text-xs text-gray-400 mt-2 font-mono">Discounts applied multiplicatively.</p>
                               </Tooltip.Content>
                             </Tooltip.Portal>
                           </Tooltip.Root>

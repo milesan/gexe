@@ -19,20 +19,20 @@ export function WhyPage() {
             Why This App Exists
           </h1>
 
-          <p className="text-secondary mb-6 text-base leading-relaxed font-regular">
+          <p className="text-secondary mb-6 text-base leading-relaxed font-mono">
             This website was painstakingly coded with love, care, and connection by members of The Garden community.
           </p>
 
-          <p className="text-secondary mb-6 text-base leading-relaxed font-regular">
+          <p className="text-secondary mb-6 text-base leading-relaxed font-mono">
             Why? Because the old way just wasn't working. Managing the sheer volume of booking requests and inquiries became a full-time job, draining precious energy that could be better spent cultivating the community and the space itself. We were drowning in emails, and the existing platforms just didn't quite fit the unique spirit and needs of The Garden.
           </p>
 
-          <p className="text-secondary mb-8 text-base leading-relaxed font-regular">
+          <p className="text-secondary mb-8 text-base leading-relaxed font-mono">
             So, we rolled up our sleeves. Community members poured hundreds of hours into designing and building this system, aiming to free up time and create a smoother experience for everyone wanting to connect with The Garden. It's a small testament to what we can build together.
           </p>
 
           <div className="text-center border-t border-border pt-8 mt-8">
-            <p className="text-secondary font-medium mb-4 text-base font-regular">
+            <p className="text-secondary font-medium mb-4 text-base font-mono">
               Remember the days before? The overflowing inbox...
             </p>
             <button

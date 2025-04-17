@@ -253,7 +253,7 @@ export function AuthenticatedApp() {
               <nav className="flex gap-6 items-center">
                 <button
                   onClick={() => handleNavigation('my-bookings')}
-                  className={`text-sm font-regular transition-colors ${
+                  className={`font-mono text-sm transition-colors ${
                     location.pathname === '/my-bookings'
                       ? 'text-accent-secondary font-medium'
                       : 'text-secondary hover:text-accent-secondary'
@@ -264,7 +264,7 @@ export function AuthenticatedApp() {
                 {isAdmin && (
                   <button
                     onClick={() => handleNavigation('admin')}
-                    className={`bg-accent-primary text-stone-800 px-4 py-2 rounded-lg hover:bg-accent-secondary transition-colors text-sm font-regular ${
+                    className={`bg-accent-primary text-sm text-stone-800 px-4 py-2 rounded-lg hover:bg-accent-secondary transition-colors font-mono ${
                         location.pathname === '/admin' ? 'ring-2 ring-offset-2 ring-accent-primary ring-offset-surface' : ''
                     }`}
                   >
@@ -274,7 +274,7 @@ export function AuthenticatedApp() {
               </nav>
               <button 
                 onClick={handleSignOut}
-                className="bg-[var(--color-button-secondary-bg)] text-primary px-6 py-2 hover:bg-[var(--color-button-secondary-bg-hover)] transition-colors text-sm font-regular rounded-lg border border-border"
+                className="bg-[var(--color-button-secondary-bg)] text-primary px-6 py-2 hover:bg-[var(--color-button-secondary-bg-hover)] transition-colors text-sm font-mono rounded-lg border border-border"
               >
                 Sign Out
               </button>
@@ -310,7 +310,7 @@ export function AuthenticatedApp() {
               */}
               <button
                 onClick={() => handleNavigation('my-bookings')}
-                className={`w-full text-left px-4 py-2 font-regular rounded-lg transition-colors text-sm ${
+                className={`w-full text-left px-4 py-2 font-mono rounded-lg transition-colors text-sm ${
                   location.pathname === '/my-bookings'
                     ? 'bg-[color-mix(in_srgb,_var(--color-accent-secondary)_20%,_transparent)] text-accent-secondary font-medium'
                     : 'text-secondary hover:bg-[var(--color-bg-surface-hover)]'
@@ -321,7 +321,7 @@ export function AuthenticatedApp() {
               {isAdmin && (
                 <button
                   onClick={() => handleNavigation('admin')}
-                  className={`w-full text-left bg-accent-primary text-stone-800 px-4 py-2 rounded-lg hover:bg-accent-secondary transition-colors text-sm font-regular ${
+                  className={`w-full text-left bg-accent-primary text-stone-800 px-4 py-2 rounded-lg hover:bg-accent-secondary transition-colors text-sm font-mono ${
                     location.pathname === '/admin' ? 'ring-2 ring-offset-2 ring-accent-primary ring-offset-surface' : ''
                   }`}
                 >
@@ -330,7 +330,7 @@ export function AuthenticatedApp() {
               )}
               <button 
                 onClick={handleSignOut}
-                className="w-full text-left bg-[var(--color-button-secondary-bg)] text-primary px-4 py-2 hover:bg-[var(--color-button-secondary-bg-hover)] transition-colors text-sm font-regular rounded-lg border border-border"
+                className="w-full text-left bg-[var(--color-button-secondary-bg)] text-primary px-4 py-2 hover:bg-[var(--color-button-secondary-bg-hover)] transition-colors text-sm font-mono rounded-lg border border-border"
               >
                 Sign Out
               </button>

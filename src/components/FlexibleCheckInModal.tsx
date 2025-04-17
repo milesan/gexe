@@ -71,7 +71,7 @@ export function FlexibleCheckInModal({ week, isOpen, onClose, onDateSelect }: Pr
     <div className="fixed inset-0 bg-overlay backdrop-blur-sm flex items-center justify-center z-50">
       <div className="bg-gray-800/95 backdrop-blur-sm rounded-lg p-6 max-w-md w-full mx-4 shadow-xl border border-gray-500/30 text-white">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-white font-regular">Select Check-in Date</h2>
+          <h2 className="text-xl font-semibold text-white font-mono">Select Check-in Date</h2>
           <button 
             onClick={handleClose}
             className="text-gray-300 hover:text-white rounded-full p-1 transition-colors"
@@ -80,7 +80,7 @@ export function FlexibleCheckInModal({ week, isOpen, onClose, onDateSelect }: Pr
           </button>
         </div>
         
-        <p className="text-gray-300 mb-4 font-regular">
+        <p className="text-gray-300 mb-4 font-mono">
           This week offers multiple check-in dates. Please select your preferred check-in date.
         </p>
         
@@ -89,7 +89,7 @@ export function FlexibleCheckInModal({ week, isOpen, onClose, onDateSelect }: Pr
             <button
               key={formatDateForDisplay(date)}
               onClick={() => handleDateSelect(date)}
-              className="w-full p-3 text-left border border-gray-600 rounded-lg bg-gray-700/50 hover:bg-gray-600/70 hover:border-accent-primary transition-colors font-regular text-white"
+              className="w-full p-3 text-left border border-gray-600 rounded-lg bg-gray-700/50 hover:bg-gray-600/70 hover:border-accent-primary transition-colors font-mono text-white"
             >
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-accent-primary" />
@@ -102,7 +102,7 @@ export function FlexibleCheckInModal({ week, isOpen, onClose, onDateSelect }: Pr
         <div className="mt-6 flex justify-end">
           <button
             onClick={handleClose}
-            className="px-4 py-2 text-gray-300 hover:text-white transition-colors font-regular"
+            className="px-4 py-2 text-gray-300 hover:text-white transition-colors font-mono"
           >
             Cancel
           </button>

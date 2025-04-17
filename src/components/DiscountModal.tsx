@@ -106,8 +106,8 @@ export function DiscountModal({
                      <>              
                          {/* Base Rate Section */}
                          <div className="text-center border border-gray-600/50 rounded-md p-3">
-                            <div className="text-xs text-gray-400 font-regular mb-1">Accommodation Weekly Rate</div>
-                            <div className="text-lg font-medium text-white font-regular">€{Math.round(basePrice)}</div>
+                            <div className="text-xs text-gray-400 font-mono mb-1">Accommodation Weekly Rate</div>
+                            <div className="text-lg font-medium text-white font-mono">€{Math.round(basePrice)}</div>
                          </div>
                          
                          <div className="flex justify-center">
@@ -120,15 +120,15 @@ export function DiscountModal({
                             {showAccSeasonalSection && averageSeasonalDiscount !== null && averageSeasonalDiscount > 0 && (
                               <div>
                                 <div className="flex justify-between items-center mb-1">
-                                  <h4 className="font-regular text-white text-xs sm:text-sm flex items-center gap-2">
+                                  <h4 className="font-mono text-white text-xs sm:text-sm flex items-center gap-2">
                                     <span className="w-2 h-2 rounded-full bg-accent-primary"></span>
                                     Seasonal Discount (Accomm.)
                                   </h4>
-                                  <span className="text-accent-primary font-regular text-xs sm:text-sm font-medium">
+                                  <span className="text-accent-primary font-mono text-xs sm:text-sm font-medium">
                                     -{formatPercent(averageSeasonalDiscount)}
                                   </span>
                                 </div>
-                                <p className="text-[10px] sm:text-xs text-gray-300 font-regular pl-4">
+                                <p className="text-[10px] sm:text-xs text-gray-300 font-mono pl-4">
                                   (Weighted average based on your dates: 
                                   {seasonBreakdown.seasons.map((s, i) => 
                                     ` ${s.nights} night${s.nights !== 1 ? 's' : ''} in ${s.name}${i < seasonBreakdown.seasons.length - 1 ? ',' : ''}`
@@ -139,7 +139,7 @@ export function DiscountModal({
                             
                             {/* Show message if no discounts applied *to accommodation* */}
                              {!showAccSeasonalSection && durationDiscount === 0 && (
-                                <p className="text-xs text-gray-400 font-regular text-center italic">No discounts applicable to accommodation.</p>
+                                <p className="text-xs text-gray-400 font-mono text-center italic">No discounts applicable to accommodation.</p>
                              )}
                           </div>
                         )}
@@ -153,8 +153,8 @@ export function DiscountModal({
 
                         {/* Final Accommodation Rate Section */}
                         <div className="text-center border border-accent-primary/60 rounded-md p-3 bg-accent-primary/10">
-                            <div className="text-xs text-accent-primary/80 font-regular mb-1">Final Accommodation Weekly Rate</div>
-                            <div className="text-lg font-medium text-accent-primary font-regular">€{calculatedWeeklyPrice ?? 'N/A'}</div>
+                            <div className="text-xs text-accent-primary/80 font-mono mb-1">Final Accommodation Weekly Rate</div>
+                            <div className="text-lg font-medium text-accent-primary font-mono">€{calculatedWeeklyPrice ?? 'N/A'}</div>
                          </div>
 
                          {/* Separator if duration discount also applies to F&F */}    
@@ -166,15 +166,15 @@ export function DiscountModal({
                  {durationDiscount > 0 && (
                    <div className="border border-gray-600/50 rounded-md p-3 space-y-2">
                       <div className="flex justify-between items-center mb-1">
-                          <h4 className="text-white text-xs sm:text-sm flex items-center gap-2 font-regular">
+                          <h4 className="text-white text-xs sm:text-sm flex items-center gap-2 font-mono">
                             <span className="w-2 h-2 rounded-full bg-purple-400"></span>
                             Duration Discount 
                           </h4>
-                          <span className="text-purple-400 text-xs sm:text-sm font-regular font-medium">
+                          <span className="text-purple-400 text-xs sm:text-sm font-mono font-medium">
                             -{formatPercent(durationDiscount)}
                           </span>
                         </div>
-                        <p className="text-[10px] sm:text-xs text-gray-300 font-regular pl-4">
+                        <p className="text-[10px] sm:text-xs text-gray-300 font-mono pl-4">
                             (Applied for stays of 3+ weeks. You're staying {completeWeeks} week{completeWeeks !== 1 ? 's' : ''}.)
                             {' '}
                             Applies to Food & Facilities{ !noAccommodationDiscount && ' and Accommodation'}.
@@ -184,10 +184,10 @@ export function DiscountModal({
 
                  {/* Message if accommodation is free */}
                  {noAccommodationDiscount && durationDiscount === 0 && (
-                    <p className="text-xs text-gray-400 font-regular text-center italic">Accommodation is free. No duration discount applicable (requires 3+ weeks).</p>
+                    <p className="text-xs text-gray-400 font-mono text-center italic">Accommodation is free. No duration discount applicable (requires 3+ weeks).</p>
                  )} 
                  {noAccommodationDiscount && durationDiscount > 0 && (
-                    <p className="text-xs text-gray-400 font-regular text-center italic">Accommodation is free. Duration discount applies to Food & Facilities cost.</p>
+                    <p className="text-xs text-gray-400 font-mono text-center italic">Accommodation is free. Duration discount applies to Food & Facilities cost.</p>
                  )} 
               </div>
             </motion.div>

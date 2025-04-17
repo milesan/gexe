@@ -58,7 +58,7 @@ function AnswerTooltip({ children, content }: { children: React.ReactNode; conte
         {children}
       </div>
       {showTooltip && (
-        <div className="absolute z-50 bg-[var(--color-bg-surface-raised)] text-[var(--color-text-primary)] p-4 rounded-lg shadow-lg max-w-md whitespace-pre-wrap font-regular">
+        <div className="absolute z-50 bg-[var(--color-bg-surface-raised)] text-[var(--color-text-primary)] p-4 rounded-lg shadow-lg max-w-md whitespace-pre-wrap font-mono">
           {renderContent(content)}
         </div>
       )}
@@ -245,13 +245,13 @@ export function AppView() {
           <div>
             <button
               onClick={() => setSelectedApplication(application)}
-              className="font-regular text-base text-[var(--color-text-primary)] hover:text-[var(--color-accent-primary)] transition-colors text-left group"
+              className="font-mono text-base text-[var(--color-text-primary)] hover:text-[var(--color-accent-primary)] transition-colors text-left group"
             >
               <span className="group-hover:underline">
                 {firstName} {lastName}
               </span>
             </button>
-            <p className="text-[var(--color-text-secondary)] font-regular">{application.user_email}</p>
+            <p className="text-[var(--color-text-secondary)] font-mono">{application.user_email}</p>
           </div>
           <div className="flex gap-2 items-center">
             {application.status === 'pending' && (
@@ -276,7 +276,7 @@ export function AppView() {
                 </button>
               </>
             )}
-            <span className={`px-3 py-1 rounded-full text-xs font-medium font-regular ${
+            <span className={`px-3 py-1 rounded-full text-xs font-medium font-mono ${
               application.status === 'pending'
                 ? 'bg-yellow-100 text-yellow-800'
                 : application.status === 'approved'
@@ -292,51 +292,51 @@ export function AppView() {
 
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
-            <span className="text-[var(--color-text-secondary)] font-regular">Astrology:</span>
+            <span className="text-[var(--color-text-secondary)] font-mono">Astrology:</span>
             <AnswerTooltip content={astrology}>
-              <p className="mt-1 line-clamp-2 font-regular">{renderAnswer(astrology)}</p>
+              <p className="mt-1 line-clamp-2 font-mono">{renderAnswer(astrology)}</p>
             </AnswerTooltip>
           </div>
           <div>
-            <span className="text-[var(--color-text-secondary)] font-regular">MBTI:</span>
+            <span className="text-[var(--color-text-secondary)] font-mono">MBTI:</span>
             <AnswerTooltip content={mbti}>
-              <p className="mt-1 line-clamp-2 font-regular">{renderAnswer(mbti)}</p>
+              <p className="mt-1 line-clamp-2 font-mono">{renderAnswer(mbti)}</p>
             </AnswerTooltip>
           </div>
           <div>
-            <span className="text-[var(--color-text-secondary)] font-regular">Conspiracy Theory:</span>
+            <span className="text-[var(--color-text-secondary)] font-mono">Conspiracy Theory:</span>
             <AnswerTooltip content={conspiracy}>
-              <p className="mt-1 line-clamp-2 font-regular">{renderAnswer(conspiracy)}</p>
+              <p className="mt-1 line-clamp-2 font-mono">{renderAnswer(conspiracy)}</p>
             </AnswerTooltip>
           </div>
           <div>
-            <span className="text-[var(--color-text-secondary)] font-regular">Logic Puzzle:</span>
+            <span className="text-[var(--color-text-secondary)] font-mono">Logic Puzzle:</span>
             <AnswerTooltip content={logicPuzzle}>
-              <p className="mt-1 line-clamp-2 font-regular">{renderAnswer(logicPuzzle)}</p>
+              <p className="mt-1 line-clamp-2 font-mono">{renderAnswer(logicPuzzle)}</p>
             </AnswerTooltip>
           </div>
           <div>
-            <span className="text-[var(--color-text-secondary)] font-regular">Unique Belief:</span>
+            <span className="text-[var(--color-text-secondary)] font-mono">Unique Belief:</span>
             <AnswerTooltip content={uniqueBelief}>
-              <p className="mt-1 line-clamp-2 font-regular">{renderAnswer(uniqueBelief)}</p>
+              <p className="mt-1 line-clamp-2 font-mono">{renderAnswer(uniqueBelief)}</p>
             </AnswerTooltip>
           </div>
           <div>
-            <span className="text-[var(--color-text-secondary)] font-regular">Getting to Know People:</span>
+            <span className="text-[var(--color-text-secondary)] font-mono">Getting to Know People:</span>
             <AnswerTooltip content={gettingToKnow}>
-              <p className="mt-1 line-clamp-2 font-regular">{renderAnswer(gettingToKnow)}</p>
+              <p className="mt-1 line-clamp-2 font-mono">{renderAnswer(gettingToKnow)}</p>
             </AnswerTooltip>
           </div>
           <div>
-            <span className="text-[var(--color-text-secondary)] font-regular">Identity:</span>
+            <span className="text-[var(--color-text-secondary)] font-mono">Identity:</span>
             <AnswerTooltip content={identity}>
-              <p className="mt-1 line-clamp-2 font-regular">{renderAnswer(identity)}</p>
+              <p className="mt-1 line-clamp-2 font-mono">{renderAnswer(identity)}</p>
             </AnswerTooltip>
           </div>
           <div>
-            <span className="text-[var(--color-text-secondary)] font-regular">If we really knew you:</span>
+            <span className="text-[var(--color-text-secondary)] font-mono">If we really knew you:</span>
             <AnswerTooltip content={reallyKnowYou}>
-              <p className="mt-1 line-clamp-2 font-regular">{renderAnswer(reallyKnowYou)}</p>
+              <p className="mt-1 line-clamp-2 font-mono">{renderAnswer(reallyKnowYou)}</p>
             </AnswerTooltip>
           </div>
         </div>
@@ -354,7 +354,7 @@ export function AppView() {
 
   if (error) {
     return (
-      <div className="p-6 bg-[var(--color-bg-error)] text-[var(--color-text-error)] rounded-lg font-regular">
+      <div className="p-6 bg-[var(--color-bg-error)] text-[var(--color-text-error)] rounded-lg font-mono">
         {error}
       </div>
     );
@@ -369,7 +369,7 @@ export function AppView() {
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 rounded-lg transition-colors text-sm font-regular ${
+            className={`px-4 py-2 rounded-lg transition-colors text-sm font-mono ${
               activeTab === tab
                 ? 'bg-emerald-900 text-white'
                 : 'bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] border border-[var(--color-border)]'

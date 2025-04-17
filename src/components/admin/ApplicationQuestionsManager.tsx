@@ -125,18 +125,18 @@ export function ApplicationQuestionsManager() {
             >
                 <div className="flex items-center mb-4">
                     <AlertTriangle className="w-6 h-6 text-red-500 mr-3 flex-shrink-0" />
-                    <h2 className="text-lg font-regular text-[var(--color-text-primary)]">Confirm Deletion</h2>
+                    <h2 className="text-lg font-mono text-[var(--color-text-primary)]">Confirm Deletion</h2>
                 </div>
-                <p className="text-[var(--color-text-secondary)] mb-6 font-regular">Are you sure you want to delete this question? This action cannot be undone.</p>
+                <p className="text-[var(--color-text-secondary)] mb-6 font-mono">Are you sure you want to delete this question? This action cannot be undone.</p>
                 <div className="flex justify-end gap-3">
                     <button
                         onClick={onCancel}
-                        className="px-4 py-2 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] font-regular transition-colors">
+                        className="px-4 py-2 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] font-mono transition-colors">
                         Cancel
                     </button>
                     <button
                         onClick={onConfirm}
-                        className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 font-regular transition-colors">
+                        className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 font-mono transition-colors">
                         Delete
                     </button>
                 </div>
@@ -160,7 +160,7 @@ export function ApplicationQuestionsManager() {
                 <h2 className="text-xl font-display font-light text-[var(--color-text-primary)]">Manage Application Questions</h2>
                 <button
                     onClick={handleAddNew}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors font-regular text-sm"
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors font-mono text-sm"
                 >
                     <Plus className="w-4 h-4" />
                     Add New Question
@@ -168,7 +168,7 @@ export function ApplicationQuestionsManager() {
             </div>
 
             {error && (
-                <div className="p-4 bg-[var(--color-bg-error)] text-[var(--color-text-error)] rounded-lg font-regular">
+                <div className="p-4 bg-[var(--color-bg-error)] text-[var(--color-text-error)] rounded-lg font-mono">
                     Error: {error}
                 </div>
             )}
@@ -177,22 +177,22 @@ export function ApplicationQuestionsManager() {
                 <table className="min-w-full divide-y divide-[var(--color-border)]">
                     <thead className="bg-[var(--color-bg-surface-raised)]">
                         <tr>
-                            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider font-regular">Order</th>
-                            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider font-regular w-2/5">Text</th>
-                            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider font-regular">Type</th>
-                            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider font-regular">Section</th>
-                            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider font-regular">Required</th>
-                            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider font-regular">Actions</th>
+                            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider font-mono">Order</th>
+                            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider font-mono w-2/5">Text</th>
+                            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider font-mono">Type</th>
+                            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider font-mono">Section</th>
+                            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider font-mono">Required</th>
+                            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider font-mono">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="bg-[var(--color-bg-surface)] divide-y divide-[var(--color-border)]">
                         {questions.map((q) => (
                             <tr key={q.id} className="hover:bg-[var(--color-bg-surface-hover)] transition-colors">
                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-[var(--color-text-secondary)] font-mono">{q.order_number}</td>
-                                <td className="px-4 py-3 text-sm text-[var(--color-text-primary)] font-regular max-w-md">{q.text}</td>
-                                <td className="px-4 py-3 whitespace-nowrap text-sm text-[var(--color-text-secondary)] font-regular">{q.type}</td>
-                                <td className="px-4 py-3 whitespace-nowrap text-sm text-[var(--color-text-secondary)] font-regular">{q.section}</td>
-                                <td className="px-4 py-3 whitespace-nowrap text-sm text-[var(--color-text-secondary)] font-regular">{q.required ? 'Yes' : 'No'}</td>
+                                <td className="px-4 py-3 text-sm text-[var(--color-text-primary)] font-mono max-w-md">{q.text}</td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-[var(--color-text-secondary)] font-mono">{q.type}</td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-[var(--color-text-secondary)] font-mono">{q.section}</td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-[var(--color-text-secondary)] font-mono">{q.required ? 'Yes' : 'No'}</td>
                                 <td className="px-4 py-3 whitespace-nowrap text-sm font-medium space-x-2">
                                     <button onClick={() => handleEdit(q)} title="Edit Question" className="text-[var(--color-text-secondary)] hover:text-blue-600 transition-colors p-1 rounded hover:bg-[var(--color-bg-surface-hover)]">
                                         <Edit className="w-4 h-4" />
@@ -205,7 +205,7 @@ export function ApplicationQuestionsManager() {
                         ))}
                         {!loading && questions.length === 0 && (
                             <tr>
-                                <td colSpan={6} className="px-4 py-6 text-center text-[var(--color-text-secondary)] font-regular">
+                                <td colSpan={6} className="px-4 py-6 text-center text-[var(--color-text-secondary)] font-mono">
                                     No questions found. Add one using the button above!
                                 </td>
                             </tr>
@@ -237,3 +237,4 @@ export function ApplicationQuestionsManager() {
     );
     // --- End of the main return block --- 
 }
+

@@ -316,23 +316,23 @@ export function InventoryCalendar({ onClose }: Props) {
                 <div className="flex items-center gap-4 text-xs text-[var(--color-text-secondary)]">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
-                    <span className="font-regular">Available</span>
+                    <span className="font-mono">Available</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
-                    <span className="font-regular">Hold</span>
+                    <span className="font-mono">Hold</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-black"></div>
-                    <span className="font-regular">Booked</span>
+                    <span className="font-mono">Booked</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-20 h-3 rounded-full bg-gradient-to-r from-emerald-500 to-black"></div>
-                    <span className="font-regular">Check-in →</span>
+                    <span className="font-mono">Check-in →</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-20 h-3 rounded-full bg-gradient-to-l from-emerald-500 to-black"></div>
-                    <span className="font-regular">Check-out →</span>
+                    <span className="font-mono">Check-out →</span>
                   </div>
                   <div className="h-6 border-l border-[var(--color-border)] mx-2"></div>
                   <div className="flex items-center gap-2">
@@ -343,7 +343,7 @@ export function InventoryCalendar({ onClose }: Props) {
                       <div className="w-3 h-3 bg-stone-950"></div>
                       <div className="w-3 h-3 bg-black"></div>
                     </div>
-                    <span className="font-regular">Dorm Occupancy (Available → Full)</span>
+                    <span className="font-mono">Dorm Occupancy (Available → Full)</span>
                   </div>
                 </div>
 

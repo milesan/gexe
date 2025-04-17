@@ -10,10 +10,13 @@ interface UploadedFileData {
   fileName: string;
 }
 
+// Define the possible value types for different questions
+type QuestionValue = UploadedFileData[] | string | string[] | null | undefined;
+
 interface Props {
   question: ApplicationQuestion;
-  value: UploadedFileData[] | any; // Allow initial `any` but expect UploadedFileData[]
-  onChange: (value: UploadedFileData[] | any) => void; // Update onChange type accordingly
+  value: QuestionValue; // Updated type
+  onChange: (value: QuestionValue) => void; // Updated type
   onBlur?: () => void;
   themeColor?: string;
   questionIndex: number;
@@ -31,7 +34,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
 
   // Ensure value is always an array for file uploads
   const currentFiles: UploadedFileData[] = useMemo(() => 
-    isImageUpload && Array.isArray(value) ? value : [], 
+    isImageUpload && Array.isArray(value) ? value.filter(item => typeof item === 'object' && item !== null && 'url' in item && 'fileName' in item) as UploadedFileData[] : [],
     [value, isImageUpload]
   );
 
@@ -223,7 +226,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
             }`}
           >
             <Upload className="w-5 h-5 mr-2" />
-            <span className="font-regular text-sm">
+            <span className="font-mono text-sm">
               {isDisabled 
                 ? (uploadProgress > 0 && uploadProgress < 100 ? 'Uploading...' : (isDeleting ? 'Deleting...' : `Limit Reached (${IMAGE_LIMIT})`))
                 : 'Browse Images'
@@ -284,13 +287,13 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
   if (isMBTIQuestion) {
     return (
       <div className="space-y-4">
-        <h3 className="text-2xl font-display text-[#FFBF00]">
+        <h3 className="text-xl font-display text-[#FFBF00]">
           {question.text}
           <span className="text-red-500 ml-1">*</span>
         </h3>
         <input
           type="text"
-          value={value || ''}
+          value={value as string || ''}
           onChange={(e) => onChange(e.target.value)}
           onBlur={onBlur}
           className="w-full bg-black p-3 text-[#FFBF00] focus:outline-none focus:ring-2 focus:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30"
@@ -339,7 +342,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.65 }}
               >
-                <div className="space-y-6 font-display text-2xl leading-relaxed max-w-2xl">
+                <div className="space-y-6 font-display text-xl leading-relaxed max-w-2xl">
                   <p className="text-[#FFBF00]/60">This is a curated place, unlike any other.</p>
                   <p className="text-[#FFBF00]/70">We seek those with the attention span & curiosity 
                   to complete this application.</p>
@@ -356,17 +359,17 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
               animate={{ opacity: 1 }}
               transition={{ delay: 0.85 }}
             >
-              <h3 className="text-2xl font-display mb-2 text-[#FFBF00]/90">
+              <h3 className="text-xl font-display mb-2 text-[#FFBF00]/90">
                 {question.text}
                 <span className="text-red-500 ml-1">*</span>
               </h3>
-              <p className="text-sm text-[#FFBF00]/60 -mt-1 mb-6">
+              <p className="text-[#FFBF00]/60 -mt-1 mb-6">
                 We value data privacy.
               </p>
               <div className="flex justify-center gap-8">
                 <button 
                   onClick={() => handleChange('As you wish.')}
-                  className="bg-[#FFBF00] text-black px-8 py-4 text-xl transition-colors hover:bg-[#FFBF00]/90"
+                  className="bg-[#FFBF00] text-black px-8 py-2 transition-colors hover:bg-[#FFBF00]/90"
                   style={{
                     clipPath: `polygon(
                       0 4px, 4px 4px, 4px 0,
@@ -381,7 +384,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
                 </button>
                 <button 
                   onClick={() => handleChange('Inconceivable!')}
-                  className="bg-[#FFBF00] text-black px-8 py-4 text-xl opacity-80 transition-colors hover:bg-[#FFBF00]/90"
+                  className="bg-[#FFBF00] text-black px-8 py-2 opacity-80 transition-colors hover:bg-[#FFBF00]/90"
                   style={{
                     clipPath: `polygon(
                       0 4px, 4px 4px, 4px 0,
@@ -399,7 +402,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
           </motion.div>
         ) : (
           <>
-            <h3 className="text-2xl font-display text-[#FFBF00]">
+            <h3 className="text-xl font-display text-[#FFBF00]">
               {question.text}
               <span className="text-red-500 ml-1">*</span>
             </h3>
@@ -424,7 +427,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
                       )`
                     }}
                   >
-                    <div className={`flex-shrink-0 w-6 h-6 mr-4 flex items-center justify-center transition-colors ${
+                    <div className={`flex-shrink-0 w-5 h-5 mr-4 flex items-center justify-center transition-colors ${
                       isSelected 
                         ? `border-4 border-[#FFBF00] bg-[#FFBF00]` 
                         : `border-4 border-[#FFBF00]`
@@ -439,7 +442,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
                       )`
                     }}
                     >
-                      {isSelected && <Check className="w-4 h-4 text-black" />}
+                      {/* {isSelected && <Check className="w-3 h-3 text-black" />} <-- Checkmark removed for radio */}
                     </div>
                     <input
                       type="radio"
@@ -449,7 +452,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
                       onChange={() => handleChange(option)}
                       className="sr-only"
                     />
-                    <span className="text-base text-[#FFBF00]">{option}</span>
+                    <span className="text-[#FFBF00]">{option}</span>
                   </label>
                 );
               })}
@@ -460,16 +463,106 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
     );
   }
 
+  if (question.type === 'checkbox' && question.options) {
+    const options = Array.isArray(question.options) 
+      ? question.options 
+      : JSON.parse(question.options);
+
+    // Ensure value is an array for checkboxes, default to empty array
+    const currentSelections: string[] = useMemo(() => 
+      Array.isArray(value) ? value.filter(item => typeof item === 'string') as string[] : [],
+      [value]
+    );
+
+    const handleChange = (option: string) => {
+      let updatedSelections: string[];
+      if (currentSelections.includes(option)) {
+        // Remove option
+        updatedSelections = currentSelections.filter(item => item !== option);
+        console.log('✅ Checkbox deselected:', { questionId: question.order_number, option, updatedSelections });
+      } else {
+        // Add option
+        updatedSelections = [...currentSelections, option];
+        console.log('✅ Checkbox selected:', { questionId: question.order_number, option, updatedSelections });
+      }
+      onChange(updatedSelections);
+      // Note: onBlur might not make sense for checkboxes, but keeping for consistency if needed
+      if (onBlur) onBlur(); 
+    };
+
+    return (
+      <div className="space-y-4">
+        <h3 className="text-xl font-display text-[#FFBF00]">
+          {question.text}
+          {/* Checkboxes might not always be required, adjust if needed */}
+          <span className="text-red-500 ml-1">*</span> 
+        </h3>
+        <div className="space-y-2">
+          {options.map((option: string) => {
+            const isSelected = currentSelections.includes(option);
+            return (
+              <label 
+                key={option} 
+                className={`flex items-center p-3 cursor-pointer transition-all ${
+                  isSelected 
+                    ? `bg-[#FFBF00]/20` 
+                    : `hover:bg-[#FFBF00]/10`
+                }`}
+                style={{
+                  clipPath: `polygon(
+                    0 4px, 4px 4px, 4px 0,
+                    calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
+                    100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
+                    calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
+                    0 calc(100% - 4px)
+                  )`
+                }}
+              >
+                {/* Checkbox visual - adapting radio style */}
+                <div className={`flex-shrink-0 w-5 h-5 mr-4 flex items-center justify-center transition-colors ${
+                  isSelected 
+                    ? `border-4 border-[#FFBF00] bg-[#FFBF00]` // Filled square for checked
+                    : `border-4 border-[#FFBF00]` // Empty square for unchecked
+                }`}
+                style={{
+                  clipPath: `polygon(
+                    0 4px, 4px 4px, 4px 0,
+                    calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
+                    100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
+                    calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
+                    0 calc(100% - 4px)
+                  )`
+                }}
+                >
+                  {isSelected && <Check className="w-3 h-3 text-black" />}
+                </div>
+                <input
+                  type="checkbox"
+                  name={`question-${questionIndex}-${option.replace(/\s+/g, '-')}`} // Unique name might be needed if you care about form semantics, though React state handles it
+                  value={option}
+                  checked={isSelected}
+                  onChange={() => handleChange(option)}
+                  className="sr-only"
+                />
+                <span className="text-[#FFBF00]">{option}</span>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
   if (question.type === 'textarea') {
     return (
       <div className="space-y-4">
-        <h3 className="text-2xl font-display text-[#FFBF00]">
+        <h3 className="text-xl font-display text-[#FFBF00]">
           {question.text}
           <span className="text-red-500 ml-1">*</span>
         </h3>
         <div className="relative">
           <textarea
-            value={value || ''}
+            value={value as string || ''}
             onChange={(e) => onChange(e.target.value)}
             onBlur={onBlur}
             className="w-full bg-black p-3 text-[#FFBF00] focus:outline-none focus:ring-2 focus:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30"
@@ -491,14 +584,14 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
 
   return (
     <div className="space-y-4">
-      <h3 className="text-2xl font-display text-[#FFBF00]">
+      <h3 className="text-xl font-display text-[#FFBF00]">
         {question.text}
         <span className="text-red-500 ml-1">*</span>
       </h3>
       <div className="relative">
         <input
           type={question.type}
-          value={value || ''}
+          value={value as string || ''}
           onChange={(e) => onChange(e.target.value)}
           onBlur={onBlur}
           className="w-full bg-black p-3 text-[#FFBF00] focus:outline-none focus:ring-2 focus:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30"

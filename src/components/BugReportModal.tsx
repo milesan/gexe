@@ -290,11 +290,11 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
                 {status === 'success' ? (
                   <div className="text-center p-4 bg-[var(--color-success-bg,theme(colors.green.600/0.2))] border border-[var(--color-success-border,theme(colors.green.500/0.5))] rounded-md">
                     <CheckCircle className="w-8 h-8 text-[var(--color-success-icon,theme(colors.green.400))] mx-auto mb-2" />
-                    <p className="text-[var(--color-success-text,theme(colors.green.300))] font-medium font-regular">Thank you!</p>
-                    <p className="text-xs text-[var(--color-text-secondary,theme(colors.gray.300))] mt-1 font-regular">Your report has been submitted.</p>
+                    <p className="text-[var(--color-success-text,theme(colors.green.300))] font-medium font-mono">Thank you!</p>
+                    <p className="text-xs text-[var(--color-text-secondary,theme(colors.gray.300))] mt-1 font-mono">Your report has been submitted.</p>
                   </div>
                 ) : (
-                  <form onSubmit={handleSubmit} className="flex flex-col flex-grow space-y-4 font-regular">
+                  <form onSubmit={handleSubmit} className="flex flex-col flex-grow space-y-4 font-mono">
                     <div>
                       <label htmlFor="description" className="block text-xs sm:text-sm font-medium text-[var(--color-text-secondary,theme(colors.gray.300))] mb-1">Description <span className="text-[var(--color-error-indicator,theme(colors.red.500))]">*</span></label>
                       <textarea
@@ -373,7 +373,7 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
                        {uploadError && (
                          <div className="flex items-center p-2 text-xs sm:text-sm bg-[var(--color-error-bg,theme(colors.red.600/0.2))] border border-[var(--color-error-border,theme(colors.red.500/0.5))] rounded-md text-[var(--color-error-text,theme(colors.red.300))]">
                            <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
-                           <span className="font-regular">{uploadError}</span>
+                           <span className="font-mono">{uploadError}</span>
                          </div>
                        )}
 
@@ -411,7 +411,7 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
                     {status === 'error' && !uploadError && (
                       <div className="flex items-center p-2 text-xs sm:text-sm bg-[var(--color-error-bg,theme(colors.red.600/0.2))] border border-[var(--color-error-border,theme(colors.red.500/0.5))] rounded-md text-[var(--color-error-text,theme(colors.red.300))]">
                         <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
-                        <span className="font-regular">{errorMessage || 'Submission failed. Please try again.'}</span>
+                        <span className="font-mono">{errorMessage || 'Submission failed. Please try again.'}</span>
                       </div>
                     )}
 
@@ -419,14 +419,14 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
                        <button
                           type="button"
                           onClick={onClose}
-                          className="px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium rounded-md text-[var(--color-button-secondary-text,theme(colors.gray.300))] bg-[var(--color-button-secondary-bg,theme(colors.gray.600/0.5))] hover:bg-[var(--color-button-secondary-bg-hover,theme(colors.gray.600/0.8))] focus:outline-none focus:ring-2 focus:ring-[var(--color-button-secondary-focus-ring,theme(colors.gray.500))] focus:ring-offset-2 focus:ring-offset-[var(--color-focus-offset,theme(colors.gray.800))] disabled:opacity-50 transition-colors font-regular"
+                          className="px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium rounded-md text-[var(--color-button-secondary-text,theme(colors.gray.300))] bg-[var(--color-button-secondary-bg,theme(colors.gray.600/0.5))] hover:bg-[var(--color-button-secondary-bg-hover,theme(colors.gray.600/0.8))] focus:outline-none focus:ring-2 focus:ring-[var(--color-button-secondary-focus-ring,theme(colors.gray.500))] focus:ring-offset-2 focus:ring-offset-[var(--color-focus-offset,theme(colors.gray.800))] disabled:opacity-50 transition-colors font-mono"
                           disabled={status === 'submitting' || isUploading || !!isDeleting}
                        >
                          Cancel
                        </button>
                        <button
                           type="submit"
-                          className="px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium rounded-md text-[var(--color-button-primary-text,theme(colors.stone.800))] bg-[var(--color-button-primary-bg,theme(colors.accent-primary))] hover:bg-[var(--color-button-primary-bg-hover,theme(colors.accent-primary/0.8))] focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring,theme(colors.accent-primary))] focus:ring-offset-2 focus:ring-offset-[var(--color-focus-offset,theme(colors.gray.800))] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center font-regular"
+                          className="px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium rounded-md text-[var(--color-button-primary-text,theme(colors.stone.800))] bg-[var(--color-button-primary-bg,theme(colors.accent-primary))] hover:bg-[var(--color-button-primary-bg-hover,theme(colors.accent-primary/0.8))] focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring,theme(colors.accent-primary))] focus:ring-offset-2 focus:ring-offset-[var(--color-focus-offset,theme(colors.gray.800))] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center font-mono"
                           disabled={!description || status === 'submitting' || isUploading || !!isDeleting}
                        >
                          {status === 'submitting' ? (

@@ -94,7 +94,7 @@ export function RetroQuestionField({ question, value, onChange, onAutoAdvance, t
                   to complete this application.</p>
                   <p className="text-[#FFBF00]/80">We're not impressed by your followers, fortune, 
                   or fame [though none of those exclude you].</p>
-                  <p className="text-[#FFBF00] text-2xl">We seek the realest.</p>
+                  <p className="text-[#FFBF00] text-2xl">We s2eek the realest.</p>
                 </div>
               </motion.div>
             </div>

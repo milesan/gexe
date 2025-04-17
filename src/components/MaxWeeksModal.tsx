@@ -36,13 +36,13 @@ export function MaxWeeksModal({ isOpen, onClose }: Props) {
               <h3 className="text-lg sm:text-xl font-display">Hold Your Horses!</h3>
             </div>
 
-            <p className="text-text-secondary mb-6 font-regular">
+            <p className="text-text-secondary mb-6 font-mono">
               You may only spend 3 months at the Garden every 6 months. Give the rest of the world a chance ❧
             </p>
             
             <button
               onClick={onClose}
-              className="w-full bg-accent-primary text-white py-2 rounded transition-colors hover:brightness-90 font-regular"
+              className="w-full bg-accent-primary text-white py-2 rounded transition-colors hover:brightness-90 font-mono"
             >
               Cool
             </button>

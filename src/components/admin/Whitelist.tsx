@@ -260,14 +260,14 @@ export function Whitelist() {
           <h3 className="text-lg font-display font-medium text-[var(--color-text-primary)]">Add to Whitelist</h3>
           <button
             onClick={() => setShowUpload(true)}
-            className="flex font-regular text-sm items-center gap-2 text-[var(--color-accent-secondary)] hover:text-[var(--color-accent-secondary-hover)]"
+            className="flex font-mono text-sm items-center gap-2 text-[var(--color-accent-secondary)] hover:text-[var(--color-accent-secondary-hover)]"
           >
             <Upload className="w-4 h-4" />
             Upload CSV
           </button>
         </div>
 
-        <div className="flex gap-4 font-regular text-sm">
+        <div className="flex gap-4 font-mono text-sm">
           <input
             type="email"
             value={newEmail}
@@ -291,7 +291,7 @@ export function Whitelist() {
                 : 'bg-[var(--color-button-primary-bg)] text-[var(--color-button-primary-text)] hover:bg-[var(--color-button-primary-bg-hover)]'
             }`}
           >
-            <Plus className="w-4 h-4 font-regular text-sm" />
+            <Plus className="w-4 h-4 font-mono text-sm" />
             {isAdding ? 'Adding...' : 'Add'}
           </button>
         </div>

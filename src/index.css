@@ -69,6 +69,9 @@
   --color-tooltip-border: color-mix(in srgb, var(--color-border) 50%, transparent);
   --color-tooltip-accent-border: color-mix(in srgb, var(--color-accent-primary) 30%, transparent);
   --color-tooltip-text: var(--color-white); /* Explicitly white for dark tooltips */
+  
+  /* Font variables */
+  --font-primary: 'VT323', monospace;
 }
 
 .light-mode {
@@ -114,10 +117,16 @@
   body {
     background-color: var(--color-bg-main);
     color: var(--color-text-primary);
+    font-size-adjust: 0.422; /* Added to normalize perceived font size */
+    font-family: var(--font-primary); /* Use the variable */
   }
 }
 
 @layer components {
+  .font-mono {
+    font-size: 1.05em; /* Adjust this value as needed (e.g., 105%, 1.05em) */
+  }
+
   .pixel-corners {
     position: relative;
     clip-path: polygon(
@@ -246,7 +255,7 @@
     background-color: var(--color-tooltip-bg);
     border-color: var(--color-tooltip-border);
     color: var(--color-tooltip-text); /* Use specific tooltip text color */
-    font-family: var(--font-regular); /* Ensure consistent font */
+    font-family: var(--font-primary); /* Use the primary font variable */
   }
 
   .tooltip-arrow {

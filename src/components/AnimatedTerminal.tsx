@@ -188,17 +188,17 @@ export function AnimatedTerminal({ onComplete }: Props) {
               className="absolute inset-0 flex items-center justify-center"
             >
               {/* Use padding instead of calculated width for better responsiveness */}
-              <div className="px-6 sm:px-0 sm:w-auto sm:max-w-[400px]">
+              <div className="w-full max-w-[300px] px-6 sm:px-0">
                 <div className="bg-black p-4 sm:p-8">
                   <div className="flex items-center justify-center gap-3 mb-8">
-                    <h1 className="text-base sm:text-xl font-mono text-[#bac89b] whitespace-nowrap">
+                    <h1 className="text-lg font-mono text-[#bac89b] whitespace-nowrap">
                       enter the garden
                     </h1>
                   </div>
 
-                  <form onSubmit={handleSubmit} className="space-y-6">
+                  <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="w-full">
-                      <div className="relative w-full">
+                      <div className={`relative w-full ${ (error || success) ? 'mb-3' : '' }`}>
                         <input
                           type="email"
                           id="email-input"
@@ -224,6 +224,7 @@ export function AnimatedTerminal({ onComplete }: Props) {
                       </div>
                     </div>
 
+                    {/* Remove the wrapper div */}
                     {error && (
                       <div className="font-mono text-red-500 text-sm">
                         {error}
@@ -231,7 +232,7 @@ export function AnimatedTerminal({ onComplete }: Props) {
                     )}
 
                     {success && (
-                      <div className="font-mono text-[#bac89b] text-sm">
+                      <div className="font-mono text-[#bac89b] text-sm w-full whitespace-pre-wrap">
                         {success}
                       </div>
                     )}

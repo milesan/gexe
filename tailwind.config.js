@@ -25,12 +25,11 @@ export default {
         }
       },
       fontFamily: {
-        mono: ['Space Mono', 'monospace'],
+        // VT323 as the primary font, used for main text and previously Space Mono elements
+        mono: ['VT323', 'monospace'],
+        // Keep specialty fonts for specific use cases
         display: ['PP Lettra Mono Regular', 'monospace'],
-        serif: ['Playfair Display', 'serif'],
-        body: ['Lora', 'serif'],
         lettra: ['PP Lettra Mono Thin', 'monospace'],
-        regular: ['Space Mono', 'monospace'],
         'lettra-bold': ['PP Lettra Mono Bold', 'monospace']
       }
     },

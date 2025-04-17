@@ -58,13 +58,13 @@ export function MyBookings() {
             <div>
               <h1 className="text-4xl font-display font-light text-primary mb-2">My Account</h1>
               <div className="text-secondary">
-                <p className="font-regular">{session?.user?.email}</p>
+                <p className="font-mono">{session?.user?.email}</p>
               </div>
             </div>
           </div>
           
           {bookings.length === 0 ? (
-            <div className="text-center font-regular text-secondary">
+            <div className="text-center font-mono text-secondary">
               No bookings found. Book your first stay!
             </div>
           ) : (
@@ -81,7 +81,7 @@ export function MyBookings() {
                       <h3 className="text-xl font-display font-light mb-2 text-primary">
                         {booking.accommodation?.title || 'Accommodation'}
                       </h3>
-                      <div className="space-y-1 text-sm font-regular">
+                      <div className="space-y-1 text-sm font-mono">
                         <p>
                           <span className="text-secondary">Check-in:</span>{' '}
                           {format(parseISO(booking.check_in), 'PPP')}

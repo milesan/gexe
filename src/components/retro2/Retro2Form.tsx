@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { RetroQuestionField } from './RetroQuestionField';
-import { Send, ChevronRight, LogOut, Terminal } from 'lucide-react';
+import { Send, ChevronRight, LogOut, Terminal, ChevronLeft } from 'lucide-react';
 import { AutosaveNotification } from '../AutosaveNotification';
 import { useAutosave } from '../../hooks/useAutosave';
 import type { ApplicationQuestion } from '../../types/application';
@@ -186,7 +186,7 @@ export function Retro2Form({ questions, onSubmit }: Props) {
                 key={name}
                 disabled={index > currentSection && !isCurrentSectionComplete()}
                 onClick={() => index <= currentSection && setCurrentSection(index)}
-                className={`text-sm whitespace-nowrap transition-all ${
+                className={`whitespace-nowrap transition-all ${
                   index === currentSection
                     ? `text-[#FFBF00]`
                     : index < currentSection
@@ -214,7 +214,7 @@ export function Retro2Form({ questions, onSubmit }: Props) {
         ref={contentRef}
         className="fixed top-[140px] bottom-[120px] left-0 right-0 overflow-y-auto"
       >
-        <div className="max-w-2xl mx-auto px-4 relative">
+        <div className="max-w-xl mx-auto px-4 relative">
           <motion.div
             key={currentSectionName}
             initial={{ opacity: 0, x: 20 }}
@@ -247,7 +247,7 @@ export function Retro2Form({ questions, onSubmit }: Props) {
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 z-40 pointer-events-none">
-        <div className="max-w-2xl mx-auto px-4 flex flex-col items-center">
+        <div className="max-w-xl mx-auto px-4 flex flex-col items-center">
           <div className="w-full flex justify-center mb-2 pointer-events-auto">
             <AutosaveNotification 
               show={showSaveNotification} 
@@ -261,7 +261,7 @@ export function Retro2Form({ questions, onSubmit }: Props) {
                 <button
                   type="button"
                   onClick={() => setCurrentSection(prev => Math.max(0, prev - 1))}
-                  className="group px-4 py-2 text-base transition-all bg-[#FFBF00]/10 hover:bg-[#FFBF00]/20 text-[#FFBF00]"
+                  className="group flex items-center gap-2 px-4 py-2 transition-all bg-[#FFBF00] text-black disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{
                     clipPath: `polygon(
                       0 4px, 4px 4px, 4px 0,
@@ -272,7 +272,8 @@ export function Retro2Form({ questions, onSubmit }: Props) {
                     )`
                   }}
                 >
-                  Previous
+                  <ChevronLeft className="w-4 h-4" />
+                  <span>Previous</span>
                 </button>
               ) : (
                 <div className="w-[98px]"></div>
@@ -285,7 +286,11 @@ export function Retro2Form({ questions, onSubmit }: Props) {
                   type="submit"
                   disabled={isSubmitting || !isCurrentSectionComplete()}
                   onClick={handleSubmit}
-                  className={`group flex items-center justify-center gap-2 bg-[#FFBF00] text-black px-4 py-2 text-base transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-w-44`}
+                  className={`group flex items-center justify-center gap-2 px-4 py-2 transition-colors min-w-44 ${
+                    isSubmitting || !isCurrentSectionComplete() 
+                      ? 'bg-[#FFBF00]/10 text-[#FFBF00]'
+                      : 'bg-[#FFBF00] text-black'
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
                   style={{
                     clipPath: `polygon(
                       0 4px, 4px 4px, 4px 0,
@@ -313,7 +318,7 @@ export function Retro2Form({ questions, onSubmit }: Props) {
                     type="button"
                     onClick={() => isCurrentSectionComplete() && setCurrentSection(prev => prev + 1)}
                     disabled={!isCurrentSectionComplete()}
-                    className={`group flex items-center gap-2 px-4 py-2 text-base transition-all ${
+                    className={`group flex items-center gap-2 px-4 py-2 transition-all  ${
                       isCurrentSectionComplete() 
                         ? 'bg-[#FFBF00] text-black' 
                         : 'bg-[#FFBF00]/10 text-[#FFBF00]'

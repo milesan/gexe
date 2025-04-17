@@ -318,10 +318,10 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
   const contentContainerClasses = "bg-gray-800/95 rounded-lg p-4 sm:p-6 max-w-md w-full relative z-[101] max-h-[90vh] overflow-y-auto shadow-xl border border-gray-500/30 text-white backdrop-blur-sm"; // Match DiscountModal styling
   const contentPaddingClasses = ""; // Padding now part of contentContainerClasses
   const contentBgClasses = ""; // Background now part of contentContainerClasses
-  const textBaseClasses = "text-white font-regular"; // Simplified dark styles
-  const textMutedClasses = "text-gray-300 font-regular"; // Simplified dark styles
+  const textBaseClasses = "text-white font-mono"; // Simplified dark styles
+  const textMutedClasses = "text-gray-300 font-mono"; // Simplified dark styles
   const inputBaseClasses = "w-full p-2 border rounded bg-gray-700 border-gray-600 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400 disabled:opacity-50"; // Simplified dark styles, removed redundant dark prefixes
-  const buttonBaseClasses = "px-4 py-2 rounded disabled:opacity-50 font-regular focus:outline-none focus:ring-2 focus:ring-offset-2";
+  const buttonBaseClasses = "px-4 py-2 rounded disabled:opacity-50 font-mono focus:outline-none focus:ring-2 focus:ring-offset-2";
   const primaryButtonClasses = `${buttonBaseClasses} bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500 dark:focus:ring-blue-400`; // Removed redundant dark styles
   const secondaryButtonClasses = `${buttonBaseClasses} text-gray-300 hover:text-white bg-gray-700 hover:bg-gray-600 focus:ring-gray-400 border border-gray-600`; // Added border, simplified dark styles
   const dangerButtonClasses = `${buttonBaseClasses} text-red-400 hover:text-red-300 focus:ring-red-400 border border-transparent hover:border-red-500/50 mr-auto`; // Simplified dark styles, added hover border
@@ -346,7 +346,7 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
             <X className="h-5 w-5" />
           </button>
 
-          <h2 className={`text-xl font-bold mb-4 font-regular ${textBaseClasses}`}>Customize Week</h2>
+          <h2 className={`text-xl font-bold mb-4 font-mono ${textBaseClasses}`}>Customize Week</h2>
           
           {/* Status Hint - Apply dark theme styles */}
           {getStatusHint()} {/* Assume getStatusHint will handle its own dark styles if needed */}
@@ -356,20 +356,20 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
             <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-300 dark:border-red-500/50 text-red-700 dark:text-red-300 rounded-md">
               <div className="flex items-center">
                 <AlertTriangle className="h-5 w-5 mr-2" />
-                <span className="font-regular">{error}</span>
+                <span className="font-mono">{error}</span>
               </div>
             </div>
           )}
 
           {/* Status Selection */}
           <div className="mb-4">
-            <label className={`block text-sm font-medium mb-1 font-regular ${textMutedClasses}`}>
+            <label className={`block text-sm font-medium mb-1 font-mono ${textMutedClasses}`}>
               Status
             </label>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value as WeekStatus)}
-              className={`${inputBaseClasses} font-regular`}
+              className={`${inputBaseClasses} font-mono`}
             >
               <option value="visible">Available</option>
               <option value="hidden">Hidden</option>
@@ -379,7 +379,7 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
 
           {/* Week Name */}
           <div className="mb-4">
-            <label className={`block text-sm font-medium mb-1 font-regular ${textMutedClasses}`}>
+            <label className={`block text-sm font-medium mb-1 font-mono ${textMutedClasses}`}>
               Week Name (Optional)
             </label>
             <input
@@ -387,14 +387,14 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g., Christmas Week"
-              className={`${inputBaseClasses} font-regular`}
+              className={`${inputBaseClasses} font-mono`}
             />
           </div>
 
           {/* Date Range */}
           <div className="grid grid-cols-2 gap-4 mb-2">
             <div>
-              <label className={`block text-sm font-medium mb-1 font-regular ${textMutedClasses}`}>
+              <label className={`block text-sm font-medium mb-1 font-mono ${textMutedClasses}`}>
                 Start Date
               </label>
               <input
@@ -405,7 +405,7 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
                   setError(null);
                 }}
                 // Apply input base styles + specific warning styles
-                className={`${inputBaseClasses} font-regular ${
+                className={`${inputBaseClasses} font-mono ${
                   dateWarning && dateWarning.includes('Start date') 
                     ? 'border-yellow-400 dark:border-yellow-600' 
                     : 'border-gray-300 dark:border-gray-600'
@@ -413,7 +413,7 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
               />
             </div>
             <div>
-              <label className={`block text-sm font-medium mb-1 font-regular ${textMutedClasses}`}>
+              <label className={`block text-sm font-medium mb-1 font-mono ${textMutedClasses}`}>
                 End Date
               </label>
               <input
@@ -424,7 +424,7 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
                   setError(null);
                 }}
                 // Apply input base styles + specific warning styles
-                className={`${inputBaseClasses} font-regular ${
+                className={`${inputBaseClasses} font-mono ${
                   dateWarning && dateWarning.includes('End date') 
                     ? 'border-yellow-400 dark:border-yellow-600' 
                     : 'border-gray-300 dark:border-gray-600'
@@ -442,7 +442,7 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
                 onChange={(e) => handleFlexibleCheckInToggle(e.target.checked)}
                 className="rounded border-gray-300 dark:border-gray-600 text-blue-600 dark:text-blue-400 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 dark:bg-gray-700 dark:focus:ring-blue-500 dark:focus:ring-offset-gray-800"
               />
-              <span className={`text-sm font-medium font-regular ${textMutedClasses}`}>Enable Flexible Check-in Dates</span>
+              <span className={`text-sm font-medium font-mono ${textMutedClasses}`}>Enable Flexible Check-in Dates</span>
             </label>
           </div>
 
@@ -468,9 +468,9 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
             <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-600/50 text-yellow-700 dark:text-yellow-300 rounded-md text-sm">
               <div className="flex items-center">
                 <Info className="h-4 w-4 mr-2 flex-shrink-0" />
-                <span className="font-regular">{dateWarning}</span>
+                <span className="font-mono">{dateWarning}</span>
               </div>
-              <p className={`mt-1 ml-6 font-regular ${textMutedClasses}`}>
+              <p className={`mt-1 ml-6 font-mono ${textMutedClasses}`}>
                 Changing this date may affect how weeks are displayed in the calendar.
               </p>
             </div>
@@ -481,7 +481,7 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
             <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-300 dark:border-red-500/50 text-red-700 dark:text-red-300 rounded-md text-sm">
               <div className="flex items-center">
                 <AlertTriangle className="h-4 w-4 mr-2 flex-shrink-0" />
-                <span className="font-regular">{flexDatesWarning}</span>
+                <span className="font-mono">{flexDatesWarning}</span>
               </div>
             </div>
           )}
@@ -519,3 +519,4 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
     </div>
   );
 }
+

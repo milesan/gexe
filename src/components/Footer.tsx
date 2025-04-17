@@ -10,7 +10,7 @@ export const Footer: React.FC<FooterProps> = ({ wrapperClassName }) => {
 
   return (
     <footer className={finalClasses}>
-      <div className="container mx-auto px-4 text-center text-secondary text-sm font-regular">
+      <div className="container mx-auto px-4 text-center text-secondary text-sm font-mono">
         <p>
           Questions or concerns? Email us at{' '}
           <a

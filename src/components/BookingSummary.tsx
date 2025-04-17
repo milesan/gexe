@@ -53,7 +53,7 @@ const formatNumber = (num: number, decimals: number = 1): string => {
 const formatPriceDisplay = (price: number): React.ReactNode => {
   console.log('[formatPriceDisplay] Input price:', price);
   if (price === 0) {
-    return <span className="text-accent-primary text-sm font-regular">Free</span>;
+    return <span className="text-accent-primary text-sm font-mono">Free</span>;
   }
 
   // Check if the price is a whole number
@@ -798,7 +798,7 @@ export function BookingSummary({
           </div>
 
           {error && (
-            <div className="mb-6 p-4 bg-error-muted text-error rounded-lg flex justify-between items-center font-regular text-xs sm:text-sm">
+            <div className="mb-6 p-4 bg-error-muted text-error rounded-lg flex justify-between items-center font-mono text-xs sm:text-sm">
               <span>{error}</span>
               <button onClick={() => setError(null)}>
                 <X className="w-4 h-4" />
@@ -834,19 +834,19 @@ export function BookingSummary({
                   <div className="relative z-10 space-y-4 sm:space-y-5"> 
                     {/* Arrival Information */}
                     <div className="border border-border rounded-lg shadow-sm p-3 sm:p-4 bg-card-highlight">
-                      <h4 className="font-medium text-primary mb-2 font-regular text-base sm:text-lg">Arrive By</h4>
+                      <h4 className="font-medium text-primary mb-2 font-mono text-base sm:text-lg">Arrive By</h4>
                       <div className="space-y-1">
-                        <p className="text-accent-primary text-sm font-regular">{formatDateWithDay(selectedWeeks[0].startDate)}</p>
-                        <p className="text-accent-primary text-sm font-regular">2PM-6PM</p>
+                        <p className="text-accent-primary text-sm font-mono">{formatDateWithDay(selectedWeeks[0].startDate)}</p>
+                        <p className="text-accent-primary text-sm font-mono">2PM-6PM</p>
                       </div>
                     </div>
                     
                     {/* Departure Information */}
                     <div className="border border-border rounded-lg shadow-sm p-3 sm:p-4 bg-card-highlight">
-                      <h4 className="font-medium text-primary mb-2 font-regular text-base sm:text-lg">Begone by</h4>
+                      <h4 className="font-medium text-primary mb-2 font-mono text-base sm:text-lg">Begone by</h4>
                       <div className="space-y-1">
-                        <p className="text-secondary text-sm font-regular">{formatDateWithOrdinal(selectedWeeks[selectedWeeks.length - 1].endDate)}</p>
-                        <p className="text-secondary text-sm font-regular">11AM</p>
+                        <p className="text-secondary text-sm font-mono">{formatDateWithOrdinal(selectedWeeks[selectedWeeks.length - 1].endDate)}</p>
+                        <p className="text-secondary text-sm font-mono">11AM</p>
                       </div>
                     </div>
                     
@@ -854,7 +854,7 @@ export function BookingSummary({
                     <div className="p-4 rounded-lg border border-border bg-card-highlight">
                       <div className="hidden xl:flex xl:justify-between xl:items-center">
                         <div className="w-full text-center">
-                          <span className="text-accent-primary font-medium font-regular text-sm sm:text-base">
+                          <span className="text-accent-primary font-medium font-mono">
                             {formatNumber(totalWeeksDisplay)} {totalWeeksDisplay === 1 ? 'week' : 'weeks'}
                           </span>
                         </div>
@@ -865,8 +865,8 @@ export function BookingSummary({
                           <Home className="w-5 h-5 text-accent-primary" />
                         </div>
                         <div className="">
-                          <h4 className="font-medium text-primary font-regular text-base sm:text-lg">Total Stay</h4>
-                          <p className="text-accent-primary text-sm sm:text-base font-regular mt-0.5">{pricing.totalNights} nights</p>
+                          <h4 className="font-medium text-primary font-mono text-base sm:text-lg">Total Stay</h4>
+                          <p className="text-accent-primary text-sm sm:text-base font-mono mt-0.5">{pricing.totalNights} nights</p>
                         </div>
                       </div>
                     </div>
@@ -900,7 +900,7 @@ export function BookingSummary({
                     {/* Content Wrapper (maybe add relative z-10 if needed) */} 
                     <div className="relative z-10">
                       <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-base sm:text-lg text-primary flex items-center font-regular">
+                        <h3 className="text-base sm:text-lg text-primary flex items-center font-mono">
                           Thy Kingdom
                         </h3>
                       </div>
@@ -908,7 +908,7 @@ export function BookingSummary({
                       <div className="space-y-3">
                         <div className="p-3 sm:p-4 rounded-lg border border-border bg-card-highlight">
                           <div className="text-center">
-                            <span className="text-accent-primary font-medium text-sm sm:text-base font-regular">
+                            <span className="text-accent-primary font-medium font-mono">
                               {selectedAccommodation.title === 'Van Parking' || 
                                selectedAccommodation.title === 'Your Own Tent' || 
                                selectedAccommodation.title === 'Staying with somebody' || 
@@ -929,7 +929,7 @@ export function BookingSummary({
                 {/* Price Breakdown */}
                 <div className="border-t border-border pt-3 sm:pt-4"> 
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-medium text-primary font-regular text-base sm:text-lg">Price Breakdown</h3>
+                    <h3 className="font-medium text-primary font-mono text-base sm:text-lg">Price Breakdown</h3>
                     <Tooltip.Provider>
                       <Tooltip.Root delayDuration={50}>
                         <Tooltip.Trigger asChild>
@@ -943,7 +943,7 @@ export function BookingSummary({
                         </Tooltip.Trigger>
                         <Tooltip.Portal>
                           <Tooltip.Content
-                            className="tooltip-content !font-regular"
+                            className="tooltip-content !font-mono"
                             sideOffset={5}
                             side="top"
                             align="end"
@@ -959,15 +959,15 @@ export function BookingSummary({
                   <div className="space-y-2">
                     {selectedAccommodation ? (
                       <div className="flex justify-between gap-x-4 items-baseline">
-                        <span className="text-sm text-secondary font-regular">
+                        <span className="text-sm text-secondary font-mono">
                           {/* Use formatNumber on the rounded weeksStaying value */}
                           Accommodation <span className="whitespace-nowrap">({formatNumber(pricing.weeksStaying)} {pricing.weeksStaying === 1 ? 'week' : 'weeks'})</span>
                         </span>
-                        <span className="text-sm text-primary font-regular">{formatPriceDisplay(pricing.totalAccommodationCost)}</span>
+                        <span className="text-primary font-mono">{formatPriceDisplay(pricing.totalAccommodationCost)}</span>
                       </div>
                     ) : (
                       <div className="flex items-baseline min-h-[1.25rem]">
-                        <span className="text-sm text-secondary font-regular italic">No accommodation selected</span>
+                        <span className="text-sm text-secondary font-mono italic">No accommodation selected</span>
                       </div>
                     )}
                     
@@ -975,32 +975,32 @@ export function BookingSummary({
                       <Tooltip.Provider>
                         <Tooltip.Root delayDuration={50}>
                           <Tooltip.Trigger asChild>
-                            <span className="text-sm text-secondary flex items-center cursor-help font-regular">
+                            <span className="text-sm text-secondary flex items-center cursor-help font-mono">
                               Food & Facilities
                               <Info className="w-3 h-3 ml-1 opacity-70" />
                             </span>
                           </Tooltip.Trigger>
                           <Tooltip.Portal>
                             <Tooltip.Content
-                              className="tooltip-content !font-regular"
+                              className="tooltip-content !font-mono"
                               sideOffset={5}
                               side="top"
                               align="end"
                             >
                               <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
-                              <span className="text-white text-sm">Community meals & operations costs</span>
+                              <span className="text-white">Community meals & operations costs</span>
                             </Tooltip.Content>
                           </Tooltip.Portal>
                         </Tooltip.Root>
                       </Tooltip.Provider>
-                      <span className="text-base text-primary font-regular text-sm">{formatPriceDisplay(pricing.totalFoodAndFacilitiesCost)}</span>
+                      <span className="text-primary font-mono">{formatPriceDisplay(pricing.totalFoodAndFacilitiesCost)}</span>
                     </div>
 
                     {/* Optional Contribution Slider */}
                     {foodContribution !== null && selectedWeeks.length > 0 && (
                       <div className="pt-4">
                         <div className="flex justify-between items-center mb-2">
-                           <label htmlFor="food-contribution" className="text-sm text-secondary font-regular">Contribution</label>
+                           <label htmlFor="food-contribution" className="text-secondary font-mono">Contribution</label>
                             <Tooltip.Provider>
                                 <Tooltip.Root delayDuration={50}>
                                     <Tooltip.Trigger asChild>
@@ -1011,7 +1011,7 @@ export function BookingSummary({
                                     <Tooltip.Portal>
                                         <Tooltip.Content
                                             sideOffset={5}
-                                            className="tooltip-content !font-regular text-sm"
+                                            className="tooltip-content !font-mono text-sm"
                                             side="top"
                                             align="end"
                                         >
@@ -1031,20 +1031,20 @@ export function BookingSummary({
                           onChange={(e) => setFoodContribution(Number(e.target.value))}
                           className="w-full h-2 bg-border rounded-lg appearance-none cursor-pointer accent-accent-primary"
                         />
-                         <div className="flex justify-between text-xs text-secondary mt-1 font-regular">
+                         <div className="flex justify-between  text-secondary mt-1 font-mono">
                             <span>
                               Min: €{Math.round((pricing.totalNights <= 6 ? 345 : 240) * (1 - pricing.durationDiscountPercent / 100))}
                             </span>
                             <span className="font-medium text-primary"> 
                               {/* Display rounded value based on slider * weekly cost */} 
-                              ~ €{Math.round((foodContribution ?? (pricing.totalNights <= 6 ? 345 : 240)) * (1 - pricing.durationDiscountPercent / 100))} / week 
+                               €{Math.round((foodContribution ?? (pricing.totalNights <= 6 ? 345 : 240)) * (1 - pricing.durationDiscountPercent / 100))} / week 
                             </span>
                             <span>
                               Max: €{Math.round(390 * (1 - pricing.durationDiscountPercent / 100))}
                             </span>
                          </div>
                          {pricing.durationDiscountPercent > 0 && (
-                            <p className="text-[10px] text-secondary mt-1 text-center font-regular">
+                            <p className="text-xs text-secondary mt-1 text-center font-mono">
                                 Duration discount of {pricing.durationDiscountPercent.toFixed(0)}% applied.
                             </p>
                          )}
@@ -1055,15 +1055,15 @@ export function BookingSummary({
 
                 {/* Final Total */}
                 <div className="border-t border-border pt-4 mt-4">
-                  <div className="flex font-regular justify-between items-baseline">
+                  <div className="flex font-mono justify-between items-baseline">
                     <span className="text-lg font-semibold text-primary">Total</span>
                     <span className="text-xl font-semibold text-primary">{formatPriceDisplay(pricing.totalAmount)}</span>
                   </div>
-                   <p className="text-xs text-secondary mt-1 font-regular">Includes accommodation, food, facilities, and discounts.</p>
+                   <p className="text-xs text-secondary mt-1 font-mono">Includes accommodation, food, facilities, and discounts.</p>
                 </div>
 
                 {/* Confirm Button */}
-                <div className="mt-6 font-regular sm:mt-8">
+                <div className="mt-6 font-mono sm:mt-8">
                   <button
                     onClick={handleConfirmClick}
                     disabled={isBooking || !selectedAccommodation || selectedWeeks.length === 0}
@@ -1103,7 +1103,7 @@ export function BookingSummary({
           {selectedWeeks.length === 0 && (
             <div className="text-center py-10 bg-surface/50 rounded-xl shadow-sm">
               <Calendar className="w-12 h-12 mx-auto text-secondary mb-4" />
-              <p className="text-secondary text-sm sm:text-base">Select your dates to see the summary</p>
+              <p className="text-secondary sm:text-base">Select your dates to see the summary</p>
             </div>
           )}
         </div>

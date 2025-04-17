@@ -30,7 +30,7 @@ export function RetroQuestionField({ question, value, onChange, onAutoAdvance, t
   if (isMBTIQuestion || isImageUpload) {
     return (
       <div className="space-y-4">
-        <h3 className="text-2xl font-display text-[#FFBF00]">
+        <h3 className="text-xl font-display text-[#FFBF00]">
           {question.text}
         </h3>
         <input
@@ -93,7 +93,7 @@ export function RetroQuestionField({ question, value, onChange, onAutoAdvance, t
                   to complete this application.</p>
                   <p className="text-[#FFBF00]/80">We're not impressed by your followers, fortune, 
                   or fame [though none of those exclude you].</p>
-                  <p className="text-[#FFBF00] text-xl">We seek the realest.</p>
+                  <p className="text-[#FFBF00] text-xl">We see2k the realest.</p>
                 </div>
               </motion.div>
             </div>

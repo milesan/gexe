@@ -183,7 +183,7 @@ export default function App() {
 
   if (isLoading) {
     console.log('App: Loading state');
-    return <div className="text-stone-600 font-regular">Loading...</div>;
+    return <div className="text-stone-600 font-mono">Loading...</div>;
   }
 
   // Show public routes while loading or no session

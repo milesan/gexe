@@ -357,7 +357,7 @@ export function Weekly({ onClose }: Props) {
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
-              <span className="text-sm font-regular w-52 text-center text-[var(--color-text-secondary)]">
+              <span className="text-sm font-mono w-52 text-center text-[var(--color-text-secondary)]">
                 {weekStart && weekEnd ? (
                   `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d, yyyy')}`
                 ) : (
@@ -385,7 +385,7 @@ export function Weekly({ onClose }: Props) {
 
             <button
               onClick={onClose}
-              className="font-regular text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+              className="font-mono text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
             >
               Close
             </button>

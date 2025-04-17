@@ -798,11 +798,11 @@ export function Book2Page() {
                 {/* Added inner wrapper for content padding */}
                 <div className="px-3 xs:px-4 sm:px-6">
                   <div className="flex flex-col gap-2 xs:gap-3 text-secondary">
-                    <p className="flex items-start gap-2 xs:gap-2.5 text-xs xs:text-sm font-regular">
+                    <p className="flex items-start gap-2 xs:gap-2.5 text-xs xs:text-sm font-mono">
                       <span className="text-accent-primary mt-0.5">•</span>
                       The longer you stay, the less € you contribute on both lodging & base-rate
                     </p>
-                    <p className="flex items-start gap-2 xs:gap-2.5 text-xs xs:text-sm font-regular">
+                    <p className="flex items-start gap-2 xs:gap-2.5 text-xs xs:text-sm font-mono">
                       <span className="text-accent-primary mt-0.5">•</span>
                       The quieter the time of year, the less € you contribute on lodging.
                     </p>
@@ -818,7 +818,7 @@ export function Book2Page() {
                     <div className="flex items-center gap-2 xs:gap-3">
                       <button
                         onClick={() => setIsAdminMode(false)}
-                        className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-lg text-xs xs:text-sm font-medium font-regular transition-colors duration-200 bg-[var(--color-button-secondary-bg)] text-primary hover:bg-[var(--color-button-secondary-bg-hover)] border border-border"
+                        className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-lg text-xs xs:text-sm font-medium font-mono transition-colors duration-200 bg-[var(--color-button-secondary-bg)] text-primary hover:bg-[var(--color-button-secondary-bg-hover)] border border-border"
                       >
                         <svg 
                           className="h-4 w-4 xs:h-5 xs:w-5" 
@@ -845,7 +845,7 @@ export function Book2Page() {
                   ) : (
                     <button
                       onClick={() => setIsAdminMode(true)}
-                      className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-lg text-xs xs:text-sm bg-accent-primary text-stone-800 hover:bg-accent-secondary transition-all duration-200 font-medium font-regular"
+                      className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-lg text-xs xs:text-sm bg-accent-primary text-stone-800 hover:bg-accent-secondary transition-all duration-200 font-medium font-mono"
                     >
                       <svg 
                         className="h-4 w-4 xs:h-5 xs:w-5" 
@@ -895,7 +895,7 @@ export function Book2Page() {
                         >
                           <ChevronLeft className="h-3.5 w-3.5 xxs:h-4 xxs:w-4 sm:h-5 sm:w-5 text-secondary" />
                         </button>
-                        <div className="px-2 xxs:px-3 sm:px-4 text-center text-primary font-medium whitespace-nowrap text-[10px] xxs:text-xs sm:text-sm font-regular min-w-[120px] xxs:min-w-[140px] sm:min-w-[160px]">
+                        <div className="px-2 xxs:px-3 sm:px-4 text-center text-primary font-medium whitespace-nowrap text-[10px] xxs:text-xs sm:text-sm font-mono min-w-[120px] xxs:min-w-[140px] sm:min-w-[160px]">
                           {format(currentMonth, 'MMMM yyyy')}
                         </div>
                         <button 
@@ -916,7 +916,7 @@ export function Book2Page() {
                           <Tooltip.Trigger asChild>
                             <button
                               onClick={() => setShowDiscountModal(true)}
-                              className="group flex items-center gap-1 xxs:gap-1.5 px-2 xxs:px-2.5 py-1 xxs:py-1.5 text-[10px] xxs:text-xs sm:text-sm font-medium border rounded-md transition-colors duration-200 relative font-regular text-accent-primary bg-[color-mix(in_srgb,_var(--color-accent-primary)_10%,_transparent)] border-[color-mix(in_srgb,_var(--color-accent-primary)_30%,_transparent)] hover:bg-[color-mix(in_srgb,_var(--color-accent-primary)_20%,_transparent)] hover:border-[color-mix(in_srgb,_var(--color-accent-primary)_40%,_transparent)]"
+                              className="group flex items-center gap-1 xxs:gap-1.5 px-2 xxs:px-2.5 py-1 xxs:py-1.5 text-[10px] xxs:text-xs sm:text-sm font-medium border rounded-md transition-colors duration-200 relative font-mono text-accent-primary bg-[color-mix(in_srgb,_var(--color-accent-primary)_10%,_transparent)] border-[color-mix(in_srgb,_var(--color-accent-primary)_30%,_transparent)] hover:bg-[color-mix(in_srgb,_var(--color-accent-primary)_20%,_transparent)] hover:border-[color-mix(in_srgb,_var(--color-accent-primary)_40%,_transparent)]"
                             >
                               <span>{combinedDiscount > 0 ? `Discount: ${seasonBreakdown?.hasMultipleSeasons ? '~' : ''}${Math.round(combinedDiscount * 100)}%` : 'Discounts'}</span>
                               <HelpCircle className="w-3 h-3 xxs:w-3.5 xxs:h-3.5 sm:w-4 sm:h-4" />
@@ -925,7 +925,7 @@ export function Book2Page() {
                           <Tooltip.Portal>
                             <Tooltip.Content
                               sideOffset={5}
-                              className="tooltip-content !font-regular"
+                              className="tooltip-content !font-mono"
                             >
                               Click for detailed breakdown
                               <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
@@ -936,7 +936,7 @@ export function Book2Page() {
                       <button
                         onClick={handleClearSelection}
                         className={clsx(
-                          "flex items-center gap-0.5 xxs:gap-1 px-2 xxs:px-2.5 py-1 xxs:py-1.5 text-[10px] xxs:text-xs sm:text-sm font-medium border rounded-md transition-colors duration-200 font-regular",
+                          "flex items-center gap-0.5 xxs:gap-1 px-2 xxs:px-2.5 py-1 xxs:py-1.5 text-[10px] xxs:text-xs sm:text-sm font-medium border rounded-md transition-colors duration-200 font-mono",
                           "text-accent-primary bg-[color-mix(in_srgb,_var(--color-accent-primary)_10%,_transparent)] border-[color-mix(in_srgb,_var(--color-accent-primary)_30%,_transparent)] hover:bg-[color-mix(in_srgb,_var(--color-accent-primary)_20%,_transparent)] hover:border-[color-mix(in_srgb,_var(--color-accent-primary)_40%,_transparent)]"
                         )}
                         aria-label="Clear week selection"
@@ -1004,7 +1004,7 @@ export function Book2Page() {
                     calculatedWeeklyAccommodationPrice={selectedAccommodation ? weeklyAccommodationInfo[selectedAccommodation]?.price ?? null : null}
                   />
                 ) : (
-                  <div className="text-secondary text-xs xs:text-sm font-regular">
+                  <div className="text-secondary text-sm xs:text-sm font-mono">
                     <p>Select your dates to see booking details</p>
                   </div>
                 )}

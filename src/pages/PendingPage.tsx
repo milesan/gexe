@@ -47,7 +47,7 @@ export function PendingPage({ status = 'pending' }: Props) {
             </h1>
           )}
 
-          <p className="text-secondary text-sm font-regular leading-relaxed">
+          <p className="text-secondary text-sm font-mono leading-relaxed">
             {status === 'pending' ? (
               "Thank you for applying to The Garden. Your application is currently being reviewed. We'll notify you by email once a decision has been made."
             ) : (
@@ -61,14 +61,14 @@ export function PendingPage({ status = 'pending' }: Props) {
                 href="https://www.youtube.com/watch?v=9EYgKqjocO0"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full sm:flex-1 bg-gray-500 hover:bg-gray-600 text-white font-regular py-3 px-6 rounded-lg transition-colors text-center"
+                className="w-full sm:flex-1 bg-gray-500 hover:bg-gray-600 text-white font-mono py-3 px-6 rounded-lg transition-colors text-center"
               >
                 Continue
               </a>
             )}
             <button
               onClick={handleSignOut}
-              className={`w-full ${status === 'pending' ? 'sm:flex-1' : ''} bg-accent-primary font-regular text-stone-800 py-3 px-6 rounded-lg transition-colors`}
+              className={`w-full ${status === 'pending' ? 'sm:flex-1' : ''} bg-accent-primary font-mono text-stone-800 py-3 px-6 rounded-lg transition-colors`}
             >
               Sign Out
             </button>

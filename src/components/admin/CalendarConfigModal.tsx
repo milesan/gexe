@@ -98,10 +98,10 @@ export function CalendarConfigModal({ isOpen, onClose, onSaved }: Props) {
   const modalOverlayClasses = "fixed inset-0 bg-overlay backdrop-blur-sm flex items-center justify-center z-50 p-4"; // Match DiscountModal
   const contentContainerClasses = "bg-gray-800/95 rounded-lg p-4 sm:p-6 max-w-md w-full relative z-[101] max-h-[90vh] overflow-y-auto shadow-xl border border-gray-500/30 text-white backdrop-blur-sm"; // Match DiscountModal styling
   const contentPaddingClasses = ""; // Padding is now part of contentContainerClasses
-  const textBaseClasses = "text-white font-regular"; // Simplified for dark modal
-  const textMutedClasses = "text-gray-300 font-regular"; // Simplified for dark modal
-  const inputBaseClasses = "w-full p-2 border rounded bg-gray-700 border-gray-600 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 dark:focus:border-blue-400 text-white placeholder-gray-400 disabled:opacity-50 dark:disabled:opacity-60 font-regular"; // Simplified dark styles
-  const buttonBaseClasses = "px-4 py-2 rounded disabled:opacity-50 font-regular focus:outline-none focus:ring-2 focus:ring-offset-2";
+  const textBaseClasses = "text-white font-mono"; // Simplified for dark modal
+  const textMutedClasses = "text-gray-300 font-mono"; // Simplified for dark modal
+  const inputBaseClasses = "w-full p-2 border rounded bg-gray-700 border-gray-600 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 dark:focus:border-blue-400 text-white placeholder-gray-400 disabled:opacity-50 dark:disabled:opacity-60 font-mono"; // Simplified dark styles
+  const buttonBaseClasses = "px-4 py-2 rounded disabled:opacity-50 font-mono focus:outline-none focus:ring-2 focus:ring-offset-2";
   const primaryButtonClasses = `${buttonBaseClasses} bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500 dark:focus:ring-blue-400 flex items-center`; // Simplified dark styles
   const secondaryButtonClasses = `${buttonBaseClasses} text-gray-300 hover:text-white border border-gray-600 bg-gray-700 hover:bg-gray-600 focus:ring-gray-400`; // Simplified dark styles
   const closeButtonClasses = "absolute top-2 sm:top-4 right-2 sm:right-4 text-gray-300 hover:text-white"; // Match DiscountModal
@@ -119,7 +119,7 @@ export function CalendarConfigModal({ isOpen, onClose, onSaved }: Props) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-4">
-          <h2 className={`text-xl font-bold ${textBaseClasses.replace('font-regular', '')}`}>Calendar Settings</h2>
+          <h2 className={`text-xl font-bold ${textBaseClasses.replace('font-mono', '')}`}>Calendar Settings</h2>
           <button onClick={onClose} className={closeButtonClasses} disabled={saving}>
             <X className="h-5 w-5" />
           </button>
@@ -188,7 +188,7 @@ export function CalendarConfigModal({ isOpen, onClose, onSaved }: Props) {
                 <div className={`mt-3 ${warningAlertClasses}`}>
                   <div className="flex items-start">
                     <Info className="h-4 w-4 mr-2 mt-0.5 flex-shrink-0" />
-                    <span className="font-regular">Check-in and check-out on the same day may cause scheduling conflicts. Consider setting different days.</span>
+                    <span className="font-mono">Check-in and check-out on the same day may cause scheduling conflicts. Consider setting different days.</span>
                   </div>
                 </div>
               )}
@@ -210,7 +210,7 @@ export function CalendarConfigModal({ isOpen, onClose, onSaved }: Props) {
                 {saving ? 'Saving...' : (
                   <>
                     <Save className="h-4 w-4 mr-1" />
-                    <span className="font-regular">Save Settings</span>
+                    <span className="font-mono">Save Settings</span>
                   </>
                 )}
               </button>

@@ -25,13 +25,13 @@ export function AdminPage() {
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-display font-light text-[var(--color-text-primary)]">Admin Dashboard</h1>
-          <p className="text-[var(--color-text-secondary)] font-regular">Manage applications, bookings, and availability</p>
+          <p className="text-[var(--color-text-secondary)] font-mono">Manage applications, bookings, and availability</p>
         </div>
 
         <div className="flex gap-4 mb-8 overflow-x-auto pb-2">
           <button
             onClick={() => setCurrentView('applications')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap font-regular text-sm ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap font-mono text-sm ${
               currentView === 'applications'
                 ? 'bg-emerald-900 text-white'
                 : 'bg-[var(--color-bg-surface)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-surface-hover)] border border-[var(--color-border)]'
@@ -42,7 +42,7 @@ export function AdminPage() {
           </button>
           <button
             onClick={() => setCurrentView('appview')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap font-regular text-sm ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap font-mono text-sm ${
               currentView === 'appview'
                 ? 'bg-emerald-900 text-white'
                 : 'bg-[var(--color-bg-surface)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-surface-hover)] border border-[var(--color-border)]'
@@ -53,7 +53,7 @@ export function AdminPage() {
           </button>
           <button
             onClick={() => setCurrentView('bookings')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap font-regular text-sm ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap font-mono text-sm ${
               currentView === 'bookings'
                 ? 'bg-emerald-900 text-white'
                 : 'bg-[var(--color-bg-surface)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-surface-hover)] border border-[var(--color-border)]'
@@ -64,7 +64,7 @@ export function AdminPage() {
           </button>
           <button
             onClick={() => setShowCalendar(true)}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap font-regular text-sm ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap font-mono text-sm ${
               showCalendar
                 ? 'bg-emerald-900 text-white'
                 : 'bg-[var(--color-bg-surface)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-surface-hover)] border border-[var(--color-border)]'
@@ -75,7 +75,7 @@ export function AdminPage() {
           </button>
           <button
             onClick={() => setShowWeekly(true)}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap font-regular text-sm ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap font-mono text-sm ${
               showWeekly
                 ? 'bg-emerald-900 text-white'
                 : 'bg-[var(--color-bg-surface)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-surface-hover)] border border-[var(--color-border)]'
@@ -86,7 +86,7 @@ export function AdminPage() {
           </button>
           <button
             onClick={() => setShowHousekeeping(true)}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap font-regular text-sm ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap font-mono text-sm ${
               showHousekeeping
                 ? 'bg-emerald-900 text-white'
                 : 'bg-[var(--color-bg-surface)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-surface-hover)] border border-[var(--color-border)]'
@@ -97,7 +97,7 @@ export function AdminPage() {
           </button>
           <button
             onClick={() => setCurrentView('whitelist')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap font-regular text-sm ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap font-mono text-sm ${
               currentView === 'whitelist'
                 ? 'bg-emerald-900 text-white'
                 : 'bg-[var(--color-bg-surface)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-surface-hover)] border border-[var(--color-border)]'
@@ -108,7 +108,7 @@ export function AdminPage() {
           </button>
           <button
             onClick={() => setCurrentView('accommodations')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap font-regular text-sm ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap font-mono text-sm ${
               currentView === 'accommodations'
                 ? 'bg-emerald-900 text-white'
                 : 'bg-[var(--color-bg-surface)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-surface-hover)] border border-[var(--color-border)]'
@@ -119,7 +119,7 @@ export function AdminPage() {
           </button>
           <button
             onClick={() => setCurrentView('questions')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap font-regular text-sm ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap font-mono text-sm ${
               currentView === 'questions'
                 ? 'bg-emerald-900 text-white'
                 : 'bg-[var(--color-bg-surface)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-surface-hover)] border border-[var(--color-border)]'
@@ -157,12 +157,12 @@ export function AdminPage() {
           <h2 className="text-2xl font-display mb-4 text-accent-secondary animate-yellow-shift">
             Admin Area Not Fit for Small Screens Yet
           </h2>
-          <p className="text-lg font-regular text-gray-200 mb-8">
+          <p className="text-lg font-mono text-gray-200 mb-8">
             Wait until further development.
           </p>
           <Link 
             to="/" 
-            className="inline-flex items-center gap-2 font-regular px-6 py-2 rounded-lg bg-accent-primary text-emerald-950 hover:bg-accent-secondary font-medium transition-colors"
+            className="inline-flex items-center gap-2 font-mono px-6 py-2 rounded-lg bg-accent-primary text-emerald-950 hover:bg-accent-secondary font-medium transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Return to Booking
