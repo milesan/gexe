@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar, Clock, ArrowRight, LogOut, Home, Bed, ChevronDown, ChevronUp, Info } from 'lucide-react';
+import { X, Calendar, Clock, ArrowRight, LogOut, Home, Bed, ChevronDown, ChevronUp, Info, Tag, AlertTriangle } from 'lucide-react';
 import { useSchedulingRules } from '../hooks/useSchedulingRules';
 import { getSeasonalDiscount, getDurationDiscount, getSeasonBreakdown } from '../utils/pricing';
 import type { Week } from '../types/calendar';
@@ -151,6 +151,13 @@ const formatDateWithOrdinal = (date: Date): string => {
   return formatInTimeZone(date, 'UTC', 'EEEE, MMMM') + ' ' + day + suffix;
 };
 
+// --- Added Applied Discount Type ---
+interface AppliedDiscount {
+  code: string;
+  percentage_discount: number;
+}
+// --- End Added Type ---
+
 export function BookingSummary({
   selectedWeeks,
   selectedAccommodation,
@@ -194,6 +201,13 @@ export function BookingSummary({
   const [showDiscountDetails, setShowDiscountDetails] = useState(false);
   const [testPaymentAmount, setTestPaymentAmount] = useState<number | null>(null);
   const [showDiscountModal, setShowDiscountModal] = useState(false);
+
+  // --- State for Discount Code ---
+  const [discountCodeInput, setDiscountCodeInput] = useState('');
+  const [appliedDiscount, setAppliedDiscount] = useState<AppliedDiscount | null>(null);
+  const [discountError, setDiscountError] = useState<string | null>(null);
+  const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
+  // --- End Discount Code State ---
 
   // State for internally calculated season breakdown
   const [seasonBreakdownState, setSeasonBreakdownState] = useState<SeasonBreakdown | undefined>(initialSeasonBreakdown);
@@ -318,6 +332,7 @@ export function BookingSummary({
       selectedAccommodationId_Prop: selectedAccommodation?.id,
       calculatedWeeklyAccommodationPrice_Prop: calculatedWeeklyAccommodationPrice,
       foodContribution,
+      appliedDiscount,
     });
 
     // === Calculate fundamental values: nights, complete weeks (for discount), exact decimal weeks ===
@@ -374,27 +389,46 @@ export function BookingSummary({
     });
 
     // 4. Combine results
-    const subtotal = parseFloat((+totalAccommodationCost + +finalFoodCost).toFixed(2)); // Use discounted food cost and ensure two decimal places
+    const subtotal = parseFloat((+totalAccommodationCost + +finalFoodCost).toFixed(2));
     console.log('[BookingSummary] useMemo: Calculated Subtotal:', { totalAccommodationCost, finalFoodCost, subtotal });
-    const totalAmount = subtotal;
-    console.log('[BookingSummary] useMemo: Calculated Totals:', { totalAccommodationCost, finalFoodCost, subtotal, totalAmount });
+
+    // --- START: Apply Discount Code --- 
+    let finalTotalAmount = subtotal;
+    let discountCodeAmount = 0;
+
+    if (appliedDiscount && subtotal > 0) {
+        const discountPercentage = appliedDiscount.percentage_discount / 100;
+        discountCodeAmount = parseFloat((subtotal * discountPercentage).toFixed(2));
+        finalTotalAmount = parseFloat((subtotal - discountCodeAmount).toFixed(2));
+        // Ensure total doesn't go below zero, although unlikely with percentage discounts
+        if (finalTotalAmount < 0) finalTotalAmount = 0;
+
+        console.log('[BookingSummary] useMemo: Applied Discount Code:', {
+            code: appliedDiscount.code,
+            percentage: appliedDiscount.percentage_discount,
+            subtotalBeforeDiscount: subtotal,
+            discountCodeAmountApplied: discountCodeAmount,
+            finalTotalAmountAfterDiscount: finalTotalAmount
+        });
+    } else {
+         console.log('[BookingSummary] useMemo: No discount code applied or subtotal is zero.');
+    }
+    // --- END: Apply Discount Code ---
 
     // 5. Construct the final object
-    // --- Use calculated displayWeeks for 'weeksStaying' to match UI ---
     const calculatedPricingDetails: PricingDetails = {
       totalNights,
-      totalAccommodationCost, // Still based on exact weeks
-      totalFoodAndFacilitiesCost: finalFoodCost, // Based on rounded weeks * contribution * rounded discount
+      totalAccommodationCost,
+      totalFoodAndFacilitiesCost: finalFoodCost,
       subtotal,
-      totalAmount,
-      weeksStaying: displayWeeks, // Store the rounded weeks for display consistency
-      effectiveBaseRate: effectiveWeeklyRate, // Base weekly rate for slider reference
+      totalAmount: finalTotalAmount,
+      weeksStaying: displayWeeks,
+      effectiveBaseRate: effectiveWeeklyRate,
       nightlyAccommodationRate: totalNights > 0 ? +(totalAccommodationCost / totalNights).toFixed(2) : 0,
       baseAccommodationRate: selectedAccommodation?.base_price || 0,
-      // --- Discount fields should reflect the logic applied ---
-      durationDiscountAmount: foodDiscountAmount, // Reflects food discount amount applied to food cost (calculated from rounded weeks & rounded discount)
-      durationDiscountPercent: rawDurationDiscountPercent * 100, // Store the rounded percentage determined by COMPLETE weeks
-      seasonalDiscount: 0, // Accommodation seasonal discount is already baked into weekly price
+      durationDiscountAmount: foodDiscountAmount,
+      durationDiscountPercent: rawDurationDiscountPercent * 100,
+      seasonalDiscount: 0,
     };
 
     // ADDED LOG BLOCK: Values right before returning details
@@ -421,7 +455,7 @@ export function BookingSummary({
     console.log('[BookingSummary] --- Finished Pricing Recalculation (useMemo) ---');
     return calculatedPricingDetails;
 
-  }, [selectedWeeks, calculatedWeeklyAccommodationPrice, foodContribution, selectedAccommodation]);
+  }, [selectedWeeks, calculatedWeeklyAccommodationPrice, foodContribution, selectedAccommodation, appliedDiscount]);
 
   // Always update the check-in date when selectedWeeks changes
   useEffect(() => {
@@ -614,14 +648,22 @@ export function BookingSummary({
           totalPrice: roundedTotal // Use rounded total
         });
 
-        const booking = await bookingService.createBooking({
+        // Add applied discount code if present
+        const bookingPayload: any = {
           accommodationId: selectedAccommodation.id,
           checkIn: formattedCheckIn,
           checkOut: formattedCheckOut,
-          totalPrice: roundedTotal // Use rounded total
-        });
+          totalPrice: roundedTotal // Send the final price calculated by the frontend
+        };
 
-        console.log('[Booking Summary] Booking created:', booking);
+        if (appliedDiscount?.code) {
+            bookingPayload.appliedDiscountCode = appliedDiscount.code;
+            console.log("[Booking Summary] Adding applied discount code to booking payload:", appliedDiscount.code);
+        }
+
+        const booking = await bookingService.createBooking(bookingPayload);
+
+        console.log("[Booking Summary] Booking created:", booking);
         
         // Updated navigation to match the route in AuthenticatedApp.tsx
         navigate('/confirmation', { 
@@ -646,7 +688,7 @@ export function BookingSummary({
       setError('An error occurred. Please try again.');
       setIsBooking(false);
     }
-  }, [selectedAccommodation, selectedWeeks, selectedCheckInDate, navigate, pricing.totalAmount]);
+  }, [selectedAccommodation, selectedWeeks, selectedCheckInDate, navigate, pricing.totalAmount, appliedDiscount]);
 
   const handleConfirmClick = async () => {
     console.log('[Booking Summary] Confirm button clicked.');
@@ -717,6 +759,93 @@ export function BookingSummary({
       setError('An error occurred. Please try again.');
     }
   };
+
+  // --- Placeholder Handlers for Discount Code ---
+  const handleApplyDiscount = useCallback(async () => {
+    const codeToApply = discountCodeInput.trim().toUpperCase(); // Standardize
+    if (!codeToApply) return;
+
+    console.log('[BookingSummary] Applying discount code:', codeToApply);
+    setIsApplyingDiscount(true);
+    setError(null); 
+    setDiscountError(null);
+    setAppliedDiscount(null); // Clear previous discount first
+
+    try {
+      // Get the current session token for authorization
+      const sessionResponse = await supabase.auth.getSession();
+      const token = sessionResponse?.data?.session?.access_token;
+
+      if (!token) {
+          throw new Error('Authentication token not found. Please sign in.');
+      }
+
+      // Get Supabase URL from the client
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://lpsdzjvyvufwqrnuafqd.supabase.co';
+      
+      // Use direct fetch instead of Supabase Functions API
+      console.log('[BookingSummary] Sending discount code validation request');
+      const response = await fetch(`${supabaseUrl}/functions/v1/validate-discount-code`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ code: codeToApply })
+      });
+      
+      // Always get the response as text first to properly handle both success and error responses
+      const responseText = await response.text();
+      console.log('[BookingSummary] Raw response:', responseText);
+      
+      // Try to parse the response as JSON
+      let responseData;
+      try {
+        responseData = JSON.parse(responseText);
+        console.log('[BookingSummary] Parsed response data:', responseData);
+      } catch (parseError) {
+        console.error('[BookingSummary] Failed to parse response as JSON:', parseError);
+        setDiscountError('Invalid response from server');
+        return;
+      }
+      
+      // If response is not ok, handle the error
+      if (!response.ok) {
+        const errorMessage = responseData?.error || 'Invalid discount code';
+        console.error('[BookingSummary] Error response:', errorMessage);
+        setDiscountError(errorMessage);
+        return;
+      }
+      
+      // --- Success Case --- 
+      if (responseData && responseData.code && typeof responseData.percentage_discount === 'number') {
+        console.log("[BookingSummary] Discount code validated successfully:", responseData);
+        setAppliedDiscount({
+          code: responseData.code,
+          percentage_discount: responseData.percentage_discount
+        });
+        setDiscountCodeInput(''); // Clear input on success
+      } else {
+        // Malformed success response
+        console.warn("[BookingSummary] Discount validation returned unexpected data:", responseData);
+        setDiscountError('Invalid response from validation service');
+      }
+    } catch (error) {
+      // This now only catches network errors, not HTTP error responses
+      console.error('[BookingSummary] Network error during discount validation:', error);
+      setDiscountError(error instanceof Error ? error.message : 'Failed to connect to validation service');
+    } finally {
+      setIsApplyingDiscount(false);
+    }
+  }, [discountCodeInput, supabase]);
+
+  const handleRemoveDiscount = useCallback(() => {
+    console.log('[BookingSummary] Removing applied discount');
+    setAppliedDiscount(null);
+    setDiscountCodeInput(''); // Also clear the input maybe?
+    setDiscountError(null);
+  }, []);
+  // --- End Placeholder Handlers ---
 
   // --- LOGGING: Final Render Values ---
   console.log('[BookingSummary] --- Final Render Values ---');
@@ -1057,10 +1186,77 @@ export function BookingSummary({
                 <div className="border-t border-border pt-4 mt-4">
                   <div className="flex font-mono justify-between items-baseline">
                     <span className="text-lg font-semibold text-primary">Total</span>
-                    <span className="text-xl font-semibold text-primary">{formatPriceDisplay(pricing.totalAmount)}</span>
+                    {/* --- UPDATED: Show original price if discount applied --- */}
+                    {appliedDiscount ? (
+                        <div className="text-right">
+                            <span className="text-sm line-through text-secondary mr-2">
+                                {formatPriceDisplay(pricing.subtotal)} {/* Show subtotal before discount */}
+                            </span>
+                            <span className="text-xl font-semibold text-primary">
+                                {formatPriceDisplay(pricing.totalAmount)} {/* Show final discounted price */}
+                            </span>
+                        </div>
+                    ) : (
+                        <span className="text-xl font-semibold text-primary">
+                            {formatPriceDisplay(pricing.totalAmount)}
+                        </span>
+                    )}
+                    {/* --- End Update --- */}
                   </div>
                    <p className="text-xs text-secondary mt-1 font-mono">Includes accommodation, food, facilities, and discounts.</p>
                 </div>
+
+                {/* --- START: Discount Code Section --- */} 
+                <div className="border-t border-border pt-4 mt-4 font-mono">
+                  {!appliedDiscount ? (
+                    <div>
+                      <label htmlFor="discount-code" className="block text-sm font-medium text-secondary mb-1">Discount Code</label>
+                      <div className="flex gap-2">
+                        <input 
+                          type="text"
+                          id="discount-code"
+                          value={discountCodeInput}
+                          onChange={(e) => setDiscountCodeInput(e.target.value.toUpperCase())}
+                          className="flex-grow px-3 py-2 bg-[var(--color-input-bg)] border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent text-primary placeholder-secondary-muted text-sm disabled:opacity-50"
+                          placeholder="Enter code"
+                          disabled={isApplyingDiscount}
+                        />
+                        <button
+                          onClick={handleApplyDiscount}
+                          disabled={isApplyingDiscount || !discountCodeInput.trim()}
+                          className="px-4 py-2 bg-secondary-muted text-white rounded-md hover:bg-secondary-muted-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary-muted text-sm disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                        >
+                          {isApplyingDiscount ? 'Applying...' : 'Apply'}
+                        </button>
+                      </div>
+                      {discountError && (
+                         <div className="mt-2 text-xs text-error flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+                            <span>{discountError}</span>
+                         </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-success-muted rounded-md border border-success">
+                        <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-2 text-sm text-success">
+                                <Tag className="w-4 h-4" />
+                                <span>Applied: <strong>{appliedDiscount.code}</strong> (-{appliedDiscount.percentage_discount}%)</span>
+                            </div>
+                            <button 
+                                onClick={handleRemoveDiscount}
+                                className="p-1 text-success hover:text-error hover:bg-error-muted rounded-full text-xs"
+                                title="Remove discount code"
+                            >
+                                <X className="w-3 h-3" />
+                            </button>
+                        </div>
+                        {/* Optionally show discount amount */}
+                        {/* <p className="text-xs text-success mt-1">Discount Applied: -{formatPriceDisplay(pricing.subtotal - pricing.totalAmount)}</p> */}
+                    </div>
+                  )}
+                </div>
+                {/* --- END: Discount Code Section --- */} 
 
                 {/* Confirm Button */}
                 <div className="mt-6 font-mono sm:mt-8">

@@ -8,11 +8,12 @@ import { Whitelist } from '../components/admin/Whitelist';
 import { Housekeeping } from '../components/admin/Housekeeping';
 import { Accommodations } from '../components/admin/Accommodations';
 import { ApplicationQuestionsManager } from '../components/admin/ApplicationQuestionsManager';
-import { ClipboardList, Calendar, Users, LayoutGrid, ListChecks, UserPlus, Home, Building2, ArrowLeft, HelpCircle } from 'lucide-react';
+import { DiscountCodesManager } from '../components/admin/DiscountCodesManager';
+import { ClipboardList, Calendar, Users, LayoutGrid, ListChecks, UserPlus, Home, Building2, ArrowLeft, HelpCircle, Percent } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 
-type AdminView = 'applications' | 'appview' | 'bookings' | 'calendar' | 'weekly' | 'whitelist' | 'housekeeping' | 'accommodations' | 'questions';
+type AdminView = 'applications' | 'appview' | 'bookings' | 'calendar' | 'weekly' | 'whitelist' | 'housekeeping' | 'accommodations' | 'questions' | 'discounts';
 
 export function AdminPage() {
   const [currentView, setCurrentView] = useState<AdminView>('applications');
@@ -118,6 +119,17 @@ export function AdminPage() {
             Accommodations
           </button>
           <button
+            onClick={() => setCurrentView('discounts')}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap font-mono text-sm ${
+              currentView === 'discounts'
+                ? 'bg-emerald-900 text-white'
+                : 'bg-[var(--color-bg-surface)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-surface-hover)] border border-[var(--color-border)]'
+            }`}
+          >
+            <Percent className="w-4 h-4" />
+            Discounts
+          </button>
+          <button
             onClick={() => setCurrentView('questions')}
             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap font-mono text-sm ${
               currentView === 'questions'
@@ -137,6 +149,7 @@ export function AdminPage() {
           {currentView === 'whitelist' && <Whitelist />}
           {currentView === 'accommodations' && <Accommodations />}
           {currentView === 'questions' && <ApplicationQuestionsManager />}
+          {currentView === 'discounts' && <DiscountCodesManager />}
         </div>
 
         <AnimatePresence>
