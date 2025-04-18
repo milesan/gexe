@@ -791,18 +791,18 @@ export function Book2Page() {
             {/* == START: New wrapper div with horizontal padding == */}
             <div className="px-3 xs:px-4 sm:px-6">
               {/* Moved h1 inside wrapper - REMOVING px-* padding now */}
-              <h1 className="text-4xl xs:text-4xl font-display mb-3 xs:mb-4 text-primary">Calendar of Availabilities</h1>
+              <h1 className="text-3xl sm:text-4xl font-display mb-3 xs:mb-4 text-primary">Calendar of Availabilities</h1>
               
               {/* Outer Note box keeps py-* padding */}
               <div className="bg-surface/50 backdrop-blur-sm border border-border/50 rounded-lg py-3 xs:py-4 sm:py-6 mb-4 xs:mb-6 sm:mb-8 shadow-sm">
                 {/* Added inner wrapper for content padding */}
                 <div className="px-3 xs:px-4 sm:px-6">
                   <div className="flex flex-col gap-2 xs:gap-3 text-secondary">
-                    <p className="flex items-start gap-2 xs:gap-2.5 text-xs xs:text-sm font-mono">
+                    <p className="flex items-start gap-2 xs:gap-2.5 text-sm font-mono">
                       <span className="text-accent-primary mt-0.5">•</span>
                       The longer you stay, the less € you contribute on both lodging & base-rate
                     </p>
-                    <p className="flex items-start gap-2 xs:gap-2.5 text-xs xs:text-sm font-mono">
+                    <p className="flex items-start gap-2 xs:gap-2.5 text-sm font-mono">
                       <span className="text-accent-primary mt-0.5">•</span>
                       The quieter the time of year, the less € you contribute on lodging.
                     </p>
@@ -818,7 +818,7 @@ export function Book2Page() {
                     <div className="flex items-center gap-2 xs:gap-3">
                       <button
                         onClick={() => setIsAdminMode(false)}
-                        className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-lg text-xs xs:text-sm font-medium font-mono transition-colors duration-200 bg-[var(--color-button-secondary-bg)] text-primary hover:bg-[var(--color-button-secondary-bg-hover)] border border-border"
+                        className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-lg text-sm font-medium font-mono transition-colors duration-200 bg-[var(--color-button-secondary-bg)] text-primary hover:bg-[var(--color-button-secondary-bg-hover)] border border-border"
                       >
                         <svg 
                           className="h-4 w-4 xs:h-5 xs:w-5" 
@@ -845,7 +845,7 @@ export function Book2Page() {
                   ) : (
                     <button
                       onClick={() => setIsAdminMode(true)}
-                      className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-lg text-xs xs:text-sm bg-accent-primary text-stone-800 hover:bg-accent-secondary transition-all duration-200 font-medium font-mono"
+                      className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-lg text-sm bg-accent-primary text-stone-800 hover:bg-accent-secondary transition-all duration-200 font-medium font-mono"
                     >
                       <svg 
                         className="h-4 w-4 xs:h-5 xs:w-5" 
@@ -871,7 +871,7 @@ export function Book2Page() {
                 {/* REMOVING px-* padding from this inner div */}
                 <div className="flex flex-col gap-3 mb-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
-                    <h2 className="text-lg xxs:text-xl sm:text-2xl font-display font-light text-primary">
+                    <h2 className="text-xl sm:text-2xl font-display font-light text-primary">
                       {selectedWeeks.length === 0 ? "When do you wish to arrive?" : 
                        selectedWeeks.length === 1 ? "One week selected! Any more?" : 
                        "Ok! Time to scroll down"}
@@ -895,7 +895,7 @@ export function Book2Page() {
                         >
                           <ChevronLeft className="h-3.5 w-3.5 xxs:h-4 xxs:w-4 sm:h-5 sm:w-5 text-secondary" />
                         </button>
-                        <div className="px-2 xxs:px-3 sm:px-4 text-center text-primary font-medium whitespace-nowrap text-xs xxs:text-sm sm:text-sm font-mono min-w-[120px] xxs:min-w-[140px] sm:min-w-[160px]">
+                        <div className="px-2 xxs:px-3 sm:px-4 text-center text-primary font-medium whitespace-nowrap text-sm font-mono min-w-[120px] xxs:min-w-[140px] sm:min-w-[160px]">
                           {format(currentMonth, 'MMMM yyyy')}
                         </div>
                         <button 
@@ -916,7 +916,7 @@ export function Book2Page() {
                           <Tooltip.Trigger asChild>
                             <button
                               onClick={() => setShowDiscountModal(true)}
-                              className="group flex items-center gap-1 xxs:gap-1.5 px-2 xxs:px-2.5 py-1 xxs:py-1.5 text-xs xxs:text-sm sm:text-sm font-medium border rounded-md transition-colors duration-200 relative font-mono text-accent-primary bg-[color-mix(in_srgb,_var(--color-accent-primary)_10%,_transparent)] border-[color-mix(in_srgb,_var(--color-accent-primary)_30%,_transparent)] hover:bg-[color-mix(in_srgb,_var(--color-accent-primary)_20%,_transparent)] hover:border-[color-mix(in_srgb,_var(--color-accent-primary)_40%,_transparent)]"
+                              className="group flex items-center gap-1 xxs:gap-1.5 px-2 xxs:px-2.5 py-1 xxs:py-1.5 text-sm font-medium border rounded-md transition-colors duration-200 relative font-mono text-accent-primary bg-[color-mix(in_srgb,_var(--color-accent-primary)_10%,_transparent)] border-[color-mix(in_srgb,_var(--color-accent-primary)_30%,_transparent)] hover:bg-[color-mix(in_srgb,_var(--color-accent-primary)_20%,_transparent)] hover:border-[color-mix(in_srgb,_var(--color-accent-primary)_40%,_transparent)]"
                             >
                               <span className="xl:text-md">{combinedDiscount > 0 ? `Discount: ${seasonBreakdown?.hasMultipleSeasons ? '~' : ''}${Math.round(combinedDiscount * 100)}%` : 'Discounts'}</span>
                               <HelpCircle className="w-3 h-3 xxs:w-3.5 xxs:h-3.5 sm:w-4 sm:h-4" />
@@ -936,7 +936,7 @@ export function Book2Page() {
                       <button
                         onClick={handleClearSelection}
                         className={clsx(
-                          "flex items-center gap-0.5 xxs:gap-1 px-2 xxs:px-2.5 py-1 xxs:py-1.5 text-xs xxs:text-sm sm:text-sm font-medium border rounded-md transition-colors duration-200 font-mono",
+                          "flex items-center gap-0.5 xxs:gap-1 px-2 xxs:px-2.5 py-1 xxs:py-1.5 text-sm font-medium border rounded-md transition-colors duration-200 font-mono",
                           "text-accent-primary bg-[color-mix(in_srgb,_var(--color-accent-primary)_10%,_transparent)] border-[color-mix(in_srgb,_var(--color-accent-primary)_30%,_transparent)] hover:bg-[color-mix(in_srgb,_var(--color-accent-primary)_20%,_transparent)] hover:border-[color-mix(in_srgb,_var(--color-accent-primary)_40%,_transparent)]"
                         )}
                         aria-label="Clear week selection"
@@ -971,7 +971,7 @@ export function Book2Page() {
               {/* Outer Cabin Selector keeps py-* padding */}
               <div className="bg-surface rounded-xl shadow-sm py-3 xs:py-4 sm:py-6 mb-4 xs:mb-5 sm:mb-6 cabin-selector">
                 {/* REMOVING px-* padding from this h2 */}
-                <h2 className="text-lg xs:text-xl lg:text-2xl font-display font-light text-primary mb-3 xs:mb-4">Time to choose a cozy bed..</h2>
+                <h2 className="text-xl sm:text-2xl font-display font-light text-primary mb-3 xs:mb-4">Time to choose a cozy bed..</h2>
                 <CabinSelector 
                   accommodations={accommodations || []}
                   selectedAccommodationId={selectedAccommodation}

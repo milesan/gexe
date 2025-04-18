@@ -48,15 +48,15 @@ const SeasonLegend = () => {
     <div className="flex flex-wrap justify-center xxs:justify-start gap-1.5 xs:gap-2 sm:gap-3 mb-2 xs:mb-3">
       <div className="flex items-center gap-1 xs:gap-1.5">
         <div className="w-2.5 h-2.5 xs:w-3 xs:h-3 rounded-full bg-[#A599FF]"></div>
-        <span className="text-xs xs:text-sm sm:text-sm text-secondary font-mono whitespace-nowrap">Low (Nov-May)</span>
+        <span className="text-sm text-secondary font-mono whitespace-nowrap">Low (Nov-May)</span>
       </div>
       <div className="flex items-center gap-1 xs:gap-1.5">
         <div className="w-2.5 h-2.5 xs:w-3 xs:h-3 rounded-full bg-[#FFB088]"></div>
-        <span className="text-xs xs:text-sm sm:text-sm text-secondary font-mono whitespace-nowrap">Medium (Jun, Oct)</span>
+        <span className="text-sm text-secondary font-mono whitespace-nowrap">Medium (Jun, Oct)</span>
       </div>
       <div className="flex items-center gap-1 xs:gap-1.5">
         <div className="w-2.5 h-2.5 xs:w-3 xs:h-3 rounded-full bg-[#FF8F8F]"></div>
-        <span className="text-xs xs:text-sm sm:text-sm text-secondary font-mono whitespace-nowrap">Summer (Jul-Sep)</span>
+        <span className="text-sm text-secondary font-mono whitespace-nowrap">Summer (Jul-Sep)</span>
       </div>
     </div>
   );
@@ -457,7 +457,7 @@ export function WeekSelector({
                       </div>
                       <div className={clsx(
                         "font-display text-secondary flex items-center justify-center gap-0.5 xs:gap-1",
-                        "text-[10px] xxs:text-xs xs:text-sm sm:text-sm"
+                        "text-sm"
                       )}>
                         <span>{formatInTimeZone(week.startDate, 'UTC', 'MMM d')}</span>
                         <svg className="w-2.5 h-2.5 xxs:w-3 xxs:h-3 xs:w-4 xs:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -468,7 +468,7 @@ export function WeekSelector({
                     </>
                   ) : (
                     <>
-                      <div className="text-lg xxs:text-xl xs:text-2xl sm:text-3xl font-display text-primary">
+                      <div className="text-2xl sm:text-3xl font-display text-primary">
                         {(() => {
                           // --- START: Determine effective start date for the first selected week ---
                           let effectiveStartDate: Date | undefined;
@@ -671,7 +671,7 @@ export function WeekSelector({
                       </div>
                       {/* Show flex dates indicator only if no weeks are selected yet */}
                       {week.flexibleDates && week.flexibleDates.length > 0 && !selectedWeeks.length && (
-                        <div className="text-xs xxs:text-xs xs:text-base sm:text-sm text-indigo-500 mt-1 font-mono flex items-center justify-center gap-1">
+                        <div className="text-sm text-indigo-500 mt-1 font-mono flex items-center justify-center gap-1">
                           <Calendar className="w-3 h-3 xxs:w-3.5 xxs:h-3.5 xs:w-4 xs:h-4" />
                           <span>{week.flexibleDates.length} check-in {week.flexibleDates.length === 1 ? 'date' : 'dates'}</span>
                         </div>
@@ -691,7 +691,7 @@ export function WeekSelector({
                     // Show duration only if it's not 7 days AND it's not an in-between week
                     if (diffDays !== 7 && !week.isEdgeWeek && !isInBetween) {
                       return (
-                        <div className="text-[10px] xxs:text-xs text-indigo-500 mt-1 font-mono">
+                        <div className="text-sm text-indigo-500 mt-1 font-mono">
                           {diffDays} {diffDays === 1 ? 'day' : 'days'}
                         </div>
                       );
@@ -701,7 +701,7 @@ export function WeekSelector({
                   {/* Refined: Only show status text if admin AND status is 'hidden' or 'deleted' */}
                   {isAdmin && (week.status === 'hidden' || week.status === 'deleted') && (
                     <div className={clsx(
-                      'text-[10px] xxs:text-xs font-mono mt-1',
+                      'text-sm text-indigo-500 mt-1',
                       week.status === 'hidden' && 'text-yellow-500',
                       week.status === 'deleted' && 'text-red-500',
                     )}>

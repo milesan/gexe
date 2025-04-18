@@ -294,7 +294,11 @@ export function CabinSelector({
                     // Pointer state:
                     finalCanSelect && !isDisabled && 'cursor-pointer'
                   )}
-                  onClick={() => finalCanSelect && !isDisabled && handleSelectAccommodation(acc.id)}
+                  onClick={(e) => {
+                    // Prevent event bubbling to parent elements
+                    e.stopPropagation();
+                    finalCanSelect && !isDisabled && handleSelectAccommodation(acc.id);
+                  }}
                   style={{ minHeight: '300px' }} 
                 >
                   {/* Overlays - Reverted to simple positioning containers */}
@@ -368,18 +372,21 @@ export function CabinSelector({
                     (!isDisabled && isOutOfSeason && !isFullyBooked) && "blur-sm opacity-40 grayscale-[0.3]"
                   )}>
                     <div>
-                      <h3 className="font-medium mb-1 text-primary font-mono">{acc.title}</h3>
+                      <h3 className="text-lg font-medium mb-1 text-primary font-mono">{acc.title}</h3>
                       <div className="flex items-center gap-3 text-secondary text-xs mb-2">
                         
                         {/* Conditionally render the Electricity/No Electricity Tooltip - hide for Van Parking */}
                         {acc.title !== 'Van Parking' && (
-                          <Tooltip.Provider delayDuration={50}>
+                          <Tooltip.Provider delayDuration={50} skipDelayDuration={0} disableHoverableContent={true}>
                             <Tooltip.Root>
                               <Tooltip.Trigger asChild>
                                 <button 
                                   className="flex items-center gap-1 cursor-help bg-transparent border-none p-0.5" 
                                   title={acc.has_electricity ? 'Has Electricity' : 'No Electricity'}
-                                  onTouchStart={(e) => e.preventDefault()}
+                                  onClick={(e) => {
+                                    // Prevent event bubbling to parent elements
+                                    e.stopPropagation();
+                                  }}
                                 >
                                   {acc.has_electricity ? <Zap size={12} /> : <ZapOff size={12} className="opacity-50"/>}
                                 </button>
@@ -397,13 +404,16 @@ export function CabinSelector({
                           </Tooltip.Provider>
                         )}
                         
-                        <Tooltip.Provider delayDuration={50}>
+                        <Tooltip.Provider delayDuration={50} skipDelayDuration={0} disableHoverableContent={true}>
                           <Tooltip.Root>
                             <Tooltip.Trigger asChild>
                               <button 
                                 className="flex items-center gap-1 cursor-help bg-transparent border-none p-0.5" 
                                 title={acc.has_wifi ? 'Has WiFi' : 'No WiFi'}
-                                onTouchStart={(e) => e.preventDefault()}
+                                onClick={(e) => {
+                                  // Prevent event bubbling to parent elements
+                                  e.stopPropagation();
+                                }}
                               >
                                 {acc.has_wifi ? <Wifi size={12} /> : <WifiOff size={12} className="opacity-50"/>}
                               </button>
@@ -421,12 +431,15 @@ export function CabinSelector({
                         </Tooltip.Provider>
                         
                         {/* Bed Size Tooltip */}
-                        <Tooltip.Provider delayDuration={50}>
+                        <Tooltip.Provider delayDuration={50} skipDelayDuration={0} disableHoverableContent={true}>
                           <Tooltip.Root>
                             <Tooltip.Trigger asChild>
                               <button 
                                 className="flex items-center gap-1 cursor-help bg-transparent border-none p-0.5"
-                                onTouchStart={(e) => e.preventDefault()}
+                                onClick={(e) => {
+                                  // Prevent event bubbling to parent elements
+                                  e.stopPropagation();
+                                }}
                               >
                                 <Bed size={12} />
                               </button>
@@ -448,10 +461,13 @@ export function CabinSelector({
 
                         {/* NEW: Quiet Zone Tooltip for Microcabins */}
                         {acc.title.includes('Microcabin') && (
-                          <Tooltip.Provider delayDuration={50}>
+                          <Tooltip.Provider delayDuration={50} skipDelayDuration={0} disableHoverableContent={true}>
                             <Tooltip.Root>
                               <Tooltip.Trigger asChild>
-                                <button className="flex items-center gap-1 cursor-help text-secondary"><Ear size={12} /></button>
+                                <button className="flex items-center gap-1 cursor-help text-secondary" onClick={(e) => {
+                                  // Prevent event bubbling to parent elements
+                                  e.stopPropagation();
+                                }}><Ear size={12} /></button>
                               </Tooltip.Trigger>
                               <Tooltip.Portal>
                                 <Tooltip.Content
@@ -468,10 +484,13 @@ export function CabinSelector({
 
                         {/* NEW: Power Hookup Tooltip for Van Parking */}
                         {acc.title === 'Van Parking' && (
-                          <Tooltip.Provider delayDuration={50}>
+                          <Tooltip.Provider delayDuration={50} skipDelayDuration={0} disableHoverableContent={true}>
                             <Tooltip.Root>
                               <Tooltip.Trigger asChild>
-                                <button className="flex items-center gap-1 cursor-help text-secondary"><Zap size={12} /></button>
+                                <button className="flex items-center gap-1 cursor-help text-secondary" onClick={(e) => {
+                                  // Prevent event bubbling to parent elements
+                                  e.stopPropagation();
+                                }}><Zap size={12} /></button>
                               </Tooltip.Trigger>
                               <Tooltip.Portal>
                                 <Tooltip.Content
@@ -492,22 +511,25 @@ export function CabinSelector({
                       <div className="text-primary font-medium font-mono">
                         {/* Check if weeklyPrice (from prop) is null or 0, handle 0.01 specifically */}
                         {weeklyPrice === null || weeklyPrice === 0 ? (
-                          <span className="text-accent-primary">{formatPrice(weeklyPrice, isTestAccommodation)}</span>
+                          <span className="text-accent-primary text-lg font-mono">{formatPrice(weeklyPrice, isTestAccommodation)}</span>
                         ) : (
-                          <>
+                          <span className="text-lg">
                             €{/* Use formatPrice for consistent display */}
                             {formatPrice(weeklyPrice, isTestAccommodation)}
                             <span className="text-sm text-secondary font-mono"> / week</span>
-                          </>
+                          </span>
                         )}
                       </div>
                       
                       {/* Ensure weeklyPrice is not null for discount display, and check hasAnyDiscount flag */}
                       {weeklyPrice !== null && weeklyPrice > 0 && hasAnyDiscount && (
-                        <Tooltip.Provider delayDuration={50}>
+                        <Tooltip.Provider delayDuration={50} skipDelayDuration={0} disableHoverableContent={true}>
                           <Tooltip.Root>
                             <Tooltip.Trigger asChild>
-                              <button className="text-accent-primary flex items-center gap-0.5 cursor-help">
+                              <button className="text-accent-primary flex items-center gap-0.5 cursor-help" onClick={(e) => {
+                                // Prevent event bubbling to parent elements
+                                e.stopPropagation();
+                              }}>
                                 <Percent size={14} />
                               </button>
                             </Tooltip.Trigger>
@@ -549,7 +571,7 @@ export function CabinSelector({
                                    <div className="border-t border-gray-600 my-1"></div>
 
                                    {/* Final Weekly Price - Use weeklyPrice from prop, ensure not null */}
-                                   <div className="flex justify-between items-center font-medium text-white">
+                                   <div className="flex justify-between items-center font-medium text-white text-base">
                                       <span>Final Weekly Rate:</span>
                                       {/* Ensure weeklyPrice is not null before rounding */}
                                       <span>€{formatPrice(weeklyPrice, isTestAccommodation)}</span>
