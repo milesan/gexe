@@ -245,13 +245,16 @@ export function AppView() {
           <div>
             <button
               onClick={() => setSelectedApplication(application)}
-              className="font-mono text-base text-[var(--color-text-primary)] hover:text-[var(--color-accent-primary)] transition-colors text-left group"
+              className="font-mono text-2xl text-[var(--color-text-primary)] hover:text-[var(--color-accent-primary)] transition-colors text-left group"
             >
               <span className="group-hover:underline">
                 {firstName} {lastName}
               </span>
             </button>
-            <p className="text-[var(--color-text-secondary)] font-mono">{application.user_email}</p>
+            <p className="text-[var(--color-text-primary)] font-mono text-md">{application.user_email}</p>
+            <p className="text-sm text-[var(--color-text-secondary)] font-mono mt-1">
+              Submitted: {new Date(application.created_at).toISOString().slice(0, 10)}
+            </p>
           </div>
           <div className="flex gap-2 items-center">
             {application.status === 'pending' && (

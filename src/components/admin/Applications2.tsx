@@ -210,7 +210,7 @@ export function Applications2() {
                 <div>
                   <button
                     onClick={() => setSelectedApplication(application)}
-                    className="font-medium font-mono text-base text-[var(--color-text-primary)] hover:text-[var(--color-accent-primary)] transition-colors text-left group"
+                    className="font-medium font-mono text-2xl text-[var(--color-text-primary)] hover:text-[var(--color-accent-primary)] transition-colors text-left group"
                   >
                     <span className="group-hover:underline">
                       {questions.length > 0 && application.data && (
@@ -222,6 +222,9 @@ export function Applications2() {
                   </button>
                   <p className="text-sm text-[var(--color-text-secondary)] font-mono">
                     {application.user_email}
+                  </p>
+                  <p className="text-xs text-[var(--color-text-tertiary)] font-mono mt-1">
+                    Submitted: {new Date(application.created_at).toISOString().slice(0, 10)}
                   </p>
                   {application.linked_name && (
                     <div className="mt-2 text-sm text-[var(--color-text-secondary)] font-mono">
