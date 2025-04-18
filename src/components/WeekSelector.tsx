@@ -48,15 +48,15 @@ const SeasonLegend = () => {
     <div className="flex flex-wrap justify-center xxs:justify-start gap-1.5 xs:gap-2 sm:gap-3 mb-2 xs:mb-3">
       <div className="flex items-center gap-1 xs:gap-1.5">
         <div className="w-2.5 h-2.5 xs:w-3 xs:h-3 rounded-full bg-[#A599FF]"></div>
-        <span className="text-[10px] xs:text-xs sm:text-sm text-secondary font-mono whitespace-nowrap">Low (Nov-May)</span>
+        <span className="text-xs xs:text-sm sm:text-sm text-secondary font-mono whitespace-nowrap">Low (Nov-May)</span>
       </div>
       <div className="flex items-center gap-1 xs:gap-1.5">
         <div className="w-2.5 h-2.5 xs:w-3 xs:h-3 rounded-full bg-[#FFB088]"></div>
-        <span className="text-[10px] xs:text-xs sm:text-sm text-secondary font-mono whitespace-nowrap">Medium (Jun, Oct)</span>
+        <span className="text-xs xs:text-sm sm:text-sm text-secondary font-mono whitespace-nowrap">Medium (Jun, Oct)</span>
       </div>
       <div className="flex items-center gap-1 xs:gap-1.5">
         <div className="w-2.5 h-2.5 xs:w-3 xs:h-3 rounded-full bg-[#FF8F8F]"></div>
-        <span className="text-[10px] xs:text-xs sm:text-sm text-secondary font-mono whitespace-nowrap">Summer (Jul-Sep)</span>
+        <span className="text-xs xs:text-sm sm:text-sm text-secondary font-mono whitespace-nowrap">Summer (Jul-Sep)</span>
       </div>
     </div>
   );
@@ -456,8 +456,8 @@ export function WeekSelector({
                         />
                       </div>
                       <div className={clsx(
-                        "font-mono text-secondary flex items-center justify-center gap-0.5 xs:gap-1",
-                        "text-xs xxs:text-sm xs:text-base sm:text-base"
+                        "font-display text-secondary flex items-center justify-center gap-0.5 xs:gap-1",
+                        "text-[10px] xxs:text-xs xs:text-sm sm:text-sm"
                       )}>
                         <span>{formatInTimeZone(week.startDate, 'UTC', 'MMM d')}</span>
                         <svg className="w-2.5 h-2.5 xxs:w-3 xxs:h-3 xs:w-4 xs:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">

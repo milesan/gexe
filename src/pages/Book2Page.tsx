@@ -895,7 +895,7 @@ export function Book2Page() {
                         >
                           <ChevronLeft className="h-3.5 w-3.5 xxs:h-4 xxs:w-4 sm:h-5 sm:w-5 text-secondary" />
                         </button>
-                        <div className="px-2 xxs:px-3 sm:px-4 text-center text-primary font-medium whitespace-nowrap text-[10px] xxs:text-xs sm:text-sm font-mono min-w-[120px] xxs:min-w-[140px] sm:min-w-[160px]">
+                        <div className="px-2 xxs:px-3 sm:px-4 text-center text-primary font-medium whitespace-nowrap text-xs xxs:text-sm sm:text-sm font-mono min-w-[120px] xxs:min-w-[140px] sm:min-w-[160px]">
                           {format(currentMonth, 'MMMM yyyy')}
                         </div>
                         <button 
@@ -916,9 +916,9 @@ export function Book2Page() {
                           <Tooltip.Trigger asChild>
                             <button
                               onClick={() => setShowDiscountModal(true)}
-                              className="group flex items-center gap-1 xxs:gap-1.5 px-2 xxs:px-2.5 py-1 xxs:py-1.5 text-[10px] xxs:text-xs sm:text-sm font-medium border rounded-md transition-colors duration-200 relative font-mono text-accent-primary bg-[color-mix(in_srgb,_var(--color-accent-primary)_10%,_transparent)] border-[color-mix(in_srgb,_var(--color-accent-primary)_30%,_transparent)] hover:bg-[color-mix(in_srgb,_var(--color-accent-primary)_20%,_transparent)] hover:border-[color-mix(in_srgb,_var(--color-accent-primary)_40%,_transparent)]"
+                              className="group flex items-center gap-1 xxs:gap-1.5 px-2 xxs:px-2.5 py-1 xxs:py-1.5 text-xs xxs:text-sm sm:text-sm font-medium border rounded-md transition-colors duration-200 relative font-mono text-accent-primary bg-[color-mix(in_srgb,_var(--color-accent-primary)_10%,_transparent)] border-[color-mix(in_srgb,_var(--color-accent-primary)_30%,_transparent)] hover:bg-[color-mix(in_srgb,_var(--color-accent-primary)_20%,_transparent)] hover:border-[color-mix(in_srgb,_var(--color-accent-primary)_40%,_transparent)]"
                             >
-                              <span>{combinedDiscount > 0 ? `Discount: ${seasonBreakdown?.hasMultipleSeasons ? '~' : ''}${Math.round(combinedDiscount * 100)}%` : 'Discounts'}</span>
+                              <span className="xl:text-md">{combinedDiscount > 0 ? `Discount: ${seasonBreakdown?.hasMultipleSeasons ? '~' : ''}${Math.round(combinedDiscount * 100)}%` : 'Discounts'}</span>
                               <HelpCircle className="w-3 h-3 xxs:w-3.5 xxs:h-3.5 sm:w-4 sm:h-4" />
                             </button>
                           </Tooltip.Trigger>
@@ -936,7 +936,7 @@ export function Book2Page() {
                       <button
                         onClick={handleClearSelection}
                         className={clsx(
-                          "flex items-center gap-0.5 xxs:gap-1 px-2 xxs:px-2.5 py-1 xxs:py-1.5 text-[10px] xxs:text-xs sm:text-sm font-medium border rounded-md transition-colors duration-200 font-mono",
+                          "flex items-center gap-0.5 xxs:gap-1 px-2 xxs:px-2.5 py-1 xxs:py-1.5 text-xs xxs:text-sm sm:text-sm font-medium border rounded-md transition-colors duration-200 font-mono",
                           "text-accent-primary bg-[color-mix(in_srgb,_var(--color-accent-primary)_10%,_transparent)] border-[color-mix(in_srgb,_var(--color-accent-primary)_30%,_transparent)] hover:bg-[color-mix(in_srgb,_var(--color-accent-primary)_20%,_transparent)] hover:border-[color-mix(in_srgb,_var(--color-accent-primary)_40%,_transparent)]"
                         )}
                         aria-label="Clear week selection"

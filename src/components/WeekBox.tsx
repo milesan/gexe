@@ -164,9 +164,9 @@ export function WeekBox({
               </div>
             )}
             {week.name && (
-              <div className="font-mono text-xs text-secondary flex items-center justify-center gap-1">
+              <div className="font-display text-[10px] xxs:text-xs sm:text-sm text-secondary flex items-center justify-center gap-1">
                 <span>{format(week.startDate, 'MMM d')}</span>
-                <svg className="w-2 h-2" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <svg className="w-2 h-2 xxs:w-2.5 xxs:h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                   <path d="M4 12h16m0 0l-6-6m6 6l-6 6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
                 <span>{format(week.endDate, 'MMM d')}</span>

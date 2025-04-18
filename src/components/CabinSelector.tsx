@@ -128,10 +128,18 @@ export function CabinSelector({
   }, [selectedWeeks, accommodations, checkWeekAvailability]);
 
   const handleSelectAccommodation = useCallback((id: string) => {
-    console.log('[CabinSelector] Accommodation selected:', {
+    console.log("[CabinSelector] Accommodation selected:", {
       accommodationId: id,
       previousSelection: selectedAccommodationId
     });
+    
+    // NEW: If clicking the already selected accommodation, deselect it
+    if (id === selectedAccommodationId) {
+      console.log("[CabinSelector] Deselecting accommodation:", { accommodationId: id });
+      onSelectAccommodation('');
+      return; // Stop further execution
+    }
+
     // Check availability when accommodation is selected and weeks are already chosen
     if (selectedWeeks.length > 0) {
       // MODIFIED: Determine overall check-in and check-out dates
@@ -362,30 +370,6 @@ export function CabinSelector({
                     <div>
                       <h3 className="font-medium mb-1 text-primary font-mono">{acc.title}</h3>
                       <div className="flex items-center gap-3 text-secondary text-xs mb-2">
-                        {acc.capacity !== undefined && acc.capacity !== null && acc.capacity > 1 && acc.type !== 'tent' && (
-                          <Tooltip.Provider delayDuration={50}>
-                            <Tooltip.Root>
-                              <Tooltip.Trigger asChild>
-                                <button 
-                                  className="flex font-mono items-center gap-1 cursor-help bg-transparent border-none p-0.5" 
-                                  title={`Capacity: ${acc.capacity ?? 'N/A'}`}
-                                  onTouchStart={(e) => e.preventDefault()}
-                                > 
-                                  <BedDouble size={12} /> {acc.capacity} 
-                                </button>
-                              </Tooltip.Trigger>
-                              <Tooltip.Portal>
-                                <Tooltip.Content
-                                  sideOffset={5}
-                                  className="tooltip-content !font-mono"
-                                >
-                                  <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
-                                  <span className="text-white">Capacity: {acc.capacity} persons</span>
-                                </Tooltip.Content>
-                              </Tooltip.Portal>
-                            </Tooltip.Root>
-                          </Tooltip.Provider>
-                        )}
                         
                         {/* Conditionally render the Electricity/No Electricity Tooltip - hide for Van Parking */}
                         {acc.title !== 'Van Parking' && (
