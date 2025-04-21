@@ -532,6 +532,14 @@ export function isWeekSelectable(week: Week, isAdmin: boolean = false, selectedW
       return false;
     }
     
+    // Check if this week is in May or June (months are 0-indexed: 4=May, 5=June)
+    const month = weekStartDate.getUTCMonth();
+    if (month === 4 || month === 5) {
+      // Allow ALL weeks in May and June
+      return true;
+    }
+    
+    // For other months, keep the even-week restriction
     return weeksSinceEpoch % 2 === 0; // Only allow even-numbered weeks for arrivals
   }
 
