@@ -41,7 +41,7 @@ export function useUserStatus() {
   // Update user status in the database and local state
   const updateStatus = async (
     newStatus: UserStatus,
-    additionalFields?: Partial<Omit<UserStatusInfo, 'user_id' | 'status' | 'updated_at'>>
+    additionalFields?: Partial<Omit<UserStatusInfo, 'user_id' | 'status'>>
   ) => {
     if (!session?.user?.id) {
       console.error('Cannot update status: No user logged in');

@@ -49,7 +49,7 @@ export function canAccessApp(userStatus?: UserStatus | null): boolean {
 export async function updateUserStatus(
   userId: string,
   status: UserStatus,
-  additionalFields?: Partial<Omit<UserStatusInfo, 'user_id' | 'status' | 'updated_at'>>
+  additionalFields?: Partial<Omit<UserStatusInfo, 'user_id' | 'status'>>
 ): Promise<boolean> {
   const { error } = await supabase
     .from('user_status')

@@ -30,7 +30,7 @@ export function AutosaveNotification({ show, onClose }: Props) {
           exit={{ opacity: 0, y: -20 }}
           onClick={onClose}
           // Removed positioning classes, kept styling and clip-path
-          className="bg-[#FFBF00]/10 backdrop-blur-sm text-[#FFBF00] px-4 py-2 rounded cursor-pointer pointer-events-auto" // Added pointer-events-auto back
+          className="bg-retro-accent/10 backdrop-blur-sm text-retro-accent px-4 py-2 rounded cursor-pointer pointer-events-auto" // Added pointer-events-auto back
           style={{
             clipPath: `polygon(
               0 4px, 4px 4px, 4px 0,

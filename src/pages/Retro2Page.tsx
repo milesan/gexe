@@ -143,7 +143,7 @@ export function Retro2Page() {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFBF00]"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-retro-accent"></div>
       </div>
     );
   }

@@ -1,4 +1,4 @@
-import { addDays, startOfWeek, endOfWeek, eachDayOfInterval } from 'date-fns';
+import { addDays, startOfWeek, endOfWeek } from 'date-fns';
 import type { DailyBooking, WeeklyBooking } from '../types/booking';
 
 export function dailyToWeekly(dailyBooking: DailyBooking): WeeklyBooking {

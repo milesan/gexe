@@ -177,11 +177,11 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
     return (
       <div className="space-y-4">
         <div className="flex justify-between items-baseline">
-          <h3 className="text-xl font-display text-[#FFBF00]">
+          <h3 className="text-xl font-display text-retro-accent">
             {question.text}
             <span className="text-red-500 ml-1">*</span>
           </h3>
-          <span className="text-sm text-[#FFBF00]/60">
+          <span className="text-sm text-retro-accent/60">
             {currentFileCount} / {IMAGE_LIMIT} images uploaded
           </span>
         </div>
@@ -221,8 +221,8 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
 
           {/* Styled replacement for the input */}
           <div
-            className={`w-full bg-black p-3 text-[#FFBF00] focus-within:outline-none focus-within:ring-2 focus-within:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30 flex items-center justify-center transition-colors ${ 
-              isDisabled ? 'opacity-50 bg-gray-800' : 'hover:bg-[#FFBF00]/10'
+            className={`w-full bg-black p-3 text-retro-accent focus-within:outline-none focus-within:ring-2 focus-within:ring-retro-accent placeholder-retro-accent/30 border-4 border-retro-accent/30 flex items-center justify-center transition-colors ${ 
+              isDisabled ? 'opacity-50 bg-gray-800' : 'hover:bg-retro-accent/10'
             }`}
           >
             <Upload className="w-5 h-5 mr-2" />
@@ -236,7 +236,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
 
           {/* Progress Indicator Overlay */}
           {uploadProgress > 0 && uploadProgress < 100 && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/70 text-[#FFBF00]">
+            <div className="absolute inset-0 flex items-center justify-center bg-black/70 text-retro-accent">
               <div className="text-center">
                 <Upload className="w-6 h-6 animate-bounce mx-auto mb-1" />
                 <span>{Math.round(uploadProgress)}%</span>
@@ -259,17 +259,17 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
                 <img 
                   src={file.url} 
                   alt={`Uploaded photo ${index + 1}`}
-                  className="w-full h-32 object-cover rounded-lg border-2 border-[#FFBF00]/20"
+                  className="w-full h-32 object-cover rounded-lg border-2 border-retro-accent/20"
                 />
                  {/* Delete Button Overlay */}
                  <div className={`absolute inset-0 bg-black/70 flex items-center justify-center transition-opacity duration-300 ${isDeleting === file.fileName ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                    {isDeleting === file.fileName ? (
-                     <div className="animate-spin rounded-full h-5 w-5 border-2 border-[#FFBF00] border-t-transparent"></div>
+                     <div className="animate-spin rounded-full h-5 w-5 border-2 border-retro-accent border-t-transparent"></div>
                    ) : (
                      <button
                        onClick={() => handleFileDelete(file.fileName)}
                        disabled={!!isDeleting} // Disable while another delete is in progress
-                       className="text-[#FFBF00] hover:text-red-500 disabled:text-gray-500 disabled:cursor-not-allowed"
+                       className="text-retro-accent hover:text-red-500 disabled:text-gray-500 disabled:cursor-not-allowed"
                        aria-label={`Delete image ${index + 1}`}
                      >
                        <X className="w-6 h-6" />
@@ -287,7 +287,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
   if (isMBTIQuestion) {
     return (
       <div className="space-y-4">
-        <h3 className="text-xl font-display text-[#FFBF00]">
+        <h3 className="text-xl font-display text-retro-accent">
           {question.text}
           <span className="text-red-500 ml-1">*</span>
         </h3>
@@ -296,7 +296,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
           value={value as string || ''}
           onChange={(e) => onChange(e.target.value)}
           onBlur={onBlur}
-          className="w-full bg-black p-3 text-[#FFBF00] focus:outline-none focus:ring-2 focus:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30"
+          className="w-full bg-black p-3 text-retro-accent focus:outline-none focus:ring-2 focus:ring-retro-accent placeholder-retro-accent/30 border-4 border-retro-accent/30"
           style={{
             clipPath: `polygon(
               0 4px, 4px 4px, 4px 0,
@@ -335,7 +335,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
             transition={{ duration: 0.65 }}
           >
             <div className="relative">
-              <div className="absolute -left-8 top-0 bottom-0 w-2 bg-gradient-to-b from-[#FFBF00]/60 via-[#FFBF00]/40 to-[#FFBF00]/20" />
+              <div className="absolute -left-8 top-0 bottom-0 w-2 bg-gradient-to-b from-retro-accent/60 via-retro-accent/40 to-retro-accent/20" />
               <motion.div 
                 className="space-y-6 pl-8"
                 initial={{ opacity: 0 }}
@@ -343,12 +343,12 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
                 transition={{ delay: 0.65 }}
               >
                 <div className="space-y-6 font-display text-xl leading-relaxed max-w-2xl">
-                  <p className="text-[#FFBF00]/60">This is a curated place, unlike any other.</p>
-                  <p className="text-[#FFBF00]/70">We seek those with the attention span & curiosity 
+                  <p className="text-retro-accent/60">This is a curated place, unlike any other.</p>
+                  <p className="text-retro-accent/70">We seek those with the attention span & curiosity 
                   to complete this application.</p>
-                  <p className="text-[#FFBF00]/80">We're not impressed by your followers, fortune, 
+                  <p className="text-retro-accent/80">We're not impressed by your followers, fortune, 
                   or fame [though none of those exclude you].</p>
-                  <p className="text-[#FFBF00] text-3xl">We seek the realest.</p>
+                  <p className="text-retro-accent text-3xl">We seek the realest.</p>
                 </div>
               </motion.div>
             </div>
@@ -359,17 +359,17 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
               animate={{ opacity: 1 }}
               transition={{ delay: 0.85 }}
             >
-              <h3 className="text-xl font-display mb-2 text-[#FFBF00]/90">
+              <h3 className="text-xl font-display mb-2 text-retro-accent/90">
                 {question.text}
                 <span className="text-red-500 ml-1">*</span>
               </h3>
-              <p className="text-[#FFBF00]/60 -mt-1 mb-6">
+              <p className="text-retro-accent/60 -mt-1 mb-6">
                 We value data privacy.
               </p>
               <div className="flex justify-center gap-8">
                 <button 
                   onClick={() => handleChange('As you wish.')}
-                  className="bg-[#FFBF00] text-black px-8 py-2 transition-colors hover:bg-[#FFBF00]/90"
+                  className="bg-retro-accent text-black px-8 py-2 transition-colors hover:bg-retro-accent/90"
                   style={{
                     clipPath: `polygon(
                       0 4px, 4px 4px, 4px 0,
@@ -384,7 +384,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
                 </button>
                 <button 
                   onClick={() => handleChange('Inconceivable!')}
-                  className="bg-[#FFBF00] text-black px-8 py-2 opacity-80 transition-colors hover:bg-[#FFBF00]/90"
+                  className="bg-retro-accent text-black px-8 py-2 opacity-80 transition-colors hover:bg-retro-accent/90"
                   style={{
                     clipPath: `polygon(
                       0 4px, 4px 4px, 4px 0,
@@ -402,7 +402,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
           </motion.div>
         ) : (
           <>
-            <h3 className="text-xl font-display text-[#FFBF00]">
+            <h3 className="text-xl font-display text-retro-accent">
               {question.text}
               <span className="text-red-500 ml-1">*</span>
             </h3>
@@ -412,11 +412,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
                 return (
                   <label 
                     key={option} 
-                    className={`flex items-center p-3 cursor-pointer transition-all ${
-                      isSelected 
-                        ? `bg-[#FFBF00]/20` 
-                        : `hover:bg-[#FFBF00]/10`
-                    }`}
+                    className={`flex items-center p-3 cursor-pointer transition-all ${isSelected ? `bg-retro-accent/20` : `hover:bg-retro-accent/10`}`}
                     style={{
                       clipPath: `polygon(
                         0 4px, 4px 4px, 4px 0,
@@ -427,11 +423,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
                       )`
                     }}
                   >
-                    <div className={`flex-shrink-0 w-5 h-5 mr-4 flex items-center justify-center transition-colors ${
-                      isSelected 
-                        ? `border-4 border-[#FFBF00] bg-[#FFBF00]` 
-                        : `border-4 border-[#FFBF00]`
-                    }`}
+                    <div className={`flex-shrink-0 w-5 h-5 mr-4 flex items-center justify-center transition-colors ${isSelected ? `border-4 border-retro-accent bg-retro-accent` : `border-4 border-retro-accent`}`}
                     style={{
                       clipPath: `polygon(
                         0 4px, 4px 4px, 4px 0,
@@ -452,7 +444,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
                       onChange={() => handleChange(option)}
                       className="sr-only"
                     />
-                    <span className="text-[#FFBF00]">{option}</span>
+                    <span className="text-retro-accent">{option}</span>
                   </label>
                 );
               })}
@@ -492,7 +484,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
 
     return (
       <div className="space-y-4">
-        <h3 className="text-xl font-display text-[#FFBF00]">
+        <h3 className="text-xl font-display text-retro-accent">
           {question.text}
           {/* Checkboxes might not always be required, adjust if needed */}
           <span className="text-red-500 ml-1">*</span> 
@@ -503,11 +495,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
             return (
               <label 
                 key={option} 
-                className={`flex items-center p-3 cursor-pointer transition-all ${
-                  isSelected 
-                    ? `bg-[#FFBF00]/20` 
-                    : `hover:bg-[#FFBF00]/10`
-                }`}
+                className={`flex items-center p-3 cursor-pointer transition-all ${isSelected ? `bg-retro-accent/20` : `hover:bg-retro-accent/10`}`}
                 style={{
                   clipPath: `polygon(
                     0 4px, 4px 4px, 4px 0,
@@ -519,11 +507,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
                 }}
               >
                 {/* Checkbox visual - adapting radio style */}
-                <div className={`flex-shrink-0 w-5 h-5 mr-4 flex items-center justify-center transition-colors ${
-                  isSelected 
-                    ? `border-4 border-[#FFBF00] bg-[#FFBF00]` // Filled square for checked
-                    : `border-4 border-[#FFBF00]` // Empty square for unchecked
-                }`}
+                <div className={`flex-shrink-0 w-5 h-5 mr-4 flex items-center justify-center transition-colors ${isSelected ? `border-4 border-retro-accent bg-retro-accent` : `border-4 border-retro-accent`}`}
                 style={{
                   clipPath: `polygon(
                     0 4px, 4px 4px, 4px 0,
@@ -544,7 +528,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
                   onChange={() => handleChange(option)}
                   className="sr-only"
                 />
-                <span className="text-[#FFBF00]">{option}</span>
+                <span className="text-retro-accent">{option}</span>
               </label>
             );
           })}
@@ -556,7 +540,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
   if (question.type === 'textarea') {
     return (
       <div className="space-y-4">
-        <h3 className="text-xl font-display text-[#FFBF00]">
+        <h3 className="text-xl font-display text-retro-accent">
           {question.text}
           <span className="text-red-500 ml-1">*</span>
         </h3>
@@ -565,7 +549,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
             value={value as string || ''}
             onChange={(e) => onChange(e.target.value)}
             onBlur={onBlur}
-            className="w-full bg-black p-3 text-[#FFBF00] focus:outline-none focus:ring-2 focus:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30"
+            className="w-full bg-black p-3 text-retro-accent focus:outline-none focus:ring-2 focus:ring-retro-accent placeholder-retro-accent/30 border-4 border-retro-accent/30"
             rows={4}
             style={{
               clipPath: `polygon(
@@ -584,7 +568,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
 
   return (
     <div className="space-y-4">
-      <h3 className="text-xl font-display text-[#FFBF00]">
+      <h3 className="text-xl font-display text-retro-accent">
         {question.text}
         <span className="text-red-500 ml-1">*</span>
       </h3>
@@ -594,7 +578,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
           value={value as string || ''}
           onChange={(e) => onChange(e.target.value)}
           onBlur={onBlur}
-          className="w-full bg-black p-3 text-[#FFBF00] focus:outline-none focus:ring-2 focus:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30"
+          className="w-full bg-black p-3 text-retro-accent focus:outline-none focus:ring-2 focus:ring-retro-accent placeholder-retro-accent/30 border-4 border-retro-accent/30"
           style={{
             clipPath: `polygon(
               0 4px, 4px 4px, 4px 0,

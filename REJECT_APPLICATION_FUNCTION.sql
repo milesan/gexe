@@ -8,4 +8,4 @@ BEGIN
   -- Test: Can we log anything at all?
   RAISE NOTICE 'reject_application: TEST LOGGING FOR application ID %', p_application_id;
 END;
-$function$ 
+$function$

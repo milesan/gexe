@@ -63,6 +63,7 @@
   --color-emerald-800: #065f46; /* Added for button hover (original) */
   --color-emerald-900: #065f46;
   --color-bg-overlay: rgba(0, 0, 0, 0.80); /* Reduced opacity from 0.95 */
+  --color-retro-accent: 236 207 255; /* Dedicated accent color for retro components - same in both themes */
 
   /* Tooltip Specific Variables */
   --color-tooltip-bg: color-mix(in srgb, var(--color-bg-surface) 90%, black 10%); /* Slightly darker surface */
@@ -98,6 +99,7 @@
   --color-shadow: #000000; /* Standard shadow */
   --color-button-secondary-bg: var(--color-stone-100);
   --color-button-secondary-bg-hover: var(--color-stone-200);
+  --color-retro-accent: 236 207 255; /* Dedicated accent color for retro components - same in both themes */
 
   /* Also add original light theme colors needed for overrides */
   --color-stone-600: #57534e;

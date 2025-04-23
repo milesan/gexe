@@ -164,8 +164,8 @@ export function Retro2Form({ questions, onSubmit }: Props) {
   }, [currentSection]);
 
   return (
-    <div className="min-h-screen bg-black text-[#FFBF00] font-mono">
-      <div className="fixed top-0 left-0 right-0 z-50 bg-black border-b border-[#FFBF00]/20">
+    <div className="min-h-screen bg-black text-retro-accent font-mono">
+      <div className="fixed top-0 left-0 right-0 z-50 bg-black border-b border-retro-accent/20">
         <div className="max-w-2xl mx-auto px-4">
           <div className="flex items-center justify-between py-4">
             <div className="flex items-center gap-3">
@@ -173,7 +173,7 @@ export function Retro2Form({ questions, onSubmit }: Props) {
             </div>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2 text-sm bg-[#FFBF00]/10 hover:bg-[#FFBF00]/20 transition-colors rounded"
+              className="flex items-center gap-2 px-4 py-2 text-sm bg-retro-accent/10 hover:bg-retro-accent/20 transition-colors rounded"
             >
               <LogOut className="w-4 h-4" />
               <span>Sign Out</span>
@@ -188,10 +188,10 @@ export function Retro2Form({ questions, onSubmit }: Props) {
                 onClick={() => index <= currentSection && setCurrentSection(index)}
                 className={`whitespace-nowrap transition-all ${
                   index === currentSection
-                    ? `text-[#FFBF00]`
+                    ? `text-retro-accent`
                     : index < currentSection
-                    ? `text-[#FFBF00]/60 hover:text-[#FFBF00]/80`
-                    : `text-[#FFBF00]/30`
+                    ? `text-retro-accent/60 hover:text-retro-accent/80`
+                    : `text-retro-accent/30`
                 }`}
               >
                 {name}
@@ -199,9 +199,9 @@ export function Retro2Form({ questions, onSubmit }: Props) {
             ))}
           </div>
 
-          <div className="h-0.5 bg-[#FFBF00]/10">
+          <div className="h-0.5 bg-retro-accent/10">
             <motion.div
-              className="h-full bg-[#FFBF00]"
+              className="h-full bg-retro-accent"
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
               transition={{ duration: 0.3 }}
@@ -261,7 +261,7 @@ export function Retro2Form({ questions, onSubmit }: Props) {
                 <button
                   type="button"
                   onClick={() => setCurrentSection(prev => Math.max(0, prev - 1))}
-                  className="group flex items-center gap-2 px-4 py-2 transition-all bg-[#FFBF00] text-black disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="group flex items-center gap-2 px-4 py-2 transition-all bg-retro-accent text-black disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{
                     clipPath: `polygon(
                       0 4px, 4px 4px, 4px 0,
@@ -288,8 +288,8 @@ export function Retro2Form({ questions, onSubmit }: Props) {
                   onClick={handleSubmit}
                   className={`group flex items-center justify-center gap-2 px-4 py-2 transition-colors min-w-44 ${
                     isSubmitting || !isCurrentSectionComplete() 
-                      ? 'bg-[#FFBF00]/10 text-[#FFBF00]'
-                      : 'bg-[#FFBF00] text-black'
+                      ? 'bg-retro-accent/10 text-retro-accent'
+                      : 'bg-retro-accent text-black'
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                   style={{
                     clipPath: `polygon(
@@ -320,8 +320,8 @@ export function Retro2Form({ questions, onSubmit }: Props) {
                     disabled={!isCurrentSectionComplete()}
                     className={`group flex items-center gap-2 px-4 py-2 transition-all  ${
                       isCurrentSectionComplete() 
-                        ? 'bg-[#FFBF00] text-black' 
-                        : 'bg-[#FFBF00]/10 text-[#FFBF00]'
+                        ? 'bg-retro-accent text-black' 
+                        : 'bg-retro-accent/10 text-retro-accent'
                     } disabled:opacity-50 disabled:cursor-not-allowed`}
                     style={{
                       clipPath: `polygon(

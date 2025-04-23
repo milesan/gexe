@@ -19,6 +19,7 @@ export default {
         'white': 'var(--color-white)',
         'black': 'var(--color-black)',
         'bg-overlay': 'var(--color-bg-overlay)',
+        'retro-accent': 'rgb(var(--color-retro-accent) / <alpha-value>)',
 
         // Custom garden colors using CSS variables
         garden: {
