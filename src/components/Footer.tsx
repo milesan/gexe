@@ -12,7 +12,7 @@ export const Footer: React.FC<FooterProps> = ({ wrapperClassName }) => {
     <footer className={finalClasses}>
       <div className="container mx-auto px-4 text-center text-secondary text-sm font-mono">
         <p>
-          Questions or concerns? Email us at{' '}
+          Questions? Email {' '}
           <a
             href="mailto:living@thegarden.pt"
             className="text-accent-primary hover:text-accent-hover underline"

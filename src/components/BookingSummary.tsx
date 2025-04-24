@@ -1034,7 +1034,7 @@ export function BookingSummary({
                     <div className="relative z-10">
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="text-lg sm:text-xl text-primary flex items-center font-mono">
-                          Thy Kingdom
+                          Thy Quarters:
                         </h3>
                       </div>
                       
@@ -1135,7 +1135,7 @@ export function BookingSummary({
                     {foodContribution !== null && selectedWeeks.length > 0 && (
                       <div className="pt-4">
                         <div className="flex justify-between items-center mb-2">
-                           <label htmlFor="food-contribution" className="text-secondary font-mono text-sm">Contribution</label>
+                           <label htmlFor="food-contribution" className="text-secondary font-mono text-sm">Sliding Scale Contribution</label>
                             <Tooltip.Provider delayDuration={50} skipDelayDuration={0} disableHoverableContent={true}>
                                 <Tooltip.Root>
                                     <Tooltip.Trigger asChild>

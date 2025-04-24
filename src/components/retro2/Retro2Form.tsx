@@ -169,7 +169,7 @@ export function Retro2Form({ questions, onSubmit }: Props) {
         <div className="max-w-2xl mx-auto px-4">
           <div className="flex items-center justify-between py-4">
             <div className="flex items-center gap-3">
-              <h1 className="text-xl sm:text-2xl font-lettra-bold">THE GARDEN</h1>
+              <h1 className="text-xl sm:text-2xl font-lettra-bold">The Garden</h1>
             </div>
             <button
               onClick={handleLogout}

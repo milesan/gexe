@@ -62,10 +62,11 @@ export function generateBookingConfirmationEmail({
       <div style="${styles.infoCard}">
         <h3 style="${styles.heading}" style="margin-top: 0;">Important Information</h3>
         <ul style="color: #115e59; padding-left: 20px; margin: 15px 0;">
-          <li style="margin-bottom: 8px;">This is a co-created experience.</li>
+          <li style="margin-bottom: 8px;">This is a co-created experience</li>
           <li style="margin-bottom: 8px;">The Garden is a strictly smoke & alcohol-free space</li>
-          <li style="margin-bottom: 8px;">Lunch & dinner included Monday-Friday</li>
-          <li style="margin-bottom: 8px;">To ensure a smooth arrival, please respect the check-in window (3-8 PM)</li>
+          <li style="margin-bottom: 8px;">Breakfast, lunch & dinner included Monday-Friday</li>
+          <li style="margin-bottom: 8px;">To ensure a smooth arrival, please respect the check-in window (2-5 PM)</li>
+          <li style="margin-bottom: 8px;">Review our <a href="https://gardening.notion.site/welcome-to-the-garden" target="_blank" style="color: #047857; text-decoration: underline;">Welcome Guide</a> for more details.</li>
         </ul>
       </div>
       

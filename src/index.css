@@ -30,7 +30,7 @@
   /* Dark mitsode defaults */
   --color-bg-main: #1e2734;
   --color-bg-surface: #2c3444;
-  --color-bg-surface-transparent: rgba(44, 52, 68, 0.8);
+  --color-bg-surface-transparent: rgba(0, 0, 0, 0.2);
   --color-text-primary: #f1f5f9;
   --color-text-secondary: #94a3b8;
   --color-border: #475569;
