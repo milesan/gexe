@@ -51,7 +51,7 @@ export function ConfirmationPage() {
             Booking Confirmed
           </h1>
           <p className="text-text-secondary font-mono">
-            Your journey at The Garden awaits
+            The Existential Residencies await
           </p>
           <p className="text-text-secondary/80 font-mono text-sm mt-2">
             A confirmation email has been sent to your registered email address
@@ -115,7 +115,7 @@ export function ConfirmationPage() {
 
           <div className="border-t border-border pt-6">
             <div className="flex justify-between items-center text-lg font-mono text-text-primary">
-              <span>Total Amount Paid</span>
+              <span>Total Amount Donated</span>
               <span>€{booking.totalPrice}</span>
             </div>
           </div>

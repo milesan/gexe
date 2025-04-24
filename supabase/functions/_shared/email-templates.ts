@@ -28,7 +28,7 @@ export function generateBookingConfirmationEmail({
 }: BookingEmailData): string {
   return `
     <div style="${styles.container}">
-      <h1 style="${styles.heading}">Booking Confirmed!</h1>
+      <h1 style="${styles.heading}">Residency Confirmed!</h1>
       
       <div style="${styles.card}">
         <h2 style="${styles.heading}">Your Journey Details</h2>
@@ -54,13 +54,13 @@ export function generateBookingConfirmationEmail({
         </table>
         
         <div style="margin: 20px 0 0 0; border-top: 1px solid #e2e8f0; padding-top: 20px;">
-          <strong style="${styles.label}">Total Amount</strong>
+          <strong style="${styles.label}">Total Donated Amount</strong>
           <div style="font-size: 18px; color: #064e3b; font-weight: 600;">€${totalPrice}</div>
         </div>
       </div>
       
       <div style="${styles.infoCard}">
-        <h3 style="${styles.heading}" style="margin-top: 0;">Important Information</h3>
+        <h3 style="${styles.heading}" style="margin-top: 0;">Existential Info</h3>
         <ul style="color: #115e59; padding-left: 20px; margin: 15px 0;">
           <li style="margin-bottom: 8px;">This is a co-created experience</li>
           <li style="margin-bottom: 8px;">The Garden is a strictly smoke & alcohol-free space</li>
@@ -70,6 +70,10 @@ export function generateBookingConfirmationEmail({
         </ul>
       </div>
       
+      <p style="margin-top: 20px; text-align: center; color: #334155;">
+        For any questions related to your booking, send a pigeon to living@thegarden.pt
+      </p>
+
       <div style="text-align: center; margin: 30px 0;">
         <a href="${bookingDetailsUrl}" style="${styles.button}">
           View Booking Details

@@ -99,7 +99,7 @@ serve(async (req) => {
     // Send email using Resend
     console.log('Attempting to send whitelist email via Resend...')
     const { error: emailError } = await resendClient.emails.send({
-      from: 'Garden Team <echo@echo.thegarden.pt>',
+      from: 'The Garden <echo@echo.thegarden.pt>',
       to: email,
       subject: 'Welcome to The Garden',
       html: `
