@@ -8,7 +8,7 @@ import { WhyPage } from '../pages/WhyPage';
 import { useSession } from '../hooks/useSession';
 import { supabase } from '../lib/supabase';
 import { Routes, Route, useNavigate, Navigate, Link, useLocation } from 'react-router-dom';
-import { PaymentPage } from '../pages/PaymentPage';
+//import { PaymentPage } from '../pages/PaymentPage';
 import { useAccommodations } from '../hooks/useAccommodations';
 import { WhitelistWelcomeModal } from './WhitelistWelcomeModal';
 import { Menu, X, Sun, Moon } from 'lucide-react';
@@ -346,7 +346,7 @@ export function AuthenticatedApp() {
           <Route path="/my-bookings" element={<MyBookings />} />
           <Route path="/admin" element={isAdmin ? <AdminPage /> : <Navigate to="/" />} />
           <Route path="/confirmation" element={<ConfirmationPage />} />
-          <Route path="/payment" element={<PaymentPage />} />
+          {/*<Route path="/payment" element={<PaymentPage />} />*/}
           <Route path="/why" element={<WhyPage />} />
         </Routes>
       </main>
