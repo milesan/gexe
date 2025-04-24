@@ -800,7 +800,7 @@ export function Book2Page() {
                   <div className="flex flex-col gap-2 xs:gap-3 text-secondary">
                     <p className="flex items-start gap-2 xs:gap-2.5 text-sm font-mono">
                       <span className="text-accent-primary mt-0.5">•</span>
-                      The longer you stay, the less € you contribute on both lodging & base-rate
+                      The longer you stay, the less € you contribute on both lodging & base-rate per week
                     </p>
                     <p className="flex items-start gap-2 xs:gap-2.5 text-sm font-mono">
                       <span className="text-accent-primary mt-0.5">•</span>
