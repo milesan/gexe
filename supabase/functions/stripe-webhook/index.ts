@@ -63,8 +63,8 @@ serve(async (req) => {
     const body = await req.json();
     log(`Request ${requestId} body parsed`, body);
     
-    // Extract environment from request body
-    const { total, description, environment } = body;
+    // Extract environment and email from request body
+    const { total, description, environment, email } = body;
     
     // Get the appropriate Stripe key based on environment
     const stripeKey = getStripeKey(environment);
@@ -83,6 +83,11 @@ serve(async (req) => {
       });
     }
 
+    // Log if email is missing
+    if (!email) {
+      log(`WARNING: Request ${requestId} missing 'email' parameter`, body);
+    }
+
     if (!description) {
       log(`WARNING: Request ${requestId} missing 'description' parameter`, body);
     }
@@ -91,9 +96,13 @@ serve(async (req) => {
       environment,
       total,
       description,
+      email,
       amountInCents: total * 100
     });
 
+    const productName = description ? "Donation to the Garden Associação, " + description : "Donation to the Garden Associação";
+    const intentDescription = email ? email + ", " + description : description;
+    
     const session = await stripe.checkout.sessions.create({
       ui_mode: 'embedded',
       line_items: [{
@@ -101,18 +110,22 @@ serve(async (req) => {
           currency: "eur",
           tax_behavior: "inclusive",
           unit_amount: Math.round(total * 100),
-          product_data: { name: "Donation to the Garden Associação, " + description },
+          product_data: { name: productName },
         },
         quantity: 1,
       }],
       mode: 'payment',
       automatic_tax: { enabled: true },
       redirect_on_completion: 'never', // Keep embedded flow
+      payment_intent_data: {
+        description: intentDescription
+      }
     });
 
     log(`Successfully created Stripe session for request ${requestId}`, {
       sessionId: session.id,
-      hasClientSecret: !!session.client_secret
+      hasClientSecret: !!session.client_secret,
+      customerEmailPassed: email || 'Not Provided'
     });
 
     return new Response(JSON.stringify({ clientSecret: session.client_secret }), {

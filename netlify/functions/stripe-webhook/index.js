@@ -42,6 +42,8 @@ exports.handler = async (event) => {
       };
     }
 
+    const transactionDescription = "Donation to the Garden Associação, " + description;
+
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
       ui_mode: 'embedded',
@@ -51,14 +53,15 @@ exports.handler = async (event) => {
           tax_behavior: "inclusive",
           unit_amount: total * 100,
           product_data: {
-            name: "Donation to the Garden Associação, " + description,
+            name: transactionDescription,
           },
         },
         quantity: 1,
       }],
       mode: 'payment',
       automatic_tax: {enabled: true},
-      redirect_on_completion: 'never'
+      redirect_on_completion: 'never',
+      description: transactionDescription
     });
 
     return {

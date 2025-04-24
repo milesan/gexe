@@ -13,10 +13,11 @@ interface Props {
   description: string;
   total: number;
   authToken: string;
+  userEmail: string;
   onSuccess: () => Promise<void>;
 }
 
-export function StripeCheckoutForm({ total, authToken, description, onSuccess }: Props) {
+export function StripeCheckoutForm({ total, authToken, description, userEmail, onSuccess }: Props) {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
 
   // When component mounts, add a class to body to prevent scrolling and hide the header
@@ -48,7 +49,7 @@ export function StripeCheckoutForm({ total, authToken, description, onSuccess }:
     const fetchSecret = async () => {
       // Pass the current environment to the edge function
       const environment = import.meta.env.MODE;
-      console.log('[StripeCheckout] Sending request with environment:', environment);
+      console.log('[StripeCheckout] Sending request with environment and email:', environment, userEmail);
       
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-webhook`, {
         method: "POST",
@@ -60,14 +61,15 @@ export function StripeCheckoutForm({ total, authToken, description, onSuccess }:
         body: JSON.stringify({ 
           total, 
           description,
-          environment // Pass the environment to the edge function
+          environment,
+          email: userEmail
         }),
       });
       const data = await response.json();
       setClientSecret(data.clientSecret);
     };
     fetchSecret();
-  }, [authToken, total, description]);
+  }, [authToken, total, description, userEmail]);
 
   const handleCheckoutComplete = useCallback(async () => {
     console.log('[StripeCheckout] Payment completed, checking status...');

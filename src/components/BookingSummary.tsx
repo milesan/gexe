@@ -239,6 +239,7 @@ export function BookingSummary({
     session?.user?.email === 'simone@thegarden.pt' ||
     session?.user?.email === 'samjlloa@gmail.com' ||
     session?.user?.email === 'redis213+testadmin@gmail.com';
+  const userEmail = session?.user?.email; // Get user email
 
   // Get flexible dates from the first week if available
   const flexibleDates = selectedWeeks[0]?.flexibleDates;
@@ -895,8 +896,11 @@ export function BookingSummary({
                 </button>
               </div>
 
+              {/* --- ADD LOGGING FOR EMAIL BEFORE PASSING --- */}
+              {console.log("[BookingSummary] Rendering StripeCheckoutForm, userEmail:", userEmail)}
               <StripeCheckoutForm
                 authToken={authToken}
+                userEmail={userEmail || ''} // Pass email as prop, default to empty string if undefined
                 // --- TEST ACCOMMODATION OVERRIDE FOR PAYMENT --- 
                 total={
                   selectedAccommodation?.type === 'test' 
@@ -905,7 +909,7 @@ export function BookingSummary({
                     ? testPaymentAmount // Otherwise use admin test amount if set
                     : pricing.totalAmount // Otherwise use the calculated total
                 }
-                description={`${selectedAccommodation?.title || 'Accommodation'} for ${pricing.totalNights} nights${testPaymentAmount !== null && isAdmin ? ' (TEST PAYMENT)' : (selectedAccommodation?.type === 'test' ? ' (TEST ACCOMMODATION - 0.50 EUR)' : '')}`}
+                description={`${selectedAccommodation?.title || 'Accommodation'} for ${pricing.totalNights} nights`}
                 onSuccess={handleBookingSuccess}
               />
             </motion.div>
