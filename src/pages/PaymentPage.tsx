@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+/*import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle, Calendar, MapPin, Users, ArrowLeft, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
@@ -160,4 +160,4 @@ export function PaymentPage() {
       </motion.div>
     </div>
   );
-}
+}*/
