@@ -524,9 +524,6 @@ export function isWeekSelectable(week: Week, isAdmin: boolean = false, selectedW
   // If no weeks are selected yet, this will be an arrival week
   // Only allow arrivals on even-numbered weeks (0-based)
   if (selectedWeeks.length === 0) {
-    // Get the week number since the epoch
-    const weeksSinceEpoch = Math.floor(weekStartDate.getTime() / (7 * 24 * 60 * 60 * 1000));
-    
     // For arrival weeks, we need to enforce the visibility check
     if (week.status !== 'visible' && week.status !== 'default') {
       return false;
@@ -538,9 +535,6 @@ export function isWeekSelectable(week: Week, isAdmin: boolean = false, selectedW
       // Allow ALL weeks in May and June
       return true;
     }
-    
-    // For other months, keep the even-week restriction
-    return weeksSinceEpoch % 2 === 0; // Only allow even-numbered weeks for arrivals
   }
 
   // If we already have selected weeks, this could be a departure week
