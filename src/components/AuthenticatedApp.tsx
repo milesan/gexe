@@ -218,7 +218,7 @@ export function AuthenticatedApp() {
               className="text-primary flex items-center gap-3 hover:opacity-80 transition-opacity"
             >
               <div>
-                <h1 className="text-xl sm:text-2xl font-lettra-bold text-primary">THE GARDEN</h1>
+                <h1 className="text-xl sm:text-2xl font-lettra-bold text-primary">The Garden</h1>
               </div>
             </button>
 

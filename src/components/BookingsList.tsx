@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { format } from 'date-fns-tz';
 import { supabase } from '../lib/supabase';
 import { parseISO } from 'date-fns';
+import { Edit, Trash2 } from 'lucide-react';
+import { EditBookingModal } from './EditBookingModal';
 
 interface Booking {
   id: string;
@@ -14,12 +16,14 @@ interface Booking {
   created_at: string;
   accommodation_title: string;
   user_email: string;
+  accommodations?: { title: string } | null;
 }
 
 export function BookingsList() {
   const [bookings, setBookings] = React.useState<Booking[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
 
   React.useEffect(() => {
     loadBookings();
@@ -38,67 +42,39 @@ export function BookingsList() {
   }, []);
 
   async function loadBookings() {
+    setLoading(true);
+    setError(null);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
       console.log('Current user:', user.id);
-      console.log('User metadata:', user.user_metadata);
-      // First get the bookings
-      console.log('Fetching all bookings...');
-      
-      // Try a direct query first
-      const { data: directBookings, error: directError } = await supabase
-        .from('bookings_with_emails')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      console.log('Direct query results:', directBookings?.length || 0, 'bookings');
-      
-      // Then try with count
+
+      console.log('Fetching bookings with accommodation titles...');
       const { data: bookingsData, error: bookingsError, count } = await supabase
         .from('bookings_with_emails')
-        .select('*', { count: 'exact' })
+        .select(`
+          *, 
+          accommodations ( title ) 
+        `, { count: 'exact' })
+        .neq('status', 'cancelled')
         .order('created_at', { ascending: false });
 
       if (bookingsError) {
-        console.error('Error fetching bookings:', bookingsError);
+        console.error('Error fetching bookings with details:', bookingsError);
         throw bookingsError;
       }
       
-      console.log(`Retrieved ${bookingsData?.length || 0} bookings out of ${count || 0} total`);
-      console.log('Booking IDs:', bookingsData?.map(b => b.id));
+      console.log(`Retrieved ${bookingsData?.length || 0} active bookings out of ${count || 0} total (excluding cancelled)`);
       
-      // Then fetch the related data
-      console.log('Enriching bookings with accommodation details...');
-      const enrichedBookings = await Promise.all((bookingsData || []).map(async (booking) => {
-        try {
-          // Get accommodation details
-          const { data: accomData, error: accomError } = await supabase
-            .from('accommodations')
-            .select('title')
-            .eq('id', booking.accommodation_id)
-            .single();
-            
-          if (accomError) {
-            console.error(`Error fetching accommodation ${booking.accommodation_id}:`, accomError);
-          }
+      const processedBookings = (bookingsData || []).map(booking => {
+        return {
+          ...booking,
+          accommodation_title: booking.accommodations?.title || 'N/A',
+        };
+      });
 
-          return {
-            ...booking,
-            accommodation_title: accomData?.title || 'N/A'
-          };
-        } catch (enrichError) {
-          console.error(`Error enriching booking ${booking.id}:`, enrichError);
-          // Return the booking with placeholder data rather than failing the whole process
-          return {
-            ...booking,
-            accommodation_title: 'Error loading'
-          };
-        }
-      }));
-
-      console.log('Setting bookings state with enriched data:', enrichedBookings);
-      setBookings(enrichedBookings);
+      console.log('Setting bookings state with processed data:', processedBookings.length, 'bookings');
+      setBookings(processedBookings);
     } catch (err) {
       console.error('Error loading bookings:', err);
       setError(err instanceof Error ? err.message : 'Failed to load bookings');
@@ -106,6 +82,54 @@ export function BookingsList() {
       setLoading(false);
     }
   }
+
+  const handleEditClick = (booking: Booking) => {
+    console.log('Editing booking:', booking);
+    setEditingBooking(booking);
+  };
+
+  const handleDeleteClick = async (bookingId: string) => {
+    if (!window.confirm('Are you sure you want to cancel this booking? This cannot be undone.')) {
+      return;
+    }
+
+    console.log('Attempting to cancel booking:', bookingId);
+    setLoading(true);
+
+    try {
+      const { error: deleteError } = await supabase
+        .from('bookings')
+        .update({ status: 'cancelled' })
+        .eq('id', bookingId);
+
+      if (deleteError) {
+        console.error('Error cancelling booking:', deleteError);
+        throw deleteError;
+      }
+
+      console.log('Booking cancelled successfully:', bookingId);
+      await loadBookings();
+      setError(null);
+
+    } catch (err) {
+      console.error('Failed to cancel booking:', err);
+      setError(err instanceof Error ? `Failed to cancel booking: ${err.message}` : 'An unknown error occurred during cancellation.');
+      setLoading(false);
+    }
+  };
+
+  // Handler to close the modal
+  const handleCloseModal = () => {
+    setEditingBooking(null);
+  };
+
+  // Handler potentially needed if subscription doesn't auto-refresh reliably
+  const handleSaveChanges = async () => {
+    console.log('Edit modal saved, reloading bookings list...');
+    // We might not need this explicit reload if the subscription works well,
+    // but it doesn't hurt to ensure freshness after an edit.
+    await loadBookings(); 
+  };
 
   if (loading) {
     return (
@@ -147,6 +171,9 @@ export function BookingsList() {
             <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
               Created At
             </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
+              Actions
+            </th>
           </tr>
         </thead>
         <tbody className="bg-[var(--color-bg-surface)] divide-y divide-[var(--color-border)]">
@@ -185,10 +212,35 @@ export function BookingsList() {
               <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--color-text-secondary)]">
                 {format(new Date(booking.created_at), 'PPp', { timeZone: 'UTC' })}
               </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <button 
+                  onClick={() => handleEditClick(booking)} 
+                  className="text-indigo-600 hover:text-indigo-900 mr-3 transition-colors duration-150"
+                  aria-label={`Edit booking ${booking.id}`}
+                >
+                  <Edit className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={() => handleDeleteClick(booking.id)} 
+                  className="text-red-600 hover:text-red-900 transition-colors duration-150"
+                  aria-label={`Cancel booking ${booking.id}`}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
+      
+      {/* Render the modal conditionally */}
+      {editingBooking && (
+        <EditBookingModal 
+          booking={editingBooking} 
+          onClose={handleCloseModal} 
+          onSave={handleSaveChanges} // Pass the save handler
+        />
+      )}
     </div>
   );
 }

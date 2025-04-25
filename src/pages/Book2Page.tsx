@@ -791,7 +791,7 @@ export function Book2Page() {
             {/* == START: New wrapper div with horizontal padding == */}
             <div className="px-3 xs:px-4 sm:px-6">
               {/* Moved h1 inside wrapper - REMOVING px-* padding now */}
-              <h1 className="text-3xl sm:text-4xl font-display mb-3 xs:mb-4 text-primary">Calendar of Availabilities</h1>
+              <h1 className="text-3xl sm:text-4xl font-display mb-3 xs:mb-4 text-primary">Begin Your Existential Cycle</h1>
               
               {/* Outer Note box keeps py-* padding */}
               <div className="bg-surface/50 backdrop-blur-sm border border-border/50 rounded-lg py-3 xs:py-4 sm:py-6 mb-4 xs:mb-6 sm:mb-8 shadow-sm">
@@ -800,7 +800,7 @@ export function Book2Page() {
                   <div className="flex flex-col gap-2 xs:gap-3 text-secondary">
                     <p className="flex items-start gap-2 xs:gap-2.5 text-sm font-mono">
                       <span className="text-accent-primary mt-0.5">•</span>
-                      The longer you stay, the less € you contribute on both lodging & base-rate
+                      The longer you stay, the less € you contribute on both lodging & base-rate per week
                     </p>
                     <p className="flex items-start gap-2 xs:gap-2.5 text-sm font-mono">
                       <span className="text-accent-primary mt-0.5">•</span>
@@ -874,7 +874,7 @@ export function Book2Page() {
                     <h2 className="text-xl sm:text-2xl font-display font-light text-primary">
                       {selectedWeeks.length === 0 ? "When do you wish to arrive?" : 
                        selectedWeeks.length === 1 ? "One week selected! Any more?" : 
-                       "Ok! Time to scroll down"}
+                       "Set your timeline."}
                     </h2>
 
                     <div className="flex items-center gap-2 xxs:gap-3">
@@ -971,7 +971,7 @@ export function Book2Page() {
               {/* Outer Cabin Selector keeps py-* padding */}
               <div className="bg-surface rounded-xl shadow-sm py-3 xs:py-4 sm:py-6 mb-4 xs:mb-5 sm:mb-6 cabin-selector">
                 {/* REMOVING px-* padding from this h2 */}
-                <h2 className="text-xl sm:text-2xl font-display font-light text-primary mb-3 xs:mb-4">Time to choose a cozy bed..</h2>
+                <h2 className="text-xl sm:text-2xl font-display font-light text-primary mb-3 xs:mb-4">Pick your nest.</h2>
                 <CabinSelector 
                   accommodations={accommodations || []}
                   selectedAccommodationId={selectedAccommodation}

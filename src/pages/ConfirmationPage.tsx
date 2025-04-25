@@ -51,7 +51,7 @@ export function ConfirmationPage() {
             Booking Confirmed
           </h1>
           <p className="text-text-secondary font-mono">
-            Your journey at The Garden awaits
+            The Existential Residencies await
           </p>
           <p className="text-text-secondary/80 font-mono text-sm mt-2">
             A confirmation email has been sent to your registered email address
@@ -69,7 +69,7 @@ export function ConfirmationPage() {
                 {formatInTimeZone(new Date(booking.checkIn), 'UTC', 'EEEE, MMMM d')}
               </p>
               <p className="text-sm font-mono text-emerald-600 dark:text-emerald-400">
-                Available from 2-6PM
+                Available from 2-5PM
               </p>
             </div>
 
@@ -109,13 +109,13 @@ export function ConfirmationPage() {
 
           <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg border border-amber-100 dark:border-amber-900/30 my-6">
             <p className="text-amber-800 dark:text-amber-300 text-center flex items-center justify-center font-mono text-sm">
-              To ensure a smooth arrival, please respect the check-in window (2PM-6PM) and check-out time (11PM)
+              To ensure a smooth arrival, please respect the check-in window (2PM-5PM) and check-out time (11AM)
             </p>
           </div>
 
           <div className="border-t border-border pt-6">
             <div className="flex justify-between items-center text-lg font-mono text-text-primary">
-              <span>Total Amount Paid</span>
+              <span>Total Amount Donated</span>
               <span>€{booking.totalPrice}</span>
             </div>
           </div>
@@ -135,7 +135,7 @@ export function ConfirmationPage() {
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-emerald-700 dark:text-emerald-400 mt-1">❧</span>
-                <span>Lunch & dinner included Monday-Friday</span>
+                <span>Breakfast, lunch & dinner included Monday-Friday</span>
               </li>
             </ul>
           </div>

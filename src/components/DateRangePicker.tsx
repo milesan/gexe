@@ -311,7 +311,7 @@ export function DateRangePicker({ selected, onSelect, isExtension = false }: Dat
               </p>
               {selected.to && (
                 <p>
-                  You may depart {formatDate(selected.to)} by 12PM Noon
+                  You may depart {formatDate(selected.to)} by 11AM
                 </p>
               )}
               {selected.to && (

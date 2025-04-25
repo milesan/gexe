@@ -86,7 +86,7 @@ serve(async (req) => {
         ${firstName ? `<p>Dear ${firstName},</p>` : '<p>Greetings,</p>'}
         <p>The Committee on Admissions has completed its Regular Decision meetings, and I am very sorry to inform you that we cannot offer you admission to <s>Harvard Class</s> Garden Residencies of ${currentYear}.</p>
         <p>I wish that a different decision had been possible, but I hope that receiving our final decision now will be helpful to you as you make your <s>college plans</s> life plans.</p>
-        <p>Best regards,<br>The Garden Team</p>
+        <p>Best regards,<br>The Garden</p>
       `
     })
 

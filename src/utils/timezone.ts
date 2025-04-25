@@ -59,5 +59,5 @@ export function getUTC1Date(date: Date): Date {
 }
 
 // Common check-in/check-out hours
-export const CHECK_IN_HOUR = 15; // 3 PM
-export const CHECK_OUT_HOUR = 12; // 12 PM
+export const CHECK_IN_HOUR = 14; // 3 PM
+export const CHECK_OUT_HOUR = 11; // 11 AM

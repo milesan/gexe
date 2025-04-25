@@ -77,7 +77,7 @@ export function RetroApplicationForm({ questions, onSubmit }: Props) {
               />
             </div>
             <div>
-              <h1 className="text-xl md:text-5xl font-display mb-2">THE GARDEN</h1>
+              <h1 className="text-xl md:text-5xl font-display mb-2">The Garden</h1>
               <div className="relative">
                 <div className={`w-full bg-garden-${theme}/20 h-1`}>
                   <motion.div 

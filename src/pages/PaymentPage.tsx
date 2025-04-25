@@ -100,7 +100,7 @@ export function PaymentPage() {
                 {checkInDateString}
               </p>
               <p className="text-sm text-emerald-600">
-                Available from 3-8PM
+                Available from 2-5PM
               </p>
             </div>
 
@@ -113,7 +113,7 @@ export function PaymentPage() {
               {checkOutDateString}
               </p>
               <p className="text-sm text-emerald-600">
-                By 12PM Noon
+                By 11PM Noon
               </p>
             </div>
 
