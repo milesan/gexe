@@ -16,6 +16,7 @@ import type { DayPickerSingleProps } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import { formatDateForDisplay } from '../utils/dates';
 import * as Tooltip from '@radix-ui/react-tooltip';
+import * as Popover from '@radix-ui/react-popover'; // Import Popover
 import { calculateTotalNights, calculateDurationDiscountWeeks, calculateTotalDays, calculateTotalWeeksDecimal } from '../utils/dates';
 import { DiscountModal } from './DiscountModal';
 import { formatInTimeZone } from 'date-fns-tz';
@@ -1063,33 +1064,32 @@ export function BookingSummary({
                 <div className="border-t border-border pt-3 sm:pt-4"> 
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="font-medium text-primary font-mono text-lg sm:text-xl">Price Breakdown</h3>
-                    <Tooltip.Provider delayDuration={50} skipDelayDuration={0} disableHoverableContent={true}>
-                      <Tooltip.Root>
-                        <Tooltip.Trigger asChild>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation(); // Prevent event bubbling
-                              setShowDiscountModal(true);
-                            }}
-                            className="p-1.5 text-secondary hover:text-[var(--color-accent-primary)] hover:bg-accent-muted rounded-md transition-colors"
-                          >
-                            <Info className="w-4 h-4" />
-                            <span className="sr-only">View Discount Details</span>
-                          </button>
-                        </Tooltip.Trigger>
-                        <Tooltip.Portal>
-                          <Tooltip.Content
-                            className="tooltip-content !font-mono"
-                            sideOffset={5}
-                            side="top"
-                            align="end"
-                          >
-                            <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
-                            <span className="text-white text-sm">See discounts applied</span>
-                          </Tooltip.Content>
-                        </Tooltip.Portal>
-                      </Tooltip.Root>
-                    </Tooltip.Provider>
+                    <Popover.Root>
+                      <Popover.Trigger asChild>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent event bubbling
+                            setShowDiscountModal(true);
+                          }}
+                          className="p-1.5 text-secondary hover:text-[var(--color-accent-primary)] hover:bg-accent-muted rounded-md transition-colors"
+                        >
+                          <Info className="w-4 h-4" />
+                          <span className="sr-only">View Discount Details</span>
+                        </button>
+                      </Popover.Trigger>
+                      <Popover.Portal>
+                        <Popover.Content
+                          className="tooltip-content !font-mono"
+                          sideOffset={5}
+                          side="top"
+                          align="end"
+                          onOpenAutoFocus={(e: Event) => e.preventDefault()}
+                        >
+                          <Popover.Arrow className="tooltip-arrow" width={11} height={5} />
+                          <span className="text-white text-sm">See discounts applied</span>
+                        </Popover.Content>
+                      </Popover.Portal>
+                    </Popover.Root>
                   </div>
                   
                   <div className="space-y-2">
@@ -1107,27 +1107,26 @@ export function BookingSummary({
                     )}
                     
                     <div className="flex justify-between gap-x-4 items-baseline">
-                      <Tooltip.Provider delayDuration={50} skipDelayDuration={0} disableHoverableContent={true}>
-                        <Tooltip.Root>
-                          <Tooltip.Trigger asChild>
-                            <span className="text-sm text-secondary flex items-center cursor-help font-mono" onClick={(e) => e.stopPropagation()}>
-                              Food & Facilities
-                              <Info className="w-3 h-3 ml-1 opacity-70" />
-                            </span>
-                          </Tooltip.Trigger>
-                          <Tooltip.Portal>
-                            <Tooltip.Content
-                              className="tooltip-content !font-mono text-sm"
-                              sideOffset={5}
-                              side="top"
-                              align="end"
-                            >
-                              <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
-                              <span className="text-white">Community meals & operations costs</span>
-                            </Tooltip.Content>
-                          </Tooltip.Portal>
-                        </Tooltip.Root>
-                      </Tooltip.Provider>
+                      <Popover.Root>
+                        <Popover.Trigger asChild>
+                          <span className="text-sm text-secondary flex items-center cursor-help font-mono">
+                            Food & Facilities
+                            <Info className="w-3 h-3 ml-1 opacity-70" />
+                          </span>
+                        </Popover.Trigger>
+                        <Popover.Portal>
+                          <Popover.Content
+                            className="tooltip-content !font-mono text-sm z-50" // Reused styles, added z-index
+                            sideOffset={5}
+                            side="top"
+                            align="end"
+                            onOpenAutoFocus={(e: Event) => e.preventDefault()} // Added typing
+                          >
+                            <Popover.Arrow className="tooltip-arrow" width={11} height={5} />
+                            <span className="text-white">Community meals & operations costs</span>
+                          </Popover.Content>
+                        </Popover.Portal>
+                      </Popover.Root>
                       <span className="text-primary font-mono text-sm">{formatPriceDisplay(pricing.totalFoodAndFacilitiesCost)}</span>
                     </div>
 
@@ -1136,29 +1135,27 @@ export function BookingSummary({
                       <div className="pt-4">
                         <div className="flex justify-between items-center mb-2">
                            <label htmlFor="food-contribution" className="text-secondary font-mono text-sm">Sliding Scale Contribution</label>
-                            <Tooltip.Provider delayDuration={50} skipDelayDuration={0} disableHoverableContent={true}>
-                                <Tooltip.Root>
-                                    <Tooltip.Trigger asChild>
-                                        <button 
-                                          className="text-secondary hover:text-secondary-hover"
-                                          onClick={(e) => e.stopPropagation()}
-                                        >
-                                            <Info className="w-4 h-4" />
-                                        </button>
-                                    </Tooltip.Trigger>
-                                    <Tooltip.Portal>
-                                        <Tooltip.Content
-                                            sideOffset={5}
-                                            className="tooltip-content !font-mono text-sm"
-                                            side="top"
-                                            align="end"
-                                        >
-                                            <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
-                                            Adjust your contribution based on your means. Minimum varies by stay length.
-                                        </Tooltip.Content>
-                                    </Tooltip.Portal>
-                                </Tooltip.Root>
-                            </Tooltip.Provider>
+                            <Popover.Root>
+                                <Popover.Trigger asChild>
+                                    <button 
+                                      className="text-secondary hover:text-secondary-hover"
+                                    >
+                                        <Info className="w-4 h-4" />
+                                    </button>
+                                </Popover.Trigger>
+                                <Popover.Portal>
+                                    <Popover.Content
+                                        sideOffset={5}
+                                        className="tooltip-content !font-mono text-sm z-50" // Reused styles, added z-index
+                                        side="top"
+                                        align="end"
+                                        onOpenAutoFocus={(e: Event) => e.preventDefault()} // Added typing
+                                    >
+                                        <Popover.Arrow className="tooltip-arrow" width={11} height={5} />
+                                        Adjust your contribution based on your means. Minimum varies by stay length.
+                                    </Popover.Content>
+                                </Popover.Portal>
+                            </Popover.Root>
                         </div>
                         <input
                           id="food-contribution"

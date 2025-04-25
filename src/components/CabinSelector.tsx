@@ -8,6 +8,7 @@ import { getSeasonalDiscount, getDurationDiscount, getSeasonBreakdown, calculate
 import { useWeeklyAccommodations } from '../hooks/useWeeklyAccommodations';
 import { addDays, isDate, isBefore } from 'date-fns';
 import * as Tooltip from '@radix-ui/react-tooltip';
+import * as Popover from '@radix-ui/react-popover';
 import { calculateTotalNights, calculateDurationDiscountWeeks, normalizeToUTCDate } from '../utils/dates';
 
 interface Props {
@@ -375,134 +376,114 @@ export function CabinSelector({
                       <h3 className="text-lg font-medium mb-1 text-primary font-mono">{acc.title}</h3>
                       <div className="flex items-center gap-3 text-secondary text-xs mb-2">
                         
-                        {/* Conditionally render the Electricity/No Electricity Tooltip - hide for Van Parking */}
+                        {/* Conditionally render the Electricity/No Electricity Popover - hide for Van Parking */}
                         {acc.title !== 'Van Parking' && (
-                          <Tooltip.Provider delayDuration={50} skipDelayDuration={0} disableHoverableContent={true}>
-                            <Tooltip.Root>
-                              <Tooltip.Trigger asChild>
-                                <button 
-                                  className="flex items-center gap-1 cursor-help bg-transparent border-none p-0.5" 
-                                  title={acc.has_electricity ? 'Has Electricity' : 'No Electricity'}
-                                  onClick={(e) => {
-                                    // Prevent event bubbling to parent elements
-                                    e.stopPropagation();
-                                  }}
-                                >
-                                  {acc.has_electricity ? <Zap size={12} /> : <ZapOff size={12} className="opacity-50"/>}
-                                </button>
-                              </Tooltip.Trigger>
-                              <Tooltip.Portal>
-                                <Tooltip.Content
-                                  sideOffset={5}
-                                  className="tooltip-content !font-mono"
-                                >
-                                  <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
-                                  <span className="text-white">{acc.has_electricity ? 'Has Electricity' : 'No Electricity'}</span>
-                                </Tooltip.Content>
-                              </Tooltip.Portal>
-                            </Tooltip.Root>
-                          </Tooltip.Provider>
-                        )}
-                        
-                        <Tooltip.Provider delayDuration={50} skipDelayDuration={0} disableHoverableContent={true}>
-                          <Tooltip.Root>
-                            <Tooltip.Trigger asChild>
+                          <Popover.Root>
+                            <Popover.Trigger asChild>
                               <button 
                                 className="flex items-center gap-1 cursor-help bg-transparent border-none p-0.5" 
-                                title={acc.has_wifi ? 'Has WiFi' : 'No WiFi'}
-                                onClick={(e) => {
-                                  // Prevent event bubbling to parent elements
-                                  e.stopPropagation();
-                                }}
+                                title={acc.has_electricity ? 'Has Electricity' : 'No Electricity'}
                               >
-                                {acc.has_wifi ? <Wifi size={12} /> : <WifiOff size={12} className="opacity-50"/>}
+                                {acc.has_electricity ? <Zap size={12} /> : <ZapOff size={12} className="opacity-50"/>}
                               </button>
-                            </Tooltip.Trigger>
-                            <Tooltip.Portal>
-                              <Tooltip.Content
+                            </Popover.Trigger>
+                            <Popover.Portal>
+                              <Popover.Content
                                 sideOffset={5}
-                                className="tooltip-content !font-mono"
+                                className="tooltip-content !font-mono z-50"
+                                onOpenAutoFocus={(e: Event) => e.preventDefault()}
                               >
-                                <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
-                                <span className="text-white">{acc.has_wifi ? 'Has WiFi' : 'No WiFi'}</span>
-                              </Tooltip.Content>
-                            </Tooltip.Portal>
-                          </Tooltip.Root>
-                        </Tooltip.Provider>
+                                <Popover.Arrow className="tooltip-arrow" width={11} height={5} />
+                                <span className="text-white">{acc.has_electricity ? 'Has Electricity' : 'No Electricity'}</span>
+                              </Popover.Content>
+                            </Popover.Portal>
+                          </Popover.Root>
+                        )}
                         
-                        {/* Bed Size Tooltip */}
-                        <Tooltip.Provider delayDuration={50} skipDelayDuration={0} disableHoverableContent={true}>
-                          <Tooltip.Root>
-                            <Tooltip.Trigger asChild>
-                              <button 
-                                className="flex items-center gap-1 cursor-help bg-transparent border-none p-0.5"
-                                onClick={(e) => {
-                                  // Prevent event bubbling to parent elements
-                                  e.stopPropagation();
-                                }}
-                              >
-                                <Bed size={12} />
-                              </button>
-                            </Tooltip.Trigger>
-                            <Tooltip.Portal>
-                              <Tooltip.Content
-                                sideOffset={5}
-                                className="tooltip-content !font-mono"
-                              >
-                                <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
-                                <h4 className="font-medium font-mono text-white mb-1">Bed Size</h4>
-                                <p className="text-sm text-gray-300 font-mono">
-                                  {acc.bed_size || 'N/A'}
-                                </p>
-                              </Tooltip.Content>
-                            </Tooltip.Portal>
-                          </Tooltip.Root>
-                        </Tooltip.Provider>
+                        {/* Wifi Popover */}
+                        <Popover.Root>
+                          <Popover.Trigger asChild>
+                            <button 
+                              className="flex items-center gap-1 cursor-help bg-transparent border-none p-0.5" 
+                              title={acc.has_wifi ? 'Has WiFi' : 'No WiFi'}
+                            >
+                              {acc.has_wifi ? <Wifi size={12} /> : <WifiOff size={12} className="opacity-50"/>}
+                            </button>
+                          </Popover.Trigger>
+                          <Popover.Portal>
+                            <Popover.Content
+                              sideOffset={5}
+                              className="tooltip-content !font-mono z-50"
+                              onOpenAutoFocus={(e: Event) => e.preventDefault()}
+                            >
+                              <Popover.Arrow className="tooltip-arrow" width={11} height={5} />
+                              <span className="text-white">{acc.has_wifi ? 'Has WiFi' : 'No WiFi'}</span>
+                            </Popover.Content>
+                          </Popover.Portal>
+                        </Popover.Root>
+                        
+                        {/* Bed Size Popover */}
+                        <Popover.Root>
+                          <Popover.Trigger asChild>
+                            <button 
+                              className="flex items-center gap-1 cursor-help bg-transparent border-none p-0.5"
+                            >
+                              <Bed size={12} />
+                            </button>
+                          </Popover.Trigger>
+                          <Popover.Portal>
+                            <Popover.Content
+                              sideOffset={5}
+                              className="tooltip-content !font-mono z-50"
+                              onOpenAutoFocus={(e: Event) => e.preventDefault()}
+                            >
+                              <Popover.Arrow className="tooltip-arrow" width={11} height={5} />
+                              <h4 className="font-medium font-mono text-white mb-1">Bed Size</h4>
+                              <p className="text-sm text-gray-300 font-mono">
+                                {acc.bed_size || 'N/A'}
+                              </p>
+                            </Popover.Content>
+                          </Popover.Portal>
+                        </Popover.Root>
 
-                        {/* NEW: Quiet Zone Tooltip for Microcabins */}
+                        {/* NEW: Quiet Zone Popover for Microcabins */}
                         {acc.title.includes('Microcabin') && (
-                          <Tooltip.Provider delayDuration={50} skipDelayDuration={0} disableHoverableContent={true}>
-                            <Tooltip.Root>
-                              <Tooltip.Trigger asChild>
-                                <button className="flex items-center gap-1 cursor-help text-secondary" onClick={(e) => {
-                                  // Prevent event bubbling to parent elements
-                                  e.stopPropagation();
-                                }}><Ear size={12} /></button>
-                              </Tooltip.Trigger>
-                              <Tooltip.Portal>
-                                <Tooltip.Content
-                                  sideOffset={5}
-                                  className="tooltip-content !font-mono"
-                                >
-                                  <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
-                                  <span className="text-white">We invite those who seek quiet to stay here.</span>
-                                </Tooltip.Content>
-                              </Tooltip.Portal>
-                            </Tooltip.Root>
-                          </Tooltip.Provider>
+                          <Popover.Root>
+                            <Popover.Trigger asChild>
+                              <button className="flex items-center gap-1 cursor-help text-secondary" 
+                              ><Ear size={12} /></button>
+                            </Popover.Trigger>
+                            <Popover.Portal>
+                              <Popover.Content
+                                sideOffset={5}
+                                className="tooltip-content !font-mono z-50"
+                                onOpenAutoFocus={(e: Event) => e.preventDefault()}
+                              >
+                                <Popover.Arrow className="tooltip-arrow" width={11} height={5} />
+                                <span className="text-white">We invite those who seek quiet to stay here.</span>
+                              </Popover.Content>
+                            </Popover.Portal>
+                          </Popover.Root>
                         )}
 
-                        {/* NEW: Power Hookup Tooltip for Van Parking */}
+                        {/* NEW: Power Hookup Popover for Van Parking */}
                         {acc.title === 'Van Parking' && (
-                          <Tooltip.Provider delayDuration={50} skipDelayDuration={0} disableHoverableContent={true}>
-                            <Tooltip.Root>
-                              <Tooltip.Trigger asChild>
-                                <button className="flex items-center gap-1 cursor-help text-secondary" onClick={(e) => {
-                                  // Prevent event bubbling to parent elements
-                                  e.stopPropagation();
-                                }}><Zap size={12} /></button>
-                              </Tooltip.Trigger>
-                              <Tooltip.Portal>
-                                <Tooltip.Content
-                                  sideOffset={5}
-                                  className="tooltip-content !font-mono"
-                                >
-                                  <Tooltip.Arrow className="tooltip-arrow" width={11} height={5} />
-                                  <span className="text-white">Power hook-ups available on request</span>
-                                </Tooltip.Content>
-                              </Tooltip.Portal>
-                            </Tooltip.Root>
-                          </Tooltip.Provider>
+                          <Popover.Root>
+                            <Popover.Trigger asChild>
+                              <button className="flex items-center gap-1 cursor-help text-secondary" 
+                              ><Zap size={12} /></button>
+                            </Popover.Trigger>
+                            <Popover.Portal>
+                              <Popover.Content
+                                sideOffset={5}
+                                className="tooltip-content !font-mono z-50"
+                                onOpenAutoFocus={(e: Event) => e.preventDefault()}
+                              >
+                                <Popover.Arrow className="tooltip-arrow" width={11} height={5} />
+                                <span className="text-white">Power hook-ups available on request</span>
+                              </Popover.Content>
+                            </Popover.Portal>
+                          </Popover.Root>
                         )}
                       </div>
                     </div>
@@ -523,65 +504,62 @@ export function CabinSelector({
                       
                       {/* Ensure weeklyPrice is not null for discount display, and check hasAnyDiscount flag */}
                       {weeklyPrice !== null && weeklyPrice > 0 && hasAnyDiscount && (
-                        <Tooltip.Provider delayDuration={50} skipDelayDuration={0} disableHoverableContent={true}>
-                          <Tooltip.Root>
-                            <Tooltip.Trigger asChild>
-                              <button className="text-accent-primary flex items-center gap-0.5 cursor-help" onClick={(e) => {
-                                // Prevent event bubbling to parent elements
-                                e.stopPropagation();
-                              }}>
-                                <Percent size={14} />
-                              </button>
-                            </Tooltip.Trigger>
-                            <Tooltip.Portal>
-                              <Tooltip.Content
-                                sideOffset={5}
-                                className="tooltip-content tooltip-content--accent !font-mono"
-                              >
-                                <Tooltip.Arrow className="tooltip-arrow tooltip-arrow--accent" width={11} height={5} />
-                                <h4 className="font-medium font-mono text-white mb-2">Weekly Rate Breakdown</h4>
-                                <div className="text-sm space-y-2">
-                                   {/* Base Price */}
-                                   <div className="flex justify-between items-center text-gray-300">
-                                      <span>Base Rate:</span>
-                                      <span>€{Math.round(acc.base_price)} / week</span>
-                                   </div>
-                                  
-                                  {/* Seasonal Discount - Use avgSeasonalDiscount from prop, ensure not null */}
-                                  {hasSeasonalDiscount && avgSeasonalDiscountForTooltip !== null && ( // Added null check here
-                                    <div className="flex justify-between items-center">
-                                      <span className="text-gray-300">Seasonal Discount:</span>
-                                      <span className="text-accent-primary font-medium">
-                                        -{Math.round(avgSeasonalDiscountForTooltip * 100)}%
-                                      </span>
-                                    </div>
-                                  )}
-                                  
-                                  {/* Duration Discount - Use Math.round, check hasDurationDiscount */}
-                                  {hasDurationDiscount && ( // Check flag
-                                    <div className="flex justify-between items-center">
-                                      <span className="text-gray-300">Duration Discount ({completeWeeksForDiscount} wks):</span>
-                                      <span className="text-accent-primary font-medium">
-                                      -{Math.round(currentDurationDiscount * 100)}%
-                                      </span>
-                                    </div>
-                                  )}
+                        <Popover.Root> 
+                          <Popover.Trigger asChild>
+                            <button className="text-accent-primary flex items-center gap-0.5 cursor-help" 
+                            >
+                              <Percent size={14} />
+                            </button>
+                          </Popover.Trigger>
+                          <Popover.Portal>
+                            <Popover.Content
+                              sideOffset={5}
+                              className="tooltip-content tooltip-content--accent !font-mono z-50"
+                              onOpenAutoFocus={(e: Event) => e.preventDefault()}
+                            >
+                              <Popover.Arrow className="tooltip-arrow tooltip-arrow--accent" width={11} height={5} />
+                              <h4 className="font-medium font-mono text-white mb-2">Weekly Rate Breakdown</h4>
+                              <div className="text-sm space-y-2">
+                                 {/* Base Price */}
+                                 <div className="flex justify-between items-center text-gray-300">
+                                    <span>Base Rate:</span>
+                                    <span>€{Math.round(acc.base_price)} / week</span>
+                                 </div>
+                                
+                                {/* Seasonal Discount - Use avgSeasonalDiscount from prop, ensure not null */}
+                                {hasSeasonalDiscount && avgSeasonalDiscountForTooltip !== null && ( // Added null check here
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-gray-300">Seasonal Discount:</span>
+                                    <span className="text-accent-primary font-medium">
+                                      -{Math.round(avgSeasonalDiscountForTooltip * 100)}%
+                                    </span>
+                                  </div>
+                                )}
+                                
+                                {/* Duration Discount - Use Math.round, check hasDurationDiscount */}
+                                {hasDurationDiscount && ( // Check flag
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-gray-300">Duration Discount ({completeWeeksForDiscount} wks):</span>
+                                    <span className="text-accent-primary font-medium">
+                                    -{Math.round(currentDurationDiscount * 100)}%
+                                    </span>
+                                  </div>
+                                )}
 
-                                  {/* Separator */}
-                                   <div className="border-t border-gray-600 my-1"></div>
+                                {/* Separator */}
+                                 <div className="border-t border-gray-600 my-1"></div>
 
-                                   {/* Final Weekly Price - Use weeklyPrice from prop, ensure not null */}
-                                   <div className="flex justify-between items-center font-medium text-white text-base">
-                                      <span>Final Weekly Rate:</span>
-                                      {/* Ensure weeklyPrice is not null before rounding */}
-                                      <span>€{formatPrice(weeklyPrice, isTestAccommodation)}</span>
-                                   </div>
-                                </div>
-                                 <p className="text-xs text-gray-400 mt-2 font-mono">Discounts applied multiplicatively.</p>
-                              </Tooltip.Content>
-                            </Tooltip.Portal>
-                          </Tooltip.Root>
-                        </Tooltip.Provider>
+                                 {/* Final Weekly Price - Use weeklyPrice from prop, ensure not null */}
+                                 <div className="flex justify-between items-center font-medium text-white text-base">
+                                    <span>Final Weekly Rate:</span>
+                                    {/* Ensure weeklyPrice is not null before rounding */}
+                                    <span>€{formatPrice(weeklyPrice, isTestAccommodation)}</span>
+                                 </div>
+                              </div>
+                               <p className="text-xs text-gray-400 mt-2 font-mono">Discounts applied multiplicatively.</p>
+                            </Popover.Content>
+                          </Popover.Portal>
+                        </Popover.Root>
                       )}
                     </div>
                   </div>
