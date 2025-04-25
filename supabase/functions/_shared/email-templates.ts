@@ -31,7 +31,7 @@ export function generateBookingConfirmationEmail({
       <h1 style="${styles.heading}">Residency Confirmed!</h1>
       
       <div style="${styles.card}">
-        <h2 style="${styles.heading}">Your Journey Details</h2>
+        <h2 style="${styles.heading}">Your Details</h2>
         
         <div style="margin: 15px 0;">
           <strong style="${styles.label}">Accommodation:</strong>
@@ -66,7 +66,7 @@ export function generateBookingConfirmationEmail({
           <li style="margin-bottom: 8px;">The Garden is a strictly smoke & alcohol-free space</li>
           <li style="margin-bottom: 8px;">Breakfast, lunch & dinner included Monday-Friday</li>
           <li style="margin-bottom: 8px;">To ensure a smooth arrival, please respect the check-in window (2-5 PM)</li>
-          <li style="margin-bottom: 8px;">Review our <a href="https://gardening.notion.site/welcome-to-the-garden" target="_blank" style="color: #047857; text-decoration: underline;">Welcome Guide</a> for more details.</li>
+          <li style="margin-bottom: 8px;">Review our <a href="https://gardening.notion.site/welcome-to-the-garden" target="_blank" style="color: #047857; text-decoration: underline;">Welcome Guide</a> for more details</li>
         </ul>
       </div>
       
