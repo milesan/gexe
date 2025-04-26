@@ -91,6 +91,20 @@ export function Retro2Form({ questions, onSubmit }: Props) {
     }
   };
 
+  // Function to navigate to the next section if the current one is complete
+  const goToNextSection = () => {
+    if (isCurrentSectionComplete() && currentSection < sectionNames.length - 1) {
+      console.log('⏭️ Navigating to next section');
+      setCurrentSection(prev => prev + 1);
+    } else {
+      console.log('🚫 Cannot navigate to next section', { 
+        isComplete: isCurrentSectionComplete(), 
+        currentSection, 
+        totalSections: sectionNames.length 
+      });
+    }
+  };
+
   const handleChange = (questionId: number, value: any) => {
     console.log('📝 Form field changed:', { 
       questionId, 
@@ -127,10 +141,12 @@ export function Retro2Form({ questions, onSubmit }: Props) {
     // If this is the consent question and user consents, auto-advance
     const consentQuestion = questions.find(q => q.section === 'intro');
     if (consentQuestion && questionId === consentQuestion.order_number && value === 'As you wish.') {
-      console.log('User consented, moving to next section');
-      setTimeout(() => {
-        setCurrentSection(1);
-      }, 500);
+      console.log('User consented, attempting to move to next section immediately');
+      // Call the centralized navigation function directly
+      goToNextSection(); 
+      // setTimeout(() => { // Remove the delay and direct setting
+      //   setCurrentSection(1);
+      // }, 500);
     }
   };
 
@@ -316,7 +332,7 @@ export function Retro2Form({ questions, onSubmit }: Props) {
               ) : currentSection < sectionNames.length - 1 ? (
                  <button
                     type="button"
-                    onClick={() => isCurrentSectionComplete() && setCurrentSection(prev => prev + 1)}
+                    onClick={goToNextSection} 
                     disabled={!isCurrentSectionComplete()}
                     className={`group flex items-center gap-2 px-4 py-2 transition-all  ${
                       isCurrentSectionComplete() 

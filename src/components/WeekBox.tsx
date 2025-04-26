@@ -84,7 +84,7 @@ export function WeekBox({
   };
 
   const classes = clsx(
-    'relative p-4 border-2 transition-all duration-300',
+    'relative p-3 border-2 transition-all duration-300',
     'aspect-[1.5] shadow-sm hover:shadow-md',
     'pixel-corners',
     getStatusColor(), // Apply status-based bg/border
@@ -137,72 +137,89 @@ export function WeekBox({
       disabled={!isSelectable && !isAdmin} // Explicitly disable if not selectable
     >
       <div className="text-center flex flex-col justify-center h-full">
-        {isSelected ? (
-          isEdge ? (
-            <>
-              <div className="text-2xl font-display mb-1 text-primary">
-                {format(isFirstSelected ? week.startDate : week.endDate, 'MMM d')}
-              </div>
-              <div className="font-mono text-sm text-accent-secondary font-medium">
-                {isFirstSelected ? 
-                  (selectedWeeksCount > 1 ? 'Arrival' : `→ ${format(week.endDate, 'MMM d')}`) : 
-                  'Departure'}
-              </div>
-            </>
-          ) : null // Don't render content for middle selected weeks in WeekBox itself?
-        ) : (
-          <>
-            <div className="text-2xl font-display mb-1 text-primary">
-              {week.name || format(week.startDate, 'MMM d')}
-            </div>
-            {!week.name && (
-              <div className="font-mono text-sm text-secondary flex items-center justify-center gap-2">
-                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path d="M4 12h16m0 0l-6-6m6 6l-6 6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                <span>{format(week.endDate, 'MMM d')}</span>
-              </div>
-            )}
-            {week.name && (
-              <div className="font-display text-[10px] xxs:text-xs sm:text-sm text-secondary flex items-center justify-center gap-1">
-                <span>{format(week.startDate, 'MMM d')}</span>
-                <svg className="w-2 h-2 xxs:w-2.5 xxs:h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path d="M4 12h16m0 0l-6-6m6 6l-6 6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                <span>{format(week.endDate, 'MMM d')}</span>
-              </div>
-            )}
-            {/* Admin status text - keeping specific colors */}
-            {isAdmin && week?.status !== 'default' && (
-              <div className={clsx(
-                'text-xs font-medium mt-1',
-                week.status === 'hidden' && 'text-yellow-500',
-                week.status === 'deleted' && 'text-red-500',
-                week.status === 'visible' && week.isCustom && 'text-blue-500'
-              )}>
-                {week.status}
-              </div>
-            )}
-            
-            {/* Custom duration text - keeping specific color */}
-            {(() => {
-              if (!week) return null;
-              const diffTime = week.endDate.getTime() - week.startDate.getTime();
-              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 because both start and end dates are inclusive
-              
-              // Only show duration for custom weeks that aren't 7 days long
-              // AND are not at the edge of the view range (first or last week)
-              if (diffDays !== 7 && week.isCustom && !week.isEdgeWeek) {
-                return (
-                  <div className="text-xs text-indigo-500 font-medium mt-1">
-                    {diffDays} {diffDays === 1 ? 'day' : 'days'}
-                  </div>
-                );
+        {/* --- START: Unified Date & Name Display --- */}
+        <div className="text-2xl font-display mb-1 text-primary">
+          {(() => {
+            // Display logic based on selection state (simplified for WeekBox context)
+            if (isSelected) {
+              if (isEdge) {
+                return format(isFirstSelected ? week.startDate : week.endDate, 'MMM d');
+              } else {
+                return null; // Don't display date for intermediate selected weeks
               }
-              return null;
-            })()}
-          </>
+            } else {
+              // Default: show start date (potentially earliest flex date, though WeekBox might not have that context easily)
+              return format(week.startDate, 'MMM d'); 
+            }
+          })()}
+        </div>
+        
+        {/* Sub-text (Arrival/Departure or Date Range or Name) */}
+        <div className="font-mono text-sm text-secondary font-medium">
+          {(() => {
+            if (isSelected) {
+              if (isEdge) {
+                return isFirstSelected ? 
+                  (selectedWeeksCount > 1 ? 'Arrival' : `→ ${format(week.endDate, 'MMM d')}`) : 
+                  'Departure';
+              }
+              // No sub-text for intermediate selected weeks
+            } else if (week.name) {
+              // If not selected and has a name, show the name on one line and dates below
+              const formattedStartDate = format(week.startDate, 'MMM d');
+              const formattedEndDate = format(week.endDate, 'MMM d');
+              return (
+                <div className="flex flex-col items-center"> {/* Center align items */}
+                  <span className="font-display text-sm text-secondary">{week.name}</span>
+                  <span className="font-mono text-xs text-secondary/80 mt-0.5"> {/* Smaller mono font for dates */}
+                    {formattedStartDate} - {formattedEndDate}
+                  </span>
+                </div>
+              );
+            } else {
+              // If not selected and no name, show the date range
+              return (
+                <div className="flex items-center justify-center gap-1">
+                  <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M4 12h16m0 0l-6-6m6 6l-6 6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span>{format(week.endDate, 'MMM d')}</span>
+                </div>
+              );
+            }
+          })()}
+        </div>
+        {/* --- END: Unified Date & Name Display --- */}
+
+        {/* Admin status text - keeping specific colors */}
+        {isAdmin && week?.status !== 'default' && (
+          <div className={clsx(
+            'text-xs font-medium mt-1',
+            week.status === 'hidden' && 'text-yellow-500',
+            week.status === 'deleted' && 'text-red-500',
+            week.status === 'visible' && week.isCustom && 'text-blue-500'
+          )}>
+            {week.status}
+          </div>
         )}
+        
+        {/* Custom duration text - keeping specific color */}
+        {(() => {
+          if (!week) return null;
+          const diffTime = week.endDate.getTime() - week.startDate.getTime();
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 because both start and end dates are inclusive
+          
+          // Only show duration for custom weeks that aren't 7 days long
+          // AND are not at the edge of the view range (first or last week)
+          if (diffDays !== 7 && week.isCustom && !week.isEdgeWeek) {
+            return (
+              <div className="text-xs text-indigo-500 font-medium mt-1">
+                {diffDays} {diffDays === 1 ? 'day' : 'days'}
+              </div>
+            );
+          }
+          return null;
+        })()}
       </div>
 
       {/* Connecting lines and squiggle - keeping colors? */}

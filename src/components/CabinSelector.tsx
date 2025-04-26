@@ -380,9 +380,10 @@ export function CabinSelector({
                         {acc.title !== 'Van Parking' && (
                           <Popover.Root>
                             <Popover.Trigger asChild>
-                              <button 
-                                className="flex items-center gap-1 cursor-help bg-transparent border-none p-0.5" 
+                              <button
+                                className="flex items-center gap-1 cursor-help bg-transparent border-none p-0.5"
                                 title={acc.has_electricity ? 'Has Electricity' : 'No Electricity'}
+                                onClick={(e) => e.stopPropagation()}
                               >
                                 {acc.has_electricity ? <Zap size={12} /> : <ZapOff size={12} className="opacity-50"/>}
                               </button>
@@ -403,9 +404,10 @@ export function CabinSelector({
                         {/* Wifi Popover */}
                         <Popover.Root>
                           <Popover.Trigger asChild>
-                            <button 
-                              className="flex items-center gap-1 cursor-help bg-transparent border-none p-0.5" 
+                            <button
+                              className="flex items-center gap-1 cursor-help bg-transparent border-none p-0.5"
                               title={acc.has_wifi ? 'Has WiFi' : 'No WiFi'}
+                              onClick={(e) => e.stopPropagation()}
                             >
                               {acc.has_wifi ? <Wifi size={12} /> : <WifiOff size={12} className="opacity-50"/>}
                             </button>
@@ -425,8 +427,9 @@ export function CabinSelector({
                         {/* Bed Size Popover */}
                         <Popover.Root>
                           <Popover.Trigger asChild>
-                            <button 
+                            <button
                               className="flex items-center gap-1 cursor-help bg-transparent border-none p-0.5"
+                              onClick={(e) => e.stopPropagation()}
                             >
                               <Bed size={12} />
                             </button>
@@ -450,7 +453,8 @@ export function CabinSelector({
                         {acc.title.includes('Microcabin') && (
                           <Popover.Root>
                             <Popover.Trigger asChild>
-                              <button className="flex items-center gap-1 cursor-help text-secondary" 
+                              <button className="flex items-center gap-1 cursor-help text-secondary"
+                              onClick={(e) => e.stopPropagation()}
                               ><Ear size={12} /></button>
                             </Popover.Trigger>
                             <Popover.Portal>
@@ -470,7 +474,8 @@ export function CabinSelector({
                         {acc.title === 'Van Parking' && (
                           <Popover.Root>
                             <Popover.Trigger asChild>
-                              <button className="flex items-center gap-1 cursor-help text-secondary" 
+                              <button className="flex items-center gap-1 cursor-help text-secondary"
+                              onClick={(e) => e.stopPropagation()}
                               ><Zap size={12} /></button>
                             </Popover.Trigger>
                             <Popover.Portal>
@@ -504,9 +509,10 @@ export function CabinSelector({
                       
                       {/* Ensure weeklyPrice is not null for discount display, and check hasAnyDiscount flag */}
                       {weeklyPrice !== null && weeklyPrice > 0 && hasAnyDiscount && (
-                        <Popover.Root> 
+                        <Popover.Root>
                           <Popover.Trigger asChild>
-                            <button className="text-accent-primary flex items-center gap-0.5 cursor-help" 
+                            <button className="text-accent-primary flex items-center gap-0.5 cursor-help"
+                            onClick={(e) => e.stopPropagation()}
                             >
                               <Percent size={14} />
                             </button>

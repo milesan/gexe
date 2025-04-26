@@ -1,67 +1,32 @@
 import { useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { useNavigate } from 'react-router-dom';
+import { useSession } from '../hooks/useSession';
+// import { useLocation } from 'react-router-dom'; // No longer needed
+// import { supabase } from '../lib/supabase'; // No longer needed
 
 export function AuthCallback() {
   const navigate = useNavigate();
-  const location = useLocation();
+  const session = useSession();
+  // const location = useLocation(); // No longer needed
 
   useEffect(() => {
-    const handleCallback = async () => {
-      try {
-        console.log('AuthCallback: Handling callback');
-        
-        // Get the hash from the URL
-        const hash = window.location.hash;
-        if (hash) {
-          console.log('AuthCallback: Found hash in URL');
-          // Parse the hash parameters
-          const params = new URLSearchParams(hash.replace('#', '?'));
-          const accessToken = params.get('access_token');
-          const refreshToken = params.get('refresh_token');
-          
-          if (accessToken && refreshToken) {
-            console.log('AuthCallback: Setting session from URL tokens');
-            const { error: setSessionError } = await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken
-            });
-            
-            if (setSessionError) {
-              console.error('AuthCallback: Error setting session:', setSessionError);
-              navigate('/');
-              return;
-            }
-            
-            // Clean up the URL by removing the hash
-            window.location.hash = '';
-          }
-        }
+    // --- Add Log on Effect Run ---
+    console.log('AuthCallback: useEffect running.');
 
-        // Verify the session was set correctly
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('AuthCallback: Error getting session:', error);
-          navigate('/');
-          return;
-        }
+    // Supabase client handles the session automatically via onAuthStateChange in App.tsx
+    // This component just needs to exist and show a loading state.
+    // console.log('AuthCallback: Rendering loading screen while Supabase handles auth...');
 
-        if (session) {
-          console.log('AuthCallback: Session found, redirecting to main app');
-          navigate('/');
-        } else {
-          console.log('AuthCallback: No session found, redirecting to landing page');
-          navigate('/');
-        }
-      } catch (err) {
-        console.error('AuthCallback: Unexpected error:', err);
-        navigate('/');
-      }
-    };
-
-    handleCallback();
-  }, [navigate, location]);
+    // --- New Logic --- 
+    console.log('AuthCallback: Checking session state...');
+    if (session) {
+      console.log('AuthCallback: Session detected, navigating to /');
+      navigate('/', { replace: true }); // Navigate away once session is confirmed
+    } else {
+      console.log('AuthCallback: No session yet, waiting...');
+    }
+    // Depend on session so this runs when session state changes
+  }, [session, navigate]); // Update dependencies
 
   return (
     <div className="min-h-screen bg-stone-50 flex items-center justify-center">

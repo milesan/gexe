@@ -238,14 +238,6 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
       logger.error('[BugReportModal] Error submitting bug report:', error);
       setStatus('error');
       setErrorMessage(error instanceof Error ? error.message : 'An unknown error occurred.');
-    } finally {
-       if (status === 'submitting' && errorMessage) {
-          setStatus('error');
-          logger.warn('[BugReportModal] Submission ended but status was still submitting, forced to error.');
-       } else if (status === 'submitting') {
-           setStatus('idle');
-           logger.warn('[BugReportModal] Submission ended unexpectedly in submitting state, reverted to idle.');
-       }
     }
   };
 
@@ -291,12 +283,12 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
                   <div className="text-center p-4 bg-[var(--color-success-bg,theme(colors.green.600/0.2))] border border-[var(--color-success-border,theme(colors.green.500/0.5))] rounded-md">
                     <CheckCircle className="w-8 h-8 text-[var(--color-success-icon,theme(colors.green.400))] mx-auto mb-2" />
                     <p className="text-[var(--color-success-text,theme(colors.green.300))] font-medium font-mono">Thank you!</p>
-                    <p className="text-xs text-[var(--color-text-secondary,theme(colors.gray.300))] mt-1 font-mono">Your report has been submitted.</p>
+                    <p className="text-sm text-[var(--color-text-secondary,theme(colors.gray.300))] mt-1 font-mono">Your report has been submitted.</p>
                   </div>
                 ) : (
                   <form onSubmit={handleSubmit} className="flex flex-col flex-grow space-y-4 font-mono">
                     <div>
-                      <label htmlFor="description" className="block text-xs sm:text-sm font-medium text-[var(--color-text-secondary,theme(colors.gray.300))] mb-1">Description <span className="text-[var(--color-error-indicator,theme(colors.red.500))]">*</span></label>
+                      <label htmlFor="description" className="block text-sm sm:text-base font-medium text-[var(--color-text-secondary,theme(colors.gray.300))] mb-1">Description <span className="text-[var(--color-error-indicator,theme(colors.red.500))]">*</span></label>
                       <textarea
                         id="description"
                         value={description}
@@ -304,27 +296,27 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
                         placeholder="Describe the problem you encountered..."
                         required
                         rows={4}
-                        className="w-full bg-[var(--color-input-bg,theme(colors.gray.700/0.5))] border border-[var(--color-input-border,theme(colors.gray.600))] rounded-md p-2 text-sm text-[var(--color-text-primary,theme(colors.white))] focus:ring-1 focus:ring-[var(--color-focus-ring,theme(colors.accent-primary))] focus:border-[var(--color-focus-ring,theme(colors.accent-primary))] placeholder:text-[10px] xs:placeholder:text-xs sm:placeholder:text-sm placeholder-[var(--color-text-placeholder,theme(colors.gray.400))] disabled:opacity-70"
+                        className="w-full bg-[var(--color-input-bg,theme(colors.gray.700/0.5))] border border-[var(--color-input-border,theme(colors.gray.600))] rounded-md p-2 text-sm text-[var(--color-text-primary,theme(colors.white))] focus:ring-1 focus:ring-[var(--color-focus-ring,theme(colors.accent-primary))] focus:border-[var(--color-focus-ring,theme(colors.accent-primary))] placeholder:text-xs sm:placeholder:text-sm placeholder-[var(--color-text-placeholder,theme(colors.gray.400))] disabled:opacity-70"
                         disabled={status === 'submitting' || isUploading || !!isDeleting}
                       />
                     </div>
                     <div>
-                       <label htmlFor="stepsToReproduce" className="block text-xs sm:text-sm font-medium text-[var(--color-text-secondary,theme(colors.gray.300))] mb-1">Steps to Reproduce (Optional)</label>
+                       <label htmlFor="stepsToReproduce" className="block text-sm sm:text-base font-medium text-[var(--color-text-secondary,theme(colors.gray.300))] mb-1">Steps to Reproduce (Optional)</label>
                        <textarea
                          id="stepsToReproduce"
                          value={stepsToReproduce}
                          onChange={(e) => setStepsToReproduce(e.target.value)}
                          placeholder="How can we make this happen?&#10;1. Go to...&#10;2. Click...&#10;3. See..."
                          rows={4}
-                         className="w-full bg-[var(--color-input-bg,theme(colors.gray.700/0.5))] border border-[var(--color-input-border,theme(colors.gray.600))] rounded-md p-2 text-sm text-[var(--color-text-primary,theme(colors.white))] focus:ring-1 focus:ring-[var(--color-focus-ring,theme(colors.accent-primary))] focus:border-[var(--color-focus-ring,theme(colors.accent-primary))] placeholder:text-[10px] xs:placeholder:text-xs sm:placeholder:text-sm placeholder-[var(--color-text-placeholder,theme(colors.gray.400))] disabled:opacity-70"
+                         className="w-full bg-[var(--color-input-bg,theme(colors.gray.700/0.5))] border border-[var(--color-input-border,theme(colors.gray.600))] rounded-md p-2 text-sm text-[var(--color-text-primary,theme(colors.white))] focus:ring-1 focus:ring-[var(--color-focus-ring,theme(colors.accent-primary))] focus:border-[var(--color-focus-ring,theme(colors.accent-primary))] placeholder:text-xs sm:placeholder:text-sm placeholder-[var(--color-text-placeholder,theme(colors.gray.400))] disabled:opacity-70"
                          disabled={status === 'submitting' || isUploading || !!isDeleting}
                        />
                     </div>
 
                     <div className="space-y-3">
                        <div className="flex justify-between items-baseline">
-                           <label htmlFor={inputId} className="block text-xs sm:text-sm font-medium text-[var(--color-text-secondary,theme(colors.gray.300))] mb-1">Attach Screenshots (Optional)</label>
-                           <span className="text-xs text-[var(--color-text-secondary,theme(colors.gray.400))]">
+                           <label htmlFor={inputId} className="block text-sm sm:text-base font-medium text-[var(--color-text-secondary,theme(colors.gray.300))] mb-1">Attach Screenshots (Optional)</label>
+                           <span className="text-sm text-[var(--color-text-secondary,theme(colors.gray.400))]">
                                {currentFileCount} / {IMAGE_LIMIT} added
                            </span>
                        </div>
@@ -354,10 +346,10 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
                          />
                          <div className="flex flex-col items-center justify-center text-[var(--color-text-secondary,theme(colors.gray.400))]">
                             <Upload className="w-5 h-5 mb-1" />
-                            <span className="text-xs sm:text-sm font-medium">
+                            <span className="text-sm sm:text-base font-medium">
                                {isUploading ? `Uploading (${Math.round(uploadProgress)}%)...` : (isDeleting ? 'Deleting...' : (canUploadMore ? 'Click or drag to upload' : `Limit reached (${IMAGE_LIMIT})`))}
                             </span>
-                            {!isUploadAreaDisabled && <p className="text-[10px] sm:text-xs mt-0.5">Max {MAX_FILE_SIZE_MB}MB per image</p>}
+                            {!isUploadAreaDisabled && <p className="text-xs sm:text-sm mt-0.5">Max {MAX_FILE_SIZE_MB}MB per image</p>}
                          </div>
 
                          {isUploading && (
@@ -371,7 +363,7 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
                        </label>
 
                        {uploadError && (
-                         <div className="flex items-center p-2 text-xs sm:text-sm bg-[var(--color-error-bg,theme(colors.red.600/0.2))] border border-[var(--color-error-border,theme(colors.red.500/0.5))] rounded-md text-[var(--color-error-text,theme(colors.red.300))]">
+                         <div className="flex items-center p-2 text-sm sm:text-base bg-[var(--color-error-bg,theme(colors.red.600/0.2))] border border-[var(--color-error-border,theme(colors.red.500/0.5))] rounded-md text-[var(--color-error-text,theme(colors.red.300))]">
                            <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
                            <span className="font-mono">{uploadError}</span>
                          </div>
@@ -409,7 +401,7 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
                     </div>
 
                     {status === 'error' && !uploadError && (
-                      <div className="flex items-center p-2 text-xs sm:text-sm bg-[var(--color-error-bg,theme(colors.red.600/0.2))] border border-[var(--color-error-border,theme(colors.red.500/0.5))] rounded-md text-[var(--color-error-text,theme(colors.red.300))]">
+                      <div className="flex items-center p-2 text-sm sm:text-base bg-[var(--color-error-bg,theme(colors.red.600/0.2))] border border-[var(--color-error-border,theme(colors.red.500/0.5))] rounded-md text-[var(--color-error-text,theme(colors.red.300))]">
                         <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
                         <span className="font-mono">{errorMessage || 'Submission failed. Please try again.'}</span>
                       </div>
@@ -419,14 +411,14 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
                        <button
                           type="button"
                           onClick={onClose}
-                          className="px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium rounded-md text-[var(--color-button-secondary-text,theme(colors.gray.300))] bg-[var(--color-button-secondary-bg,theme(colors.gray.600/0.5))] hover:bg-[var(--color-button-secondary-bg-hover,theme(colors.gray.600/0.8))] focus:outline-none focus:ring-2 focus:ring-[var(--color-button-secondary-focus-ring,theme(colors.gray.500))] focus:ring-offset-2 focus:ring-offset-[var(--color-focus-offset,theme(colors.gray.800))] disabled:opacity-50 transition-colors font-mono"
+                          className="px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base font-medium rounded-md text-[var(--color-button-secondary-text,theme(colors.gray.300))] bg-[var(--color-button-secondary-bg,theme(colors.gray.600/0.5))] hover:bg-[var(--color-button-secondary-bg-hover,theme(colors.gray.600/0.8))] focus:outline-none focus:ring-2 focus:ring-[var(--color-button-secondary-focus-ring,theme(colors.gray.500))] focus:ring-offset-2 focus:ring-offset-[var(--color-focus-offset,theme(colors.gray.800))] disabled:opacity-50 transition-colors font-mono"
                           disabled={status === 'submitting' || isUploading || !!isDeleting}
                        >
                          Cancel
                        </button>
                        <button
                           type="submit"
-                          className="px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium rounded-md text-[var(--color-button-primary-text,theme(colors.stone.800))] bg-[var(--color-button-primary-bg,theme(colors.accent-primary))] hover:bg-[var(--color-button-primary-bg-hover,theme(colors.accent-primary/0.8))] focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring,theme(colors.accent-primary))] focus:ring-offset-2 focus:ring-offset-[var(--color-focus-offset,theme(colors.gray.800))] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center font-mono"
+                          className="px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base font-medium rounded-md text-[var(--color-button-primary-text,theme(colors.stone.800))] bg-[var(--color-button-primary-bg,theme(colors.accent-primary))] hover:bg-[var(--color-button-primary-bg-hover,theme(colors.accent-primary/0.8))] focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring,theme(colors.accent-primary))] focus:ring-offset-2 focus:ring-offset-[var(--color-focus-offset,theme(colors.gray.800))] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center font-mono"
                           disabled={!description || status === 'submitting' || isUploading || !!isDeleting}
                        >
                          {status === 'submitting' ? (
