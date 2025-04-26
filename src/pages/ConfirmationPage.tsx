@@ -127,7 +127,7 @@ export function ConfirmationPage() {
             <ul className="space-y-2 text-sm text-emerald-800 dark:text-emerald-300 font-mono">
               <li className="flex items-start gap-2">
                 <span className="text-emerald-700 dark:text-emerald-400 mt-1">❧</span>
-                <span>This is a co-created experience. </span>
+                <span>This is a co-created experience </span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-emerald-700 dark:text-emerald-400 mt-1">❧</span>

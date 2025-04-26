@@ -5,7 +5,7 @@ export default {
     extend: {
       fontSize: {
         // Customize the default text-base size
-        'base': ['1rem', { lineHeight: '1.75rem' }],  // Increases from default 1rem (16px) to 1.125rem (18px)
+        'base': ['1rem', { lineHeight: '1.75rem' }],  // Default is 1rem (16px). This explicitly sets it.
       },
       colors: {
         // Core semantic colors using CSS variables

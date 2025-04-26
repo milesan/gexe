@@ -4,12 +4,12 @@ import { formatInTimeZone } from 'date-fns-tz';
 import { WeekBox } from './WeekBox';
 import clsx from 'clsx';
 import { Week } from '../types/calendar';
-import { isWeekSelectable, formatWeekRange, formatDateForDisplay, normalizeToUTCDate, generateWeekId, canDeselectArrivalWeek, getWeeksToDeselect, calculateTotalWeeksDecimal } from '../utils/dates';
+import { isWeekSelectable, formatWeekRange, formatDateForDisplay, normalizeToUTCDate, generateWeekId, canDeselectArrivalWeek, getWeeksToDeselect, calculateTotalWeeksDecimal, areSameWeeks } from '../utils/dates';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, X, ChevronDown, ChevronUp } from 'lucide-react';
+import * as Popover from '@radix-ui/react-popover';
 import { FlexibleCheckInModal } from './FlexibleCheckInModal';
-import { areSameWeeks } from '../utils/dates';
 import { getSeasonalDiscount, getSeasonName } from '../utils/pricing';
 import { FitText } from './FitText';
 
@@ -61,6 +61,19 @@ const SeasonLegend = () => {
     </div>
   );
 };
+
+// Helper function to generate a squiggle path
+function generateSquigglePath() {
+  return "M 0 15 Q 25 5, 50 15 T 100 15";
+}
+
+// Helper function to check if a week is between selected weeks
+function isWeekBetweenSelection(week: Week, selectedWeeks: Week[]): boolean {
+  if (selectedWeeks.length <= 1) return false;
+  const firstSelectedStart = selectedWeeks[0].startDate;
+  const lastSelectedStart = selectedWeeks[selectedWeeks.length - 1].startDate;
+  return isAfter(week.startDate, firstSelectedStart) && isBefore(week.startDate, lastSelectedStart);
+}
 
 export function WeekSelector({
   weeks,
@@ -415,13 +428,17 @@ export function WeekSelector({
             appliedHeightClass: minHeightClass.substring(0, minHeightClass.indexOf(' ')) // Just log the mobile height part
           });
 
+          // Define fixed height classes - Using the larger dimensions for consistency
+          const fixedHeightClass = 'h-[80px] xxs:h-[90px] xs:h-[100px] sm:h-[110px]';
+
           return (
             <button
               key={week.id || `week-${index}`}
               onClick={() => handleWeekClick(week)}
               className={clsx(
                 'relative p-2 xxs:p-2.5 xs:p-3 sm:p-4 border-2 transition-all duration-300',
-                minHeightClass,
+                // Use fixed height instead of min-height
+                fixedHeightClass, 
                 'shadow-sm hover:shadow-md',
                 // Unconditionally add highlight class (CSS rule scopes it to light mode)
                 'bg-card-highlight',
@@ -446,238 +463,272 @@ export function WeekSelector({
               {/* Conditionally render the content */}
               {isContentVisible && (
                 <div className="text-center flex flex-col justify-center h-full">
-                  {week.name ? (
-                    <>
-                      <div className="font-display text-primary mb-1 xxs:mb-0.5 xs:mb-1">
-                        <FitText 
-                          text={week.name} 
-                          minFontSizePx={12}
-                          maxFontSizePx={24}
-                        />
-                      </div>
-                      <div className={clsx(
-                        "font-display text-secondary flex items-center justify-center gap-0.5 xs:gap-1",
-                        "text-sm"
-                      )}>
-                        <span>{formatInTimeZone(week.startDate, 'UTC', 'MMM d')}</span>
-                        <svg className="w-2.5 h-2.5 xxs:w-3 xxs:h-3 xs:w-4 xs:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                          <path d="M4 12h16m0 0l-6-6m6 6l-6 6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                        <span>{formatInTimeZone(week.endDate, 'UTC', 'MMM d')}</span>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="text-2xl sm:text-3xl font-display text-primary">
-                        {(() => {
-                          // --- START: Determine effective start date for the first selected week ---
-                          let effectiveStartDate: Date | undefined;
-                          console.log('[WeekSelector Render] Received selectedWeeks prop:', selectedWeeks?.map(w => ({ id: w.id, start: formatDateForDisplay(w.startDate), end: formatDateForDisplay(w.endDate), selectedFlex: w.selectedFlexDate ? formatDateForDisplay(w.selectedFlexDate) : undefined })));
+                  {/* --- START: Unified Date Display Logic --- */}
+                  {/* This block now handles both named and unnamed weeks */}
+                  <div className="text-2xl sm:text-3xl font-display text-primary mb-1"> {/* Added mb-1 for spacing */}
+                    {(() => {
+                      // --- START: Determine effective start date for the first selected week ---
+                      let effectiveStartDate: Date | undefined;
+                      console.log('[WeekSelector Render] Received selectedWeeks prop:', selectedWeeks?.map(w => ({ id: w.id, start: formatDateForDisplay(w.startDate), end: formatDateForDisplay(w.endDate), selectedFlex: w.selectedFlexDate ? formatDateForDisplay(w.selectedFlexDate) : undefined })));
 
-                          if (selectedWeeks.length > 0) {
-                            const firstSelected = selectedWeeks[0];
-                            console.log('[WeekSelector Render] Examining firstSelected week:', { id: firstSelected.id, start: formatDateForDisplay(firstSelected.startDate), end: formatDateForDisplay(firstSelected.endDate), selectedFlex: firstSelected.selectedFlexDate ? formatDateForDisplay(firstSelected.selectedFlexDate) : undefined });
-                            
-                            // --- Log the selectedFlexDate received in props --- 
-                            console.log('[DATE_TRACE] WeekSelector: Received firstSelected.selectedFlexDate in props:', { 
-                              dateObj: firstSelected.selectedFlexDate, 
-                              iso: firstSelected.selectedFlexDate?.toISOString?.() 
-                            });
+                      if (selectedWeeks.length > 0) {
+                        const firstSelected = selectedWeeks[0];
+                        console.log('[WeekSelector Render] Examining firstSelected week:', { id: firstSelected.id, start: formatDateForDisplay(firstSelected.startDate), end: formatDateForDisplay(firstSelected.endDate), selectedFlex: firstSelected.selectedFlexDate ? formatDateForDisplay(firstSelected.selectedFlexDate) : undefined });
+                        
+                        // --- Log the selectedFlexDate received in props --- 
+                        console.log('[DATE_TRACE] WeekSelector: Received firstSelected.selectedFlexDate in props:', { 
+                          dateObj: firstSelected.selectedFlexDate, 
+                          iso: firstSelected.selectedFlexDate?.toISOString?.() 
+                        });
 
-                            // Find the original week data to access flexibleDates if needed for fallback
-                            const originalWeekData = filteredWeeks.find(w => areSameWeeks(w, firstSelected));
+                        // Find the original week data to access flexibleDates if needed for fallback
+                        const originalWeekData = filteredWeeks.find(w => areSameWeeks(w, firstSelected));
 
-                            if (firstSelected.selectedFlexDate) {
-                              effectiveStartDate = firstSelected.selectedFlexDate;
-                              console.log(`[WeekSelector Render] Found selectedFlexDate in props: ${formatDateForDisplay(effectiveStartDate)}. Using this as effectiveStartDate.`);
-                            } else if (originalWeekData?.flexibleDates?.length) {
-                              // Sort dates and pick the earliest Date object directly
-                              const sortedFlexDates = [...originalWeekData.flexibleDates].sort((a, b) => a.getTime() - b.getTime());
-                              effectiveStartDate = sortedFlexDates[0]; 
-                              console.warn(`[WeekSelector Render] No selectedFlexDate found in props for first selected week. Falling back to earliest flex date: ${formatDateForDisplay(effectiveStartDate)}.`);
-                            } else {
-                              effectiveStartDate = firstSelected.startDate;
-                              console.log(`[WeekSelector Render] No selectedFlexDate and no flexibleDates found. Using standard start date: ${formatDateForDisplay(effectiveStartDate)}.`);
-                            }
+                        if (firstSelected.selectedFlexDate) {
+                          effectiveStartDate = firstSelected.selectedFlexDate;
+                          console.log(`[WeekSelector Render] Found selectedFlexDate in props: ${formatDateForDisplay(effectiveStartDate)}. Using this as effectiveStartDate.`);
+                        } else if (originalWeekData?.flexibleDates?.length) {
+                          // Sort dates and pick the earliest Date object directly
+                          const sortedFlexDates = [...originalWeekData.flexibleDates].sort((a, b) => a.getTime() - b.getTime());
+                          effectiveStartDate = sortedFlexDates[0]; 
+                          console.warn(`[WeekSelector Render] No selectedFlexDate found in props for first selected week. Falling back to earliest flex date: ${formatDateForDisplay(effectiveStartDate)}.`);
+                        } else {
+                          effectiveStartDate = firstSelected.startDate;
+                          console.log(`[WeekSelector Render] No selectedFlexDate and no flexibleDates found. Using standard start date: ${formatDateForDisplay(effectiveStartDate)}.`);
+                        }
 
-                            // --- Log the final effectiveStartDate before formatting --- 
-                            console.log('[DATE_TRACE] WeekSelector: Final effectiveStartDate before formatting:', { 
-                              dateObj: effectiveStartDate, 
-                              iso: effectiveStartDate?.toISOString?.() 
-                            });
+                        // --- Log the final effectiveStartDate before formatting --- 
+                        console.log('[DATE_TRACE] WeekSelector: Final effectiveStartDate before formatting:', { 
+                          dateObj: effectiveStartDate, 
+                          iso: effectiveStartDate?.toISOString?.() 
+                        });
 
-                            console.log('[WeekSelector Render] Final effectiveStartDate determined:', effectiveStartDate ? formatDateForDisplay(effectiveStartDate) : 'undefined');
-                          }
-                          // --- END: Determine effective start date ---
+                        console.log('[WeekSelector Render] Final effectiveStartDate determined:', effectiveStartDate ? formatDateForDisplay(effectiveStartDate) : 'undefined');
+                      }
+                      // --- END: Determine effective start date ---
 
-                          // If no weeks are selected, show the earliest potential check-in date
-                          if (selectedWeeks.length === 0) {
-                            let displayDate = week.startDate;
-                            if (week.flexibleDates?.length) {
-                              // Sort dates and pick the earliest Date object directly
-                              const sortedFlexDates = [...week.flexibleDates].sort((a, b) => a.getTime() - b.getTime());
-                              displayDate = sortedFlexDates[0];
-                            }
-                            console.log('[WeekSelector] Displaying date (no selection):', {
-                              dateObj: displayDate, // Keep for comparison
-                              isoString: displayDate.toISOString(), // Explicit UTC representation
-                              formattedForDisplay: formatInTimeZone(displayDate, 'UTC', 'MMM d') // How it should look in UI
+                      // If no weeks are selected, show the earliest potential check-in date
+                      if (selectedWeeks.length === 0) {
+                        let displayDate = week.startDate;
+                        if (week.flexibleDates?.length) {
+                          // Sort dates and pick the earliest Date object directly
+                          const sortedFlexDates = [...week.flexibleDates].sort((a, b) => a.getTime() - b.getTime());
+                          displayDate = sortedFlexDates[0];
+                        }
+                        console.log('[WeekSelector] Displaying date (no selection):', {
+                          dateObj: displayDate, // Keep for comparison
+                          isoString: displayDate.toISOString(), // Explicit UTC representation
+                          formattedForDisplay: formatInTimeZone(displayDate, 'UTC', 'MMM d') // How it should look in UI
+                        });
+                        return (
+                          <div className="flex items-center justify-center">
+                            <span>{formatInTimeZone(displayDate, 'UTC', 'MMM d')}</span>
+                          </div>
+                        );
+                      }
+
+                      // If multiple weeks are selected
+                      if (selectedWeeks.length > 1) {
+                        const firstSelected = selectedWeeks[0];
+                        const lastSelected = selectedWeeks[selectedWeeks.length - 1];
+                        const isFirstSelected = areSameWeeks(week, firstSelected);
+                        const isLastSelected = areSameWeeks(week, lastSelected);
+                        // Check if the current week is ANY of the selected weeks (first, last, or intermediate)
+                        const isAnySelectedWeek = selectedWeeks.some(sw => areSameWeeks(week, sw));
+
+                        if (isFirstSelected && effectiveStartDate) { // Use effectiveStartDate here
+                          console.log('[WeekSelector Render] Displaying effectiveStartDate (first selected):', {
+                            dateObj: effectiveStartDate,
+                            iso: effectiveStartDate.toISOString(),
+                            formatted: formatInTimeZone(effectiveStartDate, 'UTC', 'MMM d')
+                          });
+                          return (
+                            <div className="flex items-center justify-center gap-1 text-primary">
+                              <span>{formatInTimeZone(effectiveStartDate, 'UTC', 'MMM d')}</span>
+                              <span>→</span>
+                            </div>
+                          );
+                        }
+                        if (isLastSelected) {
+                          console.log('[WeekSelector Render] Displaying endDate (last selected):', {
+                            dateObj: week.endDate,
+                            iso: week.endDate.toISOString(),
+                            formatted: formatInTimeZone(week.endDate, 'UTC', 'MMM d')
+                          });
+                          return (
+                            <div className="flex items-center justify-center gap-1 text-primary">
+                              <span>→</span>
+                              <span>{formatInTimeZone(week.endDate, 'UTC', 'MMM d')}</span>
+                            </div>
+                          );
+                        }
+                        // If it's an intermediary selected week (between first and last)
+                        if (isAnySelectedWeek && !isFirstSelected && !isLastSelected) {
+                          console.log('[WeekSelector Render] Displaying null for intermediary selected week:', { weekId: week.id });
+                          return null; // Intermediary selected weeks display nothing specific
+                        }
+
+                        // --- START: Modified logic for NON-SELECTED WEEKS when multiple are selected ---
+                        if (!isAnySelectedWeek) {
+                          // If this non-selected week comes AFTER the first selected week
+                          if (isAfter(week.startDate, firstSelected.startDate)) {
+                            console.log('[WeekSelector Render] Displaying potential checkout date (multi-select, after first):', {
+                              weekId: week.id,
+                              endDate: formatDateForDisplay(week.endDate)
                             });
                             return (
-                              <div className="flex items-center justify-center">
-                                <span>{formatInTimeZone(displayDate, 'UTC', 'MMM d')}</span>
+                              <div className="flex items-center justify-center text-primary">
+                                {/* Display the END date */}
+                                <span>{formatInTimeZone(week.endDate, 'UTC', 'MMM d')}</span>
+                              </div>
+                            );
+                          } else {
+                            // If this non-selected week comes BEFORE the first selected week,
+                            // fall through to the default display logic below (showing earliest check-in).
+                            console.log('[WeekSelector Render] Non-selected week before first selection. Falling back to default.', { weekId: week.id });
+                          }
+                        }
+                        // --- END: Modified logic ---
+
+                        // Fallthrough for weeks before the first selected will reach the default logic below.
+                      }
+
+                      // If a single week is selected
+                      if (selectedWeeks.length === 1) {
+                        const selectedWeek = selectedWeeks[0];
+                        const isSelected = areSameWeeks(week, selectedWeek);
+
+                        if (isSelected && effectiveStartDate) { // Handles selectedWeeks.length === 1 case. Use effectiveStartDate.
+                          console.log('[WeekSelector Render] Displaying effectiveStartDate & endDate (single selected):', {
+                            startObj: effectiveStartDate,
+                            startIso: effectiveStartDate.toISOString(),
+                            startFormatted: formatInTimeZone(effectiveStartDate, 'UTC', 'MMM d'),
+                            endObj: week.endDate,
+                            endIso: week.endDate.toISOString(),
+                            endFormatted: formatInTimeZone(week.endDate, 'UTC', 'MMM d')
+                          });
+                          return (
+                            <div className="flex items-center justify-center gap-1 text-primary">
+                              <span>{formatInTimeZone(effectiveStartDate, 'UTC', 'MMM d')}</span>
+                              <span>→</span>
+                              <span>{formatInTimeZone(week.endDate, 'UTC', 'MMM d')}</span>
+                            </div>
+                          );
+                        }
+                        // --- START: New logic for subsequent weeks ---
+                        else { // If this week is NOT the single selected week
+                          // Check if this week comes directly after the selected one and is selectable
+                          const isSubsequent = isAfter(week.startDate, selectedWeek.endDate);
+                          // Also ensure it's selectable according to existing rules (availability, contiguity unless admin)
+                          const isNextSelectable = isWeekSelectable(week, isAdmin, selectedWeeks); 
+                          
+                          if (isSubsequent && isNextSelectable) {
+                            console.log('[WeekSelector Render] Displaying potential checkout date for subsequent week:', {
+                                weekId: week.id,
+                                weekStartDate: formatDateForDisplay(week.startDate),
+                                weekEndDate: formatDateForDisplay(week.endDate),
+                                isSelectable: isNextSelectable // Should be true here
+                            });
+                            return (
+                              <div className="flex items-center justify-center gap-1 text-primary">
+                                <span>{formatInTimeZone(week.endDate, 'UTC', 'MMM d')}</span>
                               </div>
                             );
                           }
-
-                          // If multiple weeks are selected
-                          if (selectedWeeks.length > 1) {
-                            const firstSelected = selectedWeeks[0];
-                            const lastSelected = selectedWeeks[selectedWeeks.length - 1];
-                            const isFirstSelected = areSameWeeks(week, firstSelected);
-                            const isLastSelected = areSameWeeks(week, lastSelected);
-                            // Check if the current week is ANY of the selected weeks (first, last, or intermediate)
-                            const isAnySelectedWeek = selectedWeeks.some(sw => areSameWeeks(week, sw));
-
-                            if (isFirstSelected && effectiveStartDate) { // Use effectiveStartDate here
-                              console.log('[WeekSelector Render] Displaying effectiveStartDate (first selected):', {
-                                dateObj: effectiveStartDate,
-                                iso: effectiveStartDate.toISOString(),
-                                formatted: formatInTimeZone(effectiveStartDate, 'UTC', 'MMM d')
-                              });
-                              return (
-                                <div className="flex items-center justify-center gap-1 text-primary">
-                                  <span>{formatInTimeZone(effectiveStartDate, 'UTC', 'MMM d')}</span>
-                                  <span>→</span>
-                                </div>
-                              );
-                            }
-                            if (isLastSelected) {
-                              console.log('[WeekSelector Render] Displaying endDate (last selected):', {
-                                dateObj: week.endDate,
-                                iso: week.endDate.toISOString(),
-                                formatted: formatInTimeZone(week.endDate, 'UTC', 'MMM d')
-                              });
-                              return (
-                                <div className="flex items-center justify-center gap-1 text-primary">
-                                  <span>→</span>
-                                  <span>{formatInTimeZone(week.endDate, 'UTC', 'MMM d')}</span>
-                                </div>
-                              );
-                            }
-                            // If it's an intermediary selected week (between first and last)
-                            if (isAnySelectedWeek && !isFirstSelected && !isLastSelected) {
-                              console.log('[WeekSelector Render] Displaying null for intermediary selected week:', { weekId: week.id });
-                              return null; // Intermediary selected weeks display nothing specific
-                            }
-
-                            // --- START: Modified logic for NON-SELECTED WEEKS when multiple are selected ---
-                            if (!isAnySelectedWeek) {
-                              // If this non-selected week comes AFTER the first selected week
-                              if (isAfter(week.startDate, firstSelected.startDate)) {
-                                console.log('[WeekSelector Render] Displaying potential checkout date (multi-select, after first):', {
-                                  weekId: week.id,
-                                  endDate: formatDateForDisplay(week.endDate)
-                                });
-                                return (
-                                  <div className="flex items-center justify-center text-primary">
-                                    {/* Display the END date */}
-                                    <span>{formatInTimeZone(week.endDate, 'UTC', 'MMM d')}</span>
-                                  </div>
-                                );
-                              } else {
-                                // If this non-selected week comes BEFORE the first selected week,
-                                // fall through to the default display logic below (showing earliest check-in).
-                                console.log('[WeekSelector Render] Non-selected week before first selection. Falling back to default.', { weekId: week.id });
-                              }
-                            }
-                            // --- END: Modified logic ---
-
-                            // Fallthrough for weeks before the first selected will reach the default logic below.
-                          }
-
-                          // If a single week is selected
-                          if (selectedWeeks.length === 1) {
-                            const selectedWeek = selectedWeeks[0];
-                            const isSelected = areSameWeeks(week, selectedWeek);
-
-                            if (isSelected && effectiveStartDate) { // Handles selectedWeeks.length === 1 case. Use effectiveStartDate.
-                              console.log('[WeekSelector Render] Displaying effectiveStartDate & endDate (single selected):', {
-                                startObj: effectiveStartDate,
-                                startIso: effectiveStartDate.toISOString(),
-                                startFormatted: formatInTimeZone(effectiveStartDate, 'UTC', 'MMM d'),
-                                endObj: week.endDate,
-                                endIso: week.endDate.toISOString(),
-                                endFormatted: formatInTimeZone(week.endDate, 'UTC', 'MMM d')
-                              });
-                              return (
-                                <div className="flex items-center justify-center gap-1 text-primary">
-                                  <span>{formatInTimeZone(effectiveStartDate, 'UTC', 'MMM d')}</span>
-                                  <span>→</span>
-                                  <span>{formatInTimeZone(week.endDate, 'UTC', 'MMM d')}</span>
-                                </div>
-                              );
-                            }
-                            // --- START: New logic for subsequent weeks ---
-                            else { // If this week is NOT the single selected week
-                              // Check if this week comes directly after the selected one and is selectable
-                              const isSubsequent = isAfter(week.startDate, selectedWeek.endDate);
-                              // Also ensure it's selectable according to existing rules (availability, contiguity unless admin)
-                              const isNextSelectable = isWeekSelectable(week, isAdmin, selectedWeeks); 
-                              
-                              if (isSubsequent && isNextSelectable) {
-                                console.log('[WeekSelector Render] Displaying potential checkout date for subsequent week:', {
-                                    weekId: week.id,
-                                    weekStartDate: formatDateForDisplay(week.startDate),
-                                    weekEndDate: formatDateForDisplay(week.endDate),
-                                    isSelectable: isNextSelectable // Should be true here
-                                });
-                                return (
-                                  <div className="flex items-center justify-center gap-1 text-primary">
-                                    <span>{formatInTimeZone(week.endDate, 'UTC', 'MMM d')}</span>
-                                  </div>
-                                );
-                              }
-                              // If not subsequent or not selectable, fall through to default display below
-                              console.log('[WeekSelector Render] Week is not the selected one and not the next selectable subsequent week. Falling back to default.', {
-                                weekId: week.id,
-                                isSubsequent,
-                                isNextSelectable
-                              });
-                            }
-                            // --- END: New logic for subsequent weeks ---
-                          }
-
-                          // Fallback display for any week not covered above
-                          // (e.g., not selected when others are, or when length === 1 but not subsequent/selectable)
-                          let fallbackDisplayDate = week.startDate;
-                          if (week.flexibleDates?.length) {
-                            // Sort dates and pick the earliest Date object directly
-                            const sortedFlexDates = [...week.flexibleDates].sort((a, b) => a.getTime() - b.getTime());
-                            fallbackDisplayDate = sortedFlexDates[0];
-                          }
-                          console.log('[WeekSelector Render] Displaying fallback date:', {
-                            dateObj: fallbackDisplayDate,
-                            iso: fallbackDisplayDate.toISOString(),
-                            formatted: formatInTimeZone(fallbackDisplayDate, 'UTC', 'MMM d')
+                          // If not subsequent or not selectable, fall through to default display below
+                          console.log('[WeekSelector Render] Week is not the selected one and not the next selectable subsequent week. Falling back to default.', {
+                            weekId: week.id,
+                            isSubsequent,
+                            isNextSelectable
                           });
-                          return (
-                            <div className="flex items-center justify-center text-primary">
-                              <span>{formatInTimeZone(fallbackDisplayDate, 'UTC', 'MMM d')}</span>
-                            </div>
-                          );
+                        }
+                        // --- END: New logic for subsequent weeks ---
+                      }
 
-                        })()}
-                      </div>
-                      {/* Show flex dates indicator only if no weeks are selected yet */}
-                      {week.flexibleDates && week.flexibleDates.length > 0 && !selectedWeeks.length && (
-                        <div className="text-sm text-indigo-500 mt-1 font-mono flex items-center justify-center gap-1">
-                          <Calendar className="w-3 h-3 xxs:w-3.5 xxs:h-3.5 xs:w-4 xs:h-4" />
-                          <span>{week.flexibleDates.length} check-in {week.flexibleDates.length === 1 ? 'date' : 'dates'}</span>
+                      // Fallback display for any week not covered above
+                      // (e.g., not selected when others are, or when length === 1 but not subsequent/selectable)
+                      let fallbackDisplayDate = week.startDate;
+                      if (week.flexibleDates?.length) {
+                        // Sort dates and pick the earliest Date object directly
+                        const sortedFlexDates = [...week.flexibleDates].sort((a, b) => a.getTime() - b.getTime());
+                        fallbackDisplayDate = sortedFlexDates[0];
+                      }
+                      console.log('[WeekSelector Render] Displaying fallback date:', {
+                        dateObj: fallbackDisplayDate,
+                        iso: fallbackDisplayDate.toISOString(),
+                        formatted: formatInTimeZone(fallbackDisplayDate, 'UTC', 'MMM d')
+                      });
+                      return (
+                        <div className="flex items-center justify-center text-primary">
+                          <span>{formatInTimeZone(fallbackDisplayDate, 'UTC', 'MMM d')}</span>
                         </div>
-                      )}
-                    </>
+                      );
+
+                    })()}
+                  </div>
+                  {/* --- END: Unified Date Display Logic --- */}
+
+                  {/* --- START: Render Week Name (if exists) Below Date --- */}
+                  {week.name && (
+                    <div className="mt-0.5"> {/* Add some spacing */}
+                      {(() => {
+                        const formattedStartDate = formatInTimeZone(week.startDate, 'UTC', 'MMM d');
+                        const formattedEndDate = formatInTimeZone(week.endDate, 'UTC', 'MMM d');
+                        const fullText = `${week.name}, ${formattedStartDate} - ${formattedEndDate}`;
+                        const isLong = fullText.length > 20; // Use a threshold relevant to the combined text
+
+                        return isMobile ? (
+                          // Mobile: Show full text, allow wrapping
+                          <div className="font-display text-secondary text-[10px] xxs:text-xs w-full px-1">
+                            {fullText}
+                          </div>
+                        ) : (
+                          // Desktop: Use tooltip only if combined text is long
+                          <div className="relative w-full">
+                            <div 
+                              className="font-display text-secondary text-[10px] xxs:text-xs w-full px-1 truncate"
+                              title={isLong ? fullText : undefined}
+                            >
+                              {fullText}
+                            </div>
+                            {isLong && (
+                              <Popover.Root>
+                                <Popover.Trigger asChild>
+                                  <button 
+                                    type="button"
+                                    className="absolute inset-0 cursor-help w-full h-full" // Use cursor-help
+                                    onClick={(e) => e.stopPropagation()}
+                                    aria-label={`More info about ${week.name}`} // Accessibility
+                                  />
+                                </Popover.Trigger>
+                                <Popover.Portal>
+                                  <Popover.Content 
+                                    sideOffset={5} 
+                                    className="tooltip-content !font-mono z-50 max-w-xs"
+                                    onOpenAutoFocus={(e: Event) => e.preventDefault()}
+                                  >
+                                    {fullText} {/* Show full text in tooltip */}
+                                    <Popover.Arrow className="tooltip-arrow" />
+                                  </Popover.Content>
+                                </Popover.Portal>
+                              </Popover.Root>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
                   )}
+                  {/* --- END: Render Week Name --- */}
+
+                  {/* --- START: Existing additional info (Flex Dates, Duration, Status) --- */}
+                  {/* Show flex dates indicator only if no weeks are selected yet */}
+                  {week.flexibleDates && week.flexibleDates.length > 0 && !selectedWeeks.length && (
+                    <div className="text-sm text-indigo-500 mt-1 font-mono flex items-center justify-center gap-1">
+                      <Calendar className="w-3 h-3 xxs:w-3.5 xxs:h-3.5 xs:w-4 xs:h-4" />
+                      <span>{week.flexibleDates.length} check-in {week.flexibleDates.length === 1 ? 'date' : 'dates'}</span>
+                    </div>
+                  )}
+                  
                   {(() => {
                     const diffTime = week.endDate.getTime() - week.startDate.getTime();
                     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
@@ -698,6 +749,7 @@ export function WeekSelector({
                     }
                     return null;
                   })()}
+
                   {/* Refined: Only show status text if admin AND status is 'hidden' or 'deleted' */}
                   {isAdmin && (week.status === 'hidden' || week.status === 'deleted') && (
                     <div className={clsx(
@@ -708,6 +760,7 @@ export function WeekSelector({
                       {week.status} 
                     </div>
                   )}
+                  {/* --- END: Existing additional info --- */}
                 </div>
               )}
 
@@ -756,17 +809,4 @@ export function WeekSelector({
       />
     </>
   );
-}
-
-function generateSquigglePath() {
-  // implement your squiggle path generation logic here
-  return '';
-}
-
-// Helper function needed for border logic
-function isWeekBetweenSelection(week: Week, selectedWeeks: Week[]): boolean {
-  if (selectedWeeks.length <= 1) return false;
-  const firstSelectedStart = selectedWeeks[0].startDate;
-  const lastSelectedStart = selectedWeeks[selectedWeeks.length - 1].startDate;
-  return isAfter(week.startDate, firstSelectedStart) && isBefore(week.startDate, lastSelectedStart);
 }

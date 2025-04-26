@@ -366,10 +366,11 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
               <p className="text-retro-accent/60 -mt-1 mb-6">
                 We value data privacy.
               </p>
-              <div className="flex justify-center gap-8">
+              {/* Change flex direction and gap based on screen size */}
+              <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center sm:gap-8">
                 <button 
                   onClick={() => handleChange('As you wish.')}
-                  className="bg-retro-accent text-black px-8 py-2 transition-colors hover:bg-retro-accent/90"
+                  className="bg-retro-accent text-black px-8 py-2 transition-colors hover:bg-retro-accent/90 w-full sm:w-auto" // Add width control
                   style={{
                     clipPath: `polygon(
                       0 4px, 4px 4px, 4px 0,
@@ -384,7 +385,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
                 </button>
                 <button 
                   onClick={() => handleChange('Inconceivable!')}
-                  className="bg-retro-accent text-black px-8 py-2 opacity-80 transition-colors hover:bg-retro-accent/90"
+                  className="bg-retro-accent text-black px-8 py-2 opacity-80 transition-colors hover:bg-retro-accent/90 w-full sm:w-auto" // Add width control
                   style={{
                     clipPath: `polygon(
                       0 4px, 4px 4px, 4px 0,
