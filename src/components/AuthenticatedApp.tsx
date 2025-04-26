@@ -202,15 +202,17 @@ export function AuthenticatedApp() {
     <div className="min-h-screen bg-main flex flex-col"
       style={{
         backgroundImage: theme === 'light'
-          ? `linear-gradient(rgba(250, 250, 249, 0.92), rgba(250, 250, 249, 0.92)), url(https://guquxpxxycfmmlqajdyw.supabase.co/storage/v1/object/public/background-image//fern-background-tiling-2.png)` // Lighter overlay for light mode - Increased opacity
-          : `linear-gradient(rgba(31, 41, 55, 0.9), rgba(31, 41, 55, 0.9)), url(https://guquxpxxycfmmlqajdyw.supabase.co/storage/v1/object/public/background-image//fern-background-tiling-2.png)`, // Original dark overlay
-        backgroundSize: 'auto',
-        backgroundRepeat: 'repeat',
-        backgroundPosition: 'center',
+          ? `linear-gradient(rgba(250, 250, 249, 0.92), rgba(250, 250, 249, 0.92)), url(https://guquxpxxycfmmlqajdyw.supabase.co/storage/v1/object/public/background-image//fern-bg-sam-blurred.png)` // Lighter overlay for light mode - Increased opacity
+          : `url(https://guquxpxxycfmmlqajdyw.supabase.co/storage/v1/object/public/background-image//fern-bg-sam-blurred.png)`, // REMOVED Dark overlay
+        backgroundSize: '100% auto',      // Stretch width, auto height
+        backgroundRepeat: 'repeat-x',     // Repeat horizontally only
+        backgroundPosition: 'top center',  // Align to top-center
+        backgroundAttachment: 'fixed',      // Keep background fixed during scroll
+        backgroundColor: '#121212'       // Fallback color
       }}
     >
       {/* Updated header classes - removed border-b */}
-      <header className={`fixed top-0 left-0 right-0 z-50 border-border/50 backdrop-blur-sm transition-all duration-300 ease-in-out bg-[var(--color-bg-surface-transparent)] ${!showHeader ? '-translate-y-full' : ''} ${theme === 'light' ? 'border-b border-border/50' : ''}`}>
+      <header className={`fixed top-0 left-0 right-0 z-50 border-border/50 transition-all duration-300 ease-in-out ${!showHeader ? '-translate-y-full' : ''} ${theme === 'light' ? 'border-b border-border/50' : ''}`}>
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-10 sm:h-14">
             <button 
@@ -348,6 +350,10 @@ export function AuthenticatedApp() {
           <Route path="/confirmation" element={<ConfirmationPage />} />
           {/*<Route path="/payment" element={<PaymentPage />} />*/}
           <Route path="/why" element={<WhyPage />} />
+          {/* Redirect legacy or unexpected /dashboard path */}
+          <Route path="/dashboard" element={<Navigate to="/" replace />} />
+          {/* Optional: Consider a catch-all for other undefined authenticated routes */}
+          {/* <Route path="/*" element={<Navigate to="/" replace />} /> */}
         </Routes>
       </main>
 

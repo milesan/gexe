@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 interface AcceptInvitePageProps {
@@ -9,6 +9,7 @@ interface AcceptInvitePageProps {
 export function AcceptInvitePage({ isWhitelist = false }: AcceptInvitePageProps) {
   console.log('AcceptInvitePage: Component mounted', { isWhitelist });
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const token = searchParams.get('token');
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState('');
@@ -99,9 +100,9 @@ export function AcceptInvitePage({ isWhitelist = false }: AcceptInvitePageProps)
             return;
           }
           
-          console.log('AcceptInvitePage: Session set successfully, redirecting to dashboard');
-          // Redirect to dashboard or home page
-          window.location.href = '/dashboard';
+          console.log('AcceptInvitePage: Session set successfully, redirecting to home');
+          // Redirect using React Router
+          navigate('/', { replace: true });
           return;
         }
 
@@ -117,7 +118,7 @@ export function AcceptInvitePage({ isWhitelist = false }: AcceptInvitePageProps)
     };
 
     acceptInvitation();
-  }, [searchParams, isWhitelist]);
+  }, [searchParams, isWhitelist, navigate]);
 
   if (status === 'loading') {
     return (

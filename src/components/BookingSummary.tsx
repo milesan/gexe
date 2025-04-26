@@ -971,7 +971,7 @@ export function BookingSummary({
                       <h4 className="font-medium text-primary mb-2 font-mono text-lg sm:text-xl">Arrive By</h4>
                       <div className="space-y-1">
                         <p className="text-accent-primary text-sm font-mono">{formatDateWithDay(selectedWeeks[0].startDate)}</p>
-                        <p className="text-accent-primary text-sm font-mono">2PM-6PM</p>
+                        <p className="text-accent-primary text-sm font-mono">2PM-5PM</p>
                       </div>
                     </div>
                     
@@ -1215,7 +1215,7 @@ export function BookingSummary({
                 <div className="border-t border-border pt-4 mt-4 font-mono">
                   {!appliedDiscount ? (
                     <div>
-                      <label htmlFor="discount-code" className="block text-sm font-medium text-secondary mb-1">Discount Code</label>
+                      <label htmlFor="discount-code" className="block text-sm font-medium text-secondary mb-1">Code</label>
                       <div className="flex gap-2">
                         <input 
                           type="text"
