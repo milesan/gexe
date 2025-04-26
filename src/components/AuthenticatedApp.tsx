@@ -348,6 +348,10 @@ export function AuthenticatedApp() {
           <Route path="/confirmation" element={<ConfirmationPage />} />
           <Route path="/payment" element={<PaymentPage />} />
           <Route path="/why" element={<WhyPage />} />
+          {/* Redirect legacy or unexpected /dashboard path */}
+          <Route path="/dashboard" element={<Navigate to="/" replace />} />
+          {/* Optional: Consider a catch-all for other undefined authenticated routes */}
+          {/* <Route path="/*" element={<Navigate to="/" replace />} /> */}
         </Routes>
       </main>
 

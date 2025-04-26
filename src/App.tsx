@@ -39,6 +39,14 @@ function AppRouterLogic({
 }: AppRouterLogicProps) {
   const location = useLocation();
   const navigate = useNavigate();
+  console.log('AppRouterLogic: Component Render/Re-render START', { 
+    pathname: location.pathname, 
+    loading, 
+    hasSession: !!session, 
+    sessionId: session?.user?.id, 
+    isWhitelisted, 
+    metadata: session?.user?.user_metadata 
+  });
 
   // Post-Callback Redirect Logic
   useEffect(() => {
@@ -51,7 +59,7 @@ function AppRouterLogic({
 
   // Early exit for loading or no session (Public Routes)
   if (loading || !session) {
-    console.log('AppRouterLogic: Rendering Public Routes', { loading, hasSession: !!session, pathname: location.pathname });
+    console.log('AppRouterLogic: Rendering Public Routes BLOCK', { loading, hasSession: !!session, pathname: location.pathname });
     return (
       <Routes>
         <Route path="/accept" element={<AcceptInvitePage />} />
@@ -72,24 +80,33 @@ function AppRouterLogic({
   const user = session.user;
   const metadata = user?.user_metadata;
   
-  const isAdmin = user?.email === 'andre@thegarden.pt' ||
+  // Log the exact values being used for decisions
+  const isAdminCheck = user?.email === 'andre@thegarden.pt' ||
                   user?.email === 'redis213@gmail.com' ||
                   user?.email === 'dawn@thegarden.pt' ||
                   user?.email === 'simone@thegarden.pt' ||
                   user?.email === 'samjlloa@gmail.com' ||
                   user?.email === 'redis213+testadmin@gmail.com';
-  const hasApplied = metadata?.has_applied === true;
-  const isWhitelistedUser = metadata?.is_whitelisted === true;
-  const hasCompletedWhitelistSignup = metadata?.has_completed_whitelist_signup === true;
-  const isApproved = metadata?.approved === true || metadata?.application_status === 'approved';
-  const applicationStatus = metadata?.application_status || 'pending';
-  
+  const hasAppliedCheck = metadata?.has_applied === true;
+  const isWhitelistedUserCheck = metadata?.is_whitelisted === true; // Check metadata directly
+  const hasCompletedWhitelistSignupCheck = metadata?.has_completed_whitelist_signup === true;
+  const isApprovedCheck = metadata?.approved === true || metadata?.application_status === 'approved';
+  const applicationStatusValue = metadata?.application_status || 'pending';
+
+
   console.log(`AppRouterLogic: Evaluating Authenticated Routes for ${user?.email}`, { 
-      isAdmin, isApproved, isWhitelisted, isWhitelistedUser, hasCompletedWhitelistSignup, hasApplied, applicationStatus 
+      isAdmin: isAdminCheck, 
+      isApproved: isApprovedCheck, 
+      isWhitelistedProp: isWhitelisted, // Prop passed down
+      isWhitelistedMeta: isWhitelistedUserCheck, // From metadata
+      hasCompletedWhitelistSignup: hasCompletedWhitelistSignupCheck, 
+      hasApplied: hasAppliedCheck, 
+      applicationStatus: applicationStatusValue,
+      rawMetadata: metadata // Log the whole metadata object
   });
 
-  if (isAdmin) {
-    console.log('AppRouterLogic: Rendering Admin Routes');
+  if (isAdminCheck) {
+    console.log('AppRouterLogic: Rendering Admin Routes BLOCK');
     return (
       <Routes>
         <Route path="/accept" element={<AcceptInvitePage />} />
@@ -100,8 +117,8 @@ function AppRouterLogic({
     );
   }
 
-  if (isApproved) {
-     console.log('AppRouterLogic: Rendering Approved User Routes');
+  if (isApprovedCheck) {
+     console.log('AppRouterLogic: Rendering Approved User Routes BLOCK');
      return (
       <>
         <WhitelistWelcomeModal isOpen={showWelcomeModal} onClose={handleCloseWelcomeModal} />
@@ -115,8 +132,9 @@ function AppRouterLogic({
     );
   }
 
-  if ((isWhitelisted || isWhitelistedUser) && !hasCompletedWhitelistSignup) {
-    console.log('AppRouterLogic: Rendering Whitelist Signup Redirect');
+  // Combine checks for clarity: isWhitelisted comes from RPC, isWhitelistedUserCheck from metadata
+  if ((isWhitelisted || isWhitelistedUserCheck) && !hasCompletedWhitelistSignupCheck) {
+    console.log('AppRouterLogic: Rendering Whitelist Signup Redirect BLOCK');
     return (
       <Routes>
         <Route path="/whitelist-signup" element={<WhitelistSignupPage />} />
@@ -125,8 +143,9 @@ function AppRouterLogic({
     );
   }
 
-  if ((isWhitelisted || isWhitelistedUser) && hasCompletedWhitelistSignup) {
-    console.log('AppRouterLogic: Rendering Whitelisted User Routes');
+  // Use the same combined check here
+  if ((isWhitelisted || isWhitelistedUserCheck) && hasCompletedWhitelistSignupCheck) {
+    console.log('AppRouterLogic: Rendering Whitelisted User Routes BLOCK (Post-Signup)');
     return (
       <>
         <WhitelistWelcomeModal isOpen={showWelcomeModal} onClose={handleCloseWelcomeModal} />
@@ -140,8 +159,8 @@ function AppRouterLogic({
     );
   }
 
-  if (!hasApplied) {
-    console.log('AppRouterLogic: Rendering Application Flow Routes');
+  if (!hasAppliedCheck) {
+    console.log('AppRouterLogic: Rendering Application Flow Routes BLOCK (!hasApplied)');
     return (
       <Routes>
         <Route path="/" element={<Retro2Page />} />
@@ -154,11 +173,11 @@ function AppRouterLogic({
   }
 
   // Default for applied but not approved/whitelisted/admin
-  console.log('AppRouterLogic: Rendering Pending/Rejected Routes');
+  console.log('AppRouterLogic: Rendering Pending/Rejected Routes BLOCK (Default)');
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/pending" replace />} />
-      <Route path="/pending" element={<PendingPage status={applicationStatus as 'pending' | 'rejected'} />} />
+      <Route path="/pending" element={<PendingPage status={applicationStatusValue as 'pending' | 'rejected'} />} />
       <Route path="/confirmation" element={<ConfirmationPage />} />
       <Route path="/retro2" element={<Retro2Page />} />
       <Route path="/*" element={<Navigate to="/pending" replace />} />
