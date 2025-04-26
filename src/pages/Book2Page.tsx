@@ -874,7 +874,7 @@ export function Book2Page() {
                     <h2 className="text-xl sm:text-2xl font-display font-light text-primary">
                       {selectedWeeks.length === 0 ? "When do you wish to arrive?" : 
                        selectedWeeks.length === 1 ? "One week selected! Any more?" : 
-                       "Set your timeline."}
+                       "Set your timeline"}
                     </h2>
 
                     <div className="flex items-center gap-2 xxs:gap-3">
@@ -971,7 +971,7 @@ export function Book2Page() {
               {/* Outer Cabin Selector keeps py-* padding */}
               <div className="bg-surface rounded-xl shadow-sm py-3 xs:py-4 sm:py-6 mb-4 xs:mb-5 sm:mb-6 cabin-selector">
                 {/* REMOVING px-* padding from this h2 */}
-                <h2 className="text-xl sm:text-2xl font-display font-light text-primary mb-3 xs:mb-4">Pick your nest.</h2>
+                <h2 className="text-xl sm:text-2xl font-display font-light text-primary mb-3 xs:mb-4">Pick your nest</h2>
                 <CabinSelector 
                   accommodations={accommodations || []}
                   selectedAccommodationId={selectedAccommodation}

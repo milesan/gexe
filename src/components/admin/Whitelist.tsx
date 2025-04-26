@@ -215,22 +215,22 @@ export function Whitelist() {
 
       if (error) throw error;
       
-      // Send acceptance emails to all newly whitelisted users
-      console.log(' Sending acceptance emails to', newEmails.length, 'users');
-      for (const entry of data) {
-        const { error: emailError } = await supabase.functions.invoke('send-whitelist-email', {
-          body: { 
-            email: entry.email,
-            whitelistId: entry.id,
-            frontendUrl: getFrontendUrl()
-          }
-        });
-        if (emailError) {
-          console.error(' Error sending acceptance email to', entry.email, ':', emailError);
-        }
-      }
+      // // Send acceptance emails to all newly whitelisted users
+      // console.log(' Sending acceptance emails to', newEmails.length, 'users');
+      // for (const entry of data) {
+      //   const { error: emailError } = await supabase.functions.invoke('send-whitelist-email', {
+      //     body: { 
+      //       email: entry.email,
+      //       whitelistId: entry.id,
+      //       frontendUrl: getFrontendUrl()
+      //     }
+      //   });
+      //   if (emailError) {
+      //     console.error(' Error sending acceptance email to', entry.email, ':', emailError);
+      //   }
+      // }
       
-      console.log(' Successfully uploaded CSV data and sent emails');
+      console.log(' Successfully uploaded CSV data'); // Removed "and sent emails"
       setShowUpload(false);
       await loadWhitelist();
     } catch (err) {
