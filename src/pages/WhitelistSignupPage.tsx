@@ -31,12 +31,12 @@ export function WhitelistSignupPage() {
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
+    console.log('⏳ WhitelistSignupPage: Attempting sign out...');
     try {
-      console.log('WhitelistSignupPage: Signing out user');
       await supabase.auth.signOut();
-      window.location.href = '/';
+      console.log('✅ WhitelistSignupPage: Sign out successful');
     } catch (error) {
-      console.error('Error signing out:', error);
+      console.error('❌ WhitelistSignupPage: Error during sign out:', error instanceof Error ? error.message : error);
     }
   };
 
@@ -161,11 +161,11 @@ export function WhitelistSignupPage() {
 
   return (
     <div className="fixed inset-0 bg-black overflow-hidden">
-      <div className="min-h-screen flex flex-col items-center justify-center p-4 text-[#FFBF00]">
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 text-retro-accent">
         <div className="absolute top-4 right-4">
           <button
             onClick={handleSignOut}
-            className="bg-[#FFBF00]/10 text-[#FFBF00] px-4 py-2 rounded-lg hover:bg-[#FFBF00]/20 transition-colors text-sm font-body border border-[#FFBF00]/20"
+            className="bg-retro-accent/10 text-retro-accent px-4 py-2 rounded-lg hover:bg-retro-accent/10 transition-colors text-sm font-body border border-retro-accent/30"
           >
             Sign Out
           </button>
@@ -178,7 +178,7 @@ export function WhitelistSignupPage() {
           <div className="text-center mb-8">
             <Terminal className="w-12 h-12 mx-auto mb-4" />
             <h1 className="text-3xl font-display mb-2">Welcome to The Garden</h1>
-            <p className="text-[#FFBF00]/60">Just a few details to complete your account</p>
+            <p className="text-retro-accent/70">Just a few details to complete your account</p>
           </div>
 
           {error && (
@@ -199,7 +199,7 @@ export function WhitelistSignupPage() {
                     ...prev,
                     firstName: e.target.value
                   }))}
-                  className="w-full bg-black p-3 text-[#FFBF00] focus:outline-none focus:ring-2 focus:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30"
+                  className="w-full bg-black p-3 text-retro-accent focus:outline-none focus:ring-2 focus:ring-retro-accent/50 placeholder-retro-accent/30 border-4 border-retro-accent/30"
                   style={{
                     clipPath: `polygon(
                       0 4px, 4px 4px, 4px 0,
@@ -221,7 +221,7 @@ export function WhitelistSignupPage() {
                     ...prev,
                     lastName: e.target.value
                   }))}
-                  className="w-full bg-black p-3 text-[#FFBF00] focus:outline-none focus:ring-2 focus:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30"
+                  className="w-full bg-black p-3 text-retro-accent focus:outline-none focus:ring-2 focus:ring-retro-accent/50 placeholder-retro-accent/30 border-4 border-retro-accent/30"
                   style={{
                     clipPath: `polygon(
                       0 4px, 4px 4px, 4px 0,
@@ -247,7 +247,7 @@ export function WhitelistSignupPage() {
                       type: e.target.value as any
                     }
                   }))}
-                  className="bg-black p-3 text-[#FFBF00] focus:outline-none focus:ring-2 focus:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30 [&>option]:bg-zinc-900 [&>option]:text-white"
+                  className="bg-black p-3 text-retro-accent focus:outline-none focus:ring-2 focus:ring-retro-accent/50 placeholder-retro-accent/30 border-4 border-retro-accent/30 [&>option]:bg-zinc-900 [&>option]:text-white"
                   style={{
                     clipPath: `polygon(
                       0 4px, 4px 4px, 4px 0,
@@ -274,7 +274,7 @@ export function WhitelistSignupPage() {
                       value: e.target.value
                     }
                   }))}
-                  className="w-full bg-black p-3 text-[#FFBF00] focus:outline-none focus:ring-2 focus:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30"
+                    className="w-full bg-black p-3 text-retro-accent focus:outline-none focus:ring-2 focus:ring-retro-accent/50 placeholder-retro-accent/30 border-4 border-retro-accent/30"
                   style={{
                     clipPath: `polygon(
                       0 4px, 4px 4px, 4px 0,
@@ -302,7 +302,7 @@ export function WhitelistSignupPage() {
                   type="file"
                   accept="image/*"
                   onChange={handleAvatarChange}
-                  className="w-full bg-black p-3 text-[#FFBF00] focus:outline-none focus:ring-2 focus:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30"
+                  className="w-full bg-black p-3 text-retro-accent focus:outline-none focus:ring-2 focus:ring-retro-accent/50 placeholder-retro-accent/30 border-4 border-retro-accent/30"
                   style={{
                     clipPath: `polygon(
                       0 4px, 4px 4px, 4px 0,
@@ -325,17 +325,17 @@ export function WhitelistSignupPage() {
                   ...prev,
                   dataConsent: e.target.checked
                 }))}
-                className="w-4 h-4 rounded border-[#FFBF00]/20 bg-white/5"
+                className="w-4 h-4 rounded border-retro-accent/30 bg-white/5"
               />
-              <label className="text-sm text-[#FFBF00]/60">
-                We value data privacy. By checking this box, you consent to The Garden storing your data for this residency.
+              <label className="text-sm text-retro-accent/70">
+                We value data privacy. By checking this box, you consent to The Garden storing your data for the purpose of this residency or event.
               </label>
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#FFBF00] text-black py-3 rounded-lg hover:bg-[#FFBF00]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-retro-accent text-black py-3 rounded-lg hover:bg-retro-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Processing...' : 'Complete Signup'}
             </button>

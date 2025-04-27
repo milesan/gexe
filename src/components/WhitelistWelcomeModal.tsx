@@ -36,7 +36,7 @@ export function WhitelistWelcomeModal({ isOpen, onClose }: Props) {
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
             onClick={(e) => e.stopPropagation()}
-            className="bg-black border-2 border-[rgba(var(--color-retro-accent),_0.3)] max-w-md w-full p-8 text-center"
+            className="bg-black border-2 border-[#FFBF00]/30 max-w-md w-full p-8 text-center"
             style={{
               clipPath: `polygon(
                 0 4px, 4px 4px, 4px 0,
@@ -56,13 +56,13 @@ export function WhitelistWelcomeModal({ isOpen, onClose }: Props) {
                 opacity: 0.9
               }}
             />
-            <h2 className="text-[rgb(var(--color-retro-accent))] text-2xl font-display mb-4">Welcome to The Garden</h2>
-            <p className="font-mono text-sm text-[rgba(var(--color-retro-accent),_0.6)] mb-6">
+            <h2 className="text-[#FFBF00] text-2xl font-display mb-4">Welcome to The Garden</h2>
+            <p className="font-mono text-sm text-[#FFBF00]/60 mb-6">
               You have been approved for 2025 and have bypassed the application.
             </p>
             <button
               onClick={handleClose}
-              className="bg-[rgb(var(--color-retro-accent))] text-black px-8 py-3 font-display text-xl"
+              className="bg-[#FFBF00] text-black px-8 py-3 font-display text-xl"
               style={{
                 clipPath: `polygon(
                   0 4px, 4px 4px, 4px 0,
