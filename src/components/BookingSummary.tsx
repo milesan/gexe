@@ -890,7 +890,7 @@ export function BookingSummary({
               initial={{ scale: 0.95 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.95 }}
-              className="bg-surface rounded-lg max-w-xl w-full p-6"
+              className="bg-surface rounded-sm max-w-xl w-full p-6"
             >
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-display text-primary">Complete Payment</h3>
@@ -948,9 +948,9 @@ export function BookingSummary({
           {selectedWeeks.length > 0 && (
             <div className="">
               {/* Stay Details Section - Outer div handles layout/animation */}
-              {/* REMOVED visuals, ADDED mb-6 */}
+              {/* REMOVED visuals, ADDED mb-4 */}
               <motion.div 
-                className="relative mb-6" 
+                className="relative mb-4" /* Reduced margin */
                 initial={{ y: 10, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ duration: 0.3 }}
@@ -958,21 +958,12 @@ export function BookingSummary({
                 {/* Middle div handles border, padding, visuals - REMOVED PADDING */}
                 <div className="relative shadow-sm overflow-hidden bg-transparent">
                   {/* Inner Blur Layer */}
-                  <div className="absolute inset-0 -z-10 backdrop-blur-sm bg-surface/50 rounded-xl"></div>
-
-                  {/* Clear Button (relative to middle div) */}
-                  <button
-                    onClick={onClearWeeks}
-                    className="absolute top-0.5 right-0.5 p-1.5 text-secondary hover:text-error hover:bg-error-muted-hover rounded-md transition-colors z-20" /* Ensure button is above content */
-                  >
-                    <X className="w-4 h-4" />
-                    <span className="sr-only">Clear Selected Dates</span>
-                  </button>
+                  <div className="absolute inset-0 -z-10 backdrop-blur-sm bg-surface/50 rounded-sm"></div>
 
                   {/* Content Wrapper (maybe add relative z-10 if needed) */}
-                  <div className="relative z-10 space-y-4 sm:space-y-5"> 
+                  <div className="relative z-10 space-y-3 sm:space-y-4">
                     {/* Arrival Information - REMOVED PADDING */}
-                    <div className="rounded-lg shadow-sm bg-surface"> 
+                    <div className="rounded-sm shadow-sm bg-surface p-4"> 
                       <h4 className="uppercase font-lettra-bold text-shade-2 text-xs mb-2">
                         Arrive By
                       </h4>
@@ -983,9 +974,9 @@ export function BookingSummary({
                     </div>
                     
                     {/* Departure Information - REMOVED PADDING */}
-                    <div className="rounded-lg shadow-sm bg-surface">
+                    <div className="rounded-sm shadow-sm bg-surface p-4">
                       <h4 className="uppercase font-lettra-bold text-shade-2 text-xs mb-2">
-                        Begone by
+                        Leave by
                       </h4>
                       <div className="space-y-1">
                         <p className="uppercase text-2xl text-primary font-display">{formatDateWithDay(selectedWeeks[selectedWeeks.length - 1].endDate)}</p>
@@ -994,7 +985,7 @@ export function BookingSummary({
                     </div>
                     
                     {/* Duration - REMOVED PADDING */}
-                    <div className="rounded-lg shadow-sm bg-surface"> 
+                    <div className="rounded-sm shadow-sm bg-surface p-4"> 
                       <div className="flex justify-between items-center">
                         <div className="w-full">
                           <span className="text-primary uppercase font-display text-2xl">
@@ -1009,22 +1000,22 @@ export function BookingSummary({
 
               {/* Accommodation Section - Outer div handles layout/animation */}
               {selectedAccommodation && (
-                /* REMOVED visuals, ADDED mt-6 */
+                /* REMOVED visuals, ADDED mt-4 */
                 <motion.div 
-                  className="relative mt-6" 
+                  className="relative mt-4" /* Reduced margin */
                   initial={{ y: 10, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ duration: 0.3 }}
                 >
                   {/* Middle div handles visuals - REMOVED PADDING */}
-                  <div className="relative rounded-lg shadow-sm bg-surface overflow-hidden"> 
+                  <div className="relative rounded-sm shadow-sm bg-surface overflow-hidden p-4"> 
                     {/* Inner Blur Layer */}
-                    <div className="absolute inset-0 -z-10 backdrop-blur-sm bg-surface/50 rounded-lg"></div>
+                    <div className="absolute inset-0 -z-10 backdrop-blur-sm bg-surface/50 rounded-sm"></div>
                     
                     {/* Clear Button (relative to middle div) */}
                     <button
                       onClick={onClearAccommodation}
-                      className="absolute top-3 right-3 p-1.5 text-secondary hover:text-error hover:bg-error-muted-hover rounded-md transition-colors z-20" /* Ensure button is above content */
+                      className="absolute top-2 right-2 p-1.5 text-accent-primary hover:text-accent-secondary hover:bg-accent-muted rounded-full transition-colors z-20" /* Updated styles and position */
                     >
                       <X className="w-4 h-4" />
                       <span className="sr-only">Clear Selected Accommodation</span>
@@ -1062,36 +1053,20 @@ export function BookingSummary({
                   <div className="flex items-center justify-between mb-3">
                     {/* Restyle heading to match accommodation title */}
                     <h3 className="text-primary font-display text-2xl block">Price breakdown</h3>
-                    <Popover.Root>
-                      <Popover.Trigger asChild>
-                        {/* Change icon color */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation(); // Prevent event bubbling
-                            setShowDiscountModal(true);
-                          }}
-                          className="p-1.5 text-[var(--color-accent-primary)] hover:bg-accent-muted rounded-md transition-colors"
-                        >
-                          <Info className="w-4 h-4" />
-                          <span className="sr-only">View Discount Details</span>
-                        </button>
-                      </Popover.Trigger>
-                      <Popover.Portal>
-                        <Popover.Content
-                          className="tooltip-content !font-mono"
-                          sideOffset={5}
-                          side="top"
-                          align="end"
-                          onOpenAutoFocus={(e: Event) => e.preventDefault()}
-                        >
-                          <Popover.Arrow className="tooltip-arrow" width={11} height={5} />
-                          <span className="text-white text-sm">See discounts applied</span>
-                        </Popover.Content>
-                      </Popover.Portal>
-                    </Popover.Root>
+                    {/* Remove Popover wrapper, keep the button and its onClick */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent event bubbling
+                        setShowDiscountModal(true);
+                      }}
+                      className="p-1.5 text-[var(--color-accent-primary)] hover:bg-accent-muted rounded-md transition-colors"
+                    >
+                      <Info className="w-4 h-4" />
+                      <span className="sr-only">View Discount Details</span>
+                    </button>
                   </div>
                   
-                  <div className="space-y-4"> {/* Increased spacing between items */}
+                  <div className="bg-surface space-y-4 p-4 rounded-sm"> {/* Increased spacing between items */}
                     {selectedAccommodation ? (
                       <>
                         <div className="flex justify-between items-end"> {/* Outer flex - changed to end */}
@@ -1103,7 +1078,7 @@ export function BookingSummary({
                             </span>
                           </div>
                           {/* Price: Updated size, font, color */}
-                          <span className="text-2xl font-display text-shade-1">{formatPriceDisplay(pricing.totalAccommodationCost)}</span> {/* Right block (price) */}
+                          <span className="text-xl font-display text-shade-1">{formatPriceDisplay(pricing.totalAccommodationCost)}</span> {/* Right block (price) */}
                         </div>
                         <hr className="border-t border-border my-2 opacity-30" /> {/* Horizontal line */}
                       </>
@@ -1114,77 +1089,85 @@ export function BookingSummary({
                     )}
                     
                     <>
-                      <div className="flex justify-between items-end"> {/* Outer flex - changed to end */}
-                        <div className="flex flex-col"> {/* Left block */}
-                          <Popover.Root>
+                      {/* --- Wrap the whole row in Popover.Root --- */}
+                      <Popover.Root>
+                        <div className="flex justify-between items-start"> {/* Changed items-end to items-start */}
+                          {/* Left block (label and sub-label) */}
+                          <div className="flex flex-col">
+                            <span className="text-xs text-shade-2 font-lettra-bold flex items-center"> 
+                              FOOD AND FACILITIES
+                            </span>
+                            <span className="text-2xl text-primary font-display"> 
+                                {formatNumber(pricing.weeksStaying)} {pricing.weeksStaying === 1 ? 'week' : 'weeks'}
+                            </span>
+                          </div>
+
+                          {/* Right block (Icon Trigger + Price) */}
+                          <div className="flex flex-col items-end"> {/* Column layout, align items to the end (right) */}
+                            {/* Icon Trigger */}
                             <Popover.Trigger asChild>
-                              <span className="text-xs text-shade-2 font-lettra-bold flex items-center cursor-help"> {/* Label */}
-                                FOOD & FACILITIES
-                                <Info className="w-3 h-3 ml-1 opacity-70" />
-                              </span>
+                              <button className="text-accent-primary hover:text-accent-secondary mb-1"> {/* Add bottom margin */} 
+                                <Info className="w-4 h-4" /> {/* Slightly larger icon? */}
+                              </button>
                             </Popover.Trigger>
-                            <Popover.Portal>
-                              <Popover.Content
-                                className="tooltip-content !font-mono text-sm z-50" // Reused styles, added z-index
-                                sideOffset={5}
-                                side="top"
-                                align="end"
-                                onOpenAutoFocus={(e: Event) => e.preventDefault()} // Added typing
-                              >
-                                <Popover.Arrow className="tooltip-arrow" width={11} height={5} />
-                                <span className="text-white">Community meals & operations costs</span>
-                              </Popover.Content>
-                            </Popover.Portal>
-                          </Popover.Root>
-                          {/* Style sub-label like main dates, show duration, remove uppercase */}
-                          <span className="text-2xl text-primary font-display"> {/* Sub-label */}
-                              {formatNumber(pricing.weeksStaying)} {pricing.weeksStaying === 1 ? 'week' : 'weeks'}
-                          </span>
+                            {/* Price */}
+                            <span className="text-xl font-display text-shade-1">
+                              {formatPriceDisplay(pricing.totalFoodAndFacilitiesCost)}
+                            </span>
+                          </div>
                         </div>
-                        {/* Price: Updated size, font, color */}
-                        <span className="text-2xl font-display text-shade-1">{formatPriceDisplay(pricing.totalFoodAndFacilitiesCost)}</span> {/* Right block (price) */}
-                      </div>
+
+                        {/* Popover Content */} 
+                        <Popover.Portal>
+                          <Popover.Content
+                            className="tooltip-content !font-mono text-sm z-50"
+                            sideOffset={5}
+                            side="top"
+                            align="end" // Align to the end (right) of the trigger (icon)
+                            onOpenAutoFocus={(e: Event) => e.preventDefault()}
+                          >
+                            <Popover.Arrow className="tooltip-arrow" width={11} height={5} />
+                            <span className="text-primary">Community meals & operations costs</span>
+                          </Popover.Content>
+                        </Popover.Portal>
+                      </Popover.Root>
                       <hr className="border-t border-border my-2 opacity-30" /> {/* Horizontal line */}
                     </>
 
                     {/* Optional Contribution Slider */}
                     {foodContribution !== null && selectedWeeks.length > 0 && (
                       <div className="pt-2"> {/* Reduced top padding */}
-                         <div className="flex justify-between items-start mb-2"> {/* Outer flex, items-start */}
-                           <div className="flex flex-col"> {/* Left block */}
-                             <label htmlFor="food-contribution" className="text-xs text-shade-2 font-lettra-bold flex items-center"> {/* Label */}
-                               SLIDING CONTRIBUTION
-                                <Popover.Root>
-                                    <Popover.Trigger asChild>
-                                        <button 
-                                          className="ml-1 text-secondary hover:text-secondary-hover"
-                                        >
-                                            <Info className="w-3 h-3" />
-                                        </button>
-                                    </Popover.Trigger>
-                                    <Popover.Portal>
-                                        <Popover.Content
-                                            sideOffset={5}
-                                            className="tooltip-content !font-mono text-sm z-50" // Reused styles, added z-index
-                                            side="top"
-                                            align="end"
-                                            onOpenAutoFocus={(e: Event) => e.preventDefault()} // Added typing
-                                        >
-                                            <Popover.Arrow className="tooltip-arrow" width={11} height={5} />
-                                            Adjust your contribution based on your means. Minimum varies by stay length.
-                                        </Popover.Content>
-                                    </Popover.Portal>
-                                </Popover.Root>
+                         {/* --- Wrap label row in Popover Root --- */}
+                         <Popover.Root>
+                           {/* --- Label row with space-between --- */}
+                           <div className="flex justify-between items-center mb-2">
+                             <label htmlFor="food-contribution" className="text-xs text-shade-2 font-lettra-bold"> {/* Label */}
+                                SLIDING CONTRIBUTION
                               </label>
-                              {/* Style sub-label like main dates - REMOVED */}
-                              {/* 
-                              <span className="uppercase text-2xl text-primary font-display"> 
-                                Choose your weekly rate
-                              </span>
-                              */}
+                              <Popover.Trigger asChild>
+                                  <button 
+                                    className="text-accent-primary hover:text-accent-secondary" /* No margin needed now */
+                                  >
+                                      <Info className="w-4 h-4" /> {/* Slightly larger? */}
+                                  </button>
+                              </Popover.Trigger>
                             </div>
-                            {/* Price display removed from here, handled below */}
-                         </div>
+                            {/* --- Popover Content --- */}
+                            <Popover.Portal>
+                                <Popover.Content
+                                    sideOffset={5}
+                                    className="tooltip-content !font-mono text-sm z-50" // Reused styles, added z-index
+                                    side="top"
+                                    align="end" // Keep align='end'
+                                    onOpenAutoFocus={(e: Event) => e.preventDefault()} // Added typing
+                                >
+                                    <Popover.Arrow className="tooltip-arrow" width={11} height={5} />
+                                    Adjust your contribution based on your means. Minimum varies by stay length.
+                                </Popover.Content>
+                            </Popover.Portal>
+                         </Popover.Root>
+
+                         {/* --- Slider remains outside Popover Root --- */}
                          <input
                            id="food-contribution"
                            type="range"
@@ -1302,7 +1285,7 @@ export function BookingSummary({
                   <button
                     onClick={handleConfirmClick}
                     disabled={isBooking || !selectedAccommodation || selectedWeeks.length === 0}
-                    className={`w-full flex items-center justify-center pixel-corners--wrapper relative overflow-hidden px-6 py-3.5 sm:py-4 text-lg font-medium rounded-sm transition-colors duration-200
+                    className={`w-full flex items-center justify-center pixel-corners--wrapper relative overflow-hidden px-6 py-2.5 sm:py-3 text-lg font-medium rounded-sm transition-colors duration-200
                       ${
                         isBooking || !selectedAccommodation || selectedWeeks.length === 0
                           ? 'bg-transparent text-shade-3 cursor-not-allowed'
@@ -1319,14 +1302,14 @@ export function BookingSummary({
                     <button
                       onClick={handleAdminConfirm}
                       disabled={isBooking || !selectedAccommodation || selectedWeeks.length === 0}
-                      className={`w-full mt-3 flex items-center justify-center pixel-corners--wrapper relative overflow-hidden px-6 py-3.5 sm:py-4 text-lg font-medium rounded-sm transition-colors duration-200
+                      className={`w-full mt-3 flex items-center justify-center pixel-corners--wrapper relative overflow-hidden px-6 py-2.5 sm:py-3 text-lg font-medium rounded-sm transition-colors duration-200
                         ${isBooking || !selectedAccommodation || selectedWeeks.length === 0
                             ? 'bg-transparent text-shade-3 cursor-not-allowed'
                             : 'bg-secondary-muted text-white hover:bg-secondary-muted-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary-muted'
                         }`}
                     >
                       <span className="pixel-corners--content 2xl:text-2xl">
-                         {isBooking ? 'Confirming...' : <span>Admin Confirm<br />(No Payment)</span>}
+                         {isBooking ? 'CONFIRMING...' : <span>Admin Confirm<br />(No Payment)</span>}
                       </span>
                     </button>
                   )}
@@ -1336,7 +1319,7 @@ export function BookingSummary({
           )}
 
           {selectedWeeks.length === 0 && (
-            <div className="text-center py-10 bg-surface/50 rounded-xl shadow-sm">
+            <div className="text-center py-10 bg-surface/50 rounded-sm shadow-sm">
               <Calendar className="w-12 h-12 mx-auto text-secondary mb-4" />
               <p className="text-secondary text-sm">Select your dates to see the summary</p>
             </div>

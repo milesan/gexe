@@ -11,7 +11,7 @@ export default {
       colors: {
         // Core semantic colors using CSS variables
         'bg-main': 'var(--color-bg-main)',
-        'bg-surface': 'var(--color-bg-surface)',
+        'surface': 'var(--color-bg-surface)',
         'text-primary': 'var(--color-text-primary)',
         'text-secondary': 'var(--color-text-secondary)',
         'border': 'var(--color-border)',

@@ -370,7 +370,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
               <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center sm:gap-8">
                 <button 
                   onClick={() => handleChange('As you wish.')}
-                  className="bg-retro-accent text-black px-8 py-2 transition-colors hover:bg-retro-accent/90 w-full sm:w-auto" // Add width control
+                  className="bg-retro-accent text-black px-8 py-2 transition-colors hover:bg-accent-secondary w-full sm:w-auto" // Add width control
                   style={{
                     clipPath: `polygon(
                       0 4px, 4px 4px, 4px 0,

@@ -240,7 +240,7 @@ export function AnimatedTerminal({ onComplete }: Props) {
                     <button
                       type="submit"
                       disabled={isLoading}
-                      className="w-full bg-retro-accent text-black p-3 font-mono hover:bg-retro-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full bg-retro-accent text-black p-3 font-mono hover:bg-accent-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       style={{
                         clipPath: `polygon(
                           0 4px, 4px 4px, 4px 0,

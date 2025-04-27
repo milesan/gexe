@@ -35,10 +35,10 @@
   --color-text-secondary: #DDDDD0;
   --color-border: #B8B8AD;
   --color-accent-primary: #A2CBA0; /* Green */
-  --color-accent-secondary: #a4b088;
+  --color-accent-secondary: #7c9c7a;
   --color-accent-muted: rgba(255, 209, 102, 0.1); /* Yellow at 10% */
   --color-accent-subtle: rgba(255, 209, 102, 0.2); /* Yellow at 20% */
-  --color-error: #f87171;
+  --color-error: #9C5050;
   --color-error-muted: rgba(248, 113, 113, 0.1);
   --color-button-secondary-bg: #334155;
   --color-button-secondary-bg-hover: #475569;
@@ -72,7 +72,7 @@
   --color-tooltip-bg: color-mix(in srgb, var(--color-bg-surface) 90%, black 10%); /* Slightly darker surface */
   --color-tooltip-border: color-mix(in srgb, var(--color-border) 50%, transparent);
   --color-tooltip-accent-border: color-mix(in srgb, var(--color-accent-primary) 30%, transparent);
-  --color-tooltip-text: var(--color-white); /* Explicitly white for dark tooltips */
+  --color-tooltip-text: var(--color-text-primary); /* Use primary text color */
   
   /* Font variables */
   --font-primary: 'PP Lettra Mono Regular', monospace;
@@ -115,12 +115,11 @@
   --color-tooltip-bg: color-mix(in srgb, var(--color-bg-surface) 90%, black 10%); /* Darker tooltip even in light mode for contrast */
   --color-tooltip-border: color-mix(in srgb, var(--color-border) 50%, transparent);
   --color-tooltip-accent-border: color-mix(in srgb, var(--color-accent-primary) 30%, transparent);
-  --color-tooltip-text: var(--color-white); /* Keep text white for dark tooltips */
+  --color-tooltip-text: var(--color-text-primary); /* Keep text white for dark tooltips */
 }
 
 @layer base {
   body {
-    background-color: var(--color-bg-main);
     color: var(--color-text-primary);
     font-size-adjust: 0.422; /* Added to normalize perceived font size */
     font-family: var(--font-primary); /* Use the variable */
@@ -145,9 +144,11 @@
   .slider-thumb-accent {
     &::-webkit-slider-thumb {
       @apply bg-accent-primary rounded-full appearance-none h-4 w-4 cursor-pointer;
+      border: 2px solid var(--color-bg-surface); /* Use surface color for border */
     }
     &::-moz-range-thumb {
       @apply bg-accent-primary rounded-full appearance-none h-4 w-4 cursor-pointer border-none;
+      border: 2px solid var(--color-bg-surface); /* Use surface color for border */
     }
   }
 }

@@ -825,7 +825,7 @@ export function Book2Page() {
               <h1 className="text-4xl lg:text-[78px] font-display mb-3 xs:mb-4 text-primary pt-14 leading-[1.1] tracking-[-0.02em]">BEGIN YOUR <br /><em>EXISTENTIAL</em> CYCLE</h1>
               
               {/* Outer Note box keeps py-* padding - Setting bottom margin to 32px (mb-8) */}
-              <div className="bg-surface/50 py-3 xs:py-4 sm:py-6 mb-8 shadow-sm">
+              <div className="bg-surface/50 py-3 xs:py-4 sm:py-6 mb-8 shadow-sm rounded-sm">
                 {/* Using InfoBox component, passing specific padding and max-width */}
                 <InfoBox className="px-3 xs:px-4 sm:px-6 max-w-3xl">
                   <div className="flex flex-col gap-3 xs:gap-3 text-primary">
@@ -903,7 +903,7 @@ export function Book2Page() {
               />
 
               {/* Moved Calendar card inside wrapper - CHANGING p-* to py-* now */}
-              <div className="bg-surface rounded-xl shadow-sm py-3 xs:py-4 sm:py-6 mb-4 xs:mb-5 sm:mb-6">
+              <div className="rounded-xl shadow-sm py-3 xs:py-4 sm:py-6 mb-4 xs:mb-5 sm:mb-6">
                 {/* REMOVING px-* padding from this inner div */}
                 <SeasonLegend />
                 <div className="flex flex-col gap-3 mb-4">
@@ -938,7 +938,7 @@ export function Book2Page() {
                         </button>
                         {/* UPDATED styles to match header button, now bold, removed border/rounded */}
                         <div 
-                          className="p-1.5 font-lettra-bold text-sm uppercase transition-colors bg-surface-dark text-primary hover:opacity-80 text-center whitespace-nowrap min-w-[120px] xxs:min-w-[140px] sm:min-w-[160px] cursor-pointer" /* Removed border, rounded-sm */
+                          className="p-1.5 font-lettra-bold text-sm uppercase transition-colors bg-surface-dark text-primary hover:opacity-80 text-center whitespace-nowrap min-w-[120px] xxs:min-w-[140px] sm:min-w-[160px] cursor-pointer rounded-sm" /* Removed border, rounded-sm */
                           onClick={() => handleMonthChange(startOfMonth(new Date()))} // Use handleMonthChange
                           title="Go to current month"
                         >
@@ -1017,9 +1017,9 @@ export function Book2Page() {
               </div> {/* Closing Calendar card div */}
               
               {/* Outer Cabin Selector keeps py-* padding */}
-              <div className="bg-surface rounded-xl shadow-sm py-3 xs:py-4 sm:py-6 mb-4 xs:mb-5 sm:mb-6 cabin-selector">
+              <div className="rounded-xl shadow-sm py-3 xs:py-4 sm:py-6 mb-4 xs:mb-5 sm:mb-6 cabin-selector">
                 {/* REMOVING px-* padding from this h2 */}
-                <h2 className="text-xl sm:text-2xl font-display font-light text-primary mb-3 xs:mb-4">Pick your nest</h2>
+                <h2 className="text-2xl sm:text-3xl  font-display font-light text-primary mb-3 xs:mb-4">Pick your nest</h2>
                 <CabinSelector 
                   accommodations={accommodations || []}
                   selectedAccommodationId={selectedAccommodation}
@@ -1039,7 +1039,7 @@ export function Book2Page() {
             {/* Re-add sticky, add max-height and overflow for independent scrolling on large screens */}
             <div className="lg:sticky lg:top-8 lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto">
               {/* This inner div now just handles the styling */}
-              <div className="bg-surface rounded-xl shadow-sm p-3 xs:p-4 sm:p-6 mb-4 xs:mb-5 sm:mb-6">
+              <div className="rounded-xl shadow-sm p-3 xs:p-4 sm:p-6 mb-4 xs:mb-5 sm:mb-6">
                 {selectedWeeks.length > 0 ? (
                   <BookingSummary 
                     selectedWeeks={selectedWeeks}

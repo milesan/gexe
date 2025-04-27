@@ -5,7 +5,7 @@ interface FooterProps {
 }
 
 export const Footer: React.FC<FooterProps> = ({ wrapperClassName }) => {
-  const defaultClasses = "bg-surface/50 backdrop-blur-sm mt-auto py-6";
+  const defaultClasses = "mt-auto py-6";
   const finalClasses = wrapperClassName ?? defaultClasses;
 
   return (

@@ -277,7 +277,7 @@ export function Retro2Form({ questions, onSubmit }: Props) {
                 <button
                   type="button"
                   onClick={() => setCurrentSection(prev => Math.max(0, prev - 1))}
-                  className="group flex items-center gap-2 px-4 py-2 transition-all bg-retro-accent text-black disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="group hover:bg-accent-secondary flex items-center gap-2 px-4 py-2 transition-all bg-retro-accent text-black disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{
                     clipPath: `polygon(
                       0 4px, 4px 4px, 4px 0,
@@ -305,7 +305,7 @@ export function Retro2Form({ questions, onSubmit }: Props) {
                   className={`group flex items-center justify-center gap-2 px-4 py-2 transition-colors min-w-44 ${
                     isSubmitting || !isCurrentSectionComplete() 
                       ? 'bg-retro-accent/10 text-retro-accent'
-                      : 'bg-retro-accent text-black'
+                      : 'bg-retro-accent text-black hover:bg-accent-secondary'
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                   style={{
                     clipPath: `polygon(
@@ -336,7 +336,7 @@ export function Retro2Form({ questions, onSubmit }: Props) {
                     disabled={!isCurrentSectionComplete()}
                     className={`group flex items-center gap-2 px-4 py-2 transition-all  ${
                       isCurrentSectionComplete() 
-                        ? 'bg-retro-accent text-black' 
+                        ? 'bg-retro-accent text-black hover:bg-accent-secondary' 
                         : 'bg-retro-accent/10 text-retro-accent'
                     } disabled:opacity-50 disabled:cursor-not-allowed`}
                     style={{

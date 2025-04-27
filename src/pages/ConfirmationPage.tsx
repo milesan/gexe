@@ -31,11 +31,11 @@ export function ConfirmationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-bg-main flex items-center justify-center p-4">
+    <div className="flex items-center justify-center p-4">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-2xl w-full bg-bg-surface rounded-xl shadow-sm border border-border overflow-hidden"
+        className="max-w-2xl w-full rounded-sm shadow-sm border border-border overflow-hidden bg-[var(--color-bg-surface)]"
       >
         <div className="p-8 text-center border-b border-border">
           <motion.div
@@ -144,7 +144,7 @@ export function ConfirmationPage() {
             href="https://gardening.notion.site/Welcome-to-The-Garden-2684f446b48e4b43b3f003d7fca33664?pvs=4"
             target="_blank"
             rel="noopener noreferrer"
-            className="block w-full bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white py-3 px-6 rounded-lg transition-colors text-center font-mono text-lg flex items-center justify-center gap-2"
+            className="block w-full bg-accent-primary hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white py-3 px-6 rounded-lg transition-colors text-center font-mono text-lg flex items-center justify-center gap-2"
           >
             Welcome Guide
             <ExternalLink className="w-4 h-4" />

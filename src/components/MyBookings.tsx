@@ -57,14 +57,14 @@ export function MyBookings() {
           <div className="flex justify-between items-start mb-8">
             <div>
               <h1 className="text-4xl font-display font-light text-primary mb-2">My Account</h1>
-              <div className="text-secondary">
+              <div className="text-primary">
                 <p className="font-mono">{session?.user?.email}</p>
               </div>
             </div>
           </div>
           
           {bookings.length === 0 ? (
-            <div className="text-center font-mono text-secondary">
+            <div className="text-center font-mono text-primary">
               No bookings found. Book your first stay!
             </div>
           ) : (
@@ -74,7 +74,7 @@ export function MyBookings() {
                   key={booking.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-surface p-6 rounded-xl shadow-sm border border-color"
+                  className="bg-surface p-6 rounded-sm shadow-sm"
                 >
                   <div className="flex items-start justify-between">
                     <div>
@@ -83,16 +83,16 @@ export function MyBookings() {
                       </h3>
                       <div className="space-y-1 text-sm font-mono">
                         <p>
-                          <span className="text-secondary">Check-in:</span>{' '}
-                          {format(parseISO(booking.check_in), 'PPP')}
+                          <span className="text-primary">Check-in:</span>{' '}
+                          <span className="text-primary">{format(parseISO(booking.check_in), 'PPP')}</span>
                         </p>
                         <p>
-                          <span className="text-secondary">Check-out:</span>{' '}
-                          {format(parseISO(booking.check_out), 'PPP')}
+                          <span className="text-primary">Check-out:</span>{' '}
+                          <span className="text-primary">{format(parseISO(booking.check_out), 'PPP')}</span>
                         </p>
                         <p>
-                          <span className="text-secondary">Total Price:</span>{' '}
-                          €{booking.total_price}
+                          <span className="text-primary">Total Price:</span>{' '}
+                          <span className="text-primary">€{booking.total_price}</span>
                         </p>
                         <a 
                           href="https://gardening.notion.site/Welcome-to-The-Garden-2684f446b48e4b43b3f003d7fca33664?pvs=4"

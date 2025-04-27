@@ -22,6 +22,27 @@ interface Props {
   displayWeeklyAccommodationPrice: (accommodationId: string) => { price: number | null; avgSeasonalDiscount: number | null } | null;
 }
 
+// Helper Component for Overlays
+const StatusOverlay: React.FC<{ 
+  isVisible: boolean; 
+  zIndex: number; 
+  children: React.ReactNode; 
+  className?: string; 
+}> = ({ isVisible, zIndex, children, className }) => {
+  if (!isVisible) return null;
+
+  return (
+    <div className={clsx("absolute inset-0 flex items-center justify-center p-4", `z-[${zIndex}]`)}> {/* Positioning only */}
+      <div className={clsx(
+        "bg-surface text-text-primary px-4 py-2 rounded-md font-mono text-sm text-center border border-border shadow-md",
+        className // Allow specific styling overrides like border color
+      )}>
+        {children}
+      </div>
+    </div>
+  );
+};
+
 export function CabinSelector({ 
   accommodations, 
   selectedAccommodationId, 
@@ -287,9 +308,11 @@ export function CabinSelector({
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.2 }}
                   className={clsx(
-                    'relative rounded-sm overflow-hidden transition-all duration-200 flex flex-col justify-between group mb-4', // Base classes - Removed bg-surface
-                    // Selected State: Keep shadow on parent. Border handled by dedicated element below.
-                    isSelected ? "shadow-lg" : '', 
+                    'relative rounded-sm overflow-hidden transition-all duration-200 flex flex-col justify-between group mb-4', // Base classes
+                    // Apply bg-surface by default, override when selected, add shadow only when selected
+                    isSelected 
+                      ? "shadow-lg bg-[color-mix(in_srgb,_var(--color-bg-surface)_95%,_var(--color-accent-primary)_5%)]" 
+                      : "bg-surface", // Use the renamed class
                     // Pointer state:
                     finalCanSelect && !isDisabled && 'cursor-pointer'
                   )}
@@ -300,31 +323,20 @@ export function CabinSelector({
                   }}
                   style={{ minHeight: '300px' }} 
                 >
-                  {/* Overlays - Reverted to simple positioning containers */}
-                  {/* 1. Disabled Overlay (highest priority) */}
-                  {isDisabled && (
-                    <div className="absolute inset-0 z-[4] flex items-center justify-center p-4"> {/* Positioning only */}
-                      <div className="bg-bg-surface text-text-primary px-4 py-2 rounded-md font-mono text-sm text-center border border-border shadow-md">
-                        Select dates first
-                      </div>
-                    </div>
-                  )}
-                  {/* 2. Fully Booked Overlay */}
-                  {!isDisabled && isFullyBooked && (
-                    <div className="absolute inset-0 z-[3] flex items-center justify-center p-4"> {/* Positioning only */}
-                      <div className="bg-bg-surface text-text-primary px-4 py-2 rounded-md font-mono text-sm text-center border border-border shadow-md">
-                        Booked out
-                      </div>
-                    </div>
-                  )}
-                  {/* 3. Out of Season Overlay */}
-                  {!isDisabled && isOutOfSeason && !isFullyBooked && (
-                    <div className="absolute inset-0 z-[2] flex items-center justify-center p-4"> {/* Positioning only */}
-                      <div className="bg-bg-surface text-text-primary px-4 py-2 rounded-md font-mono text-sm text-center border border-amber-500 dark:border-amber-600 shadow-md">
-                        Seasonal<br />Apr 15 - Sep 1
-                      </div>
-                    </div>
-                  )}
+                  {/* Use the StatusOverlay helper component */}
+                  <StatusOverlay isVisible={isDisabled} zIndex={4}>
+                    Select dates first
+                  </StatusOverlay>
+                  <StatusOverlay isVisible={!isDisabled && isFullyBooked} zIndex={3}>
+                    Booked out
+                  </StatusOverlay>
+                  <StatusOverlay 
+                    isVisible={!isDisabled && isOutOfSeason && !isFullyBooked} 
+                    zIndex={2}
+                    className="border-amber-500 dark:border-amber-600" // Pass specific class for amber border
+                  >
+                    Seasonal<br />Apr 15 - Sep 1
+                  </StatusOverlay>
 
                   {/* Badge container - place above overlays */}
                   <div className="absolute top-2 left-2 z-[5] flex flex-col gap-2"> 
@@ -336,7 +348,7 @@ export function CabinSelector({
 
                   {/* Image */}
                   <div className={clsx(
-                    "relative h-56 bg-surface overflow-hidden", // Default to bg-surface, removed gradient
+                    "relative h-56 overflow-hidden", // REMOVED bg-surface
                     // Apply blur and corresponding opacity/grayscale conditionally
                     isDisabled && "blur-sm opacity-20 grayscale-[0.5]",
                     (!isDisabled && isFullyBooked) && "blur-sm opacity-20 grayscale-[0.7]",
@@ -359,11 +371,8 @@ export function CabinSelector({
 
                   {/* Content */}
                   <div className={clsx(
-                    "p-3 flex-grow flex flex-col justify-between", // Base classes, removed bg-transparent
-                    // Conditional Background: Apply color-mix only when selected, otherwise bg-surface
-                    isSelected 
-                      ? "bg-[color-mix(in_srgb,_var(--color-bg-surface)_95%,_var(--color-accent-primary)_5%)]" 
-                      : "bg-surface",
+                    "p-3 flex-grow flex flex-col justify-between", // Base classes
+                    // REMOVED background logic here - relies on parent motion.div now
                     // Apply blur and corresponding opacity/grayscale conditionally
                     isDisabled && "blur-sm opacity-20 grayscale-[0.5]",
                     (!isDisabled && isFullyBooked) && "blur-sm opacity-20 grayscale-[0.7]",
@@ -392,7 +401,7 @@ export function CabinSelector({
                                 onOpenAutoFocus={(e: Event) => e.preventDefault()}
                               >
                                 <Popover.Arrow className="tooltip-arrow" width={11} height={5} />
-                                <span className="color-text-primary">{acc.has_electricity ? 'Has Electricity' : 'No Electricity'}</span>
+                                <span>{acc.has_electricity ? 'Has Electricity' : 'No Electricity'}</span>
                               </Popover.Content>
                             </Popover.Portal>
                           </Popover.Root>
@@ -416,7 +425,7 @@ export function CabinSelector({
                               onOpenAutoFocus={(e: Event) => e.preventDefault()}
                             >
                               <Popover.Arrow className="tooltip-arrow" width={11} height={5} />
-                              <span className="color-text-primary">{acc.has_wifi ? 'Has WiFi' : 'No WiFi'}</span>
+                              <span>{acc.has_wifi ? 'Has WiFi' : 'No WiFi'}</span>
                             </Popover.Content>
                           </Popover.Portal>
                         </Popover.Root>
@@ -438,7 +447,7 @@ export function CabinSelector({
                               onOpenAutoFocus={(e: Event) => e.preventDefault()}
                             >
                               <Popover.Arrow className="tooltip-arrow" width={11} height={5} />
-                              <h4 className="font-medium font-mono color-text-primary mb-1">Bed Size</h4>
+                              <h4 className="font-medium font-mono mb-1">Bed Size</h4>
                               <p className="text-sm color-shade-2 font-mono">
                                 {acc.bed_size || 'N/A'}
                               </p>
@@ -461,7 +470,7 @@ export function CabinSelector({
                                 onOpenAutoFocus={(e: Event) => e.preventDefault()}
                               >
                                 <Popover.Arrow className="tooltip-arrow" width={11} height={5} />
-                                <span className="color-text-primary">We invite those who seek quiet to stay here.</span>
+                                <span>We invite those who seek quiet to stay here.</span>
                               </Popover.Content>
                             </Popover.Portal>
                           </Popover.Root>
@@ -482,7 +491,7 @@ export function CabinSelector({
                                 onOpenAutoFocus={(e: Event) => e.preventDefault()}
                               >
                                 <Popover.Arrow className="tooltip-arrow" width={11} height={5} />
-                                <span className="color-text-primary">Power hook-ups available on request</span>
+                                <span>Power hook-ups available on request</span>
                               </Popover.Content>
                             </Popover.Portal>
                           </Popover.Root>
@@ -520,7 +529,7 @@ export function CabinSelector({
                               onOpenAutoFocus={(e: Event) => e.preventDefault()}
                             >
                               <Popover.Arrow className="tooltip-arrow tooltip-arrow--accent" width={11} height={5} />
-                              <h4 className="font-medium font-mono color-text-primary mb-2">Weekly Rate Breakdown</h4>
+                              <h4 className="font-medium font-mono mb-2">Weekly Rate Breakdown</h4>
                               <div className="text-sm space-y-2">
                                  {/* Base Price */}
                                  <div className="flex justify-between items-center color-shade-2">
@@ -552,7 +561,7 @@ export function CabinSelector({
                                  <div className="border-t border-gray-600 my-1"></div>
 
                                  {/* Final Weekly Price - Use weeklyPrice from prop, ensure not null */}
-                                 <div className="flex justify-between items-center font-medium color-text-primary text-base">
+                                 <div className="flex justify-between items-center font-medium text-base">
                                     <span>Final Weekly Rate:</span>
                                     {/* Ensure weeklyPrice is not null before rounding */}
                                     <span>€{formatPrice(weeklyPrice, isTestAccommodation)}</span>
