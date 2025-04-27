@@ -255,30 +255,30 @@ export function AuthenticatedApp() {
               <nav className="flex gap-6 items-center">
                 <button
                   onClick={() => handleNavigation('my-bookings')}
-                  className={`font-mono text-sm transition-colors ${
+                  className={`p-1.5 font-lettra text-sm transition-colors border border-shade-1 bg-surface-dark rounded-sm text-primary ${
                     location.pathname === '/my-bookings'
-                      ? 'text-accent-secondary font-medium'
-                      : 'text-secondary hover:text-accent-secondary'
+                      ? 'font-medium'
+                      : 'hover:opacity-80'
                   }`}
                 >
-                  My Account
+                  MY ACCOUNT
                 </button>
                 {isAdmin && (
                   <button
                     onClick={() => handleNavigation('admin')}
-                    className={`bg-accent-primary text-sm text-stone-800 px-4 py-2 rounded-lg hover:bg-accent-secondary transition-colors font-mono ${
-                        location.pathname === '/admin' ? 'ring-2 ring-offset-2 ring-accent-primary ring-offset-surface' : ''
+                    className={`p-1.5 text-sm transition-colors uppercase font-lettra text-primary border border-shade-1 bg-surface-dark rounded-sm ${
+                        location.pathname === '/admin' ? 'font-medium' : 'hover:opacity-80'
                     }`}
                   >
-                    Admin Panel
+                    ADMIN PANEL
                   </button>
                 )}
               </nav>
               <button 
                 onClick={handleSignOut}
-                className="bg-[var(--color-button-secondary-bg)] text-primary px-6 py-2 hover:bg-[var(--color-button-secondary-bg-hover)] transition-colors text-sm font-mono rounded-lg border border-border"
+                className="p-1.5 transition-colors text-sm uppercase font-lettra text-primary hover:opacity-80"
               >
-                Sign Out
+                SIGN OUT
               </button>
             </div>
           </div>
@@ -312,29 +312,29 @@ export function AuthenticatedApp() {
               */}
               <button
                 onClick={() => handleNavigation('my-bookings')}
-                className={`w-full text-left px-4 py-2 font-mono rounded-lg transition-colors text-sm ${
+                className={`w-full text-left p-1.5 font-lettra transition-colors text-sm border border-shade-1 bg-surface-dark rounded-sm text-primary ${
                   location.pathname === '/my-bookings'
-                    ? 'bg-[color-mix(in_srgb,_var(--color-accent-secondary)_20%,_transparent)] text-accent-secondary font-medium'
-                    : 'text-secondary hover:bg-[var(--color-bg-surface-hover)]'
+                    ? 'font-medium'
+                    : 'hover:opacity-80'
                 }`}
               >
-                My Account
+                MY ACCOUNT
               </button>
               {isAdmin && (
                 <button
                   onClick={() => handleNavigation('admin')}
-                  className={`w-full text-left bg-accent-primary text-stone-800 px-4 py-2 rounded-lg hover:bg-accent-secondary transition-colors text-sm font-mono ${
-                    location.pathname === '/admin' ? 'ring-2 ring-offset-2 ring-accent-primary ring-offset-surface' : ''
+                  className={`w-full text-left p-1.5 transition-colors text-sm uppercase font-lettra text-primary border border-shade-1 bg-surface-dark rounded-sm ${
+                    location.pathname === '/admin' ? 'font-medium' : 'hover:opacity-80'
                   }`}
                 >
-                  Admin Panel
+                  ADMIN PANEL
                 </button>
               )}
               <button 
                 onClick={handleSignOut}
-                className="w-full text-left bg-[var(--color-button-secondary-bg)] text-primary px-4 py-2 hover:bg-[var(--color-button-secondary-bg-hover)] transition-colors text-sm font-mono rounded-lg border border-border"
+                className="w-full text-left p-1.5 transition-colors text-sm uppercase font-lettra text-primary border border-shade-1 bg-surface-dark rounded-sm hover:opacity-80"
               >
-                Sign Out
+                SIGN OUT
               </button>
             </div>
           </div>

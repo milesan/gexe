@@ -42,26 +42,6 @@ interface WeekSelectorProps {
   onMaxWeeksReached?: () => void;
 }
 
-// Season legend component
-const SeasonLegend = () => {
-  return (
-    <div className="flex flex-wrap justify-center xxs:justify-start gap-1.5 xs:gap-2 sm:gap-3 mb-2 xs:mb-3">
-      <div className="flex items-center gap-1 xs:gap-1.5">
-        <div className="w-2.5 h-2.5 xs:w-3 xs:h-3 rounded-full bg-[#A599FF]"></div>
-        <span className="text-sm text-secondary font-mono whitespace-nowrap">Low (Nov-May)</span>
-      </div>
-      <div className="flex items-center gap-1 xs:gap-1.5">
-        <div className="w-2.5 h-2.5 xs:w-3 xs:h-3 rounded-full bg-[#FFB088]"></div>
-        <span className="text-sm text-secondary font-mono whitespace-nowrap">Medium (Jun, Oct)</span>
-      </div>
-      <div className="flex items-center gap-1 xs:gap-1.5">
-        <div className="w-2.5 h-2.5 xs:w-3 xs:h-3 rounded-full bg-[#FF8F8F]"></div>
-        <span className="text-sm text-secondary font-mono whitespace-nowrap">Summer (Jul-Sep)</span>
-      </div>
-    </div>
-  );
-};
-
 // Helper function to generate a squiggle path
 function generateSquigglePath() {
   return "M 0 15 Q 25 5, 50 15 T 100 15";
@@ -376,7 +356,6 @@ export function WeekSelector({
 
   return (
     <>
-      <SeasonLegend />
       <div className={clsx(
         'grid gap-1.5 xs:gap-2 sm:gap-3 md:gap-4',
         'grid-cols-1 xxs:grid-cols-2 xs:grid-cols-3 sm:grid-cols-4'
@@ -431,6 +410,9 @@ export function WeekSelector({
           // Define fixed height classes - Using the larger dimensions for consistency
           const fixedHeightClass = 'h-[80px] xxs:h-[90px] xs:h-[100px] sm:h-[110px]';
 
+          // Determine if the week is an intermediate selected week
+          const isIntermediateSelected = isWeekSelected(week) && isWeekBetweenSelection(week, selectedWeeks);
+
           return (
             <button
               key={week.id || `week-${index}`}
@@ -442,11 +424,11 @@ export function WeekSelector({
                 'shadow-sm hover:shadow-md',
                 // Unconditionally add highlight class (CSS rule scopes it to light mode)
                 'bg-card-highlight',
-                // Default background
-                !isWeekSelected(week) && !(selectedWeeks.length > 1 && isWeekBetweenSelection(week, selectedWeeks)) && !(isAdmin && (week.status === 'hidden' || week.status === 'deleted' || (week.status === 'visible' && week.isCustom))) && 'bg-surface/50 backdrop-blur-sm',
-                // Selection states (These should override the default bg)
-                isWeekSelected(week) && 'border-accent-primary shadow-lg bg-surface/50 backdrop-blur-sm', 
-                !isWeekSelected(week) && selectedWeeks.length > 1 && isWeekBetweenSelection(week, selectedWeeks) && 'border-accent-primary/20 bg-surface/50 backdrop-blur-sm', 
+                // Default background - CHANGED to surface-dark, REMOVED backdrop-blur
+                !isWeekSelected(week) && !(selectedWeeks.length > 1 && isWeekBetweenSelection(week, selectedWeeks)) && !(isAdmin && (week.status === 'hidden' || week.status === 'deleted' || (week.status === 'visible' && week.isCustom))) && 'bg-surface-dark',
+                // Selection states (These should override the default bg) - CHANGED background to surface-dark
+                isWeekSelected(week) && 'border-accent-primary shadow-lg bg-surface-dark', 
+                !isWeekSelected(week) && selectedWeeks.length > 1 && isWeekBetweenSelection(week, selectedWeeks) && 'border-accent-primary/20 bg-surface/50', 
                 // Opacity/cursor for non-selectable (content hiding handled below)
                 !isWeekSelectable(week, isAdmin, selectedWeeks) && !isAdmin && 'opacity-50 cursor-not-allowed',
                 // Hover/cursor for selectable admin view
@@ -455,8 +437,22 @@ export function WeekSelector({
                 isAdmin && week.status === 'hidden' && 'border-yellow-400 bg-yellow-500/10',
                 isAdmin && week.status === 'deleted' && 'border-red-400 bg-red-500/10 border-dashed',
                 isAdmin && week.status === 'visible' && week.isCustom && 'border-blue-400',
-                // Default border color when not selected and not covered by other border logic
-                !isWeekSelected(week) && !(selectedWeeks.length > 1 && isWeekBetweenSelection(week, selectedWeeks)) && !(isAdmin && (week.status === 'hidden' || week.status === 'deleted' || (week.status === 'visible' && week.isCustom))) && 'border-border'
+                // --- START: Seasonal/Default Border Logic ---
+                (() => {
+                  const season = getSeasonName(week.startDate);
+                  if (!isWeekSelected(week) && !isAdmin) { // Apply seasonal border for non-admin, non-selected
+                    // Use the custom season colors defined in Tailwind config
+                    if (season === 'Low Season') return 'border-season-low';
+                    if (season === 'Medium Season') return 'border-season-medium';
+                    if (season === 'Summer Season') return 'border-season-summer';
+                  }
+                  // Fallback default border for other non-selected cases (e.g., admin view without specific status)
+                  if (!isWeekSelected(week) && !(selectedWeeks.length > 1 && isWeekBetweenSelection(week, selectedWeeks)) && !(isAdmin && (week.status === 'hidden' || week.status === 'deleted' || (week.status === 'visible' && week.isCustom)))) {
+                    return 'border-border';
+                  }
+                  return null; // No border class needed if selected or already handled by admin status
+                })()
+                // --- END: Seasonal/Default Border Logic ---
               )}
               disabled={!isWeekSelectable(week, isAdmin, selectedWeeks)}
             >
@@ -669,7 +665,8 @@ export function WeekSelector({
                   {/* --- END: Unified Date Display Logic --- */}
 
                   {/* --- START: Render Week Name (if exists) Below Date --- */}
-                  {week.name && (
+                  {/* Only render the name/secondary date if the week is NOT an intermediate selected week */}
+                  {!isIntermediateSelected && week.name && (
                     <div className="mt-0.5"> {/* Add some spacing */}
                       {(() => {
                         const formattedStartDate = formatInTimeZone(week.startDate, 'UTC', 'MMM d');
@@ -788,12 +785,14 @@ export function WeekSelector({
                   'absolute bottom-0 left-0 right-0 transition-all duration-300',
                   // Height based on selection
                   isWeekSelected(week) ? 'h-1.5 sm:h-2' : 'h-1 sm:h-1.5',
-                  // Apply seasonal color ONLY IF content is visible (i.e., selectable or admin)
-                  isContentVisible && {
-                    'bg-[#A599FF]': getSeasonName(week.startDate) === 'Low Season',
-                    'bg-[#FFB088]': getSeasonName(week.startDate) === 'Medium Season',
-                    'bg-[#FF8F8F]': getSeasonName(week.startDate) === 'Summer Season',
-                  }
+                  // Apply seasonal color ONLY IF content is visible AND NOT selected
+                  isContentVisible && !isWeekSelected(week) && {
+                    'bg-season-low': getSeasonName(week.startDate) === 'Low Season',
+                    'bg-season-medium': getSeasonName(week.startDate) === 'Medium Season',
+                    'bg-season-summer': getSeasonName(week.startDate) === 'Summer Season',
+                  },
+                  // Apply accent color IF selected
+                  isWeekSelected(week) && 'bg-accent-primary'
                 )}
               />
             </button>

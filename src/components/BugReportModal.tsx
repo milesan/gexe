@@ -263,19 +263,19 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.95, opacity: 0 }}
-                className="bg-[var(--color-surface-modal,theme(colors.gray.800))] rounded-lg p-4 sm:p-6 max-w-lg w-full relative z-[101] max-h-[90vh] overflow-y-auto shadow-xl border border-[var(--color-border-modal,theme(colors.gray.500/0.3))] text-[var(--color-text-primary,theme(colors.white))] backdrop-blur-sm flex flex-col"
+                className="bg-[var(--color-bg-surface)] rounded-sm p-4 sm:p-6 max-w-lg w-full relative z-[101] max-h-[90vh] overflow-y-auto shadow-xl border border-[var(--color-border-modal,theme(colors.gray.500/0.3))] color-text-primary backdrop-blur-sm flex flex-col"
                 onClick={(e) => e.stopPropagation()}
               >
                 <button
                   onClick={onClose}
-                  className="absolute top-3 sm:top-4 right-3 sm:right-4 text-[var(--color-text-secondary,theme(colors.gray.400))] hover:text-[var(--color-text-primary,theme(colors.white))] disabled:opacity-50"
+                  className="absolute top-3 sm:top-4 right-3 sm:right-4 color-shade-2 hover:color-text-primary disabled:opacity-50"
                   disabled={status === 'submitting' || isUploading || !!isDeleting}
                   aria-label="Close modal"
                 >
                   <X className="w-5 h-5" />
                 </button>
 
-                <h3 className="text-base sm:text-lg font-display text-[var(--color-text-primary,theme(colors.white))] mb-4 sm:mb-5">
+                <h3 className="text-base sm:text-lg font-display color-text-primary mb-4 sm:mb-5">
                   Report an Issue
                 </h3>
 
@@ -288,7 +288,7 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
                 ) : (
                   <form onSubmit={handleSubmit} className="flex flex-col flex-grow space-y-4 font-mono">
                     <div>
-                      <label htmlFor="description" className="block text-sm sm:text-base font-medium text-[var(--color-text-secondary,theme(colors.gray.300))] mb-1">Description <span className="text-[var(--color-error-indicator,theme(colors.red.500))]">*</span></label>
+                      <label htmlFor="description" className="block text-sm sm:text-base font-medium color-shade-2 mb-1">Description <span className="color-error-indicator">*</span></label>
                       <textarea
                         id="description"
                         value={description}
@@ -296,37 +296,37 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
                         placeholder="Describe the problem you encountered..."
                         required
                         rows={4}
-                        className="w-full bg-[var(--color-input-bg,theme(colors.gray.700/0.5))] border border-[var(--color-input-border,theme(colors.gray.600))] rounded-md p-2 text-sm text-[var(--color-text-primary,theme(colors.white))] focus:ring-1 focus:ring-[var(--color-focus-ring,theme(colors.accent-primary))] focus:border-[var(--color-focus-ring,theme(colors.accent-primary))] placeholder:text-xs sm:placeholder:text-sm placeholder-[var(--color-text-placeholder,theme(colors.gray.400))] disabled:opacity-70"
+                        className="w-full bg-[var(--color-bg-surface)] border border-[var(--color-input-border,theme(colors.gray.600))] rounded-sm p-2 text-sm color-text-primary focus:ring-1 focus:ring-[var(--color-focus-ring,theme(colors.accent-primary))] focus:border-[var(--color-focus-ring,theme(colors.accent-primary))] placeholder:text-xs sm:placeholder:text-sm placeholder-shade-1 disabled:opacity-70"
                         disabled={status === 'submitting' || isUploading || !!isDeleting}
                       />
                     </div>
                     <div>
-                       <label htmlFor="stepsToReproduce" className="block text-sm sm:text-base font-medium text-[var(--color-text-secondary,theme(colors.gray.300))] mb-1">Steps to Reproduce (Optional)</label>
+                       <label htmlFor="stepsToReproduce" className="block text-sm sm:text-base font-medium color-shade-2 mb-1">Steps to Reproduce (Optional)</label>
                        <textarea
                          id="stepsToReproduce"
                          value={stepsToReproduce}
                          onChange={(e) => setStepsToReproduce(e.target.value)}
                          placeholder="How can we make this happen?&#10;1. Go to...&#10;2. Click...&#10;3. See..."
                          rows={4}
-                         className="w-full bg-[var(--color-input-bg,theme(colors.gray.700/0.5))] border border-[var(--color-input-border,theme(colors.gray.600))] rounded-md p-2 text-sm text-[var(--color-text-primary,theme(colors.white))] focus:ring-1 focus:ring-[var(--color-focus-ring,theme(colors.accent-primary))] focus:border-[var(--color-focus-ring,theme(colors.accent-primary))] placeholder:text-xs sm:placeholder:text-sm placeholder-[var(--color-text-placeholder,theme(colors.gray.400))] disabled:opacity-70"
+                         className="w-full bg-[var(--color-bg-surface)] border border-[var(--color-input-border,theme(colors.gray.600))] rounded-sm p-2 text-sm color-text-primary focus:ring-1 focus:ring-[var(--color-focus-ring,theme(colors.accent-primary))] focus:border-[var(--color-focus-ring,theme(colors.accent-primary))] placeholder:text-xs sm:placeholder:text-sm placeholder-shade-1 disabled:opacity-70"
                          disabled={status === 'submitting' || isUploading || !!isDeleting}
                        />
                     </div>
 
                     <div className="space-y-3">
                        <div className="flex justify-between items-baseline">
-                           <label htmlFor={inputId} className="block text-sm sm:text-base font-medium text-[var(--color-text-secondary,theme(colors.gray.300))] mb-1">Attach Screenshots (Optional)</label>
-                           <span className="text-sm text-[var(--color-text-secondary,theme(colors.gray.400))]">
+                           <label htmlFor={inputId} className="block text-sm sm:text-base font-medium color-shade-2 mb-1">Attach Screenshots (Optional)</label>
+                           <span className="text-sm color-shade-2">
                                {currentFileCount} / {IMAGE_LIMIT} added
                            </span>
                        </div>
 
                        <label
                          htmlFor={inputId}
-                         className={`relative block w-full border border-dashed border-[var(--color-input-border,theme(colors.gray.600))] rounded-md p-3 text-center cursor-pointer transition-colors ${
+                         className={`relative block w-full border border-dashed border-[var(--color-input-border,theme(colors.gray.600))] rounded-sm p-3 text-center cursor-pointer transition-colors ${
                            isUploadAreaDisabled
                              ? 'bg-[var(--color-input-bg-disabled,theme(colors.gray.700/0.3))] opacity-60 cursor-not-allowed'
-                             : 'bg-[var(--color-input-bg,theme(colors.gray.700/0.5))] hover:border-[var(--color-focus-ring,theme(colors.accent-primary))] hover:bg-[var(--color-input-bg-hover,theme(colors.gray.700/0.8))]'
+                             : 'bg-[var(--color-bg-surface)] hover:border-[var(--color-focus-ring,theme(colors.accent-primary))] hover:bg-[var(--color-input-bg-hover,theme(colors.gray.700/0.8))]'
                          }`}
                        >
                          <input
@@ -344,7 +344,7 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
                            }}
                            className="sr-only"
                          />
-                         <div className="flex flex-col items-center justify-center text-[var(--color-text-secondary,theme(colors.gray.400))]">
+                         <div className="flex flex-col items-center justify-center color-shade-2">
                             <Upload className="w-5 h-5 mb-1" />
                             <span className="text-sm sm:text-base font-medium">
                                {isUploading ? `Uploading (${Math.round(uploadProgress)}%)...` : (isDeleting ? 'Deleting...' : (canUploadMore ? 'Click or drag to upload' : `Limit reached (${IMAGE_LIMIT})`))}
@@ -387,7 +387,7 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
                                      type="button"
                                      onClick={() => handleFileDelete(file.fileName)}
                                      disabled={!!isDeleting || status === 'submitting'}
-                                     className="text-white hover:text-red-500 disabled:text-gray-500 disabled:cursor-not-allowed p-1 rounded-full bg-black/30 hover:bg-black/50 focus:outline-none focus:ring-1 focus:ring-white"
+                                     className="text-white hover:color-error-indicator disabled:color-shade-2 disabled:cursor-not-allowed p-1 rounded-full bg-black/30 hover:bg-black/50 focus:outline-none focus:ring-1 focus:ring-white"
                                      aria-label={`Remove image ${index + 1}: ${file.fileName}`}
                                    >
                                      <X className="w-4 h-4" />
@@ -411,19 +411,19 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
                        <button
                           type="button"
                           onClick={onClose}
-                          className="px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base font-medium rounded-md text-[var(--color-button-secondary-text,theme(colors.gray.300))] bg-[var(--color-button-secondary-bg,theme(colors.gray.600/0.5))] hover:bg-[var(--color-button-secondary-bg-hover,theme(colors.gray.600/0.8))] focus:outline-none focus:ring-2 focus:ring-[var(--color-button-secondary-focus-ring,theme(colors.gray.500))] focus:ring-offset-2 focus:ring-offset-[var(--color-focus-offset,theme(colors.gray.800))] disabled:opacity-50 transition-colors font-mono"
+                          className="px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base font-medium rounded-sm color-shade-1 bg-[var(--color-button-secondary-bg,theme(colors.gray.600/0.5))] hover:bg-[var(--color-button-secondary-bg-hover,theme(colors.gray.600/0.8))] focus:outline-none focus:ring-2 focus:ring-[var(--color-button-secondary-focus-ring,theme(colors.gray.500))] focus:ring-offset-2 focus:ring-offset-[var(--color-focus-offset,theme(colors.gray.800))] disabled:opacity-50 transition-colors font-mono"
                           disabled={status === 'submitting' || isUploading || !!isDeleting}
                        >
                          Cancel
                        </button>
                        <button
                           type="submit"
-                          className="px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base font-medium rounded-md text-[var(--color-button-primary-text,theme(colors.stone.800))] bg-[var(--color-button-primary-bg,theme(colors.accent-primary))] hover:bg-[var(--color-button-primary-bg-hover,theme(colors.accent-primary/0.8))] focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring,theme(colors.accent-primary))] focus:ring-offset-2 focus:ring-offset-[var(--color-focus-offset,theme(colors.gray.800))] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center font-mono"
+                          className="px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base font-medium rounded-sm text-stone-800 bg-accent-primary hover:bg-accent-secondary focus:outline-none focus:ring-2 focus:ring-accent-primary focus:ring-offset-2 focus:ring-offset-[var(--color-focus-offset,theme(colors.gray.800))] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center font-mono"
                           disabled={!description || status === 'submitting' || isUploading || !!isDeleting}
                        >
                          {status === 'submitting' ? (
                            <>
-                             <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-[var(--color-button-primary-text,theme(colors.stone.800))]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                             <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-stone-800" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                              </svg>

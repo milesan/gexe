@@ -144,6 +144,11 @@ const formatDateWithDay = (date: Date): string => {
   return formatInTimeZone(date, 'UTC', 'EEEE, MMMM d');
 };
 
+// NEW Helper function to format as Month Day (Use UTC)
+// const formatMonthDay = (date: Date): string => {
+//   return formatInTimeZone(date, 'UTC', 'MMMM d');
+// };
+
 // Helper function to add ordinal suffix to day of month (Use UTC)
 const formatDateWithOrdinal = (date: Date): string => {
   // Get UTC date parts
@@ -898,7 +903,7 @@ export function BookingSummary({
               </div>
 
               {/* --- ADD LOGGING FOR EMAIL BEFORE PASSING --- */}
-              {console.log("[BookingSummary] Rendering StripeCheckoutForm, userEmail:", userEmail)}
+              {/* {console.log("[BookingSummary] Rendering StripeCheckoutForm, userEmail:", userEmail)} */}
               <StripeCheckoutForm
                 authToken={authToken}
                 userEmail={userEmail || ''} // Pass email as prop, default to empty string if undefined
@@ -950,8 +955,8 @@ export function BookingSummary({
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ duration: 0.3 }}
               >
-                {/* Middle div handles border, padding, visuals */}
-                <div className="relative p-4 sm:p-5 rounded-xl border border-border/50 shadow-sm overflow-hidden bg-transparent">
+                {/* Middle div handles border, padding, visuals - REMOVED PADDING */}
+                <div className="relative shadow-sm overflow-hidden bg-transparent">
                   {/* Inner Blur Layer */}
                   <div className="absolute inset-0 -z-10 backdrop-blur-sm bg-surface/50 rounded-xl"></div>
 
@@ -966,41 +971,35 @@ export function BookingSummary({
 
                   {/* Content Wrapper (maybe add relative z-10 if needed) */}
                   <div className="relative z-10 space-y-4 sm:space-y-5"> 
-                    {/* Arrival Information */}
-                    <div className="border border-border rounded-lg shadow-sm p-3 sm:p-4 bg-card-highlight">
-                      <h4 className="font-medium text-primary mb-2 font-mono text-lg sm:text-xl">Arrive By</h4>
+                    {/* Arrival Information - REMOVED PADDING */}
+                    <div className="rounded-lg shadow-sm bg-surface"> 
+                      <h4 className="uppercase font-lettra-bold text-shade-2 text-xs mb-2">
+                        Arrive By
+                      </h4>
                       <div className="space-y-1">
-                        <p className="text-accent-primary text-sm font-mono">{formatDateWithDay(selectedWeeks[0].startDate)}</p>
-                        <p className="text-accent-primary text-sm font-mono">2PM-5PM</p>
+                        <p className="uppercase text-2xl text-primary font-display">{formatDateWithDay(selectedWeeks[0].startDate)}</p>
+                        <p className="font-lettra text-shade-1 text-sm">2PM-5PM</p> 
                       </div>
                     </div>
                     
-                    {/* Departure Information */}
-                    <div className="border border-border rounded-lg shadow-sm p-3 sm:p-4 bg-card-highlight">
-                      <h4 className="font-medium text-primary mb-2 font-mono text-lg sm:text-xl">Begone by</h4>
+                    {/* Departure Information - REMOVED PADDING */}
+                    <div className="rounded-lg shadow-sm bg-surface">
+                      <h4 className="uppercase font-lettra-bold text-shade-2 text-xs mb-2">
+                        Begone by
+                      </h4>
                       <div className="space-y-1">
-                        <p className="text-secondary text-sm font-mono">{formatDateWithOrdinal(selectedWeeks[selectedWeeks.length - 1].endDate)}</p>
-                        <p className="text-secondary text-sm font-mono">11AM</p>
+                        <p className="uppercase text-2xl text-primary font-display">{formatDateWithDay(selectedWeeks[selectedWeeks.length - 1].endDate)}</p>
+                        <p className="font-lettra text-shade-1 text-sm">11AM</p>
                       </div>
                     </div>
                     
-                    {/* Duration */}
-                    <div className="p-4 rounded-lg border border-border bg-card-highlight">
-                      <div className="hidden xl:flex xl:justify-between xl:items-center">
-                        <div className="w-full text-center">
-                          <span className="text-accent-primary text-lg sm:text-xl font-medium font-mono">
+                    {/* Duration - REMOVED PADDING */}
+                    <div className="rounded-lg shadow-sm bg-surface"> 
+                      <div className="flex justify-between items-center">
+                        <div className="w-full">
+                          <span className="text-primary uppercase font-display text-2xl">
                             {formatNumber(totalWeeksDisplay)} {totalWeeksDisplay === 1 ? 'week' : 'weeks'}
                           </span>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center xl:hidden">
-                        <div className="p-2.5 rounded-lg mr-3 flex-shrink-0 self-start mt-1">
-                          <Home className="w-5 h-5 text-accent-primary" />
-                        </div>
-                        <div className="">
-                          <h4 className="font-medium text-primary font-mono text-lg">Total Stay</h4>
-                          <p className="text-accent-primary text-sm font-mono mt-0.5">{pricing.totalNights} nights</p>
                         </div>
                       </div>
                     </div>
@@ -1017,8 +1016,8 @@ export function BookingSummary({
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ duration: 0.3 }}
                 >
-                  {/* Middle div handles border, padding, visuals */}
-                  <div className="relative p-4 sm:p-5 rounded-lg border border-border/50 shadow-sm bg-transparent overflow-hidden"> {/* Added overflow-hidden here too */} 
+                  {/* Middle div handles visuals - REMOVED PADDING */}
+                  <div className="relative rounded-lg shadow-sm bg-surface overflow-hidden"> 
                     {/* Inner Blur Layer */}
                     <div className="absolute inset-0 -z-10 backdrop-blur-sm bg-surface/50 rounded-lg"></div>
                     
@@ -1032,46 +1031,46 @@ export function BookingSummary({
                     </button>
 
                     {/* Content Wrapper (maybe add relative z-10 if needed) */} 
-                    <div className="relative z-10">
-                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg sm:text-xl text-primary flex items-center font-mono">
-                          Thy Quarters:
+                    <div className="relative z-10 space-y-2"> 
+                        {/* Keep flex justify-between for button placement, remove mb-4 */}
+                        {/* Heading remains as is */}
+                        <h3 className="font-lettra-bold text-shade-2 text-xs">
+                          THY QUARTERS
                         </h3>
-                      </div>
-                      
-                      <div className="space-y-3">
-                        <div className="p-3 sm:p-4 text-sm rounded-lg border border-border bg-card-highlight">
-                          <div className="text-center">
-                            <span className="text-accent-primary font-medium font-mono">
-                              {selectedAccommodation.title === 'Van Parking' || 
-                               selectedAccommodation.title === 'Your Own Tent' || 
-                               selectedAccommodation.title === 'Staying with somebody' || 
-                               selectedAccommodation.title === 'The Hearth' 
-                               ? selectedAccommodation.title
-                               : `The ${selectedAccommodation.title}`}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
+                        {/* REMOVE intermediate divs and padding/margin */}
+                        {/* Add block to ensure span takes up vertical space */}
+                        <span className="text-primary font-display text-2xl block"> 
+                            {selectedAccommodation.title === 'Van Parking' || 
+                            selectedAccommodation.title === 'Your Own Tent' || 
+                            selectedAccommodation.title === 'Staying with somebody' || 
+                            selectedAccommodation.title === 'The Hearth' 
+                            ? selectedAccommodation.title
+                            : `The ${selectedAccommodation.title}`}
+                        </span>
                     </div>
                   </div>
                 </motion.div>
               )}
 
+              {/* Add thin horizontal line */}
+              <hr className="border-t border-[var(--color-text-primary)] my-6 opacity-30" /> {/* Added opacity */}
+
               {/* NEW Wrapper for Solid Background Sections - Make sure this is TRANSPARENT */}
-              <div className="bg-transparent mt-6"> 
+              <div className="bg-transparent"> {/* Removed mt-6 */}
                 {/* Price Breakdown */}
-                <div className="border-t border-border pt-3 sm:pt-4"> 
+                <div>
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-medium text-primary font-mono text-lg sm:text-xl">Price Breakdown</h3>
+                    {/* Restyle heading to match accommodation title */}
+                    <h3 className="text-primary font-display text-2xl block">Price breakdown</h3>
                     <Popover.Root>
                       <Popover.Trigger asChild>
+                        {/* Change icon color */}
                         <button
                           onClick={(e) => {
                             e.stopPropagation(); // Prevent event bubbling
                             setShowDiscountModal(true);
                           }}
-                          className="p-1.5 text-secondary hover:text-[var(--color-accent-primary)] hover:bg-accent-muted rounded-md transition-colors"
+                          className="p-1.5 text-[var(--color-accent-primary)] hover:bg-accent-muted rounded-md transition-colors"
                         >
                           <Info className="w-4 h-4" />
                           <span className="sr-only">View Discount Details</span>
@@ -1092,154 +1091,191 @@ export function BookingSummary({
                     </Popover.Root>
                   </div>
                   
-                  <div className="space-y-2">
+                  <div className="space-y-4"> {/* Increased spacing between items */}
                     {selectedAccommodation ? (
-                      <div className="flex justify-between gap-x-4 items-baseline">
-                        <span className="text-sm text-secondary font-mono">
-                          Accommodation <span className="whitespace-nowrap">({formatNumber(pricing.weeksStaying)} {pricing.weeksStaying === 1 ? 'week' : 'weeks'})</span>
-                        </span>
-                        <span className="text-primary font-mono text-sm">{formatPriceDisplay(pricing.totalAccommodationCost)}</span>
-                      </div>
+                      <>
+                        <div className="flex justify-between items-end"> {/* Outer flex - changed to end */}
+                          <div className="flex flex-col"> {/* Left block */}
+                            <span className="text-xs text-shade-2 font-lettra-bold">ACCOMMODATION</span>
+                            {/* Style duration like main dates, remove uppercase */}
+                            <span className="text-2xl text-primary font-display">
+                              {formatNumber(pricing.weeksStaying)} {pricing.weeksStaying === 1 ? 'week' : 'weeks'}
+                            </span>
+                          </div>
+                          {/* Price: Updated size, font, color */}
+                          <span className="text-2xl font-display text-shade-1">{formatPriceDisplay(pricing.totalAccommodationCost)}</span> {/* Right block (price) */}
+                        </div>
+                        <hr className="border-t border-border my-2 opacity-30" /> {/* Horizontal line */}
+                      </>
                     ) : (
                       <div className="flex items-baseline min-h-[1.25rem]">
                         <span className="text-sm text-secondary font-mono italic">No accommodation selected</span>
                       </div>
                     )}
                     
-                    <div className="flex justify-between gap-x-4 items-baseline">
-                      <Popover.Root>
-                        <Popover.Trigger asChild>
-                          <span className="text-sm text-secondary flex items-center cursor-help font-mono">
-                            Food & Facilities
-                            <Info className="w-3 h-3 ml-1 opacity-70" />
+                    <>
+                      <div className="flex justify-between items-end"> {/* Outer flex - changed to end */}
+                        <div className="flex flex-col"> {/* Left block */}
+                          <Popover.Root>
+                            <Popover.Trigger asChild>
+                              <span className="text-xs text-shade-2 font-lettra-bold flex items-center cursor-help"> {/* Label */}
+                                FOOD & FACILITIES
+                                <Info className="w-3 h-3 ml-1 opacity-70" />
+                              </span>
+                            </Popover.Trigger>
+                            <Popover.Portal>
+                              <Popover.Content
+                                className="tooltip-content !font-mono text-sm z-50" // Reused styles, added z-index
+                                sideOffset={5}
+                                side="top"
+                                align="end"
+                                onOpenAutoFocus={(e: Event) => e.preventDefault()} // Added typing
+                              >
+                                <Popover.Arrow className="tooltip-arrow" width={11} height={5} />
+                                <span className="text-white">Community meals & operations costs</span>
+                              </Popover.Content>
+                            </Popover.Portal>
+                          </Popover.Root>
+                          {/* Style sub-label like main dates, show duration, remove uppercase */}
+                          <span className="text-2xl text-primary font-display"> {/* Sub-label */}
+                              {formatNumber(pricing.weeksStaying)} {pricing.weeksStaying === 1 ? 'week' : 'weeks'}
                           </span>
-                        </Popover.Trigger>
-                        <Popover.Portal>
-                          <Popover.Content
-                            className="tooltip-content !font-mono text-sm z-50" // Reused styles, added z-index
-                            sideOffset={5}
-                            side="top"
-                            align="end"
-                            onOpenAutoFocus={(e: Event) => e.preventDefault()} // Added typing
-                          >
-                            <Popover.Arrow className="tooltip-arrow" width={11} height={5} />
-                            <span className="text-white">Community meals & operations costs</span>
-                          </Popover.Content>
-                        </Popover.Portal>
-                      </Popover.Root>
-                      <span className="text-primary font-mono text-sm">{formatPriceDisplay(pricing.totalFoodAndFacilitiesCost)}</span>
-                    </div>
+                        </div>
+                        {/* Price: Updated size, font, color */}
+                        <span className="text-2xl font-display text-shade-1">{formatPriceDisplay(pricing.totalFoodAndFacilitiesCost)}</span> {/* Right block (price) */}
+                      </div>
+                      <hr className="border-t border-border my-2 opacity-30" /> {/* Horizontal line */}
+                    </>
 
                     {/* Optional Contribution Slider */}
                     {foodContribution !== null && selectedWeeks.length > 0 && (
-                      <div className="pt-4">
-                        <div className="flex justify-between items-center mb-2">
-                           <label htmlFor="food-contribution" className="text-secondary font-mono text-sm">Sliding Scale Contribution</label>
-                            <Popover.Root>
-                                <Popover.Trigger asChild>
-                                    <button 
-                                      className="text-secondary hover:text-secondary-hover"
-                                    >
-                                        <Info className="w-4 h-4" />
-                                    </button>
-                                </Popover.Trigger>
-                                <Popover.Portal>
-                                    <Popover.Content
-                                        sideOffset={5}
-                                        className="tooltip-content !font-mono text-sm z-50" // Reused styles, added z-index
-                                        side="top"
-                                        align="end"
-                                        onOpenAutoFocus={(e: Event) => e.preventDefault()} // Added typing
-                                    >
-                                        <Popover.Arrow className="tooltip-arrow" width={11} height={5} />
-                                        Adjust your contribution based on your means. Minimum varies by stay length.
-                                    </Popover.Content>
-                                </Popover.Portal>
-                            </Popover.Root>
-                        </div>
-                        <input
-                          id="food-contribution"
-                          type="range"
-                          min={pricing.totalNights <= 6 ? 345 : 240} 
-                          max={390} 
-                          value={foodContribution ?? (pricing.totalNights <= 6 ? 345 : 240)}
-                          onChange={(e) => setFoodContribution(Number(e.target.value))}
-                          className="w-full h-2 bg-border rounded-lg appearance-none cursor-pointer accent-accent-primary"
-                        />
-                         <div className="flex justify-between text-xs text-secondary mt-1 font-mono">
-                            <span>
-                              Min: €{Math.round((pricing.totalNights <= 6 ? 345 : 240) * (1 - pricing.durationDiscountPercent / 100))}
-                            </span>
-                            <span className="font-medium text-primary text-sm"> 
-                               €{Math.round((foodContribution ?? (pricing.totalNights <= 6 ? 345 : 240)) * (1 - pricing.durationDiscountPercent / 100))} / week 
-                            </span>
-                            <span>
-                              Max: €{Math.round(390 * (1 - pricing.durationDiscountPercent / 100))}
-                            </span>
+                      <div className="pt-2"> {/* Reduced top padding */}
+                         <div className="flex justify-between items-start mb-2"> {/* Outer flex, items-start */}
+                           <div className="flex flex-col"> {/* Left block */}
+                             <label htmlFor="food-contribution" className="text-xs text-shade-2 font-lettra-bold flex items-center"> {/* Label */}
+                               SLIDING CONTRIBUTION
+                                <Popover.Root>
+                                    <Popover.Trigger asChild>
+                                        <button 
+                                          className="ml-1 text-secondary hover:text-secondary-hover"
+                                        >
+                                            <Info className="w-3 h-3" />
+                                        </button>
+                                    </Popover.Trigger>
+                                    <Popover.Portal>
+                                        <Popover.Content
+                                            sideOffset={5}
+                                            className="tooltip-content !font-mono text-sm z-50" // Reused styles, added z-index
+                                            side="top"
+                                            align="end"
+                                            onOpenAutoFocus={(e: Event) => e.preventDefault()} // Added typing
+                                        >
+                                            <Popover.Arrow className="tooltip-arrow" width={11} height={5} />
+                                            Adjust your contribution based on your means. Minimum varies by stay length.
+                                        </Popover.Content>
+                                    </Popover.Portal>
+                                </Popover.Root>
+                              </label>
+                              {/* Style sub-label like main dates - REMOVED */}
+                              {/* 
+                              <span className="uppercase text-2xl text-primary font-display"> 
+                                Choose your weekly rate
+                              </span>
+                              */}
+                            </div>
+                            {/* Price display removed from here, handled below */}
                          </div>
-                         {pricing.durationDiscountPercent > 0 && (
-                            <p className="text-sm text-secondary mt-1 text-center font-mono">
-                                Duration discount of {pricing.durationDiscountPercent.toFixed(0)}% applied.
-                            </p>
-                         )}
-                      </div>
+                         <input
+                           id="food-contribution"
+                           type="range"
+                           min={pricing.totalNights <= 6 ? 345 : 240} 
+                           max={390} 
+                           value={foodContribution ?? (pricing.totalNights <= 6 ? 345 : 240)}
+                           onChange={(e) => setFoodContribution(Number(e.target.value))}
+                           className="w-full h-2 bg-border rounded-lg appearance-none cursor-pointer accent-accent-primary slider-thumb-accent" /* Added slider-thumb-accent */
+                         />
+                          <div className="flex justify-between text-xs text-secondary mt-1 font-mono">
+                             {/* Apply requested styles to Min */}
+                             <span className="uppercase text-xs font-lettra-bold text-primary">
+                               Min: €{Math.round((pricing.totalNights <= 6 ? 345 : 240) * (1 - pricing.durationDiscountPercent / 100))}
+                             </span>
+                             {/* Apply requested styles to Rate */}
+                             <span className="uppercase text-xs font-lettra-bold text-primary"> {/* Removed font-medium text-sm text-shade-1 font-mono */}
+                                €{Math.round((foodContribution ?? (pricing.totalNights <= 6 ? 345 : 240)) * (1 - pricing.durationDiscountPercent / 100))} / week
+                             </span>
+                             {/* Apply requested styles to Max */}
+                             <span className="uppercase text-xs font-lettra-bold text-primary">
+                               Max: €{Math.round(390 * (1 - pricing.durationDiscountPercent / 100))}
+                             </span>
+                          </div>
+                       </div>
                     )}
                   </div>
                 </div>
 
+                {/* Add HR before Total */}
+                <hr className="border-t border-border my-2 opacity-30" /> 
+
                 {/* Final Total */}
-                <div className="border-t border-border pt-4 mt-4">
+                <div className="pt-4 mt-4">
                   <div className="flex font-mono justify-between items-baseline">
-                    <span className="text-xl font-semibold text-primary">Total</span>
+                    {/* Changed styling for "Total" label */}
+                    <span className="uppercase text-primary font-display text-2xl">Total</span>
                     {/* --- UPDATED: Show original price if discount applied --- */}
                     {appliedDiscount ? (
                         <div className="text-right">
                             <span className="text-sm line-through text-secondary mr-2">
                                 {formatPriceDisplay(pricing.subtotal)}
                             </span>
-                            <span className="text-lg font-semibold text-primary">
+                            {/* Updated style */}
+                            <span className="text-2xl font-display font-semibold text-primary">
                                 {formatPriceDisplay(pricing.totalAmount)}
                             </span>
                         </div>
                     ) : (
-                        <span className="text-lg font-semibold text-primary">
+                        // Updated style
+                        <span className="text-2xl font-display font-semibold text-primary">
                             {formatPriceDisplay(pricing.totalAmount)}
                         </span>
                     )}
                     {/* --- End Update --- */}
                   </div>
-                   <p className="text-sm text-secondary mt-1 font-mono">Includes accommodation, food, facilities, and discounts.</p>
+                   {/* Updated style */}
+                   <p className="text-sm text-shade-1 mt-1 font-display">Includes accommodation, food, facilities, and discounts.</p>
                 </div>
 
+                {/* Add HR after Total description */}
+                <hr className="border-t border-border my-2 opacity-30" />
+
                 {/* --- START: Discount Code Section --- */} 
-                <div className="border-t border-border pt-4 mt-4 font-mono">
+                <div className="pt-4 mt-4 font-mono">
                   {!appliedDiscount ? (
                     <div>
-                      <label htmlFor="discount-code" className="block text-sm font-medium text-secondary mb-1">Code</label>
-                      <div className="flex gap-2">
-                        <input 
-                          type="text"
-                          id="discount-code"
-                          value={discountCodeInput}
-                          onChange={(e) => setDiscountCodeInput(e.target.value.toUpperCase())}
-                          className="flex-grow px-3 py-2 bg-[var(--color-input-bg)] border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent text-primary placeholder-secondary-muted text-sm disabled:opacity-50"
-                          placeholder="Enter code"
-                          disabled={isApplyingDiscount}
-                        />
-                        <button
-                          onClick={handleApplyDiscount}
-                          disabled={isApplyingDiscount || !discountCodeInput.trim()}
-                          className="px-4 py-2 bg-secondary-muted text-white rounded-md hover:bg-secondary-muted-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary-muted text-sm disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                        >
-                          {isApplyingDiscount ? 'Applying...' : 'Apply'}
-                        </button>
-                      </div>
-                      {discountError && (
-                         <div className="mt-2 text-xs text-error flex items-center gap-1">
-                            <AlertTriangle className="w-3 h-3 flex-shrink-0" />
-                            <span>{discountError}</span>
-                         </div>
-                      )}
+                       <label htmlFor="discount-code" className="uppercase text-primary font-display text-2xl">Discount code</label>
+                       <div className="flex gap-2 mt-2"> {/* Added mt-2 */}
+                          <input 
+                            type="text"
+                            id="discount-code"
+                            value={discountCodeInput}
+                            onChange={(e) => setDiscountCodeInput(e.target.value.toUpperCase())}
+                            className="flex-grow px-3 py-2 bg-[var(--color-input-bg)] border border-border rounded-sm focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent text-primary placeholder:text-shade-1 placeholder:font-display text-sm disabled:bg-transparent disabled:text-shade-3"
+                            placeholder="ENTER CODE"
+                            disabled={isApplyingDiscount}
+                          />
+                          <button
+                            onClick={handleApplyDiscount}
+                            disabled={isApplyingDiscount || !discountCodeInput.trim()}
+                            className="px-3 py-2 bg-[var(--color-input-bg)] border border-border rounded-sm focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent text-primary text-sm font-display whitespace-nowrap disabled:bg-transparent disabled:text-shade-3 disabled:border-transparent"
+                          >
+                            {isApplyingDiscount ? 'APPLYING...' : 'APPLY'}
+                          </button>
+                       </div>
+                       {discountError && (
+                          <div className="mt-2 text-xs text-error flex items-center gap-1">
+                             <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+                             <span>{discountError}</span>
+                          </div>
+                       )}
                     </div>
                   ) : (
                     <div className="p-3 bg-success-muted rounded-md border border-success">
@@ -1266,15 +1302,15 @@ export function BookingSummary({
                   <button
                     onClick={handleConfirmClick}
                     disabled={isBooking || !selectedAccommodation || selectedWeeks.length === 0}
-                    className={`w-full flex items-center justify-center pixel-corners--wrapper relative overflow-hidden px-6 py-3.5 sm:py-4 text-lg font-medium rounded-md transition-colors duration-200
+                    className={`w-full flex items-center justify-center pixel-corners--wrapper relative overflow-hidden px-6 py-3.5 sm:py-4 text-lg font-medium rounded-sm transition-colors duration-200
                       ${
                         isBooking || !selectedAccommodation || selectedWeeks.length === 0
-                          ? 'bg-border text-secondary cursor-not-allowed'
+                          ? 'bg-transparent text-shade-3 cursor-not-allowed'
                           : 'bg-accent-primary text-stone-800 hover:bg-accent-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent-primary'
                       }`}
                   >
                     <span className="pixel-corners--content 2xl:text-2xl">
-                      {isBooking ? 'Processing...' : 'Confirm & Pay'}
+                      {isBooking ? 'PROCESSING...' : 'CONFIRM & DONATE'}
                       
                     </span>
                   </button>
@@ -1283,10 +1319,10 @@ export function BookingSummary({
                     <button
                       onClick={handleAdminConfirm}
                       disabled={isBooking || !selectedAccommodation || selectedWeeks.length === 0}
-                      className={`w-full mt-3 flex items-center justify-center pixel-corners--wrapper relative overflow-hidden px-6 py-3.5 sm:py-4 text-lg font-medium rounded-md transition-colors duration-200
+                      className={`w-full mt-3 flex items-center justify-center pixel-corners--wrapper relative overflow-hidden px-6 py-3.5 sm:py-4 text-lg font-medium rounded-sm transition-colors duration-200
                         ${isBooking || !selectedAccommodation || selectedWeeks.length === 0
-                          ? 'bg-border text-secondary cursor-not-allowed'
-                          : 'bg-secondary-muted text-white hover:bg-secondary-muted-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary-muted'
+                            ? 'bg-transparent text-shade-3 cursor-not-allowed'
+                            : 'bg-secondary-muted text-white hover:bg-secondary-muted-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary-muted'
                         }`}
                     >
                       <span className="pixel-corners--content 2xl:text-2xl">

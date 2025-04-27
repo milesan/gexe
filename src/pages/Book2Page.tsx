@@ -24,8 +24,39 @@ import { calculateDaysBetween } from '../utils/dates';
 import { bookingService } from '../services/BookingService';
 import { loadStripe } from '@stripe/stripe-js';
 import * as Tooltip from '@radix-ui/react-tooltip';
+import { InfoBox } from '../components/InfoBox';
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+
+// Season legend component (Moved from WeekSelector)
+const SeasonLegend = () => {
+  return (
+    // Decreased bottom margin to bring it closer to the header below
+    <div className="flex flex-wrap justify-start gap-4 xs:gap-5 sm:gap-8 mb-4">
+      {/* Increased spacing between circle and text */}
+      <div className="flex items-center gap-1.5 xs:gap-2">
+        {/* Made circle slightly larger */}
+        <div className="w-4 h-4 xs:w-4.5 xs:h-4.5 rounded-full bg-season-low"></div>
+        {/* Increased font size */}
+        <span className="text-lg font-lettra-bold uppercase text-secondary whitespace-nowrap">Low (Nov-May)</span>
+      </div>
+      {/* Increased spacing between circle and text */}
+      <div className="flex items-center gap-1.5 xs:gap-2">
+        {/* Made circle slightly larger */}
+        <div className="w-4 h-4 xs:w-4.5 xs:h-4.5 rounded-full bg-season-medium"></div>
+        {/* Increased font size */}
+        <span className="text-lg font-lettra-bold uppercase text-secondary whitespace-nowrap">Medium (Jun, Oct)</span>
+      </div>
+      {/* Increased spacing between circle and text */}
+      <div className="flex items-center gap-1.5 xs:gap-2">
+        {/* Made circle slightly larger */}
+        <div className="w-4 h-4 xs:w-4.5 xs:h-4.5 rounded-full bg-season-summer"></div>
+        {/* Increased font size */}
+        <span className="text-lg font-lettra-bold uppercase text-secondary whitespace-nowrap">Summer (Jul-Sep)</span>
+      </div>
+    </div>
+  );
+};
 
 export function Book2Page() {
   // Get current date and set the initial month
@@ -789,25 +820,23 @@ export function Book2Page() {
           {/* Left Column - Calendar and Cabin Selector */}
           <div className="lg:col-span-2">
             {/* == START: New wrapper div with horizontal padding == */}
-            <div className="px-3 xs:px-4 sm:px-6">
+            <div>
               {/* Moved h1 inside wrapper - REMOVING px-* padding now */}
-              <h1 className="text-3xl sm:text-4xl font-display mb-3 xs:mb-4 text-primary">Begin Your <em>Existential</em> Cycle</h1>
+              <h1 className="text-4xl lg:text-[78px] font-display mb-3 xs:mb-4 text-primary pt-14 leading-[1.1] tracking-[-0.02em]">BEGIN YOUR <br /><em>EXISTENTIAL</em> CYCLE</h1>
               
-              {/* Outer Note box keeps py-* padding */}
-              <div className="bg-surface/50 backdrop-blur-sm border border-border/50 rounded-lg py-3 xs:py-4 sm:py-6 mb-4 xs:mb-6 sm:mb-8 shadow-sm">
-                {/* Added inner wrapper for content padding */}
-                <div className="px-3 xs:px-4 sm:px-6">
-                  <div className="flex flex-col gap-2 xs:gap-3 text-secondary">
-                    <p className="flex items-start gap-2 xs:gap-2.5 text-sm font-mono">
-                      <span className="text-accent-primary mt-0.5">•</span>
+              {/* Outer Note box keeps py-* padding - Setting bottom margin to 32px (mb-8) */}
+              <div className="bg-surface/50 py-3 xs:py-4 sm:py-6 mb-8 shadow-sm">
+                {/* Using InfoBox component, passing specific padding and max-width */}
+                <InfoBox className="px-3 xs:px-4 sm:px-6 max-w-3xl">
+                  <div className="flex flex-col gap-3 xs:gap-3 text-primary">
+                    <p className="flex items-start gap-2 xs:gap-2.5 text-base font-lettra">
                       The longer you stay, the less € you contribute on both lodging & base-rate per week
                     </p>
-                    <p className="flex items-start gap-2 xs:gap-2.5 text-sm font-mono">
-                      <span className="text-accent-primary mt-0.5">•</span>
-                      The quieter the time of year, the less € you contribute on lodging.
+                    <p className="flex items-start gap-2 xs:gap-2.5 text-base font-lettra">
+                      The quieter the time of year, the less € you contribute on lodging
                     </p>
                   </div>
-                </div>
+                </InfoBox>
               </div>
               {/* == END: Moved Admin controls inside wrapper == */}
 
@@ -866,44 +895,62 @@ export function Book2Page() {
                 </div>
               )}
 
+              {/* Adding the custom SVG divider here - Setting vertical margins to 32px (my-8) */}
+              <img 
+                src="/images/horizontal-line.svg" 
+                alt="Decorative divider" 
+                className="w-full max-w-3xl my-8 block" 
+              />
+
               {/* Moved Calendar card inside wrapper - CHANGING p-* to py-* now */}
               <div className="bg-surface rounded-xl shadow-sm py-3 xs:py-4 sm:py-6 mb-4 xs:mb-5 sm:mb-6">
                 {/* REMOVING px-* padding from this inner div */}
+                <SeasonLegend />
                 <div className="flex flex-col gap-3 mb-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
-                    <h2 className="text-xl sm:text-2xl font-display font-light text-primary">
+                    {/* Increased font size for the header */}
+                    <h2 className="text-2xl sm:text-3xl font-display font-light text-primary">
                       {selectedWeeks.length === 0 ? "When do you wish to arrive?" : 
-                       selectedWeeks.length === 1 ? "One week selected! Any more?" : 
+                       selectedWeeks.length === 1 ? <><span className="underline">One</span> week selected! Any more?</> : 
                        "Set your timeline"}
                     </h2>
 
                     <div className="flex items-center gap-2 xxs:gap-3">
-                      <button 
+                      {/* REMOVED Home button */}
+                      {/* <button 
                         className="p-1 xxs:p-1.5 sm:p-2 rounded-full hover:bg-[var(--color-bg-surface-hover)] text-accent-primary"
-                        onClick={() => setCurrentMonth(startOfMonth(new Date()))}
+                        onClick={() => handleMonthChange(startOfMonth(new Date()))} // Use handleMonthChange
                         aria-label="Return to current month"
                         title="Return to today"
                       >
                         <Home className="h-3.5 w-3.5 xxs:h-4 xxs:w-4 sm:h-5 sm:w-5" />
-                      </button>
+                      </button> */}
 
-                      <div className="flex items-center bg-surface/80 rounded-lg shadow-sm border border-border/50">
+                      {/* UPDATED: Single border, bg, custom icons, rounded-sm */}
+                      <div className="flex items-center rounded-sm border border-shade-1 bg-surface-dark"> {/* Added bg, changed rounded-lg to rounded-sm */}
                         <button 
-                          className="p-1 xxs:p-1.5 sm:p-2 rounded-l-lg hover:bg-[var(--color-bg-surface-hover)] border-r border-border/50"
-                          onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+                          className="p-1 xxs:p-1.5 sm:p-2 rounded-l-sm hover:bg-[var(--color-bg-surface-hover)]" /* Removed border-r, changed rounded-l-lg to rounded-l-sm */
+                          onClick={() => handleMonthChange(subMonths(currentMonth, 1))} // Use handleMonthChange
                           aria-label="Previous month"
                         >
-                          <ChevronLeft className="h-3.5 w-3.5 xxs:h-4 xxs:w-4 sm:h-5 sm:w-5 text-secondary" />
+                          {/* Replaced ChevronLeft with img */}
+                          <img src="/images/arrow-left.svg" alt="Previous month" className="h-3.5 w-3.5 xxs:h-4 xxs:w-4 sm:h-5 sm:w-5" />
                         </button>
-                        <div className="px-2 xxs:px-3 sm:px-4 text-center text-primary font-medium whitespace-nowrap text-sm font-mono min-w-[120px] xxs:min-w-[140px] sm:min-w-[160px]">
+                        {/* UPDATED styles to match header button, now bold, removed border/rounded */}
+                        <div 
+                          className="p-1.5 font-lettra-bold text-sm uppercase transition-colors bg-surface-dark text-primary hover:opacity-80 text-center whitespace-nowrap min-w-[120px] xxs:min-w-[140px] sm:min-w-[160px] cursor-pointer" /* Removed border, rounded-sm */
+                          onClick={() => handleMonthChange(startOfMonth(new Date()))} // Use handleMonthChange
+                          title="Go to current month"
+                        >
                           {format(currentMonth, 'MMMM yyyy')}
                         </div>
                         <button 
-                          className="p-1 xxs:p-1.5 sm:p-2 rounded-r-lg hover:bg-[var(--color-bg-surface-hover)] border-l border-border/50"
-                          onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+                          className="p-1 xxs:p-1.5 sm:p-2 rounded-r-sm hover:bg-[var(--color-bg-surface-hover)]" /* Removed border-l, changed rounded-r-lg to rounded-r-sm */
+                          onClick={() => handleMonthChange(addMonths(currentMonth, 1))} // Use handleMonthChange
                           aria-label="Next month"
                         >
-                          <ChevronRight className="h-3.5 w-3.5 xxs:h-4 xxs:w-4 sm:h-5 sm:w-5 text-secondary" />
+                          {/* Replaced ChevronRight with img */}
+                          <img src="/images/arrow-right.svg" alt="Next month" className="h-3.5 w-3.5 xxs:h-4 xxs:w-4 sm:h-5 sm:w-5" />
                         </button>
                       </div>
                     </div>
@@ -916,9 +963,9 @@ export function Book2Page() {
                           <Tooltip.Trigger asChild>
                             <button
                               onClick={() => setShowDiscountModal(true)}
-                              className="group flex items-center gap-1 xxs:gap-1.5 px-2 xxs:px-2.5 py-1 xxs:py-1.5 text-sm font-medium border rounded-md transition-colors duration-200 relative font-mono text-accent-primary bg-[color-mix(in_srgb,_var(--color-accent-primary)_10%,_transparent)] border-[color-mix(in_srgb,_var(--color-accent-primary)_30%,_transparent)] hover:bg-[color-mix(in_srgb,_var(--color-accent-primary)_20%,_transparent)] hover:border-[color-mix(in_srgb,_var(--color-accent-primary)_40%,_transparent)]"
+                              className="group flex items-center gap-1 xxs:gap-1.5 px-2 xxs:px-2.5 py-1 xxs:py-1.5 text-sm font-medium border rounded-sm transition-colors duration-200 relative font-lettra-bold text-accent-primary bg-[color-mix(in_srgb,_var(--color-accent-primary)_10%,_transparent)] border-[color-mix(in_srgb,_var(--color-accent-primary)_30%,_transparent)] hover:bg-[color-mix(in_srgb,_var(--color-accent-primary)_20%,_transparent)] hover:border-[color-mix(in_srgb,_var(--color-accent-primary)_40%,_transparent)]"
                             >
-                              <span className="xl:text-md">{combinedDiscount > 0 ? `Discount: ${seasonBreakdown?.hasMultipleSeasons ? '~' : ''}${Math.round(combinedDiscount * 100)}%` : 'Discounts'}</span>
+                              <span>{combinedDiscount > 0 ? `Discount: ${seasonBreakdown?.hasMultipleSeasons ? '~' : ''}${Math.round(combinedDiscount * 100)}%` : 'DISCOUNTS'}</span>
                               <HelpCircle className="w-3 h-3 xxs:w-3.5 xxs:h-3.5 sm:w-4 sm:h-4" />
                             </button>
                           </Tooltip.Trigger>
@@ -936,13 +983,14 @@ export function Book2Page() {
                       <button
                         onClick={handleClearSelection}
                         className={clsx(
-                          "flex items-center gap-0.5 xxs:gap-1 px-2 xxs:px-2.5 py-1 xxs:py-1.5 text-sm font-medium border rounded-md transition-colors duration-200 font-mono",
+                          "flex items-center gap-0.5 xxs:gap-1 px-2 xxs:px-2.5 py-1 xxs:py-1.5 text-sm border rounded-sm transition-colors duration-200",
+                          "font-lettra-bold",
                           "text-accent-primary bg-[color-mix(in_srgb,_var(--color-accent-primary)_10%,_transparent)] border-[color-mix(in_srgb,_var(--color-accent-primary)_30%,_transparent)] hover:bg-[color-mix(in_srgb,_var(--color-accent-primary)_20%,_transparent)] hover:border-[color-mix(in_srgb,_var(--color-accent-primary)_40%,_transparent)]"
                         )}
                         aria-label="Clear week selection"
                       >
                         <X size={12} className="xxs:w-3.5 xxs:h-3.5 sm:w-4 sm:h-4" />
-                        <span>Clear Dates</span>
+                        <span>CLEAR DATES</span>
                       </button>
                     </div>
                   )}

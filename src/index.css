@@ -28,13 +28,13 @@
 
 :root {
   /* Dark mitsode defaults */
-  --color-bg-main: #1e2734;
-  --color-bg-surface: #2c3444;
+  --color-bg-main: #121212;
+  --color-bg-surface: #121212;
   --color-bg-surface-transparent: rgba(0, 0, 0, 0.2);
-  --color-text-primary: #f1f5f9;
-  --color-text-secondary: #94a3b8;
-  --color-border: #475569;
-  --color-accent-primary: #bac89b; /* Yellow */
+  --color-text-primary: #DDDDD0;
+  --color-text-secondary: #DDDDD0;
+  --color-border: #B8B8AD;
+  --color-accent-primary: #A2CBA0; /* Green */
   --color-accent-secondary: #a4b088;
   --color-accent-muted: rgba(255, 209, 102, 0.1); /* Yellow at 10% */
   --color-accent-subtle: rgba(255, 209, 102, 0.2); /* Yellow at 20% */
@@ -46,7 +46,7 @@
   --color-garden-gold: #FFBF00;
   --color-garden-accent: #FFD700;
   --color-garden-dark: #f3f4f6; /* Was black, now light text */
-  --color-garden-matrix: #4CD964;
+  --color-garden-matrix: #A2CBA0;
   --color-bg-pattern: rgba(110, 231, 183, 0.05); /* Light emerald, subtle on dark */
   --color-shadow: #000000;
   --color-white: #ffffff; /* Explicit white for when needed */
@@ -59,11 +59,14 @@
   --color-stone-700: #44403c; /* Added for button text */
   --color-stone-800: #292524;
   --color-emerald-50: #ecfdf5; /* Added for mobile selected bg */
-  --color-emerald-600: #059669;
+  --color-emerald-600: #A2CBA0;
   --color-emerald-800: #065f46; /* Added for button hover (original) */
   --color-emerald-900: #065f46;
   --color-bg-overlay: rgba(0, 0, 0, 0.80); /* Reduced opacity from 0.95 */
   --color-retro-accent: 162 203 160; /* Dedicated accent color for retro components - same in both themes */
+  --color-shade-1: #B8B8AD;
+  --color-shade-2: #93938B;
+  --color-shade-3: #6F6F68;
 
   /* Tooltip Specific Variables */
   --color-tooltip-bg: color-mix(in srgb, var(--color-bg-surface) 90%, black 10%); /* Slightly darker surface */
@@ -72,14 +75,14 @@
   --color-tooltip-text: var(--color-white); /* Explicitly white for dark tooltips */
   
   /* Font variables */
-  --font-primary: 'VT323', monospace;
+  --font-primary: 'PP Lettra Mono Regular', monospace;
 }
 
 .light-mode {
   --color-bg-main: #f8fafc;
   --color-bg-surface: var(--color-white); /* Changed from stone-50 for better contrast */
   --color-bg-surface-transparent: rgba(250, 250, 249, 0.8); /* Semi-transparent off-white */
-  --color-text-primary: #1e293b;
+  --color-text-primary: #DDDDD0;
   --color-text-secondary: #64748b;
   --color-border: #e2e8f0;
   --color-accent-primary: #059669; /* Green */
@@ -121,6 +124,31 @@
     color: var(--color-text-primary);
     font-size-adjust: 0.422; /* Added to normalize perceived font size */
     font-family: var(--font-primary); /* Use the variable */
+  }
+}
+
+@layer utilities {
+  .font-lettra-bold {
+    font-family: 'PP Lettra Mono Bold', monospace;
+  }
+  .text-shade-1 {
+    color: var(--color-shade-1);
+  }
+  .text-shade-2 {
+    color: var(--color-shade-2);
+  }
+  .text-shade-3 {
+    color: var(--color-shade-3);
+  }
+
+  /* Style the slider thumb */
+  .slider-thumb-accent {
+    &::-webkit-slider-thumb {
+      @apply bg-accent-primary rounded-full appearance-none h-4 w-4 cursor-pointer;
+    }
+    &::-moz-range-thumb {
+      @apply bg-accent-primary rounded-full appearance-none h-4 w-4 cursor-pointer border-none;
+    }
   }
 }
 
@@ -253,7 +281,7 @@
 
   /* Tooltip Base Styles */
   .tooltip-content {
-    @apply p-3 rounded-lg shadow-lg border max-w-xs z-50 backdrop-blur-sm;
+    @apply p-3 rounded-[2px] shadow-lg border max-w-xs z-50 backdrop-blur-sm;
     background-color: var(--color-tooltip-bg);
     border-color: var(--color-tooltip-border);
     color: var(--color-tooltip-text); /* Use specific tooltip text color */

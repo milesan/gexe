@@ -287,11 +287,9 @@ export function CabinSelector({
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.2 }}
                   className={clsx(
-                    'relative rounded-xl border overflow-hidden transition-all duration-200 flex flex-col justify-between group',
-                    // Selected State: Accent border, slight scale, shadow, AND subtle background highlight
-                    isSelected ? 
-                      'border-accent-primary scale-[1.01] shadow-lg bg-[color-mix(in_srgb,_var(--color-bg-surface)_95%,_var(--color-accent-primary)_5%)]' : 
-                      'border-border hover:border-accent-primary/50 bg-surface', // Default state: Use theme surface color, removed /50 and backdrop-blur
+                    'relative rounded-sm overflow-hidden transition-all duration-200 flex flex-col justify-between group mb-4', // Base classes - Removed bg-surface
+                    // Selected State: Keep shadow on parent. Border handled by dedicated element below.
+                    isSelected ? "shadow-lg" : '', 
                     // Pointer state:
                     finalCanSelect && !isDisabled && 'cursor-pointer'
                   )}
@@ -334,16 +332,11 @@ export function CabinSelector({
                     {spotsAvailable !== undefined && spotsAvailable !== null && spotsAvailable < (acc.capacity ?? Infinity) && !isFullyBooked && !isOutOfSeason && !isDisabled && (
                       <div className="text-xs font-medium px-3 py-1 rounded-full shadow-lg bg-gray-600/90 text-white border border-white/30 font-mono">{spotsAvailable} {spotsAvailable === 1 ? 'spot' : 'spots'} available</div>
                     )}
-                    
-                    {/* Selected Indicator */}
-                    {isSelected && (
-                      <div className="text-xs font-medium px-3 py-1 rounded-full shadow-md bg-accent-primary text-stone-800 font-mono border border-yellow-500">Selected</div>
-                    )}
                   </div>
 
                   {/* Image */}
                   <div className={clsx(
-                    "relative h-40 bg-gradient-to-br from-border/10 to-border/20 overflow-hidden",
+                    "relative h-56 bg-surface overflow-hidden", // Default to bg-surface, removed gradient
                     // Apply blur and corresponding opacity/grayscale conditionally
                     isDisabled && "blur-sm opacity-20 grayscale-[0.5]",
                     (!isDisabled && isFullyBooked) && "blur-sm opacity-20 grayscale-[0.7]",
@@ -366,15 +359,19 @@ export function CabinSelector({
 
                   {/* Content */}
                   <div className={clsx(
-                    "p-3 bg-transparent flex-grow flex flex-col justify-between", // Make content bg transparent
+                    "p-3 flex-grow flex flex-col justify-between", // Base classes, removed bg-transparent
+                    // Conditional Background: Apply color-mix only when selected, otherwise bg-surface
+                    isSelected 
+                      ? "bg-[color-mix(in_srgb,_var(--color-bg-surface)_95%,_var(--color-accent-primary)_5%)]" 
+                      : "bg-surface",
                     // Apply blur and corresponding opacity/grayscale conditionally
                     isDisabled && "blur-sm opacity-20 grayscale-[0.5]",
                     (!isDisabled && isFullyBooked) && "blur-sm opacity-20 grayscale-[0.7]",
                     (!isDisabled && isOutOfSeason && !isFullyBooked) && "blur-sm opacity-40 grayscale-[0.3]"
                   )}>
                     <div>
-                      <h3 className="text-lg font-medium mb-1 text-primary font-mono">{acc.title}</h3>
-                      <div className="flex items-center gap-3 text-secondary text-xs mb-2">
+                      <h3 className="text-lg font-medium mb-1 text-primary font-lettra-bold uppercase">{acc.title}</h3>
+                      <div className="flex items-center gap-3 text-secondary text-xs mb-4"> {/* Increased bottom margin to mb-4 */}
                         
                         {/* Conditionally render the Electricity/No Electricity Popover - hide for Van Parking */}
                         {acc.title !== 'Van Parking' && (
@@ -395,7 +392,7 @@ export function CabinSelector({
                                 onOpenAutoFocus={(e: Event) => e.preventDefault()}
                               >
                                 <Popover.Arrow className="tooltip-arrow" width={11} height={5} />
-                                <span className="text-white">{acc.has_electricity ? 'Has Electricity' : 'No Electricity'}</span>
+                                <span className="color-text-primary">{acc.has_electricity ? 'Has Electricity' : 'No Electricity'}</span>
                               </Popover.Content>
                             </Popover.Portal>
                           </Popover.Root>
@@ -419,7 +416,7 @@ export function CabinSelector({
                               onOpenAutoFocus={(e: Event) => e.preventDefault()}
                             >
                               <Popover.Arrow className="tooltip-arrow" width={11} height={5} />
-                              <span className="text-white">{acc.has_wifi ? 'Has WiFi' : 'No WiFi'}</span>
+                              <span className="color-text-primary">{acc.has_wifi ? 'Has WiFi' : 'No WiFi'}</span>
                             </Popover.Content>
                           </Popover.Portal>
                         </Popover.Root>
@@ -441,8 +438,8 @@ export function CabinSelector({
                               onOpenAutoFocus={(e: Event) => e.preventDefault()}
                             >
                               <Popover.Arrow className="tooltip-arrow" width={11} height={5} />
-                              <h4 className="font-medium font-mono text-white mb-1">Bed Size</h4>
-                              <p className="text-sm text-gray-300 font-mono">
+                              <h4 className="font-medium font-mono color-text-primary mb-1">Bed Size</h4>
+                              <p className="text-sm color-shade-2 font-mono">
                                 {acc.bed_size || 'N/A'}
                               </p>
                             </Popover.Content>
@@ -464,7 +461,7 @@ export function CabinSelector({
                                 onOpenAutoFocus={(e: Event) => e.preventDefault()}
                               >
                                 <Popover.Arrow className="tooltip-arrow" width={11} height={5} />
-                                <span className="text-white">We invite those who seek quiet to stay here.</span>
+                                <span className="color-text-primary">We invite those who seek quiet to stay here.</span>
                               </Popover.Content>
                             </Popover.Portal>
                           </Popover.Root>
@@ -485,7 +482,7 @@ export function CabinSelector({
                                 onOpenAutoFocus={(e: Event) => e.preventDefault()}
                               >
                                 <Popover.Arrow className="tooltip-arrow" width={11} height={5} />
-                                <span className="text-white">Power hook-ups available on request</span>
+                                <span className="color-text-primary">Power hook-ups available on request</span>
                               </Popover.Content>
                             </Popover.Portal>
                           </Popover.Root>
@@ -497,12 +494,11 @@ export function CabinSelector({
                       <div className="text-primary font-medium font-mono">
                         {/* Check if weeklyPrice (from prop) is null or 0, handle 0.01 specifically */}
                         {weeklyPrice === null || weeklyPrice === 0 ? (
-                          <span className="text-accent-primary text-lg font-mono">{formatPrice(weeklyPrice, isTestAccommodation)}</span>
+                          <span className="text-accent-primary text-xl font-lettra-bold font-mono">{formatPrice(weeklyPrice, isTestAccommodation)}</span>
                         ) : (
-                          <span className="text-lg">
-                            €{/* Use formatPrice for consistent display */}
-                            {formatPrice(weeklyPrice, isTestAccommodation)}
-                            <span className="text-sm text-secondary font-mono"> / week</span>
+                          <span className="text-xl font-lettra-bold text-accent-primary">
+                            €{formatPrice(weeklyPrice, isTestAccommodation)}
+                            <span className="text-xl text-secondary font-lettra-bold"></span>
                           </span>
                         )}
                       </div>
@@ -524,10 +520,10 @@ export function CabinSelector({
                               onOpenAutoFocus={(e: Event) => e.preventDefault()}
                             >
                               <Popover.Arrow className="tooltip-arrow tooltip-arrow--accent" width={11} height={5} />
-                              <h4 className="font-medium font-mono text-white mb-2">Weekly Rate Breakdown</h4>
+                              <h4 className="font-medium font-mono color-text-primary mb-2">Weekly Rate Breakdown</h4>
                               <div className="text-sm space-y-2">
                                  {/* Base Price */}
-                                 <div className="flex justify-between items-center text-gray-300">
+                                 <div className="flex justify-between items-center color-shade-2">
                                     <span>Base Rate:</span>
                                     <span>€{Math.round(acc.base_price)} / week</span>
                                  </div>
@@ -535,7 +531,7 @@ export function CabinSelector({
                                 {/* Seasonal Discount - Use avgSeasonalDiscount from prop, ensure not null */}
                                 {hasSeasonalDiscount && avgSeasonalDiscountForTooltip !== null && ( // Added null check here
                                   <div className="flex justify-between items-center">
-                                    <span className="text-gray-300">Seasonal Discount:</span>
+                                    <span className="color-shade-2">Seasonal Discount:</span>
                                     <span className="text-accent-primary font-medium">
                                       -{Math.round(avgSeasonalDiscountForTooltip * 100)}%
                                     </span>
@@ -545,7 +541,7 @@ export function CabinSelector({
                                 {/* Duration Discount - Use Math.round, check hasDurationDiscount */}
                                 {hasDurationDiscount && ( // Check flag
                                   <div className="flex justify-between items-center">
-                                    <span className="text-gray-300">Duration Discount ({completeWeeksForDiscount} wks):</span>
+                                    <span className="color-shade-2">Duration Discount ({completeWeeksForDiscount} wks):</span>
                                     <span className="text-accent-primary font-medium">
                                     -{Math.round(currentDurationDiscount * 100)}%
                                     </span>
@@ -556,19 +552,24 @@ export function CabinSelector({
                                  <div className="border-t border-gray-600 my-1"></div>
 
                                  {/* Final Weekly Price - Use weeklyPrice from prop, ensure not null */}
-                                 <div className="flex justify-between items-center font-medium text-white text-base">
+                                 <div className="flex justify-between items-center font-medium color-text-primary text-base">
                                     <span>Final Weekly Rate:</span>
                                     {/* Ensure weeklyPrice is not null before rounding */}
                                     <span>€{formatPrice(weeklyPrice, isTestAccommodation)}</span>
                                  </div>
                               </div>
-                               <p className="text-xs text-gray-400 mt-2 font-mono">Discounts applied multiplicatively.</p>
+                               <p className="text-xs color-shade-3 mt-2 font-mono">Discounts applied multiplicatively.</p>
                             </Popover.Content>
                           </Popover.Portal>
                         </Popover.Root>
                       )}
                     </div>
                   </div>
+
+                  {/* NEW: Dedicated Border Element for Selected State */}
+                  {isSelected && (
+                    <div className="absolute inset-0 z-10 rounded-sm border-2 border-accent-primary pointer-events-none"></div>
+                  )}
                 </motion.div>
               );
             })}
