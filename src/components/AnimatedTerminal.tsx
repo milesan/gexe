@@ -191,7 +191,7 @@ export function AnimatedTerminal({ onComplete }: Props) {
               <div className="w-full max-w-[300px] px-6 sm:px-0">
                 <div className="bg-black p-4 sm:p-8">
                   <div className="flex items-center justify-center gap-3 mb-8">
-                    <h1 className="text-lg font-mono text-retro-accent whitespace-nowrap">
+                    <h1 className="text-lg font-display text-retro-accent whitespace-nowrap">
                       enter the garden
                     </h1>
                   </div>
