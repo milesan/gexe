@@ -178,26 +178,8 @@ function AppRouterLogic({
 }
 
 // --- NEW Component to handle hooks inside Router context ---
-function RouteHandler() {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const session = useSession(); // Also get session here
-
-  // Effect specifically for handling post-auth redirect
-  useEffect(() => {
-    console.log('RouteHandler Effect Check: Post-Auth Callback Redirect', { hasSession: !!session, pathname: location.pathname });
-    // If we establish a session AND we are currently on the callback path...
-    if (session && location.pathname === '/auth/callback') {
-      console.log('RouteHandler Effect: Session confirmed on callback path, navigating to /');
-      // Redirect to the main authenticated page or dashboard
-      navigate('/', { replace: true });
-    }
-    // Add other global navigation effects here if needed in the future
-  }, [session, location, navigate]); // Dependencies
-
-  // This component doesn't render anything itself
-  return null;
-}
+// Remove RouteHandler entirely
+// function RouteHandler() { ... }
 
 // --- Main App Component (Handles State and Contexts) ---
 export default function App() {
@@ -310,7 +292,7 @@ export default function App() {
       <ThemeProvider>
         <Router>
           {/* Render RouteHandler INSIDE Router */}
-          <RouteHandler />
+          {/* <RouteHandler /> */}
           {/* Render AppRouterLogic INSIDE Router */}
           <AppRouterLogic 
             session={session} 
