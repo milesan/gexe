@@ -56,8 +56,15 @@ function AppRouterLogic({
   }
 
   // --- Logged In State ---
-  // If we reach here, session is guaranteed to exist.
   console.log('AppRouterLogic: Rendering AUTHENTICATED routes BLOCK');
+  
+  // *** NEW: Handle redirect away from /auth/callback AFTER session is confirmed ***
+  if (location.pathname === '/auth/callback') {
+    console.log('AppRouterLogic: Authenticated user on /auth/callback, redirecting to / to trigger final routing.');
+    return <Navigate to="/" replace />;
+  }
+
+  // If we reach here, session is guaranteed to exist AND we are NOT on /auth/callback.
   const user = session.user;
   const metadata = user?.user_metadata;
   
