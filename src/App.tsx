@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 // Import and configure logging
 import { configureLogging } from './utils/logging';
@@ -9,7 +9,6 @@ import { ConfirmationPage } from './pages/ConfirmationPage';
 import { Retro2Page } from './pages/Retro2Page';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ThemeProvider } from './contexts/ThemeContext';
-import { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
 import { useSession } from './hooks/useSession';
 import { AcceptInvitePage } from './pages/AcceptInvitePage';
@@ -24,7 +23,6 @@ configureLogging();
 // --- AppRouterLogic Component (Handles routing logic) ---
 interface AppRouterLogicProps {
   session: ReturnType<typeof useSession>;
-  loading: boolean;
   isWhitelisted: boolean;
   showWelcomeModal: boolean;
   handleCloseWelcomeModal: () => void;
@@ -32,55 +30,38 @@ interface AppRouterLogicProps {
 
 function AppRouterLogic({ 
   session, 
-  loading, 
   isWhitelisted, 
   showWelcomeModal, 
   handleCloseWelcomeModal 
 }: AppRouterLogicProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  console.log('AppRouterLogic: Component Render/Re-render START', { 
-    pathname: location.pathname, 
-    loading, 
-    hasSession: !!session, 
-    sessionId: session?.user?.id, 
-    isWhitelisted, 
-    metadata: session?.user?.user_metadata 
-  });
+  console.log('AppRouterLogic: Render START', { pathname: location.pathname, hasSession: !!session });
 
-  // Post-Callback Redirect Logic
-  useEffect(() => {
-    console.log('AppRouterLogic: Callback Redirect Check', { hasSession: !!session, pathname: location.pathname });
-    if (session && location.pathname === '/auth/callback') {
-      console.log('AppRouterLogic: Detected session on callback path, redirecting to /...');
-      navigate('/', { replace: true });
-    }
-  }, [session, location, navigate]);
-
-  // Early exit for loading or no session (Public Routes)
-  if (loading || !session) {
-    console.log('AppRouterLogic: Rendering Public Routes BLOCK', { loading, hasSession: !!session, pathname: location.pathname });
+  // --- Logged Out State ---
+  if (!session) {
+    console.log('AppRouterLogic: Rendering PUBLIC routes BLOCK', { pathname: location.pathname });
     return (
       <Routes>
+        {/* Routes accessible ONLY when logged OUT */}
+        <Route path="/" element={<LandingPage />} />
         <Route path="/accept" element={<AcceptInvitePage />} />
         <Route path="/accept-invite" element={<AcceptInvitePage isWhitelist={true} />} />
-        <Route path="/whitelist-signup" element={<WhitelistSignupPage />} />
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/pending" element={<PendingPage />} />
-        <Route path="/confirmation" element={<ConfirmationPage />} />
-        <Route path="/retro2" element={<Retro2Page />} />
         <Route path="/auth/callback" element={<AuthCallback />} /> 
-        {/* Simplified AuthCallback route element */}
+        {/* Removed /whitelist-signup, /pending, /confirmation, /retro2 from public */}
+        {/* Redirect any other unknown path to the landing page when logged out */}
         <Route path="/*" element={<Navigate to="/" replace />} />
       </Routes>
     );
   }
 
-  // Authenticated Routes Logic
+  // --- Logged In State ---
+  // If we reach here, session is guaranteed to exist.
+  console.log('AppRouterLogic: Rendering AUTHENTICATED routes BLOCK');
   const user = session.user;
   const metadata = user?.user_metadata;
   
-  // Log the exact values being used for decisions
+  // ... (keep all your existing checks: isAdminCheck, hasAppliedCheck, etc.) ...
   const isAdminCheck = user?.email === 'andre@thegarden.pt' ||
                   user?.email === 'redis213@gmail.com' ||
                   user?.email === 'dawn@thegarden.pt' ||
@@ -97,7 +78,7 @@ function AppRouterLogic({
   console.log(`AppRouterLogic: Evaluating Authenticated Routes for ${user?.email}`, { 
       isAdmin: isAdminCheck, 
       isApproved: isApprovedCheck, 
-      isWhitelistedProp: isWhitelisted, // Prop passed down
+      // isWhitelistedProp: isWhitelisted, // Prop passed down - Consider removing if metadata is reliable
       isWhitelistedMeta: isWhitelistedUserCheck, // From metadata
       hasCompletedWhitelistSignup: hasCompletedWhitelistSignupCheck, 
       hasApplied: hasAppliedCheck, 
@@ -106,91 +87,123 @@ function AppRouterLogic({
   });
 
   if (isAdminCheck) {
-    console.log('AppRouterLogic: Rendering Admin Routes BLOCK');
+    console.log('AppRouterLogic: Rendering Admin Routes');
     return (
       <Routes>
+        {/* Admins can access the main app and invite pages */}
         <Route path="/accept" element={<AcceptInvitePage />} />
         <Route path="/accept-invite" element={<AcceptInvitePage isWhitelist={true} />} />
-        <Route path="/*" element={<AuthenticatedApp />} />
-        <Route path="/confirmation" element={<ConfirmationPage />} />
+        <Route path="/confirmation" element={<ConfirmationPage />} /> 
+        <Route path="/*" element={<AuthenticatedApp />} /> 
       </Routes>
     );
   }
 
+  // Approved users go to the main app
   if (isApprovedCheck) {
-     console.log('AppRouterLogic: Rendering Approved User Routes BLOCK');
+     console.log('AppRouterLogic: Rendering Approved User Routes');
      return (
       <>
         <WhitelistWelcomeModal isOpen={showWelcomeModal} onClose={handleCloseWelcomeModal} />
         <Routes>
           <Route path="/accept" element={<AcceptInvitePage />} />
           <Route path="/accept-invite" element={<AcceptInvitePage isWhitelist={true} />} />
-          <Route path="/*" element={<AuthenticatedApp />} />
           <Route path="/confirmation" element={<ConfirmationPage />} />
+          <Route path="/*" element={<AuthenticatedApp />} />
         </Routes>
       </>
     );
   }
 
-  // Combine checks for clarity: isWhitelisted comes from RPC, isWhitelistedUserCheck from metadata
-  if ((isWhitelisted || isWhitelistedUserCheck) && !hasCompletedWhitelistSignupCheck) {
-    console.log('AppRouterLogic: Rendering Whitelist Signup Redirect BLOCK');
+  // Whitelisted users who NEED to complete signup
+  // Use the metadata check primarily.
+  if (isWhitelistedUserCheck && !hasCompletedWhitelistSignupCheck) {
+    console.log('AppRouterLogic: Rendering Whitelist Signup REQUIRED Routes');
     return (
       <Routes>
+        {/* Only allow access to the signup page itself */}
         <Route path="/whitelist-signup" element={<WhitelistSignupPage />} />
+        {/* Redirect any other path FOR THIS USER STATE to the signup page */}
         <Route path="/*" element={<Navigate to="/whitelist-signup" replace />} />
       </Routes>
     );
   }
 
-  // Use the same combined check here
-  if ((isWhitelisted || isWhitelistedUserCheck) && hasCompletedWhitelistSignupCheck) {
-    console.log('AppRouterLogic: Rendering Whitelisted User Routes BLOCK (Post-Signup)');
+  // Whitelisted users who HAVE completed signup (treat like approved)
+  if (isWhitelistedUserCheck && hasCompletedWhitelistSignupCheck) {
+    console.log('AppRouterLogic: Rendering Whitelisted User (Completed Signup) Routes');
     return (
       <>
-        <WhitelistWelcomeModal isOpen={showWelcomeModal} onClose={handleCloseWelcomeModal} />
+        {/* Might still need the welcome modal logic here? */}
+        <WhitelistWelcomeModal isOpen={showWelcomeModal} onClose={handleCloseWelcomeModal} /> 
         <Routes>
           <Route path="/accept" element={<AcceptInvitePage />} />
           <Route path="/accept-invite" element={<AcceptInvitePage isWhitelist={true} />} />
-          <Route path="/*" element={<AuthenticatedApp />} />
           <Route path="/confirmation" element={<ConfirmationPage />} />
+          <Route path="/*" element={<AuthenticatedApp />} />
         </Routes>
       </>
     );
   }
-
+  
+  // Users who haven't applied yet are sent to the application flow
   if (!hasAppliedCheck) {
-    console.log('AppRouterLogic: Rendering Application Flow Routes BLOCK (!hasApplied)');
+    console.log('AppRouterLogic: Rendering Application Flow Routes (!hasApplied)');
     return (
       <Routes>
-        <Route path="/" element={<Retro2Page />} />
-        <Route path="/pending" element={<PendingPage />} />
-        <Route path="/confirmation" element={<ConfirmationPage />} />
-        <Route path="/retro2" element={<Retro2Page />} />
-        <Route path="/*" element={<Navigate to="/retro2" replace />} />
+        {/* Define the routes for the application process */}
+        <Route path="/retro2" element={<Retro2Page />} /> 
+        {/* Assuming /retro2 is the start? Redirect root and others there. */}
+        <Route path="/" element={<Navigate to="/retro2" replace />} /> 
+        <Route path="/pending" element={<PendingPage />} /> {/* Maybe needed during application? */}
+        <Route path="/confirmation" element={<ConfirmationPage />} /> {/* Maybe needed during application? */}
+        <Route path="/*" element={<Navigate to="/retro2" replace />} /> 
       </Routes>
     );
   }
 
-  // Default for applied but not approved/whitelisted/admin
-  console.log('AppRouterLogic: Rendering Pending/Rejected Routes BLOCK (Default)');
+  // Default for authenticated users who don't fit other categories 
+  // (e.g., applied but pending/rejected, not whitelisted)
+  console.log('AppRouterLogic: Rendering Pending/Rejected Routes (Default Authenticated)');
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/pending" replace />} />
+      {/* Send them to the pending page */}
       <Route path="/pending" element={<PendingPage status={applicationStatusValue as 'pending' | 'rejected'} />} />
-      <Route path="/confirmation" element={<ConfirmationPage />} />
-      <Route path="/retro2" element={<Retro2Page />} />
+      <Route path="/confirmation" element={<ConfirmationPage />} /> {/* Allow viewing confirmation */}
+      {/* Redirect root and any other path to pending */}
+      <Route path="/" element={<Navigate to="/pending" replace />} /> 
       <Route path="/*" element={<Navigate to="/pending" replace />} />
     </Routes>
   );
 }
 
+// --- NEW Component to handle hooks inside Router context ---
+function RouteHandler() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const session = useSession(); // Also get session here
+
+  // Effect specifically for handling post-auth redirect
+  useEffect(() => {
+    console.log('RouteHandler Effect Check: Post-Auth Callback Redirect', { hasSession: !!session, pathname: location.pathname });
+    // If we establish a session AND we are currently on the callback path...
+    if (session && location.pathname === '/auth/callback') {
+      console.log('RouteHandler Effect: Session confirmed on callback path, navigating to /');
+      // Redirect to the main authenticated page or dashboard
+      navigate('/', { replace: true });
+    }
+    // Add other global navigation effects here if needed in the future
+  }, [session, location, navigate]); // Dependencies
+
+  // This component doesn't render anything itself
+  return null;
+}
+
 // --- Main App Component (Handles State and Contexts) ---
 export default function App() {
   const session = useSession();
-  const [loading, setLoading] = useState(true); 
   const [isWhitelisted, setIsWhitelisted] = useState(false);
-  const [isLoading, setIsLoading] = useState(true); 
+  const [isLoading, setIsLoading] = useState(true);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [screenWidth, setScreenWidth] = useState(window.innerWidth);
 
@@ -199,23 +212,22 @@ export default function App() {
     setIsLoading(true);
     supabase.auth.getSession().then(({ data: { session } }) => {
       console.log('App: Initial getSession complete', { hasSession: !!session });
-      setIsLoading(false);
     }).catch(error => {
        console.error('App: Error during initial getSession:', error);
-       setIsLoading(false);
+    }).finally(() => {
+        setIsLoading(false);
     });
   }, []);
 
   // User status check effect (runs when session changes)
   useEffect(() => {
     let mounted = true;
-    // setLoading(true); // REMOVED: Don't set loading=true on every session check
-    
+
     const checkUserStatus = async () => {
       if (!session?.user) {
         console.log('App: No user session, skipping status check.');
         setIsWhitelisted(false);
-        if (mounted) setLoading(false);
+        if (mounted) setIsLoading(false);
         return;
       }
       
@@ -226,12 +238,12 @@ export default function App() {
 
         if (whitelistError) {
             console.error('Error checking whitelist status:', whitelistError);
-            setIsWhitelisted(false);
+            if (mounted) setIsWhitelisted(false);
         } else {
             console.log('App: Whitelist RPC result:', isWhitelistedResult);
             if (mounted) setIsWhitelisted(!!isWhitelistedResult);
         }
-        
+
         const metadata = session.user.user_metadata;
         const hasSeenWelcome = metadata?.has_seen_welcome === true;
         const isApproved = metadata?.approved === true || metadata?.application_status === 'approved';
@@ -248,7 +260,7 @@ export default function App() {
         console.error('Error in checkUserStatus:', err);
         if (mounted) setIsWhitelisted(false); 
       } finally {
-        if (mounted) setLoading(false);
+        if (mounted) setIsLoading(false);
       }
     };
 
@@ -292,14 +304,16 @@ export default function App() {
     return <div className="text-stone-600 font-mono">Loading...</div>;
   }
 
-  console.log('App: Rendering Router and AppRouterLogic');
+  console.log('App: Rendering Router, RouteHandler and AppRouterLogic');
   return (
     <ErrorBoundary>
       <ThemeProvider>
         <Router>
+          {/* Render RouteHandler INSIDE Router */}
+          <RouteHandler />
+          {/* Render AppRouterLogic INSIDE Router */}
           <AppRouterLogic 
             session={session} 
-            loading={loading} // Pass the loading state related to session/status checks
             isWhitelisted={isWhitelisted} 
             showWelcomeModal={showWelcomeModal} 
             handleCloseWelcomeModal={handleCloseWelcomeModal} 

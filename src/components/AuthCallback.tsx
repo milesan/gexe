@@ -1,33 +1,27 @@
+// src/components/AuthCallback.tsx
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useSession } from '../hooks/useSession';
-// import { useLocation } from 'react-router-dom'; // No longer needed
-// import { supabase } from '../lib/supabase'; // No longer needed
+// import { useNavigate } from 'react-router-dom'; // No longer needed
+// import { useSession } from '../hooks/useSession'; // No longer needed
 
 export function AuthCallback() {
-  const navigate = useNavigate();
-  const session = useSession();
-  // const location = useLocation(); // No longer needed
+  // const navigate = useNavigate(); // No longer needed here
+  // const session = useSession(); // No longer needed here
 
-  useEffect(() => {
-    // --- Add Log on Effect Run ---
-    console.log('AuthCallback: useEffect running.');
+  // Remove the useEffect hook entirely as App.tsx now handles the redirect
+  // useEffect(() => {
+  //   console.log('AuthCallback: useEffect running.');
+  //   console.log('AuthCallback: Checking session state...');
+  //   if (session) {
+  //     console.log('AuthCallback: Session detected, navigating to /');
+  //     navigate('/', { replace: true }); 
+  //   } else {
+  //     console.log('AuthCallback: No session yet, waiting...');
+  //   }
+  // }, [session, navigate]); 
 
-    // Supabase client handles the session automatically via onAuthStateChange in App.tsx
-    // This component just needs to exist and show a loading state.
-    // console.log('AuthCallback: Rendering loading screen while Supabase handles auth...');
-
-    // --- New Logic --- 
-    console.log('AuthCallback: Checking session state...');
-    if (session) {
-      console.log('AuthCallback: Session detected, navigating to /');
-      navigate('/', { replace: true }); // Navigate away once session is confirmed
-    } else {
-      console.log('AuthCallback: No session yet, waiting...');
-    }
-    // Depend on session so this runs when session state changes
-  }, [session, navigate]); // Update dependencies
-
+  // This component now just shows a loading state briefly
+  // before the redirect in App.tsx takes effect.
+  console.log('AuthCallback: Rendering minimal loading indicator.'); 
   return (
     <div className="min-h-screen bg-stone-50 flex items-center justify-center">
       <div className="text-center">

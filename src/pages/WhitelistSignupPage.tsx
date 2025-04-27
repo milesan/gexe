@@ -31,12 +31,12 @@ export function WhitelistSignupPage() {
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
+    console.log('⏳ WhitelistSignupPage: Attempting sign out...');
     try {
-      console.log('WhitelistSignupPage: Signing out user');
       await supabase.auth.signOut();
-      window.location.href = '/';
+      console.log('✅ WhitelistSignupPage: Sign out successful');
     } catch (error) {
-      console.error('Error signing out:', error);
+      console.error('❌ WhitelistSignupPage: Error during sign out:', error instanceof Error ? error.message : error);
     }
   };
 
