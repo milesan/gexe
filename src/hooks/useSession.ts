@@ -20,6 +20,7 @@ export function useSession(): UseSessionReturn {
     supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
       if (mounted) {
         console.log('useSession: getSession completed', { hasSession: !!initialSession });
+        console.log('useSession: Initial session object:', JSON.stringify(initialSession, null, 2));
         setSession(initialSession);
         // Don't set loading false here yet, wait for listener setup? Or maybe okay?
         // Let's set it here for now, onAuthStateChange will handle subsequent updates.
@@ -43,6 +44,7 @@ export function useSession(): UseSessionReturn {
       // The listener might fire before getSession finishes, especially on initial load.
       // We need to ensure loading is only set to false once definitively settled.
       console.log('useSession: onAuthStateChange triggered', { event: _event, hasSession: !!currentSession });
+      console.log('useSession: Auth change session object:', JSON.stringify(currentSession, null, 2));
       if (mounted) {
         setSession(currentSession);
         // If the auth state changes, we are no longer in the initial loading phase.

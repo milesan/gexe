@@ -25,6 +25,7 @@ import { bookingService } from '../services/BookingService';
 import { loadStripe } from '@stripe/stripe-js';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { InfoBox } from '../components/InfoBox';
+import { isAdminUser } from '../lib/authUtils';
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
@@ -139,12 +140,8 @@ export function Book2Page() {
   // This state holds the result of the calculation above
   const combinedDiscount = calculateCombinedDiscount(selectedWeeks);
 
-  const session = useSession();
-  const isAdmin = session?.user?.email === 'andre@thegarden.pt' ||
-    session?.user?.email === 'redis213@gmail.com' ||
-    session?.user?.email === 'dawn@thegarden.pt' ||
-    session?.user?.email === 'simone@thegarden.pt' ||
-    session?.user?.email === 'samjlloa@gmail.com';
+  const { session, isLoading: sessionLoading } = useSession();
+  const isAdmin = isAdminUser(session);
   const isMobile = window.innerWidth < 768;
 
   // --- START: Normalize date specifically for the calendar hook ---
@@ -818,8 +815,22 @@ export function Book2Page() {
   // NEW: Memoized lookup function returns the info object
   const getDisplayInfo = useCallback((accommodationId: string): { price: number | null; avgSeasonalDiscount: number | null } | null => {
     const info = weeklyAccommodationInfo[accommodationId];
+    // console.log('[Book2Page] isAdmin check result:', isAdmin); // <-- REMOVE FROM HERE
     return info ?? null;
-  }, [weeklyAccommodationInfo]);
+  }, [weeklyAccommodationInfo]); // <-- REMOVE isAdmin FROM DEPENDENCIES
+
+  // ---> ADD LOG HERE INSTEAD <--- 
+  console.log('[Book2Page] Rendering - isAdmin check result:', isAdmin);
+
+  // ---> ADDING LOADING CHECK HERE <--- 
+  if (sessionLoading) {
+      // Render loading state or null while session is loading
+      return (
+          <div className="min-h-screen flex items-center justify-center">
+              <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-accent-primary"></div>
+          </div>
+      );
+  }
 
   return (
     <div className="min-h-screen">

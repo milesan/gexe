@@ -8,6 +8,7 @@ import { useSession } from '../hooks/useSession';
 import { Footer } from './Footer';
 import { WhitelistWelcomeModal } from './WhitelistWelcomeModal';
 import { BugReportFAB } from './BugReportFAB';
+import { isAdminUser } from '../lib/authUtils'; // <-- Import the utility
 
 // Basic debounce function (Consider moving to a utils file if not already there)
 function debounce<T extends (...args: any[]) => void>(func: T, wait: number) {
@@ -34,12 +35,15 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
   const [lastScrollY, setLastScrollY] = useState(0);
   // THEME FUNCTIONALITY - Placeholder, replace with your actual theme hook/context
   const [theme, setTheme] = useState<'dark' | 'light'>('dark'); // Default or load from context/localStorage
-  const session = useSession();
+  const { session, isLoading: sessionLoading } = useSession(); // <-- Destructure session and loading state
   const navigate = useNavigate();
   const location = useLocation();
   // TODO: Consider moving adminEmails to a config file or context if used elsewhere
-  const adminEmails = ['andre@thegarden.pt', 'redis213@gmail.com', 'dawn@thegarden.pt', 'simone@thegarden.pt', 'samjlloa@gmail.com', 'redis213+testadmin@gmail.com'];
-  const isAdmin = session?.user?.email ? adminEmails.includes(session.user.email) : false;
+  // const adminEmails = ['andre@thegarden.pt', 'redis213@gmail.com', 'dawn@thegarden.pt', 'simone@thegarden.pt', 'samjlloa@gmail.com', 'redis213+testadmin@gmail.com']; // <-- Remove this!
+  const isAdmin = isAdminUser(session); // <-- Use the utility function
+
+  // Add a log to check the isAdmin value here too
+  console.log('[MainAppLayout] isAdmin check result:', isAdmin, 'isLoading:', sessionLoading);
 
   // Scroll handler logic
   const handleScroll = useCallback(() => {

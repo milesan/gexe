@@ -5,12 +5,18 @@ import { Book2Page } from '../pages/Book2Page';
 import { AdminPage } from '../pages/AdminPage';
 import { WhyPage } from '../pages/WhyPage';
 import { useSession } from '../hooks/useSession';
+import { isAdminUser } from '../lib/authUtils';
 
 export function AuthenticatedApp() {
   console.log('AuthenticatedApp: Rendering Routes');
-  const session = useSession();
-  const adminEmails = ['andre@thegarden.pt', 'redis213@gmail.com', 'dawn@thegarden.pt', 'simone@thegarden.pt', 'samjlloa@gmail.com', 'redis213+testadmin@gmail.com'];
-  const isAdmin = session?.user?.email ? adminEmails.includes(session.user.email) : false;
+  const { session, isLoading } = useSession();
+  const isAdmin = isAdminUser(session);
+
+  if (isLoading) {
+    return <div>Loading session...</div>;
+  }
+
+  console.log('[AuthenticatedApp] isAdmin check result:', isAdmin);
 
   return (
     <>
