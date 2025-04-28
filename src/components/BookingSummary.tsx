@@ -1059,7 +1059,7 @@ export function BookingSummary({
                         e.stopPropagation(); // Prevent event bubbling
                         setShowDiscountModal(true);
                       }}
-                      className="p-1.5 text-[var(--color-accent-primary)] hover:bg-accent-muted rounded-md transition-colors"
+                      className="p-1.5 text-[var(--color-accent-primary)] hover:text-[var(--color-accent-secondary)] rounded-md transition-colors"
                     >
                       <Info className="w-4 h-4" />
                       <span className="sr-only">View Discount Details</span>
