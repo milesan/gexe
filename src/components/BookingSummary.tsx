@@ -172,6 +172,11 @@ export function BookingSummary({
   seasonBreakdown: initialSeasonBreakdown,
   calculatedWeeklyAccommodationPrice
 }: BookingSummaryProps) {
+  // --- ADDED LOGGING: Check received prop value ---
+  console.log('[BookingSummary] --- PROPS CHECK ---');
+  console.log('[BookingSummary] Received calculatedWeeklyAccommodationPrice PROP:', calculatedWeeklyAccommodationPrice);
+  // --- END ADDED LOGGING ---
+
   // --- LOGGING: Initial props and state ---
   console.log('[BookingSummary] --- Component Render Start ---');
   console.log('[BookingSummary] Initial Props Received:', {
@@ -341,6 +346,9 @@ export function BookingSummary({
       foodContribution,
       appliedDiscount,
     });
+    // --- ADDED LOGGING: Check prop value *inside* memo ---
+    console.log('[BookingSummary] useMemo: Using calculatedWeeklyAccommodationPrice PROP:', calculatedWeeklyAccommodationPrice);
+    // --- END ADDED LOGGING ---
 
     // === Calculate fundamental values: nights, complete weeks (for discount), exact decimal weeks ===
     const totalNights = calculateTotalNights(selectedWeeks);
@@ -353,8 +361,15 @@ export function BookingSummary({
 
     // === Calculate Accommodation Cost using DISPLAY (rounded) weeks for WYSIWYG ===
     const weeklyAccPrice = calculatedWeeklyAccommodationPrice ?? 0;
-    // Use DISPLAY weeks here for WYSIWYG consistency with the label
-    const totalAccommodationCost = parseFloat((weeklyAccPrice * displayWeeks).toFixed(2)); // Changed exactWeeksDecimal to displayWeeks
+
+    // --- ADDED LOGGING: Check inputs before multiplication ---
+    console.log('[BookingSummary] useMemo: Inputs for Accommodation Cost CALCULATION:', {
+      weeklyAccPrice_Used: weeklyAccPrice, // Value used in calculation
+      displayWeeks_Multiplier: displayWeeks, // The multiplier
+    });
+    // --- END ADDED LOGGING ---
+
+    const totalAccommodationCost = parseFloat((weeklyAccPrice * displayWeeks).toFixed(2));
     console.log('[BookingSummary] useMemo: Calculated Accommodation Cost (using DISPLAY weeks):', { weeklyAccPrice, displayWeeks, totalAccommodationCost });
     // VERIFICATION LOG (keeping for now, should show integer * rounded_decimal)
     console.log('[BookingSummary] useMemo: VERIFYING Cost Calc:', {

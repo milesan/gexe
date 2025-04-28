@@ -10,6 +10,16 @@ import { addDays, isDate, isBefore } from 'date-fns';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import * as Popover from '@radix-ui/react-popover';
 import { calculateTotalNights, calculateDurationDiscountWeeks, normalizeToUTCDate } from '../utils/dates';
+import { useSession } from '../hooks/useSession';
+
+// Define admin emails (consider moving to a central config/env variable later)
+const ADMIN_EMAILS = [
+  'andre@thegarden.pt',
+  'redis213@gmail.com',
+  'dawn@thegarden.pt',
+  'simone@thegarden.pt',
+  'samjlloa@gmail.com'
+];
 
 interface Props {
   accommodations: Accommodation[];
@@ -53,6 +63,9 @@ export function CabinSelector({
   isDisabled = false,
   displayWeeklyAccommodationPrice
 }: Props) {
+  const session = useSession();
+  const isAdmin = session?.user?.email ? ADMIN_EMAILS.includes(session.user.email) : false;
+
   console.log('[CabinSelector] Rendering with props:', {
     accommodationsCount: accommodations?.length,
     selectedAccommodationId,
@@ -60,6 +73,7 @@ export function CabinSelector({
     currentMonth: currentMonth.toISOString(),
     currentMonthNumber: currentMonth.getUTCMonth(),
     currentMonthName: new Intl.DateTimeFormat('en-US', { month: 'long', timeZone: 'UTC' }).format(currentMonth),
+    isAdmin,
     selectedWeeks: selectedWeeks?.map(w => {
       if (!w || typeof w === 'string') return null;
       
@@ -189,6 +203,13 @@ export function CabinSelector({
     .filter(acc => {
       // Filter out individual bed entries
       if ((acc as any).parent_accommodation_id) return false;
+
+      // Filter out 'test' accommodations if the user is NOT an admin
+      if (acc.type === 'test' && !isAdmin) {
+         console.log(`[CabinSelector] Filtering out test accommodation "${acc.title}" for non-admin user.`);
+         return false;
+      }
+
       return true;
     })
     .sort((a, b) => a.base_price - b.base_price); // Sort by base price in ascending order
