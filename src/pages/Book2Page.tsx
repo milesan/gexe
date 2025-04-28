@@ -147,16 +147,21 @@ export function Book2Page() {
     session?.user?.email === 'samjlloa@gmail.com';
   const isMobile = window.innerWidth < 768;
 
-  // Calculate end date based on current month and device type
-  const calendarEndDate = addMonths(currentMonth, isMobile ? 3 : 4);
+  // --- START: Normalize date specifically for the calendar hook ---
+  const calendarStartDate = startOfMonth(currentMonth);
+  // Calculate end date based on the normalized start date
+  const calendarEndDate = addMonths(calendarStartDate, isMobile ? 3 : 4);
 
-  console.log('[Book2Page] Calendar date range:', {
-    startDate: formatDateForDisplay(currentMonth),
+  console.log('[Book2Page_TRACE] Values PASSED to useCalendar hook:', {
+    // --- ADDED: Log the raw Date object before formatting --- 
+    calendarStartDate_RAW_OBJECT: calendarStartDate,
+    // --- END ADDED --- 
+    startDate: formatDateForDisplay(calendarStartDate),
     endDate: formatDateForDisplay(calendarEndDate),
-    monthsDifference: isMobile ? 3 : 4
   });
+  // --- END: Normalize date ---
 
-  // Use our calendar hook
+  // Use our calendar hook WITH NORMALIZED START DATE
   const { 
     weeks,
     customizations,
@@ -166,8 +171,8 @@ export function Book2Page() {
     deleteCustomization,
     setLastRefresh: setCalendarRefresh
   } = useCalendar({
-    startDate: currentMonth,
-    endDate: calendarEndDate,
+    startDate: calendarStartDate, // Pass normalized date
+    endDate: calendarEndDate,   // Pass end date derived from normalized start
     isAdminMode
   });
 
@@ -201,14 +206,18 @@ export function Book2Page() {
 
   // Add a wrapped setCurrentMonth function with logging
   const handleMonthChange = useCallback((newMonth: Date) => {
-    console.log('[Book2Page] Changing month:', {
+    // --- ADDED: Log the raw input date --- 
+    console.log('[handleMonthChange_TRACE] Received raw newMonth:', newMonth ? formatDateForDisplay(newMonth) : 'undefined', newMonth);
+    // Ensure we always set the state to the beginning of the month
+    const startOfNewMonth = startOfMonth(newMonth);
+    // --- MODIFIED: Added identifier --- 
+    console.log('[handleMonthChange_TRACE] Changing month (Normalized):', {
       from: currentMonth ? formatDateForDisplay(currentMonth) : 'undefined',
-      to: formatDateForDisplay(newMonth),
+      to: formatDateForDisplay(startOfNewMonth), // Log the normalized date
       selectedWeeksCount: selectedWeeks.length,
       calculatedWeeksDecimal: calculateTotalWeeksDecimal(selectedWeeks)
     });
-    
-    setCurrentMonth(newMonth);
+    setCurrentMonth(startOfNewMonth); // Set state to the start of the month
   }, [currentMonth, selectedWeeks]);
 
   // Main handleWeekSelect function simplified

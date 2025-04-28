@@ -249,7 +249,8 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
           <div
             className={`lg:hidden transition-all duration-300 ease-in-out ${isMobileMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'} overflow-hidden`}
           >
-            <div className={`py-4 space-y-4 ${theme === 'light' ? 'border-t border-border' : ''}`}>
+            {/* Apply background, padding, shadow, rounding, and dividers */}
+            <div className={`px-4 rounded-b-lg shadow-lg divide-y divide-border/50 ${theme === 'light' ? 'bg-white border-t border-border' : 'bg-surface'}`}>
               {/* THEME TOGGLE BUTTON - Re-enabled here */}
               {/* <button
                 onClick={() => { toggleTheme(); setIsMobileMenuOpen(false); }} // Close menu on theme toggle
@@ -262,21 +263,21 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
               </button> */}
               <button
                 onClick={() => handleHeaderNavigation('/my-bookings')}
-                className={`w-full text-left p-1.5 font-lettra transition-colors text-sm border border-shade-1 bg-surface-dark rounded-sm text-primary ${location.pathname === '/my-bookings' ? 'font-medium' : 'hover:opacity-80'}`}
+                className={`w-full text-left py-3 font-lettra transition-colors text-sm text-primary ${location.pathname === '/my-bookings' ? 'font-medium' : 'hover:opacity-80'}`}
               >
                 MY ACCOUNT
               </button>
               {isAdmin && (
                 <button
                   onClick={() => handleHeaderNavigation('/admin')}
-                  className={`w-full text-left p-1.5 transition-colors text-sm uppercase font-lettra text-primary border border-shade-1 bg-surface-dark rounded-sm ${location.pathname === '/admin' ? 'font-medium' : 'hover:opacity-80'}`}
+                  className={`w-full text-left py-3 transition-colors text-sm uppercase font-lettra text-primary ${location.pathname === '/admin' ? 'font-medium' : 'hover:opacity-80'}`}
                 >
                   ADMIN PANEL
                 </button>
               )}
               <button
                 onClick={() => { handleSignOut(); setIsMobileMenuOpen(false); }} // Close menu on sign out
-                className="w-full text-left p-1.5 transition-colors text-sm uppercase font-lettra text-primary border border-shade-1 bg-surface-dark rounded-sm hover:opacity-80"
+                className="w-full text-left py-3 transition-colors text-sm uppercase font-lettra text-primary hover:opacity-80"
               >
                 SIGN OUT
               </button>

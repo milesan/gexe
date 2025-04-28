@@ -154,8 +154,8 @@ export function AnimatedTerminal({ onComplete }: Props) {
   };
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center">
-      <div className="w-full h-[95vh] max-w-[1000px] relative flex items-center justify-center px-4" ref={containerRef}>
+    <div className="h-[100dvh] bg-black flex items-center justify-center">
+      <div className="w-full h-full max-w-[1000px] relative flex items-center justify-center px-4" ref={containerRef}>
         {/* Hidden admin click area */}
         <div
           onClick={() => navigate('/retro2')}

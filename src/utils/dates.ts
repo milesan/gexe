@@ -87,8 +87,14 @@ export function localDayToUTCMidnight(localDate: Date | null | undefined): Date 
  */
 export function formatDateForDisplay(date: Date | null | undefined): string {
   if (!date) return 'null';
-  // Use formatInTimeZone to guarantee UTC display
-  return formatInTimeZone(normalizeToUTCDate(date), 'UTC', 'yyyy-MM-dd');
+  // Use the correct function to get UTC midnight for the *local* calendar day
+  const utcMidnightDate = localDayToUTCMidnight(date);
+  if (!utcMidnightDate) {
+    console.warn('[formatDateForDisplay] localDayToUTCMidnight returned null for date:', date);
+    return 'invalid-date'; // Return a distinct string for invalid conversion
+  }
+  // Use formatInTimeZone to guarantee UTC display based on the correctly converted date
+  return formatInTimeZone(utcMidnightDate, 'UTC', 'yyyy-MM-dd');
 }
 
 /**
@@ -468,21 +474,26 @@ export function generateWeeksWithCustomizations(
     });
   });
   
-  console.log('[generateWeeksWithCustomizations] Generated weeks:', {
-    count: result.length,
-    firstWeek: result.length > 0 ? {
-      startDate: formatDateForDisplay(result[0].startDate),
-      endDate: formatDateForDisplay(result[0].endDate),
-      status: result[0].status
+  // Filter weeks to ensure they start on or after the 'from' date
+  console.log(`[generateWeeksWithCustomizations] Filtering results: Keeping weeks on or after ${formatDateForDisplay(from)}. Initial count: ${result.length}`);
+  
+  const filteredResult = result.filter(week => week.startDate.getTime() >= from.getTime());
+  
+  console.log('[generateWeeksWithCustomizations] Filtered weeks:', {
+    count: filteredResult.length,
+    firstWeek: filteredResult.length > 0 ? {
+      startDate: formatDateForDisplay(filteredResult[0].startDate),
+      endDate: formatDateForDisplay(filteredResult[0].endDate),
+      status: filteredResult[0].status
     } : null,
-    lastWeek: result.length > 0 ? {
-      startDate: formatDateForDisplay(result[result.length - 1].startDate),
-      endDate: formatDateForDisplay(result[result.length - 1].endDate),
-      status: result[result.length - 1].status
+    lastWeek: filteredResult.length > 0 ? {
+      startDate: formatDateForDisplay(filteredResult[filteredResult.length - 1].startDate),
+      endDate: formatDateForDisplay(filteredResult[filteredResult.length - 1].endDate),
+      status: filteredResult[filteredResult.length - 1].status
     } : null
   });
-  
-  return result;
+
+  return filteredResult;
 }
 
 /**

@@ -71,6 +71,16 @@ export function WeekSelector({
   onMaxWeeksReached,
 }: WeekSelectorProps) {
   console.log('[WeekSelector] Rendering weeks:', weeks?.map(w => getSimplifiedWeekInfo(w, isAdmin, selectedWeeks)));
+  // --- START: Add log for incoming props ---
+  console.log('[WeekSelector PROPS] Received props:', {
+    weeksCount: weeks?.length,
+    selectedWeeksCount: selectedWeeks?.length,
+    isAdmin,
+    isLoading,
+    currentMonth: currentMonth ? formatDateForDisplay(currentMonth) : 'undefined',
+    incomingWeeksSample: weeks?.slice(0, 5).map(w => ({ start: formatDateForDisplay(w.startDate), end: formatDateForDisplay(w.endDate), id: w.id })), // Log first 5 incoming weeks
+  });
+  // --- END: Add log for incoming props ---
 
   // Filter out partial weeks at the edges of the date range
   const filteredWeeks = weeks.filter(week => {
@@ -99,6 +109,12 @@ export function WeekSelector({
     isMobile,
     weeks: filteredWeeks?.map(w => getSimplifiedWeekInfo(w, isAdmin, selectedWeeks))
   });
+  // --- START: Add log for filtered weeks ---
+  console.log('[WeekSelector FILTERED] Filtered weeks:', {
+    count: filteredWeeks.length,
+    filteredWeeksSample: filteredWeeks?.slice(0, 5).map(w => ({ start: formatDateForDisplay(w.startDate), end: formatDateForDisplay(w.endDate), id: w.id })), // Log first 5 filtered weeks
+  });
+  // --- END: Add log for filtered weeks ---
 
   // Generate squiggle paths for visible weeks only
   const squigglePaths = useMemo(() => {
@@ -363,6 +379,10 @@ export function WeekSelector({
         {filteredWeeks.map((week, index) => {
           // Determine if content should be visible (selectable or admin view)
           const isContentVisible = isWeekSelectable(week, isAdmin, selectedWeeks) || isAdmin;
+          
+          // --- START: Add log inside render map (BEFORE RETURN) --- 
+          console.log(`[WeekSelector RENDER LOOP] Rendering week ${index}:`, { id: week.id, startDate: formatDateForDisplay(week.startDate), endDate: formatDateForDisplay(week.endDate) });
+          // --- END: Add log inside render map --- 
 
           // --- DEBUG LOG START ---
           /* console.log('[WeekSelector Debug] Week Render Check:', {

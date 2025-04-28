@@ -121,21 +121,21 @@ export function Whitelist() {
       console.log('✅ Successfully added to whitelist');
 
       // Send acceptance email
-      console.log('📧 Sending acceptance email to:', newEmail);
-      const { error: emailError } = await supabase.functions.invoke('send-whitelist-email', {
-        body: { 
-          email: newEmail,
-          whitelistId: data.id,
-          frontendUrl: getFrontendUrl()
-        }
-      });
+      // console.log('📧 Sending acceptance email to:', newEmail);
+      // const { error: emailError } = await supabase.functions.invoke('send-whitelist-email', {
+      //   body: { 
+      //     email: newEmail,
+      //     whitelistId: data.id,
+      //     frontendUrl: getFrontendUrl()
+      //   }
+      // });
 
-      if (emailError) {
-        console.error('❌ Error sending acceptance email:', emailError);
-        setError('Added to whitelist but failed to send acceptance email');
-      } else {
-        console.log('✅ Successfully sent acceptance email');
-      }
+      // if (emailError) {
+      //   console.error('❌ Error sending acceptance email:', emailError);
+      //   setError('Added to whitelist but failed to send acceptance email');
+      // } else {
+      //   console.log('✅ Successfully sent acceptance email');
+      // }
       
       setNewEmail('');
       setNewNotes('');
