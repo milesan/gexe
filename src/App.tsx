@@ -22,7 +22,7 @@ configureLogging();
 
 // --- AppRouterLogic Component (Handles routing logic) ---
 interface AppRouterLogicProps {
-  session: ReturnType<typeof useSession>;
+  session: ReturnType<typeof useSession>['session'];
   isWhitelisted: boolean;
 }
 
@@ -184,39 +184,34 @@ function AppRouterLogic({
 
 // --- Main App Component (Handles State and Contexts) ---
 export default function App() {
-  const session = useSession();
+  const { session, isLoading: sessionLoading } = useSession();
   const [isWhitelisted, setIsWhitelisted] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const [screenWidth, setScreenWidth] = useState(window.innerWidth);
+  const [isCheckingWhitelist, setIsCheckingWhitelist] = useState(true);
 
-  // Initial session check effect
-  useEffect(() => {
-    setIsLoading(true);
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('App: Initial getSession complete', { hasSession: !!session });
-    }).catch(error => {
-       console.error('App: Error during initial getSession:', error);
-    }).finally(() => {
-        setIsLoading(false);
-    });
-  }, []);
+  // Extract user ID for stable dependency
+  const userId = session?.user?.id;
 
-  // User status check effect (runs when session changes)
+  // User status check effect (runs when userId or loading state changes)
   useEffect(() => {
     let mounted = true;
 
     const checkUserStatus = async () => {
-      if (!session?.user) {
-        console.log('App: No user session, skipping status check.');
+      // Use userId in the check as well for clarity
+      if (sessionLoading || !userId) {
+        console.log('App: Skipping whitelist check (session loading or no user ID)', { sessionLoading, hasUserId: !!userId });
         setIsWhitelisted(false);
-        if (mounted) setIsLoading(false);
+        setIsCheckingWhitelist(false); 
         return;
       }
       
+      setIsCheckingWhitelist(true); 
       try {
-        console.log(`App: Checking user status for ${session.user.email}`);
+        // We have userId here, so session.user.email should also exist
+        const userEmail = session!.user!.email! // Use non-null assertion as userId check passed
+        console.log(`App: Checking user status for ${userEmail} (ID: ${userId})`);
         const { data: isWhitelistedResult, error: whitelistError } = await supabase
-          .rpc('is_whitelisted', { user_email: session.user.email });
+          .rpc('is_whitelisted', { user_email: userEmail });
 
         if (whitelistError) {
             console.error('Error checking whitelist status:', whitelistError);
@@ -230,14 +225,15 @@ export default function App() {
         console.error('Error in checkUserStatus:', err);
         if (mounted) setIsWhitelisted(false); 
       } finally {
-        if (mounted) setIsLoading(false);
+        if (mounted) setIsCheckingWhitelist(false); 
       }
     };
 
     checkUserStatus();
 
     return () => { mounted = false; };
-  }, [session]);
+  // Depend on userId now, not the whole session object
+  }, [userId, sessionLoading]); 
 
   // Screen width effect
   useEffect(() => {
@@ -250,20 +246,21 @@ export default function App() {
     };
   }, []);
 
-  // Render Loading, or Router + Logic Component
-  if (isLoading) {
-    console.log('App: Initial loading state (isLoading=true)');
+  // Render Loading based on sessionLoading AND whitelist check
+  const isLoading = sessionLoading || isCheckingWhitelist;
+
+  if (isLoading) { 
+    console.log('App: Loading...', { sessionLoading, isCheckingWhitelist });
     return <div className="text-stone-600 font-mono">Loading...</div>;
   }
 
-  console.log('App: Rendering Router and AppRouterLogic');
+  // Now we are sure session is settled (not loading) and whitelist check is done
+  console.log('App: Rendering Router and AppRouterLogic', { sessionLoading, isCheckingWhitelist, userId });
   return (
     <ErrorBoundary>
       <ThemeProvider>
         <Router>
-          {/* Render RouteHandler INSIDE Router */}
-          {/* <RouteHandler /> */}
-          {/* Render AppRouterLogic INSIDE Router */}
+          {/* Pass the session object (Session | null) to AppRouterLogic */}
           <AppRouterLogic 
             session={session} 
             isWhitelisted={isWhitelisted} 
