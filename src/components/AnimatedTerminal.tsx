@@ -154,7 +154,12 @@ export function AnimatedTerminal({ onComplete }: Props) {
   };
 
   return (
-    <div className="h-[100dvh] bg-black flex items-center justify-center">
+    <div 
+      className="h-[100dvh] bg-cover bg-center bg-no-repeat flex items-center justify-center"
+      style={{
+        backgroundImage: `url('https://guquxpxxycfmmlqajdyw.supabase.co/storage/v1/object/public/background-image//login-background.png')`
+      }}
+    >
       <div className="w-full h-full max-w-[1000px] relative flex items-center justify-center px-4" ref={containerRef}>
         {/* Hidden admin click area */}
         <div
@@ -189,7 +194,7 @@ export function AnimatedTerminal({ onComplete }: Props) {
             >
               {/* Use padding instead of calculated width for better responsiveness */}
               <div className="w-full max-w-[300px] px-6 sm:px-0">
-                <div className="bg-black p-4 sm:p-8">
+                <div className="p-4 sm:p-8">
                   <div className="flex items-center justify-center gap-3 mb-8">
                     <h1 className="text-lg font-display text-retro-accent whitespace-nowrap">
                       enter the garden
