@@ -833,7 +833,7 @@ export function BookingSummary({
       
       // If response is not ok, handle the error
       if (!response.ok) {
-        const errorMessage = responseData?.error || 'Invalid discount code';
+        const errorMessage = responseData?.error || 'Invalid code';
         console.error('[BookingSummary] Error response:', errorMessage);
         setDiscountError(errorMessage);
         return;
@@ -841,7 +841,7 @@ export function BookingSummary({
       
       // --- Success Case --- 
       if (responseData && responseData.code && typeof responseData.percentage_discount === 'number') {
-        console.log("[BookingSummary] Discount code validated successfully:", responseData);
+        console.log("[BookingSummary] code validated successfully:", responseData);
         setAppliedDiscount({
           code: responseData.code,
           percentage_discount: responseData.percentage_discount
@@ -1249,7 +1249,7 @@ export function BookingSummary({
                 <div className="pt-4 mt-4 font-mono">
                   {!appliedDiscount ? (
                     <div>
-                       <label htmlFor="discount-code" className="uppercase text-primary font-display text-2xl">Discount code</label>
+                       <label htmlFor="discount-code" className="uppercase text-primary font-display text-2xl">Code</label>
                        <div className="flex gap-2 mt-2"> {/* Added mt-2 */}
                           <input 
                             type="text"
@@ -1285,7 +1285,7 @@ export function BookingSummary({
                             <button 
                                 onClick={handleRemoveDiscount}
                                 className="p-1 text-success hover:text-error hover:bg-error-muted rounded-full text-xs"
-                                title="Remove discount code"
+                                title="Remove code"
                             >
                                 <X className="w-3 h-3" />
                             </button>

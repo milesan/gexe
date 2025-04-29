@@ -163,7 +163,7 @@ export function DiscountCodesManager() {
   return (
     <div className="p-4 sm:p-6 font-mono text-primary">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl sm:text-2xl font-display font-light">Manage Discount Codes</h2>
+        <h2 className="text-xl sm:text-2xl font-display font-light">Manage Codes</h2>
         <button
           onClick={() => {
             setShowAddForm(!showAddForm);
@@ -198,7 +198,7 @@ export function DiscountCodesManager() {
       {/* --- Add Form Section --- */}
       {showAddForm && (
          <div className="mb-6 p-4 border border-border rounded-lg bg-surface">
-            <h3 className="text-lg font-medium mb-4">Add New Discount Code</h3>
+            <h3 className="text-lg font-medium mb-4">Add New Code</h3>
             <form onSubmit={handleAddCode} className="space-y-4">
                 <div>
                     <label htmlFor="new-code" className="block text-sm font-medium text-secondary mb-1">Code</label>
@@ -258,7 +258,7 @@ export function DiscountCodesManager() {
       {isLoading && <p className="text-center text-secondary py-4">Loading codes...</p>}
 
       {!isLoading && codes.length === 0 && !error && (
-        <p className="text-center text-secondary py-4">No discount codes found. Add one to get started!</p>
+        <p className="text-center text-secondary py-4">No codes found. Add one to get started!</p>
       )}
 
       {/* --- Codes Table --- */}
