@@ -842,7 +842,7 @@ export function Book2Page() {
             {/* == START: New wrapper div with horizontal padding == */}
             <div>
               {/* Moved h1 inside wrapper - REMOVING px-* padding now */}
-              <h1 className="text-4xl lg:text-[78px] font-display mb-3 xs:mb-4 text-primary pt-14 leading-[1.1] tracking-[-0.02em]">BEGIN YOUR <br /><em>EXISTENTIAL</em> CYCLE</h1>
+              <h1 className="text-4xl lg:text-[78px] font-display mb-3 xs:mb-4 text-primary pt-14 leading-[1.1] tracking-[-0.02em]">WELCOME TO THIS <br />STRANGE <em>ATTRACTOR</em></h1>
               
               {/* Outer Note box keeps py-* padding - Setting bottom margin to 32px (mb-8) */}
               <div className="bg-surface/50 py-3 xs:py-4 sm:py-6 mb-8 shadow-sm rounded-sm">
