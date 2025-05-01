@@ -20,6 +20,7 @@ import * as Popover from '@radix-ui/react-popover'; // Import Popover
 import { calculateTotalNights, calculateDurationDiscountWeeks, calculateTotalDays, calculateTotalWeeksDecimal } from '../utils/dates';
 import { DiscountModal } from './DiscountModal';
 import { formatInTimeZone } from 'date-fns-tz';
+import { isAdminUser } from '../lib/authUtils'; // Import isAdminUser
 
 // Define the season breakdown type
 export interface SeasonBreakdown {
@@ -244,13 +245,8 @@ export function BookingSummary({
   const { getArrivalDepartureForDate } = useSchedulingRules();
   const navigate = useNavigate();
   const session = useSession();
-  const isAdmin = session?.user?.email === 'andre@thegarden.pt' ||
-    session?.user?.email === 'redis213@gmail.com' ||
-    session?.user?.email === 'dawn@thegarden.pt' ||
-    session?.user?.email === 'simone@thegarden.pt' ||
-    session?.user?.email === 'samjlloa@gmail.com' ||
-    session?.user?.email === 'redis213+testadmin@gmail.com';
-  const userEmail = session?.user?.email; // Get user email
+  const isAdmin = isAdminUser(session?.session); // Pass session?.session instead
+  const userEmail = session?.session?.user?.email; // Also update this to use session.session
 
   // Get flexible dates from the first week if available
   const flexibleDates = selectedWeeks[0]?.flexibleDates;
@@ -478,6 +474,16 @@ export function BookingSummary({
     return calculatedPricingDetails;
 
   }, [selectedWeeks, calculatedWeeklyAccommodationPrice, foodContribution, selectedAccommodation, appliedDiscount]);
+
+  const isStateOfTheArtist = useMemo(() => {
+    if (selectedWeeks.length === 1) {
+      const weekName = selectedWeeks[0]?.name?.toLowerCase() || '';
+      const targetName = 'state of the art[ist]';
+      const isMatch = weekName.includes(targetName);
+      return isMatch;
+    }
+    return false;
+  }, [selectedWeeks]);
 
   // Always update the check-in date when selectedWeeks changes
   useEffect(() => {
@@ -890,6 +896,11 @@ export function BookingSummary({
   const fallbackDate = new Date();
   fallbackDate.setUTCHours(0, 0, 0, 0);
 
+  // Determine min/max based on the event
+  const sliderMin = isStateOfTheArtist ? 240 : (pricing.totalNights <= 6 ? 345 : 240);
+  const sliderMax = isStateOfTheArtist ? 3600 : 390; 
+  console.log('[BookingSummary] Slider Range:', { sliderMin, sliderMax, isStateOfTheArtist });
+
   // Render the component
   return (
     <>
@@ -1186,24 +1197,26 @@ export function BookingSummary({
                          <input
                            id="food-contribution"
                            type="range"
-                           min={pricing.totalNights <= 6 ? 345 : 240} 
-                           max={390} 
-                           value={foodContribution ?? (pricing.totalNights <= 6 ? 345 : 240)}
+                           min={sliderMin} // Use variable
+                           max={sliderMax} // Use variable
+                           value={foodContribution ?? sliderMin} // Use sliderMin as fallback default
                            onChange={(e) => setFoodContribution(Number(e.target.value))}
                            className="w-full h-2 bg-border rounded-lg appearance-none cursor-pointer accent-accent-primary slider-thumb-accent" /* Added slider-thumb-accent */
                          />
                           <div className="flex justify-between text-xs text-secondary mt-1 font-mono">
                              {/* Apply requested styles to Min */}
                              <span className="uppercase text-xs font-lettra-bold text-primary">
-                               Min: €{Math.round((pricing.totalNights <= 6 ? 345 : 240) * (1 - pricing.durationDiscountPercent / 100))}
+                               Min: €{Math.round(sliderMin * (1 - pricing.durationDiscountPercent / 100))} 
                              </span>
                              {/* Apply requested styles to Rate */}
                              <span className="uppercase text-xs font-lettra-bold text-primary"> {/* Removed font-medium text-sm text-shade-1 font-mono */}
-                                €{Math.round((foodContribution ?? (pricing.totalNights <= 6 ? 345 : 240)) * (1 - pricing.durationDiscountPercent / 100))} / week
+                               {/* Ensure the displayed rate uses the correct base (sliderMin if null) */}
+                               €{Math.round((foodContribution ?? sliderMin) * (1 - pricing.durationDiscountPercent / 100))} / week
                              </span>
                              {/* Apply requested styles to Max */}
                              <span className="uppercase text-xs font-lettra-bold text-primary">
-                               Max: €{Math.round(390 * (1 - pricing.durationDiscountPercent / 100))}
+                               {/* Use conditional max based on discounted sliderMax */}
+                               Max: €{Math.round(sliderMax * (1 - pricing.durationDiscountPercent / 100))}
                              </span>
                           </div>
                        </div>
