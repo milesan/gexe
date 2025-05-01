@@ -2,20 +2,22 @@ import React, { useState } from 'react';
 import { format } from 'date-fns-tz';
 import { supabase } from '../lib/supabase';
 import { parseISO } from 'date-fns';
-import { Edit, Trash2 } from 'lucide-react';
+import { Edit, Trash2, PlusCircle } from 'lucide-react';
 import { EditBookingModal } from './EditBookingModal';
+import { AddBookingModal } from './AddBookingModal';
 
 interface Booking {
   id: string;
   accommodation_id: string;
-  user_id: string;
+  user_id: string | null;
   check_in: string;
   check_out: string;
   total_price: number;
   status: string;
   created_at: string;
   accommodation_title: string;
-  user_email: string;
+  user_email: string | null;
+  guest_email?: string | null;
   accommodations?: { title: string } | null;
 }
 
@@ -24,6 +26,7 @@ export function BookingsList() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   React.useEffect(() => {
     loadBookings();
@@ -118,9 +121,14 @@ export function BookingsList() {
     }
   };
 
-  // Handler to close the modal
-  const handleCloseModal = () => {
+  // Handler to close the edit modal
+  const handleCloseEditModal = () => {
     setEditingBooking(null);
+  };
+  
+  // Handler to close the add modal
+  const handleCloseAddModal = () => {
+    setIsAddModalOpen(false);
   };
 
   // Handler potentially needed if subscription doesn't auto-refresh reliably
@@ -146,99 +154,118 @@ export function BookingsList() {
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-[var(--color-border)]">
-        <thead className="bg-[var(--color-bg-surface)]">
-          <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
-              Accommodation
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
-              Guest
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
-              Check-in
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
-              Check-out
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
-              Price
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
-              Status
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
-              Created At
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
-              Actions
-            </th>
-          </tr>
-        </thead>
-        <tbody className="bg-[var(--color-bg-surface)] divide-y divide-[var(--color-border)]">
-          {bookings.map((booking) => (
-            <tr key={booking.id}>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm font-medium text-[var(--color-text-primary)]">
-                  {booking.accommodation_title}
-                </div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm text-[var(--color-text-primary)]">
-                  {booking.user_email}
-                </div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--color-text-secondary)]">
-                {format(parseISO(booking.check_in), 'PP')}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--color-text-secondary)]">
-                {format(parseISO(booking.check_out), 'PP')}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--color-text-primary)]">
-                €{booking.total_price}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                  booking.status === 'confirmed' 
-                    ? 'bg-green-100 text-green-800'
-                    : booking.status === 'pending'
-                    ? 'bg-yellow-100 text-yellow-800'
-                    : 'bg-red-100 text-red-800'
-                }`}>
-                  {booking.status}
-                </span>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--color-text-secondary)]">
-                {format(new Date(booking.created_at), 'PPp', { timeZone: 'UTC' })}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                <button 
-                  onClick={() => handleEditClick(booking)} 
-                  className="text-indigo-600 hover:text-indigo-900 mr-3 transition-colors duration-150"
-                  aria-label={`Edit booking ${booking.id}`}
-                >
-                  <Edit className="w-4 h-4" />
-                </button>
-                <button 
-                  onClick={() => handleDeleteClick(booking.id)} 
-                  className="text-red-600 hover:text-red-900 transition-colors duration-150"
-                  aria-label={`Cancel booking ${booking.id}`}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </td>
+    <div className="p-4">
+      <div className="mb-4 flex justify-end">
+        <button
+          onClick={() => setIsAddModalOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors font-mono text-sm"
+        >
+          <PlusCircle className="w-4 h-4" />
+          Add Manual Entry
+        </button>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-[var(--color-border)]">
+          <thead className="bg-[var(--color-bg-surface)]">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
+                Accommodation
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
+                Guest
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
+                Check-in
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
+                Check-out
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
+                Price
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
+                Status
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
+                Created At
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
+                Actions
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="bg-[var(--color-bg-surface)] divide-y divide-[var(--color-border)]">
+            {bookings.map((booking) => (
+              <tr key={booking.id}>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm font-medium text-[var(--color-text-primary)]">
+                    {booking.accommodation_title}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-[var(--color-text-primary)]">
+                    {booking.guest_email || booking.user_email || 'N/A'}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--color-text-secondary)]">
+                  {format(parseISO(booking.check_in), 'PP')}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--color-text-secondary)]">
+                  {format(parseISO(booking.check_out), 'PP')}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--color-text-primary)]">
+                  €{booking.total_price}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                    booking.status === 'confirmed' 
+                      ? 'bg-green-100 text-green-800'
+                      : booking.status === 'pending'
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    {booking.status}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--color-text-secondary)]">
+                  {format(new Date(booking.created_at), 'PPp', { timeZone: 'UTC' })}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <button 
+                    onClick={() => handleEditClick(booking)} 
+                    className="text-indigo-600 hover:text-indigo-900 mr-3 transition-colors duration-150"
+                    aria-label={`Edit booking ${booking.id}`}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={() => handleDeleteClick(booking.id)} 
+                    className="text-red-600 hover:text-red-900 transition-colors duration-150"
+                    aria-label={`Cancel booking ${booking.id}`}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       
-      {/* Render the modal conditionally */}
+      {/* Render the edit modal conditionally */}
       {editingBooking && (
         <EditBookingModal 
           booking={editingBooking} 
-          onClose={handleCloseModal} 
-          onSave={handleSaveChanges} // Pass the save handler
+          onClose={handleCloseEditModal}
+          onSave={handleSaveChanges}
+        />
+      )}
+
+      {/* Render the add modal conditionally */}
+      {isAddModalOpen && (
+        <AddBookingModal 
+          onClose={handleCloseAddModal} 
+          onSave={handleSaveChanges} // Reuse save handler for refresh logic
         />
       )}
     </div>
