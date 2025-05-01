@@ -43,7 +43,7 @@ export const createLogger = (): LogLevels => {
 
 // Override console methods based on environment
 export const configureLogging = (silenceAll = false): void => {
-  if (false) { // isProduction || silenceAll
+  if (isProduction || silenceAll) {
     // In production or when explicitly silenced, disable most logs
     console.log = () => {};
     console.info = () => {};

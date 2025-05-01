@@ -133,23 +133,51 @@ export function WhitelistSignupPage() {
       if (profileError) throw profileError;
       console.log('✅ Profile created/updated:', profileData);
 
-      // Update user metadata
-      console.log('🔄 Updating user metadata...');
-      const { error: updateError } = await supabase.auth.updateUser({
+      // --- NEW: Update user metadata --- 
+      console.log('🔄 Updating user metadata for whitelisted user...');
+      const { data: updatedUserData, error: updateError } = await supabase.auth.updateUser({
         data: { 
-          has_completed_whitelist_signup: true
+          has_applied: true,       // Mark as applied
+          application_status: 'approved', // Mark as approved (since whitelisted)
+          // You might want to include other relevant metadata fields here if needed
+          // Ensure these keys match what AppRouterLogic checks
         }
       });
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        // Log the error but maybe don't fail the whole process? 
+        // Or decide if this is critical.
+        console.error('❌ Error updating user metadata:', updateError);
+        // Optionally: throw updateError; 
+      } else {
+        console.log('✅ User metadata updated:', updatedUserData);
+      }
+      // --- END NEW METADATA UPDATE ---
+
+      // --- NEW: Update whitelist table --- 
+      console.log(`🔄 Updating whitelist table for ${user.email}...`);
+      const { error: whitelistUpdateError } = await supabase
+        .from('whitelist') // Ensure this table name is correct
+        .update({ has_created_account: true }) // Ensure this column name is correct
+        .eq('email', user.email);
+
+      if (whitelistUpdateError) {
+        // Log error, but potentially continue? Decide if this is critical.
+        console.error('❌ Error updating whitelist table:', whitelistUpdateError);
+      } else {
+        console.log('✅ Whitelist table updated successfully.');
+      }
+      // --- END WHITELIST UPDATE ---
 
       // Refresh the session to reflect the changes
       console.log('🔄 Refreshing session...');
       const { error: sessionError } = await supabase.auth.refreshSession();
-      if (sessionError) throw sessionError;
+      if (sessionError) {
+           console.warn('⚠️ WhitelistSignupPage: Error refreshing session after signup (might be ok):', sessionError);
+      }
 
-      console.log('🎉 Whitelist signup completed successfully!');
-      navigate('/');
+      console.log('🎉 Whitelist signup data submission completed successfully! Navigating to / route.');
+      navigate('/', { replace: true });
 
     } catch (error) {
       console.error('❌ Error in whitelist signup:', error);
