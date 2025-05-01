@@ -693,7 +693,25 @@ export function WeekSelector({
                         const formattedEndDate = formatInTimeZone(week.endDate, 'UTC', 'MMM d');
                         const fullText = `${week.name}, ${formattedStartDate} - ${formattedEndDate}`;
                         const isLong = fullText.length > 20; // Use a threshold relevant to the combined text
+                        const isSpecialWeek = week.name.toLowerCase() === "state of the art[ist]"; // Magic string check
 
+                        // If it's the special week, render the link
+                        if (isSpecialWeek) {
+                          return (
+                            <a 
+                              href="https://stateoftheartist.ai" 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()} // Prevent button click
+                              className="font-display text-secondary text-[10px] xxs:text-xs w-full px-1 underline hover:text-accent-primary transition-colors duration-200 block truncate" // Added block/truncate
+                              title={fullText} // Add title for full text on hover
+                            >
+                              {fullText}
+                            </a>
+                          );
+                        }
+                        
+                        // Otherwise, render the original logic (mobile/desktop display)
                         return isMobile ? (
                           // Mobile: Show full text, allow wrapping
                           <div className="font-display text-secondary text-[10px] xxs:text-xs w-full px-1">

@@ -897,7 +897,7 @@ export function BookingSummary({
   fallbackDate.setUTCHours(0, 0, 0, 0);
 
   // Determine min/max based on the event
-  const sliderMin = isStateOfTheArtist ? 240 : (pricing.totalNights <= 6 ? 345 : 240);
+  const sliderMin = isStateOfTheArtist ? 390 : (pricing.totalNights <= 6 ? 345 : 240);
   const sliderMax = isStateOfTheArtist ? 3600 : 390; 
   console.log('[BookingSummary] Slider Range:', { sliderMin, sliderMax, isStateOfTheArtist });
 
