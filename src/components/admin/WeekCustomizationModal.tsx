@@ -24,6 +24,7 @@ interface Props {
   onSave: (updates: {
     status: WeekStatus;
     name?: string;
+    link?: string;
     startDate?: Date;
     endDate?: Date;
     flexibleDates?: Date[];
@@ -37,6 +38,7 @@ interface Props {
  * This component allows admins to:
  * - Change a week's status (visible, hidden, deleted)
  * - Set a custom name for the week
+ * - Add an optional link associated with the name
  * - Modify the start and end dates
  * - Enable/disable flexible check-in dates
  * - Select specific flexible check-in dates
@@ -45,6 +47,8 @@ interface Props {
 export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, onDelete }: Props) {
   console.log("Modal received week:", {
     id: week.id,
+    name: week.name,
+    link: week.link,
     flexDates: week.flexibleDates?.map(d => d?.toISOString())
   });
 
@@ -55,6 +59,7 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
     week?.status === 'default' ? 'visible' : week?.status || 'default'
   );
   const [name, setName] = useState(week?.name || '');
+  const [link, setLink] = useState(week?.link || '');
   
   // State for flexible check-in dates
   const [isFlexibleCheckin, setIsFlexibleCheckin] = useState(
@@ -166,10 +171,13 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
       const updates = {
         status,
         name: name.trim() || undefined,
+        link: link.trim() || undefined,
         startDate: normalizedStartDate,
         endDate: normalizedEndDate,
         flexibleDates: isFlexibleCheckin ? normalizedFlexDates : []
       };
+      
+      console.log("[WeekCustomizationModal] Updates being sent:", updates);
       
       // Save changes
       await onSave(updates);
@@ -186,6 +194,7 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
     endDate, 
     status, 
     name, 
+    link,
     selectedFlexDates, 
     isFlexibleCheckin, 
     onSave, 
@@ -389,6 +398,25 @@ export function WeekCustomizationModal({ week, isOpen = true, onClose, onSave, o
               placeholder="e.g., Christmas Week"
               className={`${inputBaseClasses} font-mono`}
             />
+          </div>
+
+          {/* Link (Optional) */}
+          <div className="mb-4">
+            <label className={`block text-sm font-medium mb-1 font-mono ${textMutedClasses}`}>
+              Link (Optional) - requires a Week Name
+            </label>
+            <input
+              type="url"
+              value={link}
+              onChange={(e) => setLink(e.target.value)}
+              placeholder="e.g., https://example.com/event-details"
+              className={`${inputBaseClasses} font-mono`}
+              disabled={!name.trim()}
+              title={!name.trim() ? "A week name must be set to add a link." : ""}
+            />
+            {!name.trim() && link.trim() && (
+              <p className="mt-1 text-xs text-yellow-400 font-mono">A week name is required to save the link.</p>
+            )}
           </div>
 
           {/* Date Range */}

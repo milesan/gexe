@@ -194,6 +194,7 @@ export class CalendarService {
     endDate: Date;
     status: string;
     name?: string;
+    link?: string;
     flexibleDates?: Date[];
   }): Promise<WeekCustomization | null> {
     // Normalize all dates upfront
@@ -202,6 +203,7 @@ export class CalendarService {
       endDate: normalizeToUTCDate(customization.endDate),
       status: customization.status as WeekStatus,
       name: customization.name,
+      link: customization.link,
       flexibleDates: customization.flexibleDates?.map(d => normalizeToUTCDate(d))
     };
 
@@ -209,6 +211,8 @@ export class CalendarService {
       startDate: formatDateForDisplay(normalizedDates.startDate),
       endDate: formatDateForDisplay(normalizedDates.endDate),
       status: normalizedDates.status,
+      name: normalizedDates.name,
+      link: normalizedDates.link,
       flexibleDatesCount: normalizedDates.flexibleDates?.length || 0
     });
     
@@ -239,6 +243,7 @@ export class CalendarService {
           normalizedDates.endDate,
           normalizedDates.status,
           normalizedDates.name,
+          normalizedDates.link,
           normalizedDates.flexibleDates
         );
         
@@ -316,13 +321,14 @@ export class CalendarService {
    */
   static async updateCustomization(
     id: string,
-    updates: Partial<WeekCustomization & { flexibleDates?: Date[] }>
+    updates: Partial<WeekCustomization & { flexibleDates?: Date[]; link?: string }>
   ): Promise<WeekCustomization | null> {
     // Normalize any dates in the updates
     const normalizedUpdates = {
       ...updates,
       startDate: updates.startDate ? normalizeToUTCDate(updates.startDate) : undefined,
       endDate: updates.endDate ? normalizeToUTCDate(updates.endDate) : undefined,
+      link: updates.link,
       flexibleDates: updates.flexibleDates?.map(d => normalizeToUTCDate(d))
     };
     
@@ -332,6 +338,8 @@ export class CalendarService {
         ...normalizedUpdates,
         startDate: normalizedUpdates.startDate ? formatDateForDisplay(normalizedUpdates.startDate) : undefined,
         endDate: normalizedUpdates.endDate ? formatDateForDisplay(normalizedUpdates.endDate) : undefined,
+        name: normalizedUpdates.name,
+        link: normalizedUpdates.link,
         flexibleDatesCount: normalizedUpdates.flexibleDates?.length,
         flexibleDatesProvided: normalizedUpdates.flexibleDates !== undefined
       }
@@ -386,7 +394,8 @@ export class CalendarService {
             newStartDate,
             newEndDate,
             normalizedUpdates.status || current.status,
-            normalizedUpdates.name !== undefined ? normalizedUpdates.name : current.name,
+            normalizedUpdates.name,
+            normalizedUpdates.link,
             normalizedUpdates.flexibleDates
           );
           
@@ -506,6 +515,7 @@ export class CalendarService {
     newEndDate: Date,
     status?: string,
     name?: string | null,
+    link?: string,
     flexibleDates?: Date[]
   ): Array<{
     type: 'create' | 'update' | 'delete';
@@ -516,6 +526,7 @@ export class CalendarService {
       status?: string;
       name?: string | null;
       flexibleDates?: Date[];
+      link?: string;
     }
   }> {
     const operations: Array<{
@@ -527,6 +538,7 @@ export class CalendarService {
         status?: string;
         name?: string | null;
         flexibleDates?: Date[];
+        link?: string;
       }
     }> = [];
     
@@ -538,7 +550,8 @@ export class CalendarService {
         endDate: newEndDate,
         status,
         name,
-        flexibleDates
+        flexibleDates,
+        link
       }
     });
     
@@ -568,7 +581,8 @@ export class CalendarService {
           week: {
             id: overlap.id,
             endDate: newEndDate,
-            flexibleDates: adjustedFlexDates
+            flexibleDates: adjustedFlexDates,
+            link: overlap.link
           }
         });
       }
@@ -586,7 +600,8 @@ export class CalendarService {
           week: {
             id: overlap.id,
             startDate: newStartDate,
-            flexibleDates: adjustedFlexDates
+            flexibleDates: adjustedFlexDates,
+            link: overlap.link
           }
         });
       }
@@ -613,7 +628,8 @@ export class CalendarService {
           week: {
             id: overlap.id,
             endDate: firstEndDate,
-            flexibleDates: firstFlexDates
+            flexibleDates: firstFlexDates,
+            link: overlap.link
           }
         });
         
@@ -625,7 +641,8 @@ export class CalendarService {
             endDate: overlap.endDate,
             status: overlap.status,
             name: overlap.name,
-            flexibleDates: secondFlexDates
+            flexibleDates: secondFlexDates,
+            link: overlap.link
           }
         });
       }
@@ -648,6 +665,7 @@ export class CalendarService {
       status?: string;
       name?: string | null;
       flexibleDates?: Date[];
+      link?: string;
     }
   }>): Promise<boolean> {
     console.log('[CalendarService] Processing week operations batch:', operations.length);
@@ -659,7 +677,9 @@ export class CalendarService {
           type: op.type,
           weekId: op.week.id,
           startDate: op.week.startDate ? formatDateForDisplay(op.week.startDate) : undefined,
-          endDate: op.week.endDate ? formatDateForDisplay(op.week.endDate) : undefined
+          endDate: op.week.endDate ? formatDateForDisplay(op.week.endDate) : undefined,
+          name: op.week.name,
+          link: op.week.link
         });
         
         // Normalize dates in the operation
@@ -679,7 +699,8 @@ export class CalendarService {
                 startDate: normalizedWeek.startDate,
                 endDate: normalizedWeek.endDate,
                 status: normalizedWeek.status as WeekStatus,
-                name: normalizedWeek.name || undefined
+                name: normalizedWeek.name || undefined,
+                link: normalizedWeek.link || undefined
               }))
               .select()
               .single()
@@ -709,6 +730,7 @@ export class CalendarService {
           if (normalizedWeek.endDate) updateData.end_date = normalizedWeek.endDate.toISOString();
           if (normalizedWeek.status) updateData.status = normalizedWeek.status;
           if (normalizedWeek.name !== undefined) updateData.name = normalizedWeek.name;
+          if (normalizedWeek.link !== undefined) updateData.link = normalizedWeek.link;
           
             await supabase
               .from('week_customizations')

@@ -466,6 +466,7 @@ export function Book2Page() {
                 endDate: finalEndDate,
                 status: updates.status,
                 name: updates.name,
+                link: updates.link,
           flexibleDates
         });
       }

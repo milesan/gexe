@@ -47,7 +47,8 @@ export function mapWeekCustomizationFromRow(row: WeekCustomizationRow & { flexib
         durationDays: Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1,
         startDay: startDate.getDay(),
         endDay: endDate.getDay(),
-        flexibleDatesCount: row.flexible_checkins?.length
+        flexibleDatesCount: row.flexible_checkins?.length,
+        link: row.link
     });
     
     return {
@@ -60,7 +61,8 @@ export function mapWeekCustomizationFromRow(row: WeekCustomizationRow & { flexib
         createdBy: row.created_by || 'system',
         flexibleDates: row.flexible_checkins?.map((fc: { allowed_checkin_date: string }) => 
             parseISO(`${fc.allowed_checkin_date}T00:00:00.000Z`)
-        ) || []
+        ) || [],
+        link: row.link || undefined
     };
 }
 
@@ -77,13 +79,15 @@ export function mapWeekCustomizationToRow(customization: Partial<WeekCustomizati
         durationDays: customization.startDate && customization.endDate ? 
             Math.round((customization.endDate.getTime() - customization.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1 : 
             undefined,
-        flexibleDatesCount: customization.flexibleDates?.length
+        flexibleDatesCount: customization.flexibleDates?.length,
+        link: customization.link
     });
     
     return {
         start_date: customization.startDate?.toISOString(),
         end_date: customization.endDate?.toISOString(),
-        name: customization.name,
-        status: customization.status
+        name: customization.name === undefined ? null : customization.name,
+        status: customization.status,
+        link: customization.link === undefined ? null : customization.link
     };
 }

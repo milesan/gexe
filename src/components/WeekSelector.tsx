@@ -693,25 +693,30 @@ export function WeekSelector({
                         const formattedEndDate = formatInTimeZone(week.endDate, 'UTC', 'MMM d');
                         const fullText = `${week.name}, ${formattedStartDate} - ${formattedEndDate}`;
                         const isLong = fullText.length > 20; // Use a threshold relevant to the combined text
-                        const isSpecialWeek = week.name.toLowerCase() === "state of the art[ist]"; // Magic string check
+                        const hasLink = !!week.link; // Check if link exists
 
-                        // If it's the special week, render the link
-                        if (isSpecialWeek) {
+                        // If there is a link render it as a link
+                        if (hasLink) {
+                          // Ensure the link starts with http://, https://, or //
+                          const safeHref = week.link?.startsWith('http') || week.link?.startsWith('//')
+                            ? week.link
+                            : `//${week.link}`;
+
                           return (
-                            <a 
-                              href="https://stateoftheartist.ai" 
-                              target="_blank" 
+                            <a
+                              href={safeHref}
+                              target="_blank"
                               rel="noopener noreferrer"
                               onClick={(e) => e.stopPropagation()} // Prevent button click
-                              className="font-display text-secondary text-[10px] xxs:text-xs w-full px-1 underline hover:text-accent-primary transition-colors duration-200 block truncate" // Added block/truncate
-                              title={fullText} // Add title for full text on hover
+                              className="font-display text-secondary text-[10px] xxs:text-xs w-full px-1 underline hover:text-accent-primary transition-colors duration-200 block truncate"
+                              title={`${fullText} (opens external link)`}
                             >
                               {fullText}
                             </a>
                           );
                         }
-                        
-                        // Otherwise, render the original logic (mobile/desktop display)
+
+                        // Otherwise, render the original logic (mobile/desktop display without link)
                         return isMobile ? (
                           // Mobile: Show full text, allow wrapping
                           <div className="font-display text-secondary text-[10px] xxs:text-xs w-full px-1">

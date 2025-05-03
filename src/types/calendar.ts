@@ -23,6 +23,7 @@ export interface WeekCustomization {
     createdBy: string;
     createdAt: Date;
     flexibleDates?: Date[];
+    link?: string;
 }
 
 export interface Week {
@@ -37,6 +38,7 @@ export interface Week {
     flexibleDates?: Date[];
     isFlexibleSelection?: boolean;
     selectedFlexDate?: Date;
+    link?: string;
 }
 
 export interface FlexibleCheckin {

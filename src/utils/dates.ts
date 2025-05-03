@@ -466,6 +466,7 @@ export function generateWeeksWithCustomizations(
       endDate: item.endDate,
       status: item.type === 'custom' ? item.customization!.status : 'default',
       name: item.type === 'custom' ? (item.customization!.name || undefined) : undefined,
+      link: item.type === 'custom' ? (item.customization!.link || undefined) : undefined,
       isCustom: item.type === 'custom',
       id,
       isPartialWeek: item.isPartialWeek,
