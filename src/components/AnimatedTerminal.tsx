@@ -38,6 +38,8 @@ export function AnimatedTerminal({ onComplete }: Props) {
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [showLogin, setShowLogin] = useState(false);
   const [email, setEmail] = useState('');
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -124,30 +126,57 @@ export function AnimatedTerminal({ onComplete }: Props) {
     }
   }, [currentLine, asciiLines.length, onComplete]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
     setIsLoading(true);
-  
-    const redirectUrl = `${getFrontendUrl()}/auth/callback`;
-  
+    setOtpSent(false);
+
     try {
-      console.log('[AnimatedTerminal] Sending magic link to:', email, 'Redirecting to:', redirectUrl);
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: redirectUrl,
-          data: {
-            has_applied: false,
-          },
-        },
-      });
+      console.log('[AnimatedTerminal] Requesting code for:', email);
+      const { error } = await supabase.auth.signInWithOtp({ email });
       if (error) throw error;
-      setSuccess('Check your email for the magic link. If you don\'t see it, check your spam/junk folder.');
+      setSuccess('Code sent! Check your email (and spam/junk folder).');
+      setOtpSent(true);
+      console.log('[AnimatedTerminal] OTP request successful for:', email);
     } catch (err) {
-      console.error('Error:', err);
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+      console.error('[AnimatedTerminal] Error requesting code:', err);
+      setError(err instanceof Error ? err.message : 'Failed to send code');
+      setOtpSent(false);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+    setIsLoading(true);
+
+    try {
+      console.log(`[AnimatedTerminal] Verifying code for: ${email} with token: ${otp}`);
+      const { data, error } = await supabase.auth.verifyOtp({
+        email,
+        token: otp,
+        type: 'email',
+      });
+
+      if (error) throw error;
+      
+      if (data.session) {
+        console.log('[AnimatedTerminal] OTP verification successful, session:', data.session);
+        setSuccess('Login successful!');
+        onComplete();
+      } else {
+        console.warn('[AnimatedTerminal] OTP verified but no session returned.');
+        throw new Error('Verification succeeded but failed to establish session.');
+      }
+
+    } catch (err) {
+      console.error('[AnimatedTerminal] Error verifying code:', err);
+      setError(err instanceof Error ? err.message : 'Invalid or expired code');
     } finally {
       setIsLoading(false);
     }
@@ -201,7 +230,7 @@ export function AnimatedTerminal({ onComplete }: Props) {
                     </h1>
                   </div>
 
-                  <form onSubmit={handleSubmit} className="space-y-4">
+                  <form onSubmit={otpSent ? handleVerifyOtp : handleSendOtp} className="space-y-4">
                     <div className="w-full">
                       <div className={`relative w-full ${ (error || success) ? 'mb-3' : '' }`}>
                         <input
@@ -225,11 +254,36 @@ export function AnimatedTerminal({ onComplete }: Props) {
                           required
                           autoComplete="email"
                           spellCheck="false"
+                          disabled={otpSent || isLoading}
                         />
                       </div>
                     </div>
 
-                    {/* Remove the wrapper div */}
+                    {otpSent && (
+                      <div>
+                        <input
+                          type="text"
+                          id="otp-input"
+                          name="otp"
+                          value={otp}
+                          onChange={(e) => setOtp(e.target.value)}
+                          placeholder="Enter code"
+                          required
+                          disabled={isLoading}
+                          className="w-full min-w-[200px] bg-black text-retro-accent border-2 border-retro-accent/70 p-3 font-mono focus:outline-none focus:ring-2 focus:ring-retro-accent/50 placeholder-retro-accent/30 mt-2"
+                          style={{
+                            clipPath: `polygon(
+                              0 4px, 4px 4px, 4px 0,
+                              calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
+                              100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
+                              calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
+                              0 calc(100% - 4px)
+                            )`
+                          }}
+                        />
+                      </div>
+                    )}
+
                     {error && (
                       <div className="font-mono text-red-500 text-sm">
                         {error}
@@ -256,7 +310,7 @@ export function AnimatedTerminal({ onComplete }: Props) {
                         )`
                       }}
                     >
-                      {isLoading ? 'sending...' : 'send magic link'}
+                      {isLoading ? (otpSent ? 'verifying...' : 'sending...') : (otpSent ? 'verify code' : 'send code')}
                     </button>
                   </form>
                 </div>

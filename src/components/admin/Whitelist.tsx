@@ -18,6 +18,7 @@ interface WhitelistEntry {
   first_booking_at: string | null;
   last_booking_at: string | null;
   total_bookings: number;
+  last_sign_in_at?: string | null;
 }
 
 export function Whitelist() {
@@ -78,7 +79,7 @@ export function Whitelist() {
 
       console.log('🔍 Executing Supabase query...');
       const { data, error: queryError } = await supabase
-        .from('whitelist')
+        .from('whitelist_user_details')
         .select('*')
         .order('created_at', { ascending: false });
 
@@ -320,9 +321,9 @@ export function Whitelist() {
                 {entry.has_seen_welcome && (
                   <span className="text-sm text-emerald-600">Has Seen Welcome</span>
                 )}
-                {entry.last_login && (
+                {entry.last_sign_in_at && (
                   <span className="text-sm text-[var(--color-text-secondary)]">
-                    Last login: {new Date(entry.last_login).toLocaleString()}
+                    Last sign in: {new Date(entry.last_sign_in_at).toISOString().slice(0, 10)}
                   </span>
                 )}
               </div>
