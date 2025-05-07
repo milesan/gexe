@@ -119,6 +119,11 @@
 }
 
 @layer base {
+  html {
+    /* Ensure the root element has the main background color */
+    background-color: var(--color-bg-main);
+  }
+
   body {
     color: var(--color-text-primary);
     font-size-adjust: 0.422; /* Added to normalize perceived font size */

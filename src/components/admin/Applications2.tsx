@@ -16,6 +16,8 @@ interface Application {
   linked_email?: string;
   linked_application_id?: string;
   linked_user_email?: string;
+  last_sign_in_at?: string | null;
+  seen_welcome?: boolean;
 }
 
 export function Applications2() {
@@ -33,6 +35,8 @@ export function Applications2() {
   }, []);
 
   const loadApplications = async () => {
+    setLoading(true);
+    setError(null);
     try {
       const { data, error: queryError } = await supabase
         .from('application_details')
@@ -45,15 +49,31 @@ export function Applications2() {
           user_email,
           linked_name,
           linked_email,
-          linked_application_id
+          linked_application_id,
+          last_sign_in_at,
+          raw_user_meta_data
         `)
         .order('created_at', { ascending: false });
 
       if (queryError) throw queryError;
-      setApplications(data || []);
+
+      console.log('Applications2: Raw data fetched:', data);
+
+      const processedApplications = (data || []).map(app => {
+        const seenWelcome = !!app.raw_user_meta_data?.has_seen_welcome;
+        return {
+          ...app,
+          seen_welcome: seenWelcome,
+        };
+      });
+
+      console.log('Applications2: Processed applications with user data:', processedApplications);
+      setApplications(processedApplications);
+
     } catch (err) {
       console.error('Error loading applications:', err);
       setError(err instanceof Error ? err.message : 'Failed to load applications');
+      setApplications([]);
     } finally {
       setLoading(false);
     }
@@ -75,7 +95,6 @@ export function Applications2() {
 
   const updateApplicationStatus = async (id: string, status: string) => {
     try {
-      // Set loading state for this specific application
       setLoadingStates(prev => ({ ...prev, [id]: true }));
 
       if (status === 'approved') {
@@ -87,7 +106,6 @@ export function Applications2() {
         console.log('Applications2: Approval result', { error });
         
         if (!error && application?.user_email) {
-          // Send approval email
           const { error: emailError } = await supabase.functions.invoke('send-approval-email', {
             body: { 
               email: application.user_email,
@@ -107,7 +125,6 @@ export function Applications2() {
         });
         
         if (!error && application?.user_email) {
-          // Send rejection email
           const { error: emailError } = await supabase.functions.invoke('send-rejection-email', {
             body: { 
               email: application.user_email,
@@ -124,7 +141,6 @@ export function Applications2() {
       console.error('Error updating application:', err);
       setError(err instanceof Error ? err.message : 'Failed to update application');
     } finally {
-      // Clear loading state for this specific application
       setLoadingStates(prev => ({ ...prev, [id]: false }));
     }
   };
@@ -226,6 +242,16 @@ export function Applications2() {
                   <p className="text-xs text-[var(--color-text-tertiary)] font-mono mt-1">
                     Submitted: {new Date(application.created_at).toISOString().slice(0, 10)}
                   </p>
+                  {application.last_sign_in_at && (
+                    <p className="text-xs text-[var(--color-text-tertiary)] font-mono mt-1">
+                      Last sign in: {new Date(application.last_sign_in_at).toISOString().slice(0, 10)}
+                    </p>
+                  )}
+                  {application.seen_welcome && (
+                    <p className="text-xs text-emerald-600 font-mono mt-1">
+                      Welcome Seen
+                    </p>
+                  )}
                   {application.linked_name && (
                     <div className="mt-2 text-sm text-[var(--color-text-secondary)] font-mono">
                       Linked with: {application.linked_name} ({application.linked_email})
