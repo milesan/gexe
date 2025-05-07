@@ -48,7 +48,7 @@ export const configureLogging = (silenceAll = false): void => {
     console.log = () => {};
     console.info = () => {};
     console.warn = () => {};
-    console.debug = () => {};lets
+    console.debug = () => {};
     
     // Optionally keep error logs unless explicitly silenced
     if (silenceAll) {

@@ -17,6 +17,7 @@ interface BookingWithUser {
   accommodation_title: string;
   user_email: string;
   user_name: string;
+  guest_email?: string; // Added for guest bookings
 }
 
 interface Week {
@@ -248,7 +249,8 @@ export function Housekeeping({ onClose }: Props) {
           check_in,
           check_out,
           user_id,
-          accommodation_id
+          accommodation_id,
+          guest_email 
         `)
         .lte('check_in', extendedEndDate.toISOString())  // check-in is on or before extended week end
         .gte('check_out', extendedStartDate.toISOString()) // check-out is on or after extended week start
@@ -289,8 +291,9 @@ export function Housekeeping({ onClose }: Props) {
             user_ids: userIds 
           });
 
+        console.log('[Housekeeping] Raw userData from get_profiles_by_ids:', JSON.stringify(userData, null, 2));
         if (userError) {
-          console.error('[Housekeeping] Error fetching user data:', userError);
+          console.error('[Housekeeping] userError from get_profiles_by_ids:', JSON.stringify(userError, null, 2));
           // Create basic placeholders for missing user data
           allUserData = userIds.map(id => ({
             id,
@@ -333,27 +336,61 @@ export function Housekeeping({ onClose }: Props) {
 
       console.log(`[Housekeeping] Retrieved data for ${allUserData.length} users`);
 
-      // Create maps for user emails and names
+      // Filter out users with no valid id BEFORE creating maps
+      const validUserData = allUserData.filter((user: SimpleUser | any) => user && typeof user.id === 'string' && user.id.trim() !== '');
+
+      // Log if any users were filtered out, this could be useful for debugging the root cause
+      if (allUserData.length !== validUserData.length) {
+        const filteredOutUsers = allUserData.filter((user: SimpleUser | any) => !(user && typeof user.id === 'string' && user.id.trim() !== ''));
+        console.warn(`[Housekeeping] Filtered out ${filteredOutUsers.length} users with invalid or missing IDs from allUserData. Filtered users:`, filteredOutUsers);
+      }
+
+      // Create maps for user emails and names using the filtered data
       const userEmailMap = Object.fromEntries(
-        allUserData.map((user: SimpleUser) => [user.id, user.email || `${user.id.substring(0, 8)}@placeholder.com`])
+        validUserData.map((user: SimpleUser) => [user.id, user.email || `${user.id.substring(0, 8)}@placeholder.com`])
       );
 
       const userNameMap = Object.fromEntries(
-        allUserData.map((user: SimpleUser) => [
+        validUserData.map((user: SimpleUser) => [
           user.id, 
           `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Unknown'
         ])
       );
 
       // Format bookings with all necessary information
-      const formattedBookings = data.map(booking => ({
-        id: booking.id,
-        check_in: booking.check_in,
-        check_out: booking.check_out,
-        accommodation_title: accommodationMap[booking.accommodation_id] || 'Unknown Accommodation',
-        user_email: userEmailMap[booking.user_id] || booking.user_id,
-        user_name: userNameMap[booking.user_id] || 'Unknown'
-      }));
+      const formattedBookings = data.map(booking => {
+        let userEmail = 'No email provided'; // Default fallback
+        let userName = ''; // Default to blank as requested
+
+        if (booking.user_id) {
+          // This is a registered user
+          if (userEmailMap[booking.user_id]) {
+            userEmail = userEmailMap[booking.user_id];
+            userName = userNameMap[booking.user_id] || 'Unknown'; // Use map, fallback to Unknown
+          } else {
+            // Registered user, but no profile data found in maps (e.g., filtered out by validUserData or RPC error)
+            userEmail = `${String(booking.user_id).substring(0, 8)}@unknown.user`;
+            userName = 'Unknown';
+          }
+        } else if (booking.guest_email) {
+          // This is a guest user (no user_id, but guest_email is present)
+          userEmail = booking.guest_email;
+          userName = '[added manually]'; 
+        }
+        // If neither user_id nor guest_email, the defaults "No email provided" and "" for name will be used.
+
+        return {
+          id: booking.id,
+          check_in: booking.check_in,
+          check_out: booking.check_out,
+          accommodation_title: accommodationMap[booking.accommodation_id] || 'Unknown Accommodation',
+          user_email: userEmail,
+          user_name: userName,
+          // We don't need to spread ...booking here if all used fields are explicitly assigned.
+          // guest_email is not part of BookingWithUser in its final form for the list,
+          // but we needed it from the initial 'data' fetch.
+        };
+      });
 
       console.log(`[Housekeeping] Processed ${formattedBookings.length} bookings with user and accommodation info`);
       setBookings(formattedBookings);
