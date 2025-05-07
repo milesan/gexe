@@ -187,82 +187,57 @@ export default function App() {
   useEffect(() => {
     // Only run if session is loaded and we have a user email AND id
     if (!sessionLoading && userEmail && userId) {
-      console.log(`App: Session loaded for ${userEmail}. Checking whitelist/welcome/application status...`);
-      // Start loading for both checks
+      console.log(`App: Session loaded for ${userEmail}. Checking combined app entry status...`);
+      // Start loading for the combined check
       setIsLoadingWhitelistStatus(true); 
-      setIsLoadingApplicationStatus(true); 
+      setIsLoadingApplicationStatus(true); // We can keep this or use a single new loading state
       let mounted = true;
 
-      const checkStatus = async () => {
+      const checkCombinedStatus = async () => {
         try {
-          // Log the userId being used for the check
-          console.log(`App: checkStatus - Preparing checks for userId: ${userId}`);
+          console.log(`App: checkCombinedStatus - Calling get_user_app_entry_status for userId: ${userId}, email: ${userEmail}`);
           
-          // Call checks in parallel: is_whitelisted, check_whitelist_welcome, and application existence
-          const [wlResult, welcomeResult, appCheckResult] = await Promise.all([
-            supabase.rpc('is_whitelisted', { user_email: userEmail }),
-            supabase.rpc('check_whitelist_welcome', { p_email: userEmail }), // Ensure param name matches SQL function
-            supabase.from('applications').select('id', { count: 'exact', head: true }).eq('user_id', userId) // Check if record exists for user_id
-          ]);
+          const { data: statusData, error: rpcError } = await supabase.rpc('get_user_app_entry_status', {
+            p_user_id: userId,
+            p_email: userEmail
+          });
 
           if (!mounted) return; // Component unmounted during async call
 
-          // --- Process is_whitelisted result ---
-          if (wlResult.error) {
-            console.error('Error checking whitelist status:', wlResult.error);
-            setIsWhitelisted(false); // Assume not whitelisted on error
+          if (rpcError) {
+            console.error('App: Error calling get_user_app_entry_status RPC:', rpcError);
+            setIsWhitelisted(false);
+            setNeedsWelcomeCheckResult(false);
+            setHasApplicationRecord(false);
+          } else if (statusData) {
+            console.log('App: get_user_app_entry_status RPC result:', statusData);
+            setIsWhitelisted(statusData.is_whitelisted);
+            setNeedsWelcomeCheckResult(statusData.needs_welcome); // Use the 'needs_welcome' field
+            setHasApplicationRecord(statusData.has_application_record);
           } else {
-            console.log('App: is_whitelisted RPC result:', wlResult.data);
-            setIsWhitelisted(!!wlResult.data);
+            // Should not happen if RPCError is not set, but good to handle
+            console.warn('App: get_user_app_entry_status RPC returned no data and no error.');
+            setIsWhitelisted(false);
+            setNeedsWelcomeCheckResult(false);
+            setHasApplicationRecord(false);
           }
-          setIsLoadingWhitelistStatus(false); // Whitelist check done
-
-          // --- Process check_whitelist_welcome result ---
-          if (welcomeResult.error) {
-            console.error('Error checking welcome status:', welcomeResult.error);
-            setNeedsWelcomeCheckResult(false); // Assume welcome not needed on error
-          } else {
-            console.log('App: check_whitelist_welcome RPC result:', welcomeResult.data);
-            // check_whitelist_welcome returns true if user needs welcome (whitelisted AND has_seen_welcome=false)
-            setNeedsWelcomeCheckResult(!!welcomeResult.data); 
-          }
-          // Note: Welcome check loading is implicitly handled by the overall flow, no separate state needed
-
-          // --- Process application existence check result ---
-          // Log the raw result from the application check query
-          console.log('App: checkStatus - Raw appCheckResult:', JSON.stringify(appCheckResult)); 
-          
-          if (appCheckResult.error) {
-             console.error('Error checking application existence:', appCheckResult.error);
-             setHasApplicationRecord(false); // Assume no record on error
-          } else {
-             console.log('App: Application existence check successful, count:', appCheckResult.count);
-             // Calculate the boolean result
-             const doesRecordExist = appCheckResult.count !== null && appCheckResult.count > 0;
-             // Log the calculated boolean before setting state
-             console.log(`App: checkStatus - Calculated doesRecordExist: ${doesRecordExist}`);
-             setHasApplicationRecord(doesRecordExist); 
-          }
-          setIsLoadingApplicationStatus(false); // Application check done
-
         } catch (err) {
-          console.error('Error in checkStatus parallel calls:', err);
+          console.error('App: Exception during get_user_app_entry_status call:', err);
           if (mounted) {
             setIsWhitelisted(false);
             setNeedsWelcomeCheckResult(false);
             setHasApplicationRecord(false);
-            setIsLoadingWhitelistStatus(false); // Ensure loading stops on error
-            setIsLoadingApplicationStatus(false);
           }
         } finally {
           if (mounted) {
-            // Combine loading state updates here if needed, though individual setters above work
-            console.log('App: Finished checking all statuses.');
+            setIsLoadingWhitelistStatus(false); 
+            setIsLoadingApplicationStatus(false);
+            console.log('App: Finished checking combined app entry status.');
           }
         }
       };
 
-      checkStatus();
+      checkCombinedStatus();
 
       return () => { 
         mounted = false; 
@@ -441,12 +416,14 @@ function AppContent({
         isOpen={showWelcomeModalState} 
         onClose={handleWelcomeModalClose} // Pass the locally defined handler
       />
-      <AppRouterLogic 
-          session={session} 
-          isWhitelisted={isWhitelisted}
-          needsWelcomeCheck={needsWelcomeCheckResult}
-          hasApplicationRecord={hasApplicationRecord}
-      />
+      {!showWelcomeModalState && (
+        <AppRouterLogic 
+            session={session} 
+            isWhitelisted={isWhitelisted}
+            needsWelcomeCheck={needsWelcomeCheckResult}
+            hasApplicationRecord={hasApplicationRecord}
+        />
+      )}
     </>
   );
 }

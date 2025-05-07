@@ -36,7 +36,7 @@ export function WhitelistWelcomeModal({ isOpen, onClose }: Props) {
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
             onClick={(e) => e.stopPropagation()}
-            className="bg-black border-2 border-[#FFBF00]/30 max-w-md w-full p-8 text-center"
+            className="bg-[var(--color-bg-surface)] border-2 border-[var(--color-garden-matrix)]/70 max-w-md w-full p-8 text-center"
             style={{
               clipPath: `polygon(
                 0 4px, 4px 4px, 4px 0,
@@ -47,22 +47,28 @@ export function WhitelistWelcomeModal({ isOpen, onClose }: Props) {
               )`
             }}
           >
-            <img 
-              src="https://raw.githubusercontent.com/milesan/synesthesia/refs/heads/main/Enso%20Zen%20Soto%20Symbol.png" 
-              alt="Logo" 
+            <div
               className="w-12 h-12 mx-auto mb-4"
-              style={{ 
-                filter: 'brightness(0) invert(0.75) sepia(0.6) saturate(400%) hue-rotate(360deg)',
-                opacity: 0.9
+              style={{
+                backgroundColor: 'var(--color-garden-matrix)',
+                maskImage: 'url(https://raw.githubusercontent.com/milesan/synesthesia/refs/heads/main/Enso%20Zen%20Soto%20Symbol.png)',
+                WebkitMaskImage: 'url(https://raw.githubusercontent.com/milesan/synesthesia/refs/heads/main/Enso%20Zen%20Soto%20Symbol.png)',
+                maskSize: 'contain',
+                WebkitMaskSize: 'contain',
+                maskRepeat: 'no-repeat',
+                WebkitMaskRepeat: 'no-repeat',
+                maskPosition: 'center',
+                WebkitMaskPosition: 'center',
+                opacity: 0.9 
               }}
-            />
-            <h2 className="text-[#FFBF00] text-2xl font-display mb-4">Welcome to The Garden</h2>
-            <p className="font-mono text-sm text-[#FFBF00]/60 mb-6">
+            ></div>
+            <h2 className="text-[var(--color-garden-matrix)] text-2xl font-display mb-4">Welcome to The Garden</h2>
+            <p className="font-mono text-sm text-[var(--color-text-primary)] opacity-75 mb-6">
               You have been approved for 2025 and have bypassed the application.
             </p>
             <button
               onClick={handleClose}
-              className="bg-[#FFBF00] text-black px-8 py-3 font-display text-xl"
+              className="bg-[var(--color-garden-matrix)] text-[var(--color-bg-main)] px-8 py-3 font-display text-xl"
               style={{
                 clipPath: `polygon(
                   0 4px, 4px 4px, 4px 0,

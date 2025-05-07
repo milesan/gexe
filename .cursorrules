@@ -17,8 +17,6 @@ Most importantly, don't try to do too much at once, don't overwhelm yourself. If
 
 Never remove or change a feature without asking me.  Never use shortcuts or quick fixes that technically solve the issue but don't get at the root cause.  Always consider, when relevant, high effort, clean, responsive, best UI & UX practices. 
 
-Whatever you create, add logging there, such that it is easier to debug later.
-
 Be brief and to the point. Change nothing other than what you are told :)
 
 Before attempting a fix, take a bird's eye view, and try to understand the context in several files. Summarize for yourself how it works. Then dive in, try to find the bug, and fix it to comply with the rest of the files as best as possible.
