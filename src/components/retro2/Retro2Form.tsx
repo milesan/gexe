@@ -11,9 +11,10 @@ import { useNavigate } from 'react-router-dom';
 interface Props {
   questions: ApplicationQuestion[];
   onSubmit: (data: any) => void;
+  isFullyVisible?: boolean;
 }
 
-export function Retro2Form({ questions, onSubmit }: Props) {
+export function Retro2Form({ questions, onSubmit, isFullyVisible }: Props) {
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentSection, setCurrentSection] = useState(0);
@@ -170,14 +171,14 @@ export function Retro2Form({ questions, onSubmit }: Props) {
   const progress = ((currentSection + 1) / sectionNames.length) * 100;
 
   useEffect(() => {
-    if (contentRef.current) {
+    if (contentRef.current && isFullyVisible) {
       contentRef.current.scrollTop = 0;
       // Add a small delay to ensure the DOM has updated
       setTimeout(() => {
         firstIncompleteRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 100);
     }
-  }, [currentSection]);
+  }, [currentSection, isFullyVisible]);
 
   return (
     <div className="min-h-screen bg-black text-retro-accent font-mono">

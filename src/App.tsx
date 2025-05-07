@@ -143,13 +143,13 @@ function AppRouterLogic({
 
   // Users who haven't applied yet
   if (!hasAppliedCheck) {
-    console.log('AppRouterLogic: User has not applied. Forcing /retro2.');
+    console.log('AppRouterLogic: User has not applied. Routing to application flow.');
     return (
       <Routes>
-        <Route path="/retro2" element={<Retro2Page />} /> 
-        <Route path="/" element={<Navigate to="/retro2" replace />} /> 
+        <Route path="/retro2" element={<Retro2Page />} />
+        <Route path="/" element={<Retro2Page />} />
         <Route path="/pending" element={<PendingPage />} />
-        <Route path="/*" element={<Navigate to="/retro2" replace />} /> 
+        <Route path="/*" element={<Retro2Page />} />
       </Routes>
     );
   }
@@ -173,7 +173,6 @@ export default function App() {
   // --- NEW State for Whitelist/Welcome Status ---
   const [isWhitelisted, setIsWhitelisted] = useState<boolean | null>(null);
   const [needsWelcomeCheckResult, setNeedsWelcomeCheckResult] = useState<boolean | null>(null); // Raw result from RPC
-  const [showWelcomeModalState, setShowWelcomeModalState] = useState<boolean>(false); // Controls modal visibility *after* loading
   const [isLoadingWhitelistStatus, setIsLoadingWhitelistStatus] = useState<boolean>(true); // Loading state for our RPC calls
   // --- NEW State for Application Record Status ---
   const [hasApplicationRecord, setHasApplicationRecord] = useState<boolean | null>(null);
@@ -290,7 +289,6 @@ export default function App() {
     isWhitelisted, 
     needsWelcomeCheckResult, 
     hasApplicationRecord, 
-    showWelcomeModalState 
   });
 
   return (
@@ -306,8 +304,6 @@ export default function App() {
               needsWelcomeCheckResult={needsWelcomeCheckResult}
               hasApplicationRecord={hasApplicationRecord}
               setNeedsWelcomeCheckResult={setNeedsWelcomeCheckResult}
-              showWelcomeModalState={showWelcomeModalState}
-              setShowWelcomeModalState={setShowWelcomeModalState}
            />
         </Router>
       </ThemeProvider>
@@ -323,8 +319,6 @@ interface AppContentProps {
   needsWelcomeCheckResult: boolean | null;
   hasApplicationRecord: boolean | null;
   setNeedsWelcomeCheckResult: React.Dispatch<React.SetStateAction<boolean | null>>;
-  showWelcomeModalState: boolean;
-  setShowWelcomeModalState: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 function AppContent({ 
@@ -334,8 +328,6 @@ function AppContent({
   needsWelcomeCheckResult, 
   hasApplicationRecord,
   setNeedsWelcomeCheckResult,
-  showWelcomeModalState, 
-  setShowWelcomeModalState 
 }: AppContentProps) {
   
   // Hooks are called inside component wrapped by Router
@@ -343,41 +335,46 @@ function AppContent({
   const navigate = useNavigate();
   const userEmail = session?.user?.email; // Get email from session prop
 
+  // NEW: Local state for managing modal visibility within AppContent
+  const [isWelcomeModalActuallyVisible, setIsWelcomeModalActuallyVisible] = useState<boolean>(false);
+
   // --- Effect to decide when to show the Welcome Modal ---
   useEffect(() => {
     // Log the state values checked by this effect right when it runs
     console.log('AppContent Welcome Modal Effect Check:', { 
-      isLoading, 
+      isLoading, // from App.tsx props
       isWhitelisted, 
       hasApplicationRecord, 
-      needsWelcomeCheckResult 
+      needsWelcomeCheckResult,
+      currentModalVisibility: isWelcomeModalActuallyVisible,
     });
     
     // Use props for state checks
-    if (!isLoading && 
+    if (!isLoading && // Ensure App.tsx has finished its loading
         isWhitelisted === true && 
         hasApplicationRecord === true &&
         needsWelcomeCheckResult === true) {
       console.log('AppContent: Conditions met to show Welcome Modal.');
       // Only set to true if it's currently false to avoid re-renders
-      if (!showWelcomeModalState) { 
-          setShowWelcomeModalState(true);
+      if (!isWelcomeModalActuallyVisible) { 
+          setIsWelcomeModalActuallyVisible(true);
       }
     } else {
-      // Hide modal if conditions aren't met OR if modal is already hidden/closed
-      if (showWelcomeModalState) { 
-           console.log('AppContent: Conditions no longer met, hiding Welcome Modal.');
-           setShowWelcomeModalState(false);
+      // If conditions are not met, or if loading is true (though effect shouldn't show if loading)
+      // ensure modal is hidden. This also handles the case after closing the modal
+      // where needsWelcomeCheckResult becomes false.
+      if (isWelcomeModalActuallyVisible) { 
+           console.log('AppContent: Conditions no longer met or still loading, ensuring Welcome Modal is hidden.');
+           setIsWelcomeModalActuallyVisible(false);
       }
     }
     // Depend on status props, loading state, and modal state/setter
-  }, [isLoading, isWhitelisted, hasApplicationRecord, needsWelcomeCheckResult, showWelcomeModalState, setShowWelcomeModalState]);
+  }, [isLoading, isWhitelisted, hasApplicationRecord, needsWelcomeCheckResult, isWelcomeModalActuallyVisible]);
 
   // --- Welcome Modal Close Handler ---
-  // (Moved into AppContent - needs navigate and setters)
   const handleWelcomeModalClose = useCallback(async () => {
     console.log('AppContent: Closing Welcome Modal and marking as seen.');
-    setShowWelcomeModalState(false); // Use setter prop
+    setIsWelcomeModalActuallyVisible(false); // Hide modal locally
 
     if (userEmail) {
       try {
@@ -385,45 +382,49 @@ function AppContent({
         const { error } = await supabase.rpc('mark_whitelist_welcome_seen', { p_email: userEmail }); 
         if (error) {
           console.error('Error calling mark_whitelist_welcome_seen:', error);
-          navigate('/', { replace: true }); // Navigate away even if RPC failed
+          // Navigation is handled by AppRouterLogic reacting to state changes
         } else {
           console.log('AppContent: Successfully marked welcome as seen via RPC.');
-          setNeedsWelcomeCheckResult(false); // Use setter prop
-          navigate('/', { replace: true }); // Navigate to root
         }
+        setNeedsWelcomeCheckResult(false); // Update state in App.tsx; this will flow down
+                                          // and cause this component to re-render,
+                                          // and the useEffect will ensure isWelcomeModalActuallyVisible remains false.
       } catch (err) {
         console.error('Exception calling mark_whitelist_welcome_seen:', err);
-        navigate('/', { replace: true }); // Navigate away on exception
+        setNeedsWelcomeCheckResult(false); // Still update state on exception
       }
     } else {
        console.warn('AppContent: Cannot mark welcome seen, user email not available.');
-       navigate('/', { replace: true }); // Still navigate away
+       setNeedsWelcomeCheckResult(false); // Still update state
     }
   // Depend on navigate and setters passed as props
-  }, [userEmail, navigate, setShowWelcomeModalState, setNeedsWelcomeCheckResult]); 
+  }, [userEmail, navigate, setNeedsWelcomeCheckResult]); 
 
   // --- Rendering Logic ---
   if (isLoading) { 
-    console.log('AppContent: Loading...'); 
+    console.log('AppContent: Still in loading state passed from App.tsx.'); 
     return <div className="text-stone-600 font-mono">Loading...</div>;
   }
 
-  console.log('AppContent: Rendering Router Logic and Modal');
+  console.log('AppContent: Rendering. isWelcomeModalActuallyVisible:', isWelcomeModalActuallyVisible);
   
-  return (
-    <>
+  if (isWelcomeModalActuallyVisible) {
+    return (
       <WhitelistWelcomeModal 
-        isOpen={showWelcomeModalState} 
-        onClose={handleWelcomeModalClose} // Pass the locally defined handler
+        isOpen={true} // Controlled by the if condition
+        onClose={handleWelcomeModalClose} 
       />
-      {!showWelcomeModalState && (
-        <AppRouterLogic 
-            session={session} 
-            isWhitelisted={isWhitelisted}
-            needsWelcomeCheck={needsWelcomeCheckResult}
-            hasApplicationRecord={hasApplicationRecord}
-        />
-      )}
-    </>
+    );
+  }
+
+  // If modal is not visible (i.e., not loading and modal conditions not met or modal closed),
+  // render the AppRouterLogic.
+  return (
+    <AppRouterLogic 
+        session={session} 
+        isWhitelisted={isWhitelisted}
+        needsWelcomeCheck={needsWelcomeCheckResult} // Pass the result from RPC (which is false after modal)
+        hasApplicationRecord={hasApplicationRecord}
+    />
   );
 }

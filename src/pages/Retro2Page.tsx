@@ -1,22 +1,39 @@
-import React, { useState } from 'react';
-import { Terminal } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { supabase } from '../lib/supabase';
+import { useNavigate } from 'react-router-dom';
 import { Retro2Form } from '../components/retro2/Retro2Form';
 import { Retro2Intro } from '../components/retro2/Retro2Intro';
 import type { ApplicationQuestion } from '../types/application';
-import { useNavigate } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
 
 export function Retro2Page() {
+  console.log('[Retro2Page] Component rendering');
+  const navigate = useNavigate();
   const [showForm, setShowForm] = useState(false);
   const [questions, setQuestions] = useState<ApplicationQuestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
+  const hasTransitioned = useRef(false);
+  const [isFormAnimationComplete, setIsFormAnimationComplete] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
+    console.log('[Retro2Page] Component mounted');
+    console.log('[Retro2Page] Initial state:', { showForm, loading });
     loadQuestions();
   }, []);
+
+  const handleIntroComplete = () => {
+    if (hasTransitioned.current) {
+      console.log('[Retro2Page] Already transitioned, ignoring callback');
+      return;
+    }
+    console.log('[Retro2Page] Intro complete callback triggered');
+    console.log('[Retro2Page] Current state before update:', { showForm });
+    hasTransitioned.current = true;
+    setShowForm(true);
+    setIsFormAnimationComplete(false);
+    console.log('[Retro2Page] showForm set to true');
+  };
 
   const loadQuestions = async () => {
     try {
@@ -29,20 +46,9 @@ export function Retro2Page() {
 
       if (queryError) throw queryError;
       
-      // Validate question structure
-      if (data && data.length > 0) {
-        const sampleQuestion = data[0];
-        console.log('📋 Question structure validation:', {
-          hasId: 'id' in sampleQuestion,
-          hasText: 'text' in sampleQuestion,
-          actualKeys: Object.keys(sampleQuestion),
-          sampleQuestion
-        });
-      }
-      
       // Filter out the muse question (ID 9)
       const filteredQuestions = data?.filter(q => q.order_number !== 8000) || [];
-      console.log('✅ Questions loaded (muse question filtered):', filteredQuestions);
+      console.log('✅ Questions loaded:', filteredQuestions);
       setQuestions(filteredQuestions);
     } catch (err) {
       console.error('❌ Error loading questions:', err);
@@ -160,7 +166,7 @@ export function Retro2Page() {
           ease: [0.8, 0.2, 0.2, 0.8]
         }}
       >
-        <Retro2Intro onComplete={() => setShowForm(true)} />
+        <Retro2Intro onComplete={handleIntroComplete} />
       </motion.div>
 
       <motion.div
@@ -173,8 +179,21 @@ export function Retro2Page() {
           duration: 0.4,
           ease: [0.8, 0.2, 0.2, 0.8]
         }}
+        onAnimationComplete={() => {
+          if (showForm) {
+            console.log('[Retro2Page] Form intro animation complete');
+            setIsFormAnimationComplete(true);
+          } else {
+            console.log('[Retro2Page] Form outro animation complete');
+            setIsFormAnimationComplete(false);
+          }
+        }}
       >
-        <Retro2Form questions={questions} onSubmit={handleSubmit} />
+        <Retro2Form
+          questions={questions}
+          onSubmit={handleSubmit}
+          isFullyVisible={isFormAnimationComplete}
+        />
       </motion.div>
     </div>
   );

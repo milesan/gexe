@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Terminal } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { PasswordCheckModal } from '../PasswordCheckModal';
-import { WhitelistWelcomeModal } from '../WhitelistWelcomeModal';
+// motion can be removed if not used after this change, but let's keep it for now
+// import { motion } from 'framer-motion';
 
 interface Props {
   onComplete: () => void;
@@ -19,102 +16,80 @@ const ASCII_ART = `████████╗██╗  ██╗████�
 const MOBILE_ASCII_ART = ` `;
 
 export function Retro2Intro({ onComplete }: Props) {
-  const [asciiLines, setAsciiLines] = useState<string[]>([]);
+  console.log('[Retro2Intro] Component rendering');
   const [currentLine, setCurrentLine] = useState(0);
   const [currentChar, setCurrentChar] = useState(0);
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
-  const isMobile = window.innerWidth < 768;
-  const navigate = useNavigate();
-  const location = useLocation();
-  const isFromLogin = location.pathname === '/retro2';
+  const asciiLines = ASCII_ART.split('\n'); // Use full ASCII_ART by default
+  const isMobile = window.innerWidth < 600; // Changed from 768 to 600
 
   useEffect(() => {
-    // Skip animation on mobile when coming from login
-    if (isMobile && isFromLogin) {
+    console.log('[Retro2Intro] Component mounted/resetting');
+    // No need to setDisplayedLines([])
+    setCurrentLine(0);
+    setCurrentChar(0);
+  }, []); // Empty dependency array means this runs on mount and if onComplete changes (which it shouldn't)
+
+  useEffect(() => {
+    // Skip animation on mobile
+    if (isMobile) {
+      console.log('[Retro2Intro] Mobile detected (width < 600px), skipping animation.');
       onComplete();
       return;
     }
 
-    setAsciiLines((isMobile ? MOBILE_ASCII_ART : ASCII_ART).split('\n'));
-  }, [isMobile, onComplete, isFromLogin]);
-
-  useEffect(() => {
-    if (asciiLines.length === 0 || currentLine >= asciiLines.length) return;
+    if (currentLine >= asciiLines.length) {
+      console.log('[Retro2Intro] All lines displayed, waiting before completion');
+      const timer = setTimeout(() => {
+        console.log('[Retro2Intro] Calling onComplete');
+        onComplete();
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
 
     const line = asciiLines[currentLine];
     if (currentChar >= line.length) {
-      setTimeout(() => {
+      console.log('[Retro2Intro] Line complete, moving to next line');
+      // No longer setting displayedLines
+      const lineCompleteTimer = setTimeout(() => {
         setCurrentLine(prev => prev + 1);
         setCurrentChar(0);
-      }, 100);
-      return;
+      }, 75);
+      return () => clearTimeout(lineCompleteTimer);
     }
 
-    const timer = setTimeout(() => {
+    const charTimer = setTimeout(() => {
       setCurrentChar(prev => prev + 1);
-    }, 7);
+    }, 5);
 
-    return () => clearTimeout(timer);
-  }, [asciiLines, currentLine, currentChar]);
-
-  useEffect(() => {
-    if (currentLine >= asciiLines.length && asciiLines.length > 0) {
-      setShowPasswordModal(true);
-    }
-  }, [currentLine, asciiLines.length]);
-
-  const handlePasswordSuccess = () => {
-    setShowPasswordModal(false);
-    setShowWelcomeModal(true);
-  };
-
-  const handlePasswordClose = () => {
-    setShowPasswordModal(false);
-    onComplete();
-  };
-
-  const handleWelcomeClose = () => {
-    setShowWelcomeModal(false);
-    navigate('/');
-  };
+    return () => clearTimeout(charTimer);
+  }, [currentLine, currentChar, asciiLines, onComplete, isMobile]);
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-4 overflow-hidden">
-      <pre 
-        className="text-[#FFBF00] whitespace-pre font-mono text-sm md:text-base lg:text-lg overflow-x-auto max-w-full text-center"
-        style={{ 
-          maxHeight: '90vh',
-          overflowY: 'auto',
-          scrollbarWidth: 'none',
-          msOverflowStyle: 'none',
-          transform: isMobile ? 'scale(0.8)' : 'none'
-        }}
-      >
-        {asciiLines.slice(0, currentLine).map((line, i) => (
-          <div key={i} className="min-w-max">
-            {i === currentLine - 1 ? line.slice(0, currentChar) : line}
-          </div>
-        ))}
-      </pre>
-
-      <PasswordCheckModal 
-        isOpen={showPasswordModal}
-        onClose={handlePasswordClose}
-        onSuccess={handlePasswordSuccess}
-      />
-
-      <WhitelistWelcomeModal
-        isOpen={showWelcomeModal}
-        onClose={handleWelcomeClose}
-      />
-
-      {/* Invisible button in top-right corner */}
-      <div
-        onClick={() => navigate('/retro2')}
-        className="fixed top-0 right-0 w-[30px] h-[30px] cursor-default z-50"
-        style={{ opacity: 0 }}
-      />
+      {/* Conditionally render pre only if not mobile, or let the fast onComplete handle it */}
+      {!isMobile && (
+        <pre 
+          className="text-retro-accent whitespace-pre font-mono text-sm md:text-base lg:text-lg overflow-x-auto max-w-full"
+          style={{
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            fontFamily: 'monospace'
+          }}
+        >
+          {asciiLines
+            .slice(0, currentLine + 1)
+            .map((lineText, index) => {
+              if (index === currentLine) {
+                return lineText.slice(0, currentChar);
+              }
+              return lineText;
+            })
+            .join('\n')}
+        </pre>
+      )}
+      {/* If mobile, this div will be mostly empty and onComplete would have been called */}
     </div>
   );
 }

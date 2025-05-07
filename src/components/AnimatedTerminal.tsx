@@ -34,6 +34,7 @@ export function AnimatedTerminal({ onComplete }: Props) {
   const [currentLine, setCurrentLine] = useState(0);
   const [currentChar, setCurrentChar] = useState(0);
   const [borderChars, setBorderChars] = useState<string[]>([]);
+  const [isAsciiLoaded, setIsAsciiLoaded] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [showLogin, setShowLogin] = useState(false);
@@ -65,6 +66,7 @@ export function AnimatedTerminal({ onComplete }: Props) {
 
   useEffect(() => {
     setAsciiLines((isMobile ? MOBILE_ASCII_ART : ASCII_ART).split('\n'));
+    setIsAsciiLoaded(true);
   }, [isMobile]);
 
   useEffect(() => {
@@ -121,10 +123,11 @@ export function AnimatedTerminal({ onComplete }: Props) {
   }, [asciiLines, currentLine, currentChar]);
 
   useEffect(() => {
-    if (currentLine >= asciiLines.length && asciiLines.length > 0) {
+    if (currentLine >= asciiLines.length && asciiLines.length > 0 && isAsciiLoaded) {
+      console.log('[AnimatedTerminal] ASCII art animation complete');
       setTimeout(onComplete, 500);
     }
-  }, [currentLine, asciiLines.length, onComplete]);
+  }, [currentLine, asciiLines.length, onComplete, isAsciiLoaded]);
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
