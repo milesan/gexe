@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { RetroQuestionField } from './RetroQuestionField';
 import { Send, ChevronRight, LogOut, Terminal, ChevronLeft } from 'lucide-react';
 import { AutosaveNotification } from '../AutosaveNotification';
@@ -21,6 +23,7 @@ export function Retro2Form({ questions, onSubmit, isFullyVisible }: Props) {
   const navigate = useNavigate();
   const contentRef = useRef<HTMLDivElement>(null);
   const firstIncompleteRef = useRef<HTMLDivElement>(null);
+  const introRef = useRef<HTMLDivElement>(null);
   const { saveData, loadSavedData, showSaveNotification, setShowSaveNotification } = useAutosave();
 
   // Memoize sections to ensure stable reference
@@ -41,6 +44,25 @@ export function Retro2Form({ questions, onSubmit, isFullyVisible }: Props) {
       sectionNames: Object.keys(sections)
     };
   }, [questions]);
+
+  // Add null check for currentSectionName
+  const currentSectionName = sectionNames[currentSection] || sectionNames[0] || '';
+
+  // Extract intro markdown for the current section.
+  // This assumes that 'section_intro_markdown' will be added to the ApplicationQuestion type
+  // (defined in src/types/application.ts or similar) and will be consistently set 
+  // for all questions within the same section by the admin UI.
+  const currentSectionIntroMarkdown = useMemo(() => {
+    if (!currentSectionName || !questions || questions.length === 0) {
+      return null;
+    }
+    // Find the first question that belongs to the current section and use its intro markdown.
+    const firstQuestionOfSection = questions.find(
+      q => (q.section || 'Other').toLowerCase() === currentSectionName.toLowerCase()
+    );
+    // @ts-ignore // Temporary ignore if section_intro_markdown is not yet in ApplicationQuestion type
+    return firstQuestionOfSection?.section_intro_markdown || null;
+  }, [currentSectionName, questions]);
 
   useEffect(() => {
     const initializeForm = async () => {
@@ -156,8 +178,6 @@ export function Retro2Form({ questions, onSubmit, isFullyVisible }: Props) {
     navigate('/');
   };
 
-  // Add null check for currentSectionName
-  const currentSectionName = sectionNames[currentSection] || sectionNames[0] || '';
   const currentQuestions = sections[currentSectionName] || [];
 
   const isCurrentSectionComplete = () => {
@@ -175,10 +195,14 @@ export function Retro2Form({ questions, onSubmit, isFullyVisible }: Props) {
       contentRef.current.scrollTop = 0;
       // Add a small delay to ensure the DOM has updated
       setTimeout(() => {
-        firstIncompleteRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (currentSectionIntroMarkdown && introRef.current) {
+          introRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else if (firstIncompleteRef.current) { 
+          firstIncompleteRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
       }, 100);
     }
-  }, [currentSection, isFullyVisible]);
+  }, [currentSection, isFullyVisible, currentSectionIntroMarkdown]);
 
   return (
     <div className="min-h-screen bg-black text-retro-accent font-mono">
@@ -240,6 +264,25 @@ export function Retro2Form({ questions, onSubmit, isFullyVisible }: Props) {
             transition={{ duration: 0.2 }}
             className="space-y-12 pb-4"
           >
+            {currentSectionIntroMarkdown && (
+              <div 
+                ref={introRef} 
+                className="text-retro-accent/90 mb-6 p-3 border border-retro-accent/30 rounded bg-retro-accent/5 prose prose-sm prose-invert max-w-none prose-a:text-retro-accent hover:prose-a:text-accent-secondary">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    a: ({node, className, children, ...props}) => {
+                      // Combine existing prose classes (if any provided by prose itself for <a>) with a new underline class
+                      // Also ensure the retro-accent color is applied directly here if prose-a:text-retro-accent was removed from parent
+                      const combinedClassName = `${className || ''} text-retro-accent underline hover:text-accent-secondary`.trim();
+                      return <a {...props} target="_blank" rel="noopener noreferrer" className={combinedClassName}>{children}</a>;
+                    }
+                  }}
+                >
+                  {currentSectionIntroMarkdown}
+                </ReactMarkdown>
+              </div>
+            )}
             {questions
               .filter(q => {
                 const currentSectionName = sectionNames[currentSection];

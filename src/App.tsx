@@ -17,6 +17,7 @@ import { normalizeToUTCDate } from './utils/dates';
 import { AuthCallback } from './components/AuthCallback';
 import { MainAppLayout } from './components/MainAppLayout';
 import { WhitelistWelcomeModal } from './components/WhitelistWelcomeModal';
+import { BugReportFAB } from './components/BugReportFAB';
 
 // Configure logging early to silence logs in production
 configureLogging();
@@ -279,7 +280,34 @@ export default function App() {
 
   if (isLoading) { 
     console.log('App: Loading...', { sessionLoading, isLoadingWhitelistStatus, isLoadingApplicationStatus }); 
-    return <div className="text-stone-600 font-mono">Loading...</div>;
+
+    // --- BEGIN ADDED FUNCTION ---
+    const handleSignOut = async () => {
+      console.log('[App] Signing out user from loading screen.');
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('[App] Error signing out from loading screen:', error);
+        // Optionally, inform the user, though the screen might change quickly
+      }
+      // Session state will change, leading to re-route or different view
+    };
+    // --- END ADDED FUNCTION ---
+
+    // --- MODIFIED LOADING SCREEN ---
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-neutral-900 text-stone-400 font-mono">
+        <div className="text-lg mb-4">Loading...</div>
+        <button
+          onClick={handleSignOut}
+          className="mb-8 px-4 py-2 text-sm font-medium rounded-sm border border-stone-600 hover:bg-stone-700 hover:text-stone-200 transition-colors"
+        >
+          Sign Out
+        </button>
+        {/* BugReportFAB is positioned fixed, so it doesn't need to be in flow here particularly */}
+        <BugReportFAB /> 
+      </div>
+    );
+    // --- END MODIFIED LOADING SCREEN ---
   }
 
   // --- Render App ---

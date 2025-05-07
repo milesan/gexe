@@ -850,13 +850,16 @@ export function Book2Page() {
                 <InfoBox className="px-3 xs:px-4 sm:px-6 max-w-3xl">
                   <div className="flex flex-col gap-3 xs:gap-3 text-primary">
                     <p className="flex items-start gap-2 xs:gap-2.5 text-base font-lettra">
-                      ❦ Some weeks have themes – expect an injection of humans in that vector.  Existential Residents are welcome but not expected to participate in the facilitated or themed activities. 
+                      ❦ Some weeks have themes – expect an injection of humans in that vector. 
                     </p>
                     <p className="flex items-start gap-2 xs:gap-2.5 text-base font-lettra">
-                      ❦ The longer you stay, the less € you contribute on both lodging & base-rate per week.
+                      ❦ Existential Residents are welcome but not expected to participate in the facilitated or themed activities. 
                     </p>
                     <p className="flex items-start gap-2 xs:gap-2.5 text-base font-lettra">
-                      ❦ The quieter the time of year, the less € you contribute on lodging.
+                      ❦ The longer you stay, the less you contribute on both lodging & base-rate per week.
+                    </p>
+                    <p className="flex items-start gap-2 xs:gap-2.5 text-base font-lettra">
+                      ❦ The quieter the time of year, the less you contribute on lodging.
                     </p>
                   </div>
                 </InfoBox>

@@ -4,8 +4,10 @@ import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
 import { X, AlertCircle, Plus, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import type { ApplicationQuestion } from '../../types/application'; // Corrected import path
 
 // Re-using the interface - ideally this would be in a shared types file
+/*
 interface ApplicationQuestion {
   id: string;
   order_number: number;
@@ -18,6 +20,7 @@ interface ApplicationQuestion {
   updated_at: string;
   file_storage_bucket?: string;
 }
+*/
 
 interface QuestionFormModalProps {
   question: ApplicationQuestion | null; // null for Add mode, object for Edit mode
@@ -45,18 +48,13 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
     if (isEditing && question) {
       console.log("QuestionFormModal: Initializing edit mode", { question });
       let initialOptions: string[] = [];
-      // Safely parse options
-      if (question.type === 'radio' && Array.isArray(question.options)) {
-        initialOptions = question.options.filter(opt => typeof opt === 'string');
-      } else if (typeof question.options === 'string') {
-        // Attempt to parse if it was somehow saved as a string (legacy?)
-        try {
-            const parsed = JSON.parse(question.options);
-            if (Array.isArray(parsed)) {
-                initialOptions = parsed.filter(opt => typeof opt === 'string');
-            }
-        } catch { /* Ignore parse errors, default to empty */ }
+      // Safely parse options - simplified based on global ApplicationQuestion type
+      if (question.type === 'radio' && question.options) { // question.options is string[] or undefined
+        initialOptions = question.options; // Directly assign if it exists and is for a radio question
       }
+      // The old else-if for parsing a stringified options array has been removed as it should no longer be necessary
+      // if the data conforms to the ApplicationQuestion type (options: string[]).
+      // If there's a legacy case where options might still be a JSON string, that needs separate handling.
 
       setFormData({
         text: question.text || '',

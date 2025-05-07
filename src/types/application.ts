@@ -5,7 +5,11 @@ export interface ApplicationQuestion {
   type: 'text' | 'radio' | 'date' | 'email' | 'tel' | 'file' | 'textarea' | 'password' | 'checkbox';
   options?: string[];
   required: boolean;
-  section?: string;
+  section: 'intro' | 'personal' | 'stay' | 'philosophy' | string;
+  section_intro_markdown?: string;
+  created_at: string;
+  updated_at: string;
+  file_storage_bucket?: string;
 }
 
 export interface ApplicationSection {
