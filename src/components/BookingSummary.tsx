@@ -1215,8 +1215,7 @@ export function BookingSummary({
                              </span>
                              {/* Apply requested styles to Max */}
                              <span className="uppercase text-xs font-lettra-bold text-primary">
-                               {/* Use conditional max based on discounted sliderMax */}
-                               Max: €{Math.round(sliderMax * (1 - pricing.durationDiscountPercent / 100))}
+                               Max: €{sliderMax}
                              </span>
                           </div>
                        </div>
