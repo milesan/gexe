@@ -859,7 +859,7 @@ export function Book2Page() {
                       ❦ The quieter the time of year, the less € you contribute on lodging.
                     </p>
                     <p className="flex items-start gap-2 xs:gap-2.5 text-base font-lettra">
-                      ❦ If a low-income subsidy could support your participation, you can apply <a href="https://www.notion.so/gardening/1e981af59c8680e6a791c2a185d350fe" target="_blank" rel="noopener noreferrer" className="text-accent-primary hover:underline">here</a>.
+                      ❦ If a low-income subsidy could support your participation, you can apply <a href="https://www.notion.so/gardening/1e981af59c8680e6a791c2a185d350fe" target="_blank" rel="noopener noreferrer" className="text-accent-primary hover:underline">here.</a>
                     </p>
                   </div>
                 </InfoBox>
