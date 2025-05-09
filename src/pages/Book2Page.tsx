@@ -850,16 +850,16 @@ export function Book2Page() {
                 <InfoBox className="px-3 xs:px-4 sm:px-6 max-w-3xl">
                   <div className="flex flex-col gap-3 xs:gap-3 text-primary">
                     <p className="flex items-start gap-2 xs:gap-2.5 text-base font-lettra">
-                      ❦ Some weeks have themes – expect an injection of humans in that vector. 
+                    ❦ Some weeks have themes – expect an injection of humans in that vector. Residents are welcome but not expected to participate in the facilitated or themed activities. 
+                    </p>
+                   <p className="flex items-start gap-2 xs:gap-2.5 text-base font-lettra">
+                      ❦ The longer you stay, the less € per week you contribute on both lodging & base-rate.
                     </p>
                     <p className="flex items-start gap-2 xs:gap-2.5 text-base font-lettra">
-                      ❦ Existential Residents are welcome but not expected to participate in the facilitated or themed activities. 
+                      ❦ The quieter the time of year, the less € you contribute on lodging.
                     </p>
                     <p className="flex items-start gap-2 xs:gap-2.5 text-base font-lettra">
-                      ❦ The longer you stay, the less you contribute on both lodging & base-rate per week.
-                    </p>
-                    <p className="flex items-start gap-2 xs:gap-2.5 text-base font-lettra">
-                      ❦ The quieter the time of year, the less you contribute on lodging.
+                      ❦ If a low-income subsidy could support your participation, you can apply <a href="https://www.notion.so/gardening/1e981af59c8680e6a791c2a185d350fe" target="_blank" rel="noopener noreferrer" className="text-accent-primary hover:underline">here</a>.
                     </p>
                   </div>
                 </InfoBox>
