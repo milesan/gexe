@@ -78,15 +78,14 @@ serve(async (req) => {
     
     // Send email using Resend
     const { error } = await resendClient.emails.send({
-      from: 'Harvard College Admissions <echo@echo.thegarden.pt>', // Playful sender name
+      from: 'The Garden <echo@echo.thegarden.pt>',
       to: email,
-      subject: 'Your Application to H̶a̶r̶v̶a̶r̶d̶ ̶C̶o̶l̶l̶e̶g̶e̶ The Garden',
+      subject: 'Your Application to The Garden',
       html: `
-        <img src="https://guquxpxxycfmmlqajdyw.supabase.co/storage/v1/object/sign/email-assets/harvard-garden-logo.png?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1cmwiOiJlbWFpbC1hc3NldHMvaGFydmFyZC1nYXJkZW4tbG9nby5wbmciLCJpYXQiOjE3NDE5NTMzODEsImV4cCI6MzMyNDY0MTczODF9.eXgJjDl5GMLPZr6iOhHOMTTVYN_XvRIPQ_0R4EiKocY" alt="Garden Logo" style="max-width: 300px; width: 100%; margin: 20px 0 10px;" />
-        ${firstName ? `<p>Dear ${firstName},</p>` : '<p>Greetings,</p>'}
-        <p>The Committee on Admissions has completed its Regular Decision meetings, and I am very sorry to inform you that we cannot offer you admission to <s>Harvard Class</s> Garden Residencies of ${currentYear}.</p>
-        <p>I wish that a different decision had been possible, but I hope that receiving our final decision now will be helpful to you as you make your <s>college plans</s> life plans.</p>
-        <p>Best regards,<br>The Garden</p>
+        <p>Hi there!</p>
+        <p>Thank you for taking the time and care to apply.</p>
+        <p>We can't say yes to everyone, at least not today.</p>
+        <p>Godspeed &lt;3</p>
       `
     })
 
