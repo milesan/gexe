@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion } from 'framer-motion';
 import { Check } from 'lucide-react';
 import type { ApplicationQuestion } from '../../types/application';
@@ -11,47 +10,12 @@ interface Props {
   themeColor?: string;
 }
 
-const MBTI_TYPES = [
-  'INTJ', 'INTP', 'ENTJ', 'ENTP',
-  'INFJ', 'INFP', 'ENFJ', 'ENFP',
-  'ISTJ', 'ISFJ', 'ESTJ', 'ESFJ',
-  'ISTP', 'ISFP', 'ESTP', 'ESFP'
-];
-
 export function RetroQuestionField({ question, value, onChange, onAutoAdvance, themeColor = 'garden-gold' }: Props) {
   const isConsentQuestion = question.order_number === 3;
-  const isMBTIQuestion = question.text.toLowerCase().includes('mbti');
 
   const handleNoConsent = () => {
     window.location.href = 'https://www.youtube.com/watch?v=xvFZjo5PgG0';
   };
-
-  if (isMBTIQuestion) {
-    return (
-      <div className="space-y-4">
-        <h3 className="text-2xl font-display text-[#FFBF00]">
-          {question.text}
-          {question.required && <span className="text-red-500 ml-1">*</span>}
-        </h3>
-        <input
-          type="text"
-          value={value || ''}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full bg-black/30 p-3 text-[#FFBF00] focus:outline-none focus:ring-2 focus:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30"
-          required={question.required}
-          style={{
-            clipPath: `polygon(
-              0 4px, 4px 4px, 4px 0,
-              calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
-              100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
-              calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
-              0 calc(100% - 4px)
-            )`
-          }}
-        />
-      </div>
-    );
-  }
 
   if (question.type === 'radio' && question.options) {
     const options = Array.isArray(question.options) 
@@ -208,7 +172,7 @@ export function RetroQuestionField({ question, value, onChange, onAutoAdvance, t
           <textarea
             value={value || ''}
             onChange={(e) => onChange(e.target.value)}
-            className="w-full bg-black/30 p-3 text-[#FFBF00] focus:outline-none focus:ring-2 focus:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30"
+            className="w-full bg-black p-3 text-[#FFBF00] focus:outline-none focus:ring-2 focus:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30"
             rows={4}
             required={question.required}
             style={{
@@ -237,7 +201,7 @@ export function RetroQuestionField({ question, value, onChange, onAutoAdvance, t
           type={question.type}
           value={value || ''}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full bg-black/30 p-3 text-[#FFBF00] focus:outline-none focus:ring-2 focus:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30"
+          className="w-full bg-black p-3 text-[#FFBF00] focus:outline-none focus:ring-2 focus:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30"
           required={question.required}
           style={{
             clipPath: `polygon(

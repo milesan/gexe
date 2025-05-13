@@ -19,17 +19,14 @@ interface Props {
   onChange: (value: QuestionValue) => void; // Updated type
   onBlur?: () => void;
   themeColor?: string;
-  questionIndex: number;
 }
 
 const IMAGE_LIMIT = 3;
 
-export function RetroQuestionField({ question, value, onChange, onBlur, themeColor = 'garden-gold', questionIndex }: Props) {
+export function RetroQuestionField({ question, value, onChange, onBlur, themeColor = 'retro-accent' }: Props) {
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState<string | null>(null); // Track which file is being deleted
-  const isConsentQuestion = questionIndex === 0 && question.section === 'intro';
-  const isMBTIQuestion = question.text.toLowerCase().includes('mbti');
   const isImageUpload = question.type === 'file';
 
   // Ensure value is always an array for file uploads
@@ -37,10 +34,6 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
     isImageUpload && Array.isArray(value) ? value.filter(item => typeof item === 'object' && item !== null && 'url' in item && 'fileName' in item) as UploadedFileData[] : [],
     [value, isImageUpload]
   );
-
-  const handleNoConsent = () => {
-    window.location.href = 'https://www.youtube.com/watch?v=xvFZjo5PgG0';
-  };
 
   const handleFileUpload = async (files: File[]) => {
     setUploadError(null);
@@ -284,174 +277,65 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
     );
   }
 
-  if (isMBTIQuestion) {
-    return (
-      <div className="space-y-4">
-        <h3 className="text-xl font-display text-retro-accent">
-          {question.text}
-          <span className="text-red-500 ml-1">*</span>
-        </h3>
-        <input
-          type="text"
-          value={value as string || ''}
-          onChange={(e) => onChange(e.target.value)}
-          onBlur={onBlur}
-          className="w-full bg-black p-3 text-retro-accent focus:outline-none focus:ring-2 focus:ring-retro-accent placeholder-retro-accent/30 border-4 border-retro-accent/30"
-          style={{
-            clipPath: `polygon(
-              0 4px, 4px 4px, 4px 0,
-              calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
-              100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
-              calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
-              0 calc(100% - 4px)
-            )`
-          }}
-        />
-      </div>
-    );
-  }
-
   if (question.type === 'radio' && question.options) {
     const options = Array.isArray(question.options) 
       ? question.options 
       : JSON.parse(question.options);
 
     const handleChange = (option: string) => {
-      if (isConsentQuestion && option === 'Inconceivable!') {
-        handleNoConsent();
-        return;
-      }
       onChange(option);
       if (onBlur) onBlur();
     };
 
     return (
       <div className="space-y-4">
-        {isConsentQuestion ? (
-          <motion.div 
-            className="space-y-8"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.65 }}
-          >
-            <div className="relative">
-              <div className="absolute -left-8 top-0 bottom-0 w-2 bg-gradient-to-b from-retro-accent/60 via-retro-accent/40 to-retro-accent/20" />
-              <motion.div 
-                className="space-y-6 pl-8"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.65 }}
+        <h3 className="text-xl font-display text-retro-accent">
+          {question.text}
+          {question.required && <span className="text-red-500 ml-1">*</span>}
+        </h3>
+        <div className="space-y-2">
+          {options.map((option: string) => {
+            const isSelected = value === option;
+            return (
+              <label 
+                key={option} 
+                className={`flex items-center p-3 cursor-pointer transition-all ${isSelected ? `bg-retro-accent/20` : `hover:bg-retro-accent/10`}`}
+                style={{
+                  clipPath: `polygon(
+                    0 4px, 4px 4px, 4px 0,
+                    calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
+                    100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
+                    calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
+                    0 calc(100% - 4px)
+                  )`
+                }}
               >
-                <div className="space-y-6 font-display text-xl leading-relaxed max-w-2xl">
-                  <p className="text-retro-accent/60">This is a curated place, unlike any other.</p>
-                  <p className="text-retro-accent/70">We seek those with the attention span & curiosity 
-                  to complete this application.</p>
-                  <p className="text-retro-accent/80">We're not impressed by your followers, fortune, 
-                  or fame [though none of those exclude you].</p>
-                  <p className="text-retro-accent text-3xl">We seek the realest.</p>
+                <div className={`flex-shrink-0 w-5 h-5 mr-4 flex items-center justify-center transition-colors ${isSelected ? `border-4 border-retro-accent bg-retro-accent` : `border-4 border-retro-accent`}`}
+                 style={{
+                   clipPath: `polygon(
+                     0 4px, 4px 4px, 4px 0,
+                     calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
+                     100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
+                     calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
+                     0 calc(100% - 4px)
+                   )`
+                 }}
+                >
                 </div>
-              </motion.div>
-            </div>
-
-            <motion.div 
-              className="pt-4"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.85 }}
-            >
-              <h3 className="text-xl font-display mb-2 text-retro-accent/90">
-                {question.text}
-                <span className="text-red-500 ml-1">*</span>
-              </h3>
-              <p className="text-retro-accent/60 -mt-1 mb-6">
-                We value data privacy.
-              </p>
-              {/* Change flex direction and gap based on screen size */}
-              <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center sm:gap-8">
-                <button 
-                  onClick={() => handleChange('As you wish.')}
-                  className="bg-retro-accent text-black px-8 py-2 transition-colors hover:bg-accent-secondary w-full sm:w-auto" // Add width control
-                  style={{
-                    clipPath: `polygon(
-                      0 4px, 4px 4px, 4px 0,
-                      calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
-                      100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
-                      calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
-                      0 calc(100% - 4px)
-                    )`
-                  }}
-                >
-                  As you wish.
-                </button>
-                <button 
-                  onClick={() => handleChange('Inconceivable!')}
-                  className="bg-retro-accent text-black px-8 py-2 opacity-80 transition-colors hover:bg-retro-accent/90 w-full sm:w-auto" // Add width control
-                  style={{
-                    clipPath: `polygon(
-                      0 4px, 4px 4px, 4px 0,
-                      calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
-                      100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
-                      calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
-                      0 calc(100% - 4px)
-                    )`
-                  }}
-                >
-                  Inconceivable!
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        ) : (
-          <>
-            <h3 className="text-xl font-display text-retro-accent">
-              {question.text}
-              <span className="text-red-500 ml-1">*</span>
-            </h3>
-            <div className="space-y-2">
-              {options.map((option: string) => {
-                const isSelected = value === option;
-                return (
-                  <label 
-                    key={option} 
-                    className={`flex items-center p-3 cursor-pointer transition-all ${isSelected ? `bg-retro-accent/20` : `hover:bg-retro-accent/10`}`}
-                    style={{
-                      clipPath: `polygon(
-                        0 4px, 4px 4px, 4px 0,
-                        calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
-                        100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
-                        calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
-                        0 calc(100% - 4px)
-                      )`
-                    }}
-                  >
-                    <div className={`flex-shrink-0 w-5 h-5 mr-4 flex items-center justify-center transition-colors ${isSelected ? `border-4 border-retro-accent bg-retro-accent` : `border-4 border-retro-accent`}`}
-                    style={{
-                      clipPath: `polygon(
-                        0 4px, 4px 4px, 4px 0,
-                        calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
-                        100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
-                        calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
-                        0 calc(100% - 4px)
-                      )`
-                    }}
-                    >
-                      {/* {isSelected && <Check className="w-3 h-3 text-black" />} <-- Checkmark removed for radio */}
-                    </div>
-                    <input
-                      type="radio"
-                      name={`question-${questionIndex}`}
-                      value={option}
-                      checked={isSelected}
-                      onChange={() => handleChange(option)}
-                      className="sr-only"
-                    />
-                    <span className="text-retro-accent">{option}</span>
-                  </label>
-                );
-              })}
-            </div>
-          </>
-        )}
+                <input
+                  type="radio"
+                  name={`question-${question.order_number}`}
+                  value={option}
+                  checked={value === option}
+                  onChange={() => handleChange(option)}
+                  className="sr-only"
+                  required={question.required}
+                />
+                <span className="text-retro-accent">{option}</span>
+              </label>
+            );
+          })}
+        </div>
       </div>
     );
   }
@@ -487,8 +371,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
       <div className="space-y-4">
         <h3 className="text-xl font-display text-retro-accent">
           {question.text}
-          {/* Checkboxes might not always be required, adjust if needed */}
-          <span className="text-red-500 ml-1">*</span> 
+          {question.required && <span className="text-red-500 ml-1">*</span>}
         </h3>
         <div className="space-y-2">
           {options.map((option: string) => {
@@ -507,27 +390,27 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
                   )`
                 }}
               >
-                {/* Checkbox visual - adapting radio style */}
                 <div className={`flex-shrink-0 w-5 h-5 mr-4 flex items-center justify-center transition-colors ${isSelected ? `border-4 border-retro-accent bg-retro-accent` : `border-4 border-retro-accent`}`}
-                style={{
-                  clipPath: `polygon(
-                    0 4px, 4px 4px, 4px 0,
-                    calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
-                    100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
-                    calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
-                    0 calc(100% - 4px)
-                  )`
-                }}
+                  style={{
+                    clipPath: `polygon(
+                      0 4px, 4px 4px, 4px 0,
+                      calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
+                      100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
+                      calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
+                      0 calc(100% - 4px)
+                    )`
+                  }}
                 >
                   {isSelected && <Check className="w-3 h-3 text-black" />}
                 </div>
                 <input
                   type="checkbox"
-                  name={`question-${questionIndex}-${option.replace(/\s+/g, '-')}`} // Unique name might be needed if you care about form semantics, though React state handles it
+                  name={`question-${question.order_number}-${option.replace(/\s+/g, '-')}`}
                   value={option}
                   checked={isSelected}
                   onChange={() => handleChange(option)}
                   className="sr-only"
+                  required={question.required}
                 />
                 <span className="text-retro-accent">{option}</span>
               </label>
@@ -543,15 +426,16 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
       <div className="space-y-4">
         <h3 className="text-xl font-display text-retro-accent">
           {question.text}
-          <span className="text-red-500 ml-1">*</span>
+          {question.required && <span className="text-red-500 ml-1">*</span>}
         </h3>
         <div className="relative">
           <textarea
-            value={value as string || ''}
+            value={(value as string) || ''}
             onChange={(e) => onChange(e.target.value)}
             onBlur={onBlur}
             className="w-full bg-black p-3 text-retro-accent focus:outline-none focus:ring-2 focus:ring-retro-accent placeholder-retro-accent/30 border-4 border-retro-accent/30"
             rows={4}
+            required={question.required}
             style={{
               clipPath: `polygon(
                 0 4px, 4px 4px, 4px 0,
@@ -571,15 +455,16 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
     <div className="space-y-4">
       <h3 className="text-xl font-display text-retro-accent">
         {question.text}
-        <span className="text-red-500 ml-1">*</span>
+        {question.required && <span className="text-red-500 ml-1">*</span>}
       </h3>
       <div className="relative">
         <input
           type={question.type}
-          value={value as string || ''}
+          value={(value as string) || ''}
           onChange={(e) => onChange(e.target.value)}
           onBlur={onBlur}
           className="w-full bg-black p-3 text-retro-accent focus:outline-none focus:ring-2 focus:ring-retro-accent placeholder-retro-accent/30 border-4 border-retro-accent/30"
+          required={question.required}
           style={{
             clipPath: `polygon(
               0 4px, 4px 4px, 4px 0,

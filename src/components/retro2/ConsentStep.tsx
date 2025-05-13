@@ -1,0 +1,97 @@
+import React from 'react';
+import { motion } from 'framer-motion';
+import type { ApplicationQuestion } from '../../types/application';
+import { SignUpHeader } from './SignUpHeader'; // Import the new header
+
+interface Props {
+  question: ApplicationQuestion; // Expecting the specific consent question object
+  onConsent: () => void; // Callback for 'Yes'
+  onReject: () => void;  // Callback for 'No'
+}
+
+// Styling and content copied & adapted from RetroQuestionField's consent section
+export function ConsentStep({ question, onConsent, onReject }: Props) {
+  // Assuming question.options is correctly formatted like ["Yes", "No"] or similar
+  const options = Array.isArray(question.options)
+      ? question.options
+      : JSON.parse(question.options || '["Yes", "No"]'); // Provide a default if parsing fails or options are missing
+
+  const handleOptionClick = (option: string) => {
+    // Affirmative options
+    if (option.toLowerCase() === 'yes' || option.toLowerCase() === 'as you wish.') {
+      onConsent();
+    } else {
+      // Any other option is considered a rejection (e.g., "No", "Inconceivable!")
+      onReject();
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-black text-retro-accent font-mono flex flex-col">
+      <SignUpHeader />
+      <div className="flex-grow flex items-center justify-center p-4 overflow-y-auto">
+        <motion.div
+          className="space-y-12 max-w-lg w-full"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.65 }}
+        >
+          {/* Intro Text */}
+          <div className="relative">
+            <div className="absolute -left-8 top-0 bottom-0 w-2 bg-gradient-to-b from-retro-accent/60 via-retro-accent/40 to-retro-accent/20" />
+            <motion.div
+              className="space-y-6 pl-8"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }} // Slightly shorter delay than original
+            >
+              <div className="space-y-4 font-display text-base leading-relaxed">
+                <p className="text-retro-accent/60">This is a curated place, unlike any other.</p>
+                <p className="text-retro-accent/70">We seek those with the attention span & curiosity to complete this application.</p>
+                <p className="text-retro-accent/80">We're not impressed by your followers, fortune, or fame [though none of those exclude you].</p>
+                <p className="text-retro-accent text-2xl">We seek the realest.</p>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Consent Question & Buttons */}
+          <motion.div
+            className="pt-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }} // Slightly shorter delay
+          >
+            <h3 className="text-xl font-display mb-2 text-retro-accent/90">
+              {/* Using question.text allows flexibility if the wording changes */}
+              {question.text || "Do you consent to your data being stored and reviewed?"}
+            </h3>
+            <p className="text-sm text-retro-accent/60 -mt-1 mb-6">
+              We value data privacy. Your application data will be handled securely.
+            </p>
+            <div className="flex justify-center gap-8">
+              {options.map((option: string) => (
+                <button
+                  key={option}
+                  onClick={() => handleOptionClick(option)}
+                  className="bg-retro-accent text-black px-6 py-3 text-lg transition-colors hover:bg-accent-secondary"
+                  style={{
+                    clipPath: `polygon(
+                      0 4px, 4px 4px, 4px 0,
+                      calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
+                      100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
+                      calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
+                      0 calc(100% - 4px)
+                    )`
+                  }}
+                >
+                  {/* Display "As you wish." as "Yes" for clarity, otherwise display the option as is */}
+                  {option.toLowerCase() === 'as you wish.' ? 'Yes' : option}
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        </motion.div>
+      </div>
+    </div>
+  );
+} 

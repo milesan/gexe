@@ -39,6 +39,7 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
     options: [] as string[], // Changed to string array
     required: false,
     section: QUESTION_SECTIONS[0], // Default section
+    is_visible: true, // <-- ADDED: Default to true for new questions
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +63,7 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
         options: initialOptions,
         required: question.required || false,
         section: question.section || QUESTION_SECTIONS[0],
+        is_visible: question.is_visible === undefined ? true : question.is_visible, // <-- ADDED: Initialize from question, default true
       });
     } else {
        console.log("QuestionFormModal: Initializing add mode");
@@ -72,6 +74,7 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
          options: [], // Reset to empty array
          required: false,
          section: QUESTION_SECTIONS[0],
+         is_visible: true, // <-- ADDED: Ensure reset for add mode
        });
     }
   }, [question, isEditing]);
@@ -137,6 +140,7 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
             options: finalOptions, // Use the filtered array
             required: formData.required,
             section: formData.section,
+            is_visible: formData.is_visible, // <-- ADDED
             updated_at: new Date().toISOString(), // Explicitly set updated_at
           })
           .match({ id: question.id });
@@ -161,6 +165,7 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
               options: finalOptions, // Use the filtered array
               required: formData.required,
               section: formData.section,
+              is_visible: formData.is_visible, // <-- ADDED
               order_number: nextOrderNumber,
               // created_at and updated_at will be set by default in Supabase
             },
@@ -303,6 +308,19 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
                             className="h-4 w-4 text-emerald-600 border-[var(--color-border)] rounded focus:ring-emerald-500"
                         />
                         <label htmlFor="required" className="ml-2 block text-sm text-[var(--color-text-secondary)] font-mono">Required Question</label>
+                    </div>
+
+                    {/* Is Visible */}
+                    <div className="flex items-center">
+                        <input
+                            id="is_visible"
+                            name="is_visible"
+                            type="checkbox"
+                            checked={formData.is_visible}
+                            onChange={handleChange} // Standard handleChange will work for checkboxes
+                            className="h-4 w-4 text-emerald-600 border-[var(--color-border)] rounded focus:ring-emerald-500"
+                        />
+                        <label htmlFor="is_visible" className="ml-2 block text-sm text-[var(--color-text-secondary)] font-mono">Visible (Show to users)</label>
                     </div>
 
                     {/* Buttons */}

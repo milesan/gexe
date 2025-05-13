@@ -1,43 +1,33 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Retro2Form } from '../components/retro2/Retro2Form';
 import { Retro2Intro } from '../components/retro2/Retro2Intro';
+import { ConsentStep } from '../components/retro2/ConsentStep';
 import type { ApplicationQuestion } from '../types/application';
 import { supabase } from '../lib/supabase';
+import { useAutosave } from '../hooks/useAutosave';
 
 export function Retro2Page() {
-  console.log('[Retro2Page] Component rendering');
   const navigate = useNavigate();
-  const [showForm, setShowForm] = useState(false);
-  const [questions, setQuestions] = useState<ApplicationQuestion[]>([]);
+  const [step, setStep] = useState<'intro' | 'consent' | 'form'>('intro');
+  const [allQuestions, setAllQuestions] = useState<ApplicationQuestion[]>([]);
+  const [consentQuestion, setConsentQuestion] = useState<ApplicationQuestion | null>(null);
+  const [formQuestions, setFormQuestions] = useState<ApplicationQuestion[]>([]);
+  const [formData, setFormData] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const hasTransitioned = useRef(false);
-  const [isFormAnimationComplete, setIsFormAnimationComplete] = useState(false);
+  const { saveData, loadSavedData } = useAutosave();
 
   useEffect(() => {
     console.log('[Retro2Page] Component mounted');
-    console.log('[Retro2Page] Initial state:', { showForm, loading });
-    loadQuestions();
+    loadQuestionsAndData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleIntroComplete = () => {
-    if (hasTransitioned.current) {
-      console.log('[Retro2Page] Already transitioned, ignoring callback');
-      return;
-    }
-    console.log('[Retro2Page] Intro complete callback triggered');
-    console.log('[Retro2Page] Current state before update:', { showForm });
-    hasTransitioned.current = true;
-    setShowForm(true);
-    setIsFormAnimationComplete(false);
-    console.log('[Retro2Page] showForm set to true');
-  };
-
-  const loadQuestions = async () => {
+  const loadQuestionsAndData = async () => {
     try {
-      console.log('🔄 Loading application questions...');
+      console.log('🔄 Loading application questions and saved data...');
       setLoading(true);
       const { data, error: queryError } = await supabase
         .from('application_questions')
@@ -46,39 +36,87 @@ export function Retro2Page() {
 
       if (queryError) throw queryError;
       
-      // Filter out the muse question (ID 9)
-      const filteredQuestions = data?.filter(q => q.order_number !== 8000) || [];
-      console.log('✅ Questions loaded:', filteredQuestions);
-      setQuestions(filteredQuestions);
+      const loadedQuestions = data || [];
+      console.log('✅ All questions loaded:', loadedQuestions);
+      setAllQuestions(loadedQuestions);
+
+      // Separate consent question (assuming section 'intro')
+      const consentQ = loadedQuestions.find(q => q.section?.toLowerCase() === 'intro') || null;
+      const formQs = loadedQuestions.filter(q => q.section?.toLowerCase() !== 'intro');
+      
+      setConsentQuestion(consentQ);
+      setFormQuestions(formQs);
+      console.log(' แยก Consent Question:', consentQ);
+      console.log('📋 Form Questions:', formQs);
+
+      // Load saved form data
+      const savedData = await loadSavedData();
+      if (savedData) {
+        console.log('💾 Loaded saved data:', savedData);
+        setFormData(savedData);
+        // Determine starting step based on saved consent
+        if (consentQ && savedData[consentQ.order_number] === 'As you wish.') {
+          console.log('Consent found in saved data, skipping to form.');
+          setStep('form'); // User already consented
+        } else {
+          console.log('No consent in saved data, starting from intro/consent.');
+          // Keep default step ('intro'), it will transition naturally
+        }
+      } else {
+         console.log('No saved data found.');
+         // Keep default step ('intro')
+      }
+
     } catch (err) {
-      console.error('❌ Error loading questions:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load questions');
+      console.error('❌ Error loading questions/data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load application');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSubmit = async (data: any) => {
+  const handleIntroComplete = () => {
+    console.log('[Retro2Page] Intro complete, moving to consent');
+    setStep('consent');
+  };
+
+  const handleConsent = useCallback(() => {
+    console.log('[Retro2Page] User consented');
+    if (consentQuestion) {
+      const consentValue = 'As you wish.'; // The value indicating consent
+      const updatedFormData = { ...formData, [consentQuestion.order_number]: consentValue };
+      setFormData(updatedFormData);
+      console.log('💾 Saving consent answer...', updatedFormData);
+      saveData(updatedFormData); // Save consent immediately
+    }
+    setStep('form');
+  }, [consentQuestion, formData, saveData]);
+
+  const handleReject = () => {
+    console.log('[Retro2Page] User rejected consent');
+    // Redirect or show a message
+    window.location.href = 'https://www.youtube.com/watch?v=xvFZjo5PgG0';
+  };
+
+  // Centralized submit handler passed to Retro2Form
+  const handleFormSubmit = async (finalFormData: any) => {
     try {
       console.log('🔄 Starting application submission...');
-      console.log('📝 Form data received:', data);
+      console.log('📝 Final form data for submission:', finalFormData);
+      setFormData(finalFormData); // Ensure state has the absolute latest
 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
       console.log('👤 Current user:', user);
 
-      // Create or update profile with name from application
-      // Use specific question IDs that we know exist in the database
+      // Use specific question IDs for names (ensure these exist and are in finalFormData)
       const FIRST_NAME_ID = 4000;
       const LAST_NAME_ID = 5000;
       
-      const firstName = data[FIRST_NAME_ID] || '';
-      const lastName = data[LAST_NAME_ID] || '';
+      const firstName = finalFormData[FIRST_NAME_ID] || '';
+      const lastName = finalFormData[LAST_NAME_ID] || '';
       
-      console.log('📋 Name from application:', { 
-        firstName,
-        lastName
-      });
+      console.log('📋 Name from application:', { firstName, lastName });
       
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
@@ -93,22 +131,15 @@ export function Retro2Page() {
         .select()
         .single();
 
-      console.log('👤 Profile update result:', {
-        success: !profileError,
-        data: profileData,
-        error: profileError
-      });
-
       if (profileError) throw profileError;
       console.log('✅ Profile created/updated:', profileData);
 
-      // Remove muse-related logic since the question is hidden
-      console.log('📤 Submitting application...');
+      console.log('📤 Submitting application data...');
       const { data: application, error: applicationError } = await supabase
         .from('applications')
         .insert({
           user_id: user.id,
-          data: data,
+          data: finalFormData, // Submit the complete formData
           status: 'pending'
         })
         .select()
@@ -117,7 +148,6 @@ export function Retro2Page() {
       if (applicationError) throw applicationError;
       console.log('✅ Application submitted:', application);
 
-      // Update user metadata
       console.log('🔄 Updating user metadata...');
       const { data: userData, error: updateError } = await supabase.auth.updateUser({
         data: { 
@@ -129,7 +159,6 @@ export function Retro2Page() {
       if (updateError) throw updateError;
       console.log('✅ User metadata updated:', userData);
 
-      // Refresh the session to reflect the changes
       console.log('🔄 Refreshing session...');
       const { data: sessionData, error: sessionError } = await supabase.auth.refreshSession();
       if (sessionError) throw sessionError;
@@ -137,64 +166,79 @@ export function Retro2Page() {
 
       console.log('🎉 Application process completed successfully!');
       
-      // Redirect to pending page
       navigate('/pending');
 
-    } catch (error) {
-      console.error('❌ Error in application process:', error);
-      throw error;
+    } catch (submissionError) {
+      console.error('❌ Error in application submission process:', submissionError);
+      setError(submissionError instanceof Error ? submissionError.message : 'Submission failed');
+      // Don't re-throw here, let the user see the error on the page potentially
     }
   };
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
+      <div className="fixed inset-0 bg-black flex justify-center items-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-retro-accent"></div>
       </div>
     );
   }
 
+  if (error) {
+     return (
+      <div className="fixed inset-0 bg-black flex flex-col justify-center items-center text-retro-accent p-4">
+        <p className="text-xl mb-4">Error:</p>
+        <p className="text-center">{error}</p>
+        {/* Maybe add a retry button? */}
+      </div>
+    );
+  }
+
+  // --- Render logic based on step --- 
   return (
     <div className="fixed inset-0 bg-black overflow-hidden">
-      <motion.div
-        className="absolute inset-0"
-        animate={{
-          y: showForm ? '-100%' : '0%'
-        }}
-        transition={{
-          duration: 0.4,
-          ease: [0.8, 0.2, 0.2, 0.8]
-        }}
-      >
-        <Retro2Intro onComplete={handleIntroComplete} />
-      </motion.div>
+      <AnimatePresence initial={false}> 
+        {step === 'intro' && (
+          <motion.div
+            key="intro"
+            className="absolute inset-0"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0, transition: { duration: 0.3 } }} // Faster exit
+          >
+            <Retro2Intro onComplete={handleIntroComplete} />
+          </motion.div>
+        )}
 
-      <motion.div
-        className="absolute inset-0"
-        initial={{ y: '100%' }}
-        animate={{
-          y: showForm ? '0%' : '100%'
-        }}
-        transition={{
-          duration: 0.4,
-          ease: [0.8, 0.2, 0.2, 0.8]
-        }}
-        onAnimationComplete={() => {
-          if (showForm) {
-            console.log('[Retro2Page] Form intro animation complete');
-            setIsFormAnimationComplete(true);
-          } else {
-            console.log('[Retro2Page] Form outro animation complete');
-            setIsFormAnimationComplete(false);
-          }
-        }}
-      >
-        <Retro2Form
-          questions={questions}
-          onSubmit={handleSubmit}
-          isFullyVisible={isFormAnimationComplete}
-        />
-      </motion.div>
+        {step === 'consent' && consentQuestion && (
+          <motion.div
+            key="consent"
+            className="absolute inset-0"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1, transition: { duration: 0.3 } }}
+            exit={{ opacity: 0, transition: { duration: 0.3 } }}
+          >
+            <ConsentStep 
+              question={consentQuestion}
+              onConsent={handleConsent}
+              onReject={handleReject}
+            />
+          </motion.div>
+        )}
+
+        {step === 'form' && (
+          <motion.div
+            key="form"
+            className="absolute inset-0 overflow-y-auto"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1, transition: { duration: 0.3, delay: 0.1 } }} // Slight delay for smoother feel
+          >
+            <Retro2Form
+              questions={formQuestions}
+              onSubmit={handleFormSubmit}
+              initialData={formData} // Pass current formData which includes consent
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
