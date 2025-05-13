@@ -65,17 +65,15 @@ serve(async (req: Request) => {
     );
 
     console.log('Querying discount_codes table...');
-    const { data, error: dbError } = await supabaseClient
+    const { data: codeData, error: codeError } = await supabaseClient
       .from('discount_codes')
-      .select('code, percentage_discount')
-      .ilike('code', codeToValidate) // Case-insensitive comparison
-      .eq('is_active', true)        // Must be active
-      .limit(1)
-      .single(); // Expect exactly one or zero results
+      .select('id, code, percentage_discount, is_active, description, applies_to')
+      .eq('code', codeToValidate)
+      .single();
 
-    if (dbError) {
+    if (codeError) {
       // Differentiate between "not found" and actual errors
-      if (dbError.code === 'PGRST116') { // PostgREST code for "Resource not found"
+      if (codeError.code === 'PGRST116') { // PostgREST code for "Resource not found"
         console.log(`Code "${codeToValidate}" not found or inactive.`);
         return new Response(
           JSON.stringify({ error: 'Invalid or inactive discount code.' }),
@@ -86,18 +84,21 @@ serve(async (req: Request) => {
         );
       } else {
         // Other database error
-        console.error('Supabase query error:', dbError);
-        throw new Error(dbError.message || 'Database query failed.');
+        console.error('Supabase query error:', codeError);
+        throw new Error(codeError.message || 'Database query failed.');
       }
     }
 
     // --- Success Case ---
-    if (data) {
-      console.log(`Code "${codeToValidate}" validated successfully:`, data);
+    if (codeData) {
+      console.log(`Code "${codeToValidate}" validated successfully:`, codeData);
       return new Response(
         JSON.stringify({
-          code: data.code, // Return the actual code casing from DB
-          percentage_discount: data.percentage_discount,
+          id: codeData.id,
+          code: codeData.code,
+          percentage_discount: codeData.percentage_discount,
+          description: codeData.description,
+          applies_to: codeData.applies_to || 'total'
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },

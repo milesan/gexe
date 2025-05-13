@@ -13,6 +13,7 @@ interface DiscountCode {
   deactivated_at: string | null;
   created_by: string | null;
   updated_at: string;
+  applies_to: string;
 }
 
 export function DiscountCodesManager() {
@@ -26,6 +27,7 @@ export function DiscountCodesManager() {
   const [newCode, setNewCode] = useState('');
   const [newPercentage, setNewPercentage] = useState('');
   const [newDescription, setNewDescription] = useState('');
+  const [newAppliesTo, setNewAppliesTo] = useState('total');
   const [isAdding, setIsAdding] = useState(false);
 
   // --- Fetch codes --- 
@@ -92,7 +94,8 @@ export function DiscountCodesManager() {
                 code: codeValue,
                 percentage_discount: percentageValue,
                 description: newDescription.trim() || null,
-                is_active: true // New codes are active by default
+                is_active: true, // New codes are active by default
+                applies_to: newAppliesTo
             });
 
         if (insertError) {
@@ -111,6 +114,7 @@ export function DiscountCodesManager() {
         setNewCode('');
         setNewPercentage('');
         setNewDescription('');
+        setNewAppliesTo('total');
         setShowAddForm(false);
         await fetchCodes(); // Refresh the list
 
@@ -173,6 +177,7 @@ export function DiscountCodesManager() {
                  setNewCode('');
                  setNewPercentage('');
                  setNewDescription('');
+                 setNewAppliesTo('total');
             }
           }}
           className="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap font-mono text-sm bg-accent-primary text-stone-800 hover:bg-accent-secondary"
@@ -242,6 +247,20 @@ export function DiscountCodesManager() {
                         disabled={isAdding}
                     />
                 </div>
+                <div>
+                    <label htmlFor="new-applies-to" className="block text-sm font-medium text-secondary mb-1">Applies To</label>
+                    <select
+                        id="new-applies-to"
+                        value={newAppliesTo}
+                        onChange={(e) => setNewAppliesTo(e.target.value)}
+                        className="w-full px-3 py-2 bg-[var(--color-furface-modal,theme(colors.gray.800))] border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent text-primary"
+                        disabled={isAdding}
+                    >
+                        <option value="total">Total Amount</option>
+                        <option value="accommodation">Accommodation Only</option>
+                        <option value="food_facilities">Food & Facilities Only</option>
+                    </select>
+                </div>
                 <div className="flex justify-end">
                     <button
                         type="submit"
@@ -270,6 +289,7 @@ export function DiscountCodesManager() {
                 <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">Code</th>
                 <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">Discount</th>
                 <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">Description</th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">Applies To</th>
                 <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-secondary uppercase tracking-wider">Active</th>
                 <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-secondary uppercase tracking-wider">Actions</th> {/* Centered Actions */}
               </tr>
@@ -280,6 +300,11 @@ export function DiscountCodesManager() {
                     <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-primary">{code.code}</td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm">{code.percentage_discount}%</td>
                     <td className="px-4 py-3 text-sm text-secondary max-w-xs truncate" title={code.description || ''}>{code.description || '-'}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-secondary">
+                        {code.applies_to === 'accommodation' ? 'Accommodation' :
+                         code.applies_to === 'food_facilities' ? 'Food & Facilities' :
+                         'Total Amount'}
+                    </td>
                     <td className="px-4 py-3 text-center">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${code.is_active ? 'bg-success-muted text-success' : 'bg-error-muted text-error'}`}>
                         {code.is_active ? 'Yes' : 'No'}

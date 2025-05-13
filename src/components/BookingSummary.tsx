@@ -80,6 +80,7 @@ interface PricingDetails {
   durationDiscountPercent: number;
   weeksStaying: number; // This will now store the DISPLAY (rounded) weeks
   totalAmount: number;
+  appliedCodeDiscountValue: number;
   seasonalDiscount: number;
 }
 
@@ -162,8 +163,22 @@ const formatDateWithOrdinal = (date: Date): string => {
 interface AppliedDiscount {
   code: string;
   percentage_discount: number;
+  applies_to: string; // Added new field
 }
 // --- End Added Type ---
+
+// Helper function to determine the text for what the discount applies to
+const getAppliesToText = (appliesToValue: string | undefined): string => {
+  switch (appliesToValue) {
+    case 'accommodation':
+      return 'Accommodation';
+    case 'food_facilities':
+      return 'Food & Facilities';
+    case 'total':
+    default: // Also handles undefined or other unexpected values
+      return 'Total Amount';
+  }
+};
 
 export function BookingSummary({
   selectedWeeks,
@@ -413,20 +428,42 @@ export function BookingSummary({
     // --- START: Apply Discount Code --- 
     let finalTotalAmount = subtotal;
     let discountCodeAmount = 0;
+    let subtotalBeforeDiscountCode = subtotal; // Store the subtotal before this specific discount code
 
-    if (appliedDiscount && subtotal > 0) {
+    if (appliedDiscount && subtotalBeforeDiscountCode > 0) {
         const discountPercentage = appliedDiscount.percentage_discount / 100;
-        discountCodeAmount = parseFloat((subtotal * discountPercentage).toFixed(2));
-        finalTotalAmount = parseFloat((subtotal - discountCodeAmount).toFixed(2));
-        // Ensure total doesn't go below zero, although unlikely with percentage discounts
+        const appliesTo = appliedDiscount.applies_to || 'total'; // Default to 'total' for safety
+
+        let amountToDiscountFrom = 0;
+
+        if (appliesTo === 'accommodation') {
+            amountToDiscountFrom = totalAccommodationCost;
+        } else if (appliesTo === 'food_facilities') {
+            amountToDiscountFrom = finalFoodCost; // This is F&F cost after duration discount but before code discount
+        } else { // 'total' or any other fallback
+            amountToDiscountFrom = subtotalBeforeDiscountCode;
+        }
+
+        if (amountToDiscountFrom > 0) { // Only calculate discount if the target component has a cost
+            discountCodeAmount = parseFloat((amountToDiscountFrom * discountPercentage).toFixed(2));
+        } else {
+            discountCodeAmount = 0; // No discount if the target component is free or N/A
+        }
+        
+        // The final total amount is the original subtotal (before this code) minus the calculated discount code amount.
+        finalTotalAmount = parseFloat((subtotalBeforeDiscountCode - discountCodeAmount).toFixed(2));
+
+        // Ensure total doesn't go below zero
         if (finalTotalAmount < 0) finalTotalAmount = 0;
 
         console.log('[BookingSummary] useMemo: Applied Discount Code:', {
             code: appliedDiscount.code,
             percentage: appliedDiscount.percentage_discount,
-            subtotalBeforeDiscount: subtotal,
+            appliesTo: appliesTo,
+            amountComponentTargeted: amountToDiscountFrom, // Log the base amount for discount calculation
+            subtotalBeforeCodeDiscount: subtotalBeforeDiscountCode,
             discountCodeAmountApplied: discountCodeAmount,
-            finalTotalAmountAfterDiscount: finalTotalAmount
+            finalTotalAmountAfterCodeDiscount: finalTotalAmount
         });
     } else {
          console.log('[BookingSummary] useMemo: No discount code applied or subtotal is zero.');
@@ -440,6 +477,7 @@ export function BookingSummary({
       totalFoodAndFacilitiesCost: finalFoodCost,
       subtotal,
       totalAmount: finalTotalAmount,
+      appliedCodeDiscountValue: discountCodeAmount,
       weeksStaying: displayWeeks,
       effectiveBaseRate: effectiveWeeklyRate,
       nightlyAccommodationRate: totalNights > 0 ? +(totalAccommodationCost / totalNights).toFixed(2) : 0,
@@ -850,7 +888,8 @@ export function BookingSummary({
         console.log("[BookingSummary] code validated successfully:", responseData);
         setAppliedDiscount({
           code: responseData.code,
-          percentage_discount: responseData.percentage_discount
+          percentage_discount: responseData.percentage_discount,
+          applies_to: responseData.applies_to || 'total'
         });
         setDiscountCodeInput(''); // Clear input on success
       } else {
@@ -1232,7 +1271,7 @@ export function BookingSummary({
                     {/* Changed styling for "Total" label */}
                     <span className="uppercase text-primary font-display text-2xl">Total</span>
                     {/* --- UPDATED: Show original price if discount applied --- */}
-                    {appliedDiscount ? (
+                    {(appliedDiscount && pricing.appliedCodeDiscountValue > 0) ? (
                         <div className="text-right">
                             <span className="text-sm line-through text-secondary mr-2">
                                 {formatPriceDisplay(pricing.subtotal)}
@@ -1289,14 +1328,19 @@ export function BookingSummary({
                     </div>
                   ) : (
                     <div className="p-3 bg-success-muted rounded-md border border-success">
-                        <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-2 text-sm text-success">
-                                <Tag className="w-4 h-4" />
-                                <span>Applied: <strong>{appliedDiscount.code}</strong> (-{appliedDiscount.percentage_discount}%)</span>
+                        <div className="flex justify-between items-start"> {/* Changed items-center to items-start */}
+                            <div> {/* Wrapper for discount text lines */}
+                                <div className="flex items-center gap-2 text-sm text-success">
+                                    <Tag className="w-4 h-4 flex-shrink-0" />
+                                    <span>Applied: <strong>{appliedDiscount.code}</strong> (-{appliedDiscount.percentage_discount}%)</span>
+                                </div>
+                                <div className="text-xs text-gray-600 dark:text-gray-400 mt-1 ml-[calc(1rem+0.5rem)]"> {/* Indented, smaller, muted text. Adjust ml if icon/gap changes. 1rem for w-4 icon, 0.5rem for gap-2 */}
+                                    Applies to: <span className="font-medium">{getAppliesToText(appliedDiscount.applies_to)}</span>
+                                </div>
                             </div>
                             <button 
                                 onClick={handleRemoveDiscount}
-                                className="p-1 text-success hover:text-error hover:bg-error-muted rounded-full text-xs"
+                                className="p-1 text-success hover:text-error hover:bg-error-muted rounded-full text-xs flex-shrink-0" // Added flex-shrink-0
                                 title="Remove code"
                             >
                                 <X className="w-3 h-3" />
