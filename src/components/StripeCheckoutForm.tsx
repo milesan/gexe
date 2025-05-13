@@ -15,9 +15,10 @@ interface Props {
   authToken: string;
   userEmail: string;
   onSuccess: () => Promise<void>;
+  onClose: () => void;
 }
 
-export function StripeCheckoutForm({ total, authToken, description, userEmail, onSuccess }: Props) {
+export function StripeCheckoutForm({ total, authToken, description, userEmail, onSuccess, onClose }: Props) {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
 
   // When component mounts, add a class to body to prevent scrolling and hide the header
@@ -137,6 +138,31 @@ export function StripeCheckoutForm({ total, authToken, description, userEmail, o
           zIndex: 999999
         }}
       >
+        {/* Close Button */}
+        <button
+          onClick={onClose}
+          style={{
+            position: 'absolute',
+            top: '10px',
+            right: '10px',
+            border: 'none',
+            fontSize: '24px',
+            cursor: 'pointer',
+            color: '#333',
+            zIndex: 1000000,
+            width: '32px',
+            height: '32px',
+            borderRadius: '50%',
+            backgroundColor: 'rgba(200, 200, 200, 0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            lineHeight: '1'
+          }}
+          aria-label="Close payment form"
+        >
+          &times;
+        </button>
         <div style={{ position: 'relative', zIndex: 999999 }}>
           <EmbeddedCheckoutProvider
             stripe={stripePromise}

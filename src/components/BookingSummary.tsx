@@ -982,6 +982,7 @@ export function BookingSummary({
                 }
                 description={`${selectedAccommodation?.title || 'Accommodation'} for ${pricing.totalNights} nights`}
                 onSuccess={handleBookingSuccess}
+                onClose={() => setShowStripeModal(false)}
               />
             </motion.div>
           </motion.div>
