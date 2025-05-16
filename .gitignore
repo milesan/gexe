@@ -21,6 +21,7 @@ dist-ssr
 .env.local
 .env.development
 .env.production
+migration_scripts/.env
 
 # Editor directories and files
 .vscode/*
