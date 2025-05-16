@@ -5,6 +5,8 @@ import { CheckCircle, XCircle, X } from 'lucide-react';
 import { ImageModal } from '../shared/ImageModal';
 import { getFrontendUrl } from '../../lib/environment';
 import { ApplicationDetails } from './ApplicationDetails';
+import { getAnswer } from '../../lib/old_question_mapping';
+import type { QuestionForAnswerRetrieval } from '../../lib/old_question_mapping';
 
 interface Application {
   id: string;
@@ -25,9 +27,17 @@ const DISPLAY_QUESTIONS = {
   logicPuzzle: "If some robots are mechanics and some mechanics are purple, does it logically follow that some robots must be purple?",
   uniqueBelief: "What do you believe is true that most other people believe is false?",
   gettingToKnow: "What's your ideal way of getting to know a new person?",
-  identity: "How do you identify yourself?",
+  selfIdentify: "In your own words, how do you identify?",
   reallyKnowYou: "If we really knew you, what would we know?"
 } as const;
+
+const SELF_IDENTIFY_QUESTION_KEY = 'selfIdentify';
+const SELF_IDENTIFY_OLD_ORDER_NUMBER = "22000";
+const SELF_IDENTIFY_NEW_UUID = "702ae994-6f64-4e81-a2b3-2593fbc0c937";
+
+const MBTI_QUESTION_KEY = 'mbti';
+const MBTI_OLD_ORDER_NUMBER = "8500";
+const MBTI_NEW_UUID = "241d9c89-0323-4003-9a20-7c19309ba488";
 
 function AnswerTooltip({ children, content }: { children: React.ReactNode; content: any }) {
   const [showTooltip, setShowTooltip] = useState(false);
@@ -58,7 +68,7 @@ function AnswerTooltip({ children, content }: { children: React.ReactNode; conte
         {children}
       </div>
       {showTooltip && (
-        <div className="absolute z-50 bg-[var(--color-bg-surface-raised)] text-[var(--color-text-primary)] p-4 rounded-lg shadow-lg max-w-md whitespace-pre-wrap font-mono">
+        <div className="absolute z-50 bg-gray-800 text-[var(--color-text-primary)] p-4 rounded-lg shadow-lg max-w-md whitespace-pre-wrap font-mono">
           {renderContent(content)}
         </div>
       )}
@@ -84,7 +94,7 @@ export function AppView() {
   const loadQuestions = async () => {
     try {
       const { data, error: queryError } = await supabase
-        .from('application_questions')
+        .from('application_questions_2')
         .select('*')
         .order('order_number');
 
@@ -214,23 +224,105 @@ export function AppView() {
   };
 
   const renderApplicationCard = (application: Application) => {
-    // Create a map of question text to order number
-    const questionMap = Object.fromEntries(
-      questions.map(q => [q.text, q.order_number])
-    );
+    const resolvedAnswers: Record<string, any> = {};
+
+    const getSpecialAnswer = (
+      appData: Record<string, any>,
+      qKey: 'selfIdentify' | 'mbti', // Type this for safety
+      qText: string,
+      modernDefinition: QuestionForAnswerRetrieval | undefined,
+      knownNewUuid: string,
+      knownOldOrder: string
+    ): any => {
+      let ans: any;
+
+      // 1. Try modern definition with getAnswer
+      if (modernDefinition) {
+        ans = getAnswer(appData, modernDefinition);
+      }
+
+      // 2. Fallback: direct lookup with modern UUID if getAnswer failed AND definition ID matches known UUID
+      if (ans === undefined && modernDefinition && modernDefinition.id === knownNewUuid) {
+        if (appData[knownNewUuid] !== undefined) {
+          console.warn(`AppView: Fallback to direct lookup for ${qKey} (New UUID: ${knownNewUuid}) as getAnswer with modernDef (ID: ${modernDefinition.id}) failed for app ${application.id}.`);
+          ans = appData[knownNewUuid];
+        }
+      }
+      
+      // If still no answer from modern path (neither getAnswer nor direct lookup with new UUID worked)
+      if (ans === undefined) {
+        const oldDefinitionForGetAnswer = { id: knownOldOrder, text: qText } as QuestionForAnswerRetrieval;
+        // 3. Try old order number with getAnswer
+        const oldAnsFromGetAnswer = getAnswer(appData, oldDefinitionForGetAnswer);
+
+        if (oldAnsFromGetAnswer !== undefined) {
+          ans = oldAnsFromGetAnswer;
+        } else {
+          // 4. Fallback: direct lookup with old order number if getAnswer with old ID also failed
+          if (appData[knownOldOrder] !== undefined) {
+            console.warn(`AppView: Fallback to direct lookup for ${qKey} (Old Order: ${knownOldOrder}) as getAnswer with old ID also failed for app ${application.id}.`);
+            ans = appData[knownOldOrder];
+          }
+        }
+      }
+      return ans;
+    };
+
+    for (const keyInDisplayQuestions of Object.keys(DISPLAY_QUESTIONS) as Array<keyof typeof DISPLAY_QUESTIONS>) {
+      const questionText = DISPLAY_QUESTIONS[keyInDisplayQuestions];
+      const currentQuestionDefinition = questions.find(q => q.text === questionText) as QuestionForAnswerRetrieval | undefined;
+      let answer: any;
+
+      if (keyInDisplayQuestions === SELF_IDENTIFY_QUESTION_KEY) {
+        answer = getSpecialAnswer(
+          application.data, 
+          SELF_IDENTIFY_QUESTION_KEY, 
+          questionText, 
+          currentQuestionDefinition, 
+          SELF_IDENTIFY_NEW_UUID, 
+          SELF_IDENTIFY_OLD_ORDER_NUMBER
+        );
+      } else if (keyInDisplayQuestions === MBTI_QUESTION_KEY) {
+        answer = getSpecialAnswer(
+          application.data,
+          MBTI_QUESTION_KEY,
+          questionText,
+          currentQuestionDefinition,
+          MBTI_NEW_UUID,
+          MBTI_OLD_ORDER_NUMBER
+        );
+      } else if (currentQuestionDefinition) { // For other questions, use the found definition
+        answer = getAnswer(application.data, currentQuestionDefinition);
+      } else { 
+        answer = undefined;
+      }
+      
+      resolvedAnswers[keyInDisplayQuestions] = answer;
+
+      // Logging for when an answer is ultimately not found
+      if (answer === undefined) {
+        if (keyInDisplayQuestions === SELF_IDENTIFY_QUESTION_KEY || keyInDisplayQuestions === MBTI_QUESTION_KEY) {
+          console.warn(`AppView: For special question '${keyInDisplayQuestions}', all attempts failed to find an answer for app ${application.id}. Question text: "${questionText}". Modern def from DB: ${currentQuestionDefinition ? `ID: ${currentQuestionDefinition.id}, Text: ${currentQuestionDefinition.text}` : 'Not found'}. Known New UUID: ${keyInDisplayQuestions === SELF_IDENTIFY_QUESTION_KEY ? SELF_IDENTIFY_NEW_UUID : MBTI_NEW_UUID}, Known Old Order: ${keyInDisplayQuestions === SELF_IDENTIFY_QUESTION_KEY ? SELF_IDENTIFY_OLD_ORDER_NUMBER : MBTI_OLD_ORDER_NUMBER}.`);
+        } else if (currentQuestionDefinition) {
+          console.warn(`AppView: For standard question "${questionText}" (key: ${keyInDisplayQuestions}), getAnswer returned undefined even with a question definition (ID: ${currentQuestionDefinition.id}) for app ${application.id}.`);
+        } else {
+          console.warn(`AppView: Could not find question definition for standard key: ${keyInDisplayQuestions} or text: "${questionText}" for app ${application.id}. Ensure this question exists in 'application_questions_2' and DISPLAY_QUESTIONS is accurate.`);
+        }
+      }
+    }
 
     // Get answers using the question map
-    const firstName = application.data[questionMap[DISPLAY_QUESTIONS.firstName]];
-    const lastName = application.data[questionMap[DISPLAY_QUESTIONS.lastName]];
-    const photos = application.data[questionMap[DISPLAY_QUESTIONS.photos]];
-    const astrology = application.data[questionMap[DISPLAY_QUESTIONS.astrology]];
-    const mbti = application.data[questionMap[DISPLAY_QUESTIONS.mbti]];
-    const conspiracy = application.data[questionMap[DISPLAY_QUESTIONS.conspiracy]];
-    const logicPuzzle = application.data[questionMap[DISPLAY_QUESTIONS.logicPuzzle]];
-    const uniqueBelief = application.data[questionMap[DISPLAY_QUESTIONS.uniqueBelief]];
-    const gettingToKnow = application.data[questionMap[DISPLAY_QUESTIONS.gettingToKnow]];
-    const identity = application.data[questionMap[DISPLAY_QUESTIONS.identity]];
-    const reallyKnowYou = application.data[questionMap[DISPLAY_QUESTIONS.reallyKnowYou]];
+    const firstName = resolvedAnswers.firstName;
+    const lastName = resolvedAnswers.lastName;
+    const photos = resolvedAnswers.photos;
+    const astrology = resolvedAnswers.astrology;
+    const mbti = resolvedAnswers.mbti;
+    const conspiracy = resolvedAnswers.conspiracy;
+    const logicPuzzle = resolvedAnswers.logicPuzzle;
+    const uniqueBelief = resolvedAnswers.uniqueBelief;
+    const gettingToKnow = resolvedAnswers.gettingToKnow;
+    const selfIdentifyAnswer = resolvedAnswers.selfIdentify;
+    const reallyKnowYou = resolvedAnswers.reallyKnowYou;
 
     return (
       <motion.div
@@ -332,8 +424,8 @@ export function AppView() {
           </div>
           <div>
             <span className="text-[var(--color-text-secondary)] font-mono">Identity:</span>
-            <AnswerTooltip content={identity}>
-              <p className="mt-1 line-clamp-2 font-mono">{renderAnswer(identity)}</p>
+            <AnswerTooltip content={selfIdentifyAnswer}>
+              <p className="mt-1 line-clamp-2 font-mono">{renderAnswer(selfIdentifyAnswer)}</p>
             </AnswerTooltip>
           </div>
           <div>
@@ -395,6 +487,7 @@ export function AppView() {
         <ApplicationDetails
           application={selectedApplication}
           onClose={() => setSelectedApplication(null)}
+          questions={questions}
         />
       )}
 

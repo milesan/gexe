@@ -42,8 +42,9 @@ exports.handler = async (event) => {
       };
     }
 
-    const transactionDescription = "Donation to the Garden Associação, " + description;
+    const transactionDescription = "netlify_Donation to the Garden Associação, " + description;
 
+    
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
       ui_mode: 'embedded',

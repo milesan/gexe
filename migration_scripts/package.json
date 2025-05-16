@@ -1,0 +1,26 @@
+{
+  "name": "migration-scripts",
+  "version": "1.0.0",
+  "description": "Scripts for migrating Supabase data.",
+  "main": "dist/migrate_application_data.js",
+  "scripts": {
+    "migrate:dry-run": "ts-node migrate_application_data.ts --dry-run",
+    "migrate:live": "ts-node migrate_application_data.ts --live",
+    "build": "tsc"
+  },
+  "keywords": [
+    "supabase",
+    "migration"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "supabase-js": "^2.39.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.4",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+} 

@@ -11,10 +11,27 @@ interface Props {
 
 // Styling and content copied & adapted from RetroQuestionField's consent section
 export function ConsentStep({ question, onConsent, onReject }: Props) {
-  // Assuming question.options is correctly formatted like ["Yes", "No"] or similar
-  const options = Array.isArray(question.options)
-      ? question.options
-      : JSON.parse(question.options || '["Yes", "No"]'); // Provide a default if parsing fails or options are missing
+  // Improved options handling logic with better logging
+  let options;
+  
+  if (Array.isArray(question.options)) {
+    // If options is already an array, use it directly
+    options = question.options;
+    console.log('ConsentStep: options is already an array:', options);
+  } else if (typeof question.options === 'string') {
+    // If options is a string, try to parse it (handles JSON format from DB)
+    try {
+      options = JSON.parse(question.options);
+      console.log('ConsentStep: parsed options from string:', options);
+    } catch (e) {
+      console.error('ConsentStep: Error parsing options string:', question.options, e);
+      options = ["Yes", "No"]; // Fallback if parsing fails
+    }
+  } else {
+    // If options is undefined or any other type, use default
+    console.warn('ConsentStep: No options found, using default. Question:', question);
+    options = ["Yes", "No"];
+  }
 
   const handleOptionClick = (option: string) => {
     // Affirmative options
@@ -84,8 +101,7 @@ export function ConsentStep({ question, onConsent, onReject }: Props) {
                     )`
                   }}
                 >
-                  {/* Display "As you wish." as "Yes" for clarity, otherwise display the option as is */}
-                  {option.toLowerCase() === 'as you wish.' ? 'Yes' : option}
+                  {option}
                 </button>
               ))}
             </div>

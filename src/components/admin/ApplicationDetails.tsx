@@ -1,66 +1,52 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { supabase } from '../../lib/supabase';
+import { getAnswer as getSharedAnswer } from '../../lib/old_question_mapping';
+import type { QuestionForAnswerRetrieval } from '../../lib/old_question_mapping';
 import type { ApplicationQuestion } from '../../types/application';
 import { ImageModal } from '../shared/ImageModal';
 
 interface ApplicationDetailsProps {
   application: any;
   onClose: () => void;
+  questions: ApplicationQuestion[];
 }
 
-export function ApplicationDetails({ application, onClose }: ApplicationDetailsProps) {
-  const [questions, setQuestions] = useState<ApplicationQuestion[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [orderedAnswers, setOrderedAnswers] = useState<any[]>([]);
+export function ApplicationDetails({ application, onClose, questions }: ApplicationDetailsProps) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
-  useEffect(() => {
-    const loadQuestions = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('application_questions')
-          .select('*')
-          .order('order_number');
-        
-        if (error) throw error;
-        setQuestions(data || []);
-        
-        // Create ordered array of answers based on question order_numbers
-        if (data && application.data) {
-          const answers = data.map(q => application.data[q.order_number]);
-          setOrderedAnswers(answers);
-        }
-      } catch (err) {
-        console.error('Error loading questions:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const sections = Array.from(new Set(questions.map(q => q.section))).sort((a, b) => {
+    const order = ['intro', 'main', 'core', 'supplemental', 'final'];
+    const aIndex = order.indexOf(a?.toLowerCase() || '');
+    const bIndex = order.indexOf(b?.toLowerCase() || '');
+    if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+    if (aIndex !== -1) return -1;
+    if (bIndex !== -1) return 1;
+    return (a || '').localeCompare(b || '');
+  });
 
-    loadQuestions();
-  }, [application.data]);
+  const firstNameQuestion = questions.find(q => q.text === "First Name") as QuestionForAnswerRetrieval | undefined;
+  const lastNameQuestion = questions.find(q => q.text === "Last Name") as QuestionForAnswerRetrieval | undefined;
 
-  const sections = Array.from(new Set(questions.map(q => q.section)));
+  const firstName = firstNameQuestion ? getSharedAnswer(application.data, firstNameQuestion) : '';
+  const lastName = lastNameQuestion ? getSharedAnswer(application.data, lastNameQuestion) : '';
 
-  // Get applicant's name from the ordered answers array
-  const firstName = orderedAnswers[1] || ''; // First name should be the second question
-  const lastName = orderedAnswers[2] || '';  // Last name should be the third question
-
-  const renderPhotoGrid = (photos: any) => {
-    if (!photos) return null;
+  const renderPhotoGrid = (photoAnswer: any) => {
+    if (!photoAnswer) return null;
 
     let photoUrls: string[] = [];
     try {
-      if (Array.isArray(photos)) {
-        photoUrls = photos.map(p => p.url).filter(Boolean);
+      if (Array.isArray(photoAnswer)) {
+        photoUrls = photoAnswer.map(p => p.url).filter(Boolean);
+      } else if (typeof photoAnswer === 'object' && photoAnswer.url) {
+        photoUrls = [photoAnswer.url].filter(Boolean);
       }
     } catch (e) {
+      console.error("Error processing photo URLs:", e, "Photo answer was:", photoAnswer);
       return null;
     }
 
-    if (photoUrls.length === 0) return null;
+    if (photoUrls.length === 0) return <p className="text-sm text-[var(--color-text-tertiary)]">No photos provided.</p>;
 
     const gridConfig = {
       1: 'grid-cols-1',
@@ -85,10 +71,6 @@ export function ApplicationDetails({ application, onClose }: ApplicationDetailsP
       </div>
     );
   };
-
-  if (loading) {
-    return <div className="text-center p-4">Loading...</div>;
-  }
 
   return (
     <>
@@ -121,21 +103,15 @@ export function ApplicationDetails({ application, onClose }: ApplicationDetailsP
             <div className="p-6">
               {sections.map((section) => (
                 <div key={section} className="mb-8">
-                  <h3 className="text-lg font-medium text-[var(--color-text-primary)] mb-4">{section}</h3>
+                  <h3 className="text-lg font-medium text-[var(--color-text-primary)] mb-4 capitalize">
+                    {section || 'Uncategorized'}
+                  </h3>
                   <div className="space-y-6">
                     {questions
                       .filter(q => q.section === section)
-                      .map((question, index) => {
-                        // Find the question's position in the overall questions array
-                        const questionIndex = questions.findIndex(q => q.id === question.id);
-                        const answer = orderedAnswers[questionIndex];
-                        
-                        console.log('Question:', {
-                          id: question.id,
-                          type: question.type,
-                          text: question.text,
-                          answer: answer
-                        });
+                      .map((question) => {
+                        const currentQuestion = question as QuestionForAnswerRetrieval;
+                        const answer = getSharedAnswer(application.data, currentQuestion);
                         
                         return (
                           <div key={question.id} className="bg-[var(--color-bg-subtle)] p-4 rounded-lg">
@@ -146,7 +122,11 @@ export function ApplicationDetails({ application, onClose }: ApplicationDetailsP
                               {question.type === 'file' ? (
                                 renderPhotoGrid(answer)
                               ) : (
-                                typeof answer === 'object' ? answer?.selection : answer || 'No response'
+                                typeof answer === 'object' && answer !== null && answer.selection ? 
+                                  answer.selection :
+                                (answer === undefined || answer === null || answer === '') ? 
+                                  <span className="text-sm text-[var(--color-text-tertiary)]">No response</span> :
+                                  String(answer)
                               )}
                             </div>
                           </div>

@@ -10,17 +10,37 @@ interface Props {
   themeColor?: string;
 }
 
+// Helper function to parse options safely (similar to the other RetroQuestionField)
+const parseOptions = (options?: string | string[]): string[] => {
+  // If options is already an array, return it
+  if (Array.isArray(options)) {
+    return options;
+  }
+  
+  // If options is a string, try to parse it
+  if (typeof options === 'string' && options) {
+    try {
+      const parsed = JSON.parse(options);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      console.warn('[Retro2QuestionField] Failed to parse question.options JSON string:', options, error);
+      return [];
+    }
+  }
+  
+  // Default case: no options or invalid format
+  return [];
+};
+
 export function RetroQuestionField({ question, value, onChange, onAutoAdvance, themeColor = 'garden-gold' }: Props) {
-  const isConsentQuestion = question.order_number === 3;
+  const isConsentQuestion = question.section === 'intro';
 
   const handleNoConsent = () => {
     window.location.href = 'https://www.youtube.com/watch?v=xvFZjo5PgG0';
   };
 
   if (question.type === 'radio' && question.options) {
-    const options = Array.isArray(question.options) 
-      ? question.options 
-      : JSON.parse(question.options);
+    const options = parseOptions(question.options);
 
     const handleChange = (option: string) => {
       if (isConsentQuestion && option === 'No') {
@@ -143,12 +163,12 @@ export function RetroQuestionField({ question, value, onChange, onAutoAdvance, t
                     </div>
                     <input
                       type="radio"
-                      name={`question-${question.order_number}`}
+                      name={`question-${question.id}`}
                       value={option}
                       checked={isSelected}
                       onChange={() => handleChange(option)}
                       className="sr-only"
-                      required={question.required}
+                      required={!!question.required}
                     />
                     <span className="text-base text-[#FFBF00]">{option}</span>
                   </label>
@@ -174,7 +194,7 @@ export function RetroQuestionField({ question, value, onChange, onAutoAdvance, t
             onChange={(e) => onChange(e.target.value)}
             className="w-full bg-black p-3 text-[#FFBF00] focus:outline-none focus:ring-2 focus:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30"
             rows={4}
-            required={question.required}
+            required={!!question.required}
             style={{
               clipPath: `polygon(
                 0 4px, 4px 4px, 4px 0,
@@ -202,7 +222,7 @@ export function RetroQuestionField({ question, value, onChange, onAutoAdvance, t
           value={value || ''}
           onChange={(e) => onChange(e.target.value)}
           className="w-full bg-black p-3 text-[#FFBF00] focus:outline-none focus:ring-2 focus:ring-[#FFBF00] placeholder-[#FFBF00]/30 border-4 border-[#FFBF00]/30"
-          required={question.required}
+          required={!!question.required}
           style={{
             clipPath: `polygon(
               0 4px, 4px 4px, 4px 0,

@@ -1,0 +1,1 @@
+export const APPLICATION_SECTION_ORDER = ['intro', 'personal', 'stay', 'philosophy'] as const; 

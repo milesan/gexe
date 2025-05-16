@@ -100,7 +100,7 @@ serve(async (req) => {
       amountInCents: total * 100
     });
 
-    const productName = description ? "supabase_Donation to the Garden Associação, " + description : "Donation to the Garden Associação";
+    const productName = description ? "Donation to the Garden Associação, " + description : "Donation to the Garden Associação";
     const intentDescription = email ? email + ", " + description : description;
     
     const session = await stripe.checkout.sessions.create({

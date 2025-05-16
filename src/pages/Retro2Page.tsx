@@ -4,9 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import { Retro2Form } from '../components/retro2/Retro2Form';
 import { Retro2Intro } from '../components/retro2/Retro2Intro';
 import { ConsentStep } from '../components/retro2/ConsentStep';
-import type { ApplicationQuestion } from '../types/application';
+import type { ApplicationQuestion, VisibilityRules } from '../types/application';
 import { supabase } from '../lib/supabase';
 import { useAutosave } from '../hooks/useAutosave';
+import { HISTORICAL_ORDER_NUMBER_TO_QUESTION_ID_MAP } from '../lib/old_question_mapping';
 
 export function Retro2Page() {
   const navigate = useNavigate();
@@ -27,43 +28,69 @@ export function Retro2Page() {
 
   const loadQuestionsAndData = async () => {
     try {
-      console.log('🔄 Loading application questions and saved data...');
+      console.log('🔄 [Retro2Page] Loading application questions and saved data...');
       setLoading(true);
       const { data, error: queryError } = await supabase
-        .from('application_questions')
+        .from('application_questions_2')
         .select('*')
         .order('order_number');
 
-      if (queryError) throw queryError;
+      if (queryError) {
+        console.error('❌ [Retro2Page] Supabase query error:', queryError);
+        throw queryError;
+      }
       
-      const loadedQuestions = data || [];
-      console.log('✅ All questions loaded:', loadedQuestions);
-      setAllQuestions(loadedQuestions);
+      const rawQuestions = data || [];
+      console.log('📋 [Retro2Page] Raw questions from Supabase:', JSON.stringify(rawQuestions, null, 2)); // Log raw data
 
-      // Separate consent question (assuming section 'intro')
-      const consentQ = loadedQuestions.find(q => q.section?.toLowerCase() === 'intro') || null;
-      const formQs = loadedQuestions.filter(q => q.section?.toLowerCase() !== 'intro');
+      const processedQuestions: ApplicationQuestion[] = rawQuestions.map(q => {
+        let parsedVisibilityRules: VisibilityRules | null = null;
+        if (q.visibility_rules && typeof q.visibility_rules === 'string') {
+          try {
+            parsedVisibilityRules = JSON.parse(q.visibility_rules);
+          } catch (e) {
+            console.error(`❌ [Retro2Page] Error parsing visibility_rules for question ${q.id}:`, q.visibility_rules, e);
+          }
+        } else if (q.visibility_rules && typeof q.visibility_rules === 'object') {
+          parsedVisibilityRules = q.visibility_rules as VisibilityRules;
+        }
+        
+        // FIXED: Preserve options whether it's a string or already an array
+        // The ApplicationQuestion type needs to support both formats
+        return { 
+          ...q, 
+          visibility_rules: parsedVisibilityRules,
+        };
+      });
       
-      setConsentQuestion(consentQ);
+      console.log('✅ [Retro2Page] All questions processed:', JSON.stringify(processedQuestions, null, 2));
+      setAllQuestions(processedQuestions);
+
+      const foundConsentQ = processedQuestions.find(q => q.section?.toLowerCase() === 'intro') || null;
+      console.log('❓ [Retro2Page] Consent question lookup result (should have section: intro):', JSON.stringify(foundConsentQ, null, 2));
+      setConsentQuestion(foundConsentQ);
+
+      const formQs = processedQuestions.filter(q => q.id !== foundConsentQ?.id);
       setFormQuestions(formQs);
-      console.log(' แยก Consent Question:', consentQ);
-      console.log('📋 Form Questions:', formQs);
+      // console.log('📋 Form Questions:', formQs); // Keep this if needed for other debugging
 
       // Load saved form data
       const savedData = await loadSavedData();
-      if (savedData) {
-        console.log('💾 Loaded saved data:', savedData);
+      if (savedData && Object.keys(savedData).length > 0) {
+        console.log('💾 Loaded raw saved data from useAutosave (expecting question_id keys):', savedData);
+        
         setFormData(savedData);
-        // Determine starting step based on saved consent
-        if (consentQ && savedData[consentQ.order_number] === 'As you wish.') {
-          console.log('Consent found in saved data, skipping to form.');
-          setStep('form'); // User already consented
+
+        // Determine starting step based on saved consent (using consentQ.id and the correctly keyed savedData)
+        if (foundConsentQ && savedData[foundConsentQ.id] === 'As you wish.') {
+          console.log('Consent found directly in saved data (keyed by id), skipping to form.');
+          setStep('form');
         } else {
-          console.log('No consent in saved data, starting from intro/consent.');
+          console.log('No consent in saved data (keyed by id), or consent not affirmative. Starting from intro/consent.');
           // Keep default step ('intro'), it will transition naturally
         }
       } else {
-         console.log('No saved data found.');
+         console.log('No saved data found or saved data is empty.');
          // Keep default step ('intro')
       }
 
@@ -72,11 +99,12 @@ export function Retro2Page() {
       setError(err instanceof Error ? err.message : 'Failed to load application');
     } finally {
       setLoading(false);
+      console.log('🏁 [Retro2Page] loadQuestionsAndData finished.');
     }
   };
 
   const handleIntroComplete = () => {
-    console.log('[Retro2Page] Intro complete, moving to consent');
+    console.log('[Retro2Page] Intro complete, moving to consent step.'); // Message changed slightly for clarity
     setStep('consent');
   };
 
@@ -84,9 +112,10 @@ export function Retro2Page() {
     console.log('[Retro2Page] User consented');
     if (consentQuestion) {
       const consentValue = 'As you wish.'; // The value indicating consent
-      const updatedFormData = { ...formData, [consentQuestion.order_number]: consentValue };
+      // Save consent with question.id as the key
+      const updatedFormData = { ...formData, [consentQuestion.id]: consentValue };
       setFormData(updatedFormData);
-      console.log('💾 Saving consent answer...', updatedFormData);
+      console.log('💾 Saving consent answer (keyed by id)...', updatedFormData);
       saveData(updatedFormData); // Save consent immediately
     }
     setStep('form');
@@ -102,21 +131,27 @@ export function Retro2Page() {
   const handleFormSubmit = async (finalFormData: any) => {
     try {
       console.log('🔄 Starting application submission...');
-      console.log('📝 Final form data for submission:', finalFormData);
+      console.log('📝 Final form data for submission (should be keyed by question.id):', finalFormData);
       setFormData(finalFormData); // Ensure state has the absolute latest
 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
       console.log('👤 Current user:', user);
 
-      // Use specific question IDs for names (ensure these exist and are in finalFormData)
-      const FIRST_NAME_ID = 4000;
-      const LAST_NAME_ID = 5000;
+      // Find First Name and Last Name question IDs dynamically
+      const FIRST_NAME_QUESTION_ID = "39f455d1-0de8-438f-8f34-10818eaec15e";
+      const LAST_NAME_QUESTION_ID = "246d0acf-25cd-4e4e-9434-765e6ea679cb";
+
+      const firstNameQ = allQuestions.find(q => q.id === FIRST_NAME_QUESTION_ID);
+      const lastNameQ = allQuestions.find(q => q.id === LAST_NAME_QUESTION_ID);
+
+      const firstName = firstNameQ && finalFormData[firstNameQ.id] ? finalFormData[firstNameQ.id] : '';
+      const lastName = lastNameQ && finalFormData[lastNameQ.id] ? finalFormData[lastNameQ.id] : '';
       
-      const firstName = finalFormData[FIRST_NAME_ID] || '';
-      const lastName = finalFormData[LAST_NAME_ID] || '';
+      if (!firstNameQ) console.warn(`Could not find 'First Name' question by ID '${FIRST_NAME_QUESTION_ID}'. Profile data might be incomplete.`);
+      if (!lastNameQ) console.warn(`Could not find 'Last Name' question by ID '${LAST_NAME_QUESTION_ID}'. Profile data might be incomplete.`);
       
-      console.log('📋 Name from application:', { firstName, lastName });
+      console.log('📋 Name from application (using dynamic IDs):', { firstName, lastName });
       
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
@@ -174,6 +209,13 @@ export function Retro2Page() {
       // Don't re-throw here, let the user see the error on the page potentially
     }
   };
+
+  // --- Enhanced logging before render --- 
+  console.log(`[Retro2Page] Rendering. Current step: "${step}". Consent question set: ${!!consentQuestion}. Loading: ${loading}. Error: ${error}`);
+  if (step === 'consent') {
+    console.log('[Retro2Page] Attempting to render ConsentStep. consentQuestion details:', JSON.stringify(consentQuestion, null, 2));
+  }
+  // --- End enhanced logging ---
 
   if (loading) {
     return (

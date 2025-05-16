@@ -5,20 +5,22 @@ import { supabase } from '../../lib/supabase';
 import { X, AlertCircle, Plus, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { ApplicationQuestion } from '../../types/application'; // Corrected import path
+import { APPLICATION_SECTION_ORDER } from '../../config/applicationConfig'; // For order_number logic
 
-// Re-using the interface - ideally this would be in a shared types file
+// Updated ApplicationQuestion interface (mirroring what should be in ../../types/application.ts)
 /*
 interface ApplicationQuestion {
-  id: string;
-  order_number: number;
+  id: string; // uuid
+  order_number: number; // float
   text: string;
-  type: 'text' | 'textarea' | 'radio' | 'tel'; // 'file' removed
-  options?: string[];
-  required: boolean;
-  section: 'intro' | 'personal' | 'stay' | 'philosophy';
+  type: 'text' | 'radio' | 'date' | 'email' | 'tel' | 'file' | 'textarea' | 'password' | 'checkbox' | 'markdown_text'; // enum
+  options?: string[] | null; // json, for radio and checklist options
+  required?: boolean | null; // true/false/null
+  section?: string | null; // text
   created_at: string;
   updated_at: string;
-  file_storage_bucket?: string;
+  file_storage_bucket?: string | null;
+  visibility_rules?: string | null; // json, defining conditions
 }
 */
 
@@ -26,55 +28,64 @@ interface QuestionFormModalProps {
   question: ApplicationQuestion | null; // null for Add mode, object for Edit mode
   allQuestions: ApplicationQuestion[]; // Needed to calculate next order_number
   onClose: (refresh?: boolean) => void;
+  // APPLICATION_SECTION_ORDER might be passed if dynamic, or imported if static
 }
 
-// Define allowed types and sections
-const QUESTION_TYPES: ApplicationQuestion['type'][] = ['text', 'textarea', 'radio', 'tel']; // 'file' removed
-const QUESTION_SECTIONS: ApplicationQuestion['section'][] = ['intro', 'personal', 'stay', 'philosophy'];
+// Define allowed types based on new schema
+const QUESTION_TYPES: ApplicationQuestion['type'][] = [
+    'text', 'textarea', 'radio', 'file', 'tel', 'date', 'email', 'password', 'checkbox', 'markdown_text'
+];
+// Sections are now dynamic strings, fetched or based on existing questions if needed for a select.
+// For simplicity, we'll allow text input or use sections from existing questions.
+// For the dropdown, let's derive from APPLICATION_SECTION_ORDER for consistency.
+const QUESTION_SECTIONS: string[] = [...APPLICATION_SECTION_ORDER, 'Uncategorized'];
+
 
 export function QuestionFormModal({ question, allQuestions, onClose }: QuestionFormModalProps) {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState(() => ({
     text: '',
     type: QUESTION_TYPES[0], // Default type
-    options: [] as string[], // Changed to string array
-    required: false,
+    options: [] as string[],
+    required: null as boolean | null, // Default to null
     section: QUESTION_SECTIONS[0], // Default section
-    is_visible: true, // <-- ADDED: Default to true for new questions
-  });
+    file_storage_bucket: '',
+    visibility_rules: '{}', // Default to empty JSON object string
+  }));
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const isEditing = question !== null;
+  const isEditing = question !== null && question.id !== '';
 
   useEffect(() => {
-    if (isEditing && question) {
-      console.log("QuestionFormModal: Initializing edit mode", { question });
+    if (question) {
+      console.log("QuestionFormModal: Initializing with provided question object", { question, isActuallyEditing: isEditing });
+      
       let initialOptions: string[] = [];
-      // Safely parse options - simplified based on global ApplicationQuestion type
-      if (question.type === 'radio' && question.options) { // question.options is string[] or undefined
-        initialOptions = question.options; // Directly assign if it exists and is for a radio question
+      // Ensure options is an array before trying to use array methods
+      if (question.type === 'radio' && Array.isArray(question.options)) {
+        initialOptions = question.options;
       }
-      // The old else-if for parsing a stringified options array has been removed as it should no longer be necessary
-      // if the data conforms to the ApplicationQuestion type (options: string[]).
-      // If there's a legacy case where options might still be a JSON string, that needs separate handling.
 
       setFormData({
         text: question.text || '',
         type: question.type || QUESTION_TYPES[0],
         options: initialOptions,
-        required: question.required || false,
+        required: question.required ?? null, // Use nullish coalescing for required
         section: question.section || QUESTION_SECTIONS[0],
-        is_visible: question.is_visible === undefined ? true : question.is_visible, // <-- ADDED: Initialize from question, default true
+        file_storage_bucket: question.file_storage_bucket || '',
+        visibility_rules: JSON.stringify(question.visibility_rules || {}),
       });
     } else {
-       console.log("QuestionFormModal: Initializing add mode");
-       // Reset for add mode
+       console.log("QuestionFormModal: Initializing for brand new question (no pre-fill)");
+       // Reset to default for new question
        setFormData({
          text: '',
          type: QUESTION_TYPES[0],
-         options: [], // Reset to empty array
-         required: false,
+         options: [],
+         required: null,
          section: QUESTION_SECTIONS[0],
-         is_visible: true, // <-- ADDED: Ensure reset for add mode
+         file_storage_bucket: '',
+         visibility_rules: '{}',
        });
     }
   }, [question, isEditing]);
@@ -82,18 +93,27 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     
-    if (type === 'checkbox') {
-        // Handle checkbox specifically because its value is in 'checked' prop
-        const { checked } = e.target as HTMLInputElement;
-         setFormData(prev => ({ ...prev, [name]: checked }));
-    } else {
-         // If changing type away from radio, clear options
-         const newOptions = name === 'type' && value !== 'radio' ? [] : formData.options;
-         setFormData(prev => ({ ...prev, [name]: value, options: newOptions }));
+    if (type === 'checkbox' && name === 'temp_required_bool') { // Special handling if we use a boolean checkbox for required
+        // This 'temp_required_bool' is hypothetical. We'll use a select for 'required'.
+    } else if (name === "required") { // Handle select for 'required'
+        let actualValue: boolean | null;
+        if (value === "true") actualValue = true;
+        else if (value === "false") actualValue = false;
+        else actualValue = null;
+        setFormData(prev => ({ ...prev, required: actualValue }));
+    }
+    else {
+         setFormData(prev => {
+            const updatedOptions = (name === 'type' && value !== 'radio') ? [] : prev.options;
+            return {
+                ...prev,
+                [name]: value,
+                options: updatedOptions,
+            };
+        });
     }
   };
 
-  // --- New handlers for dynamic options ---
   const handleOptionChange = (index: number, value: string) => {
     const newOptions = [...formData.options];
     newOptions[index] = value;
@@ -108,7 +128,6 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
     const newOptions = formData.options.filter((_, i) => i !== index);
     setFormData(prev => ({ ...prev, options: newOptions }));
   };
-  // --- End new handlers ---
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,64 +135,134 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
     setError(null);
     console.log("QuestionFormModal: Form submitted", { isEditing, formData });
 
-    // Filter out empty options before submitting
-    const finalOptions = formData.type === 'radio'
+    const typesThatUseOptions: ApplicationQuestion['type'][] = ['radio', 'checkbox']; // Define types that use the options array
+
+    const finalOptions = typesThatUseOptions.includes(formData.type)
         ? formData.options.map(opt => opt.trim()).filter(opt => opt !== '')
         : null;
 
-    // Basic validation: Ensure radio has at least one non-empty option if selected
-    if (formData.type === 'radio' && (!finalOptions || finalOptions.length === 0)) {
-        setError("Radio questions must have at least one non-empty option.");
+    // Updated validation to include checkbox and make message dynamic
+    if (typesThatUseOptions.includes(formData.type) && (!finalOptions || finalOptions.length === 0)) {
+        setError(`${formData.type.charAt(0).toUpperCase() + formData.type.slice(1)} questions must have at least one non-empty option.`);
         setLoading(false);
         return;
     }
 
     try {
+        let visibilityRulesJson: any = null;
+        if (formData.visibility_rules && formData.visibility_rules.trim() !== "") {
+            try {
+                visibilityRulesJson = JSON.parse(formData.visibility_rules);
+            } catch (parseError) {
+                setError("Visibility Rules JSON is invalid. Please check the syntax.");
+                setLoading(false);
+                console.error("JSON Parse Error for visibility_rules:", parseError);
+                return;
+            }
+        }
+
+
+      const questionDataPayload = {
+        text: formData.text,
+        type: formData.type,
+        options: finalOptions, 
+        required: formData.required, 
+        section: formData.section,
+        file_storage_bucket: formData.file_storage_bucket || null, 
+        visibility_rules: visibilityRulesJson, 
+        updated_at: new Date().toISOString(),
+        // order_number will be handled below
+      };
+
       if (isEditing && question) {
-        // --- UPDATE ---
         console.log("QuestionFormModal: Updating question", { id: question.id });
+
+        let finalOrderNumber = question.order_number; // Default to original order number
+
+        // Check if section has changed
+        if (formData.section !== question.section) {
+            console.log("QuestionFormModal: Section changed during edit. Recalculating order_number.", { oldSection: question.section, newSection: formData.section });
+            const currentSection = formData.section;
+            const sectionIndex = APPLICATION_SECTION_ORDER.indexOf(currentSection as typeof APPLICATION_SECTION_ORDER[number]);
+            const sectionOrderPrefix = (sectionIndex !== -1 ? sectionIndex + 1 : APPLICATION_SECTION_ORDER.length + 1) * 10000;
+
+            const questionsInNewSection = allQuestions.filter(q => q.section === currentSection && q.id !== question.id); // Exclude the question being edited
+            
+            let maxOrderWithinNewSection = 0;
+            if (questionsInNewSection.length > 0) {
+                maxOrderWithinNewSection = questionsInNewSection.reduce((max, q) => Math.max(max, Number(q.order_number) || 0), 0);
+            }
+            
+            if (maxOrderWithinNewSection === 0 || Math.floor(maxOrderWithinNewSection / 10000) !== Math.floor(sectionOrderPrefix / 10000)) {
+                finalOrderNumber = sectionOrderPrefix + 100;
+            } else {
+                finalOrderNumber = maxOrderWithinNewSection + 100;
+            }
+            console.log("QuestionFormModal: Recalculated order_number for new section", { finalOrderNumber });
+        }
+
+        const updatePayload = {
+            ...questionDataPayload,
+            order_number: finalOrderNumber // Use original or recalculated order_number
+        };
+
         const { error: updateError } = await supabase
-          .from('application_questions')
-          .update({
-            text: formData.text,
-            type: formData.type,
-            options: finalOptions, // Use the filtered array
-            required: formData.required,
-            section: formData.section,
-            is_visible: formData.is_visible, // <-- ADDED
-            updated_at: new Date().toISOString(), // Explicitly set updated_at
-          })
+          .from('application_questions_2') 
+          .update(updatePayload)
           .match({ id: question.id });
 
         if (updateError) throw updateError;
         console.log("QuestionFormModal: Update successful");
-        onClose(true); // Close modal and refresh list
+        onClose(true);
       } else {
-        // --- INSERT ---
         console.log("QuestionFormModal: Inserting new question");
-        // Calculate the next order_number
-        const maxOrder = allQuestions.reduce((max, q) => Math.max(max, q.order_number), 0);
-        const nextOrderNumber = maxOrder + 1000;
-        console.log("QuestionFormModal: Calculated next order_number", { maxOrder, nextOrderNumber });
+        
+        // New order_number logic
+        const currentSection = formData.section;
+        const sectionIndex = APPLICATION_SECTION_ORDER.indexOf(currentSection as typeof APPLICATION_SECTION_ORDER[number]);
+        // Default to 0 for sectionOrderPrefix if section not in defined order, or handle as error/default section.
+        // For "Uncategorized" or other non-standard, could use a high prefix or specific handling.
+        // Let's assume sections in formData.section are expected to be in APPLICATION_SECTION_ORDER for now.
+        // If sectionIndex is -1 (not found), it implies it's a new/uncategorized section.
+        // We'll use a very high prefix for these, or you could assign a default (e.g. last index + 1)
+        const sectionOrderPrefix = (sectionIndex !== -1 ? sectionIndex + 1 : APPLICATION_SECTION_ORDER.length + 1) * 10000;
+
+        const questionsInSameSection = allQuestions.filter(q => q.section === currentSection);
+        
+        let maxOrderWithinSection = 0;
+        if (questionsInSameSection.length > 0) {
+            // Ensure order_number is treated as number before Math.max
+            maxOrderWithinSection = questionsInSameSection.reduce((max, q) => Math.max(max, Number(q.order_number) || 0), 0);
+        }
+        
+        // If maxOrderWithinSection is 0 (empty section or all order_numbers are 0/null/NaN),
+        // start with sectionOrderPrefix + 100.
+        // Otherwise, increment from the max found.
+        // Crucially, if maxOrderWithinSection is already section prefixed (e.g. 20500), we just add 100.
+        // If it's NOT (e.g. old data or error, value is like 500), we should use the prefix.
+        let nextOrderNumber;
+        if (maxOrderWithinSection === 0 || Math.floor(maxOrderWithinSection / 10000) !== Math.floor(sectionOrderPrefix / 10000)) {
+            // Section is effectively empty or existing orders are not in the new system for this section
+            nextOrderNumber = sectionOrderPrefix + 100;
+        } else {
+            nextOrderNumber = maxOrderWithinSection + 100;
+        }
+
+        console.log("QuestionFormModal: Calculated next order_number", { currentSection, sectionIndex, sectionOrderPrefix, maxOrderWithinSection, nextOrderNumber });
 
         const { error: insertError } = await supabase
-          .from('application_questions')
+          .from('application_questions_2') // Use new table name
           .insert([
             {
-              text: formData.text,
-              type: formData.type,
-              options: finalOptions, // Use the filtered array
-              required: formData.required,
-              section: formData.section,
-              is_visible: formData.is_visible, // <-- ADDED
+              ...questionDataPayload,
               order_number: nextOrderNumber,
-              // created_at and updated_at will be set by default in Supabase
+              // created_at will be set by Supabase
             },
           ]);
           
         if (insertError) throw insertError;
         console.log("QuestionFormModal: Insert successful");
-        onClose(true); // Close modal and refresh list
+        onClose(true);
       }
     } catch (err: any) {
       console.error(`QuestionFormModal: Error ${isEditing ? 'updating' : 'inserting'} question:`, err);
@@ -190,14 +279,14 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
-            onClick={() => onClose(false)} // Close on backdrop click
+            onClick={() => onClose(false)}
         >
             <motion.div
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
-                className="relative z-[101] bg-[var(--color-furface-modal,theme(colors.gray.800))] p-6 rounded-lg shadow-xl max-w-xl w-full border border-[var(--color-border)] max-h-[90vh] overflow-y-auto"
-                onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside modal
+                className="relative z-[101] bg-[var(--color-furface-modal,theme(colors.gray.800))] p-6 rounded-lg shadow-xl max-w-2xl w-full border border-[var(--color-border)] max-h-[90vh] overflow-y-auto" // Increased max-width
+                onClick={(e) => e.stopPropagation()}
             >
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-lg font-display font-light text-[var(--color-text-primary)]">
@@ -229,7 +318,7 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
                             className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-input-bg)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono"
                         />
                     </div>
-
+                    
                     {/* Type */}
                     <div>
                         <label htmlFor="type" className="block text-sm font-medium text-[var(--color-text-secondary)] font-mono mb-1">Type</label>
@@ -240,16 +329,18 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
                             onChange={handleChange}
                             className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-furface-modal,theme(colors.gray.800))] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono [&>option]:bg-[var(--color-furface-modal)] [&>option]:text-white"
                         >
-                            {QUESTION_TYPES.map(type => (
-                                <option key={type} value={type}>{type}</option>
+                            {QUESTION_TYPES.map(typeOpt => ( // Renamed 'type' to 'typeOpt' to avoid conflict
+                                <option key={typeOpt} value={typeOpt}>{typeOpt}</option>
                             ))}
                         </select>
                     </div>
 
                      {/* Options (Conditional List) */}
-                    {formData.type === 'radio' && (
-                         <div className="space-y-3">
-                            <label className="block text-sm font-medium text-[var(--color-text-secondary)] font-mono">Options</label>
+                    {(formData.type === 'radio' || formData.type === 'checkbox') && (
+                         <div className="space-y-3 p-3 border border-[var(--color-border-accent)] rounded-md">
+                            <label className="block text-sm font-medium text-[var(--color-text-secondary)] font-mono">
+                                Options for {formData.type === 'radio' ? 'Radio' : 'Checkbox'} (each becomes a choice)
+                            </label>
                             {formData.options.map((option, index) => (
                                 <div key={index} className="flex items-center gap-2">
                                     <input
@@ -280,7 +371,6 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
                         </div>
                     )}
 
-
                     {/* Section */}
                     <div>
                          <label htmlFor="section" className="block text-sm font-medium text-[var(--color-text-secondary)] font-mono mb-1">Section</label>
@@ -289,38 +379,68 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
                             name="section"
                             value={formData.section}
                             onChange={handleChange}
-                            className="w-full px-3 py-2 border bg-[var(--color-furface-modal,theme(colors.gray.800))] rounded-md bg-[var(--color-input-bg)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono [&>option]:bg-[var(--color-furface-modal)] [&>option]:text-white"
+                            className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-furface-modal,theme(colors.gray.800))] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono [&>option]:bg-[var(--color-furface-modal)] [&>option]:text-white"
                          >
-                            {QUESTION_SECTIONS.map(section => (
-                                <option key={section} value={section}>{section}</option>
+                            {QUESTION_SECTIONS.map(sectionOpt => ( // Renamed 'section' to 'sectionOpt'
+                                <option key={sectionOpt} value={sectionOpt}>{sectionOpt}</option>
                             ))}
                         </select>
                     </div>
                     
                     {/* Required */}
-                    <div className="flex items-center">
-                        <input
+                    <div>
+                        <label htmlFor="required" className="block text-sm font-medium text-[var(--color-text-secondary)] font-mono mb-1">Required</label>
+                        <select
                             id="required"
                             name="required"
-                            type="checkbox"
-                            checked={formData.required}
+                            value={formData.required === null ? "null" : String(formData.required)}
                             onChange={handleChange}
-                            className="h-4 w-4 text-emerald-600 border-[var(--color-border)] rounded focus:ring-emerald-500"
-                        />
-                        <label htmlFor="required" className="ml-2 block text-sm text-[var(--color-text-secondary)] font-mono">Required Question</label>
+                            className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-furface-modal,theme(colors.gray.800))] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono [&>option]:bg-[var(--color-furface-modal)] [&>option]:text-white"
+                        >
+                            <option value="null">Not Set</option>
+                            <option value="true">Yes</option>
+                            <option value="false">No</option>
+                        </select>
                     </div>
 
-                    {/* Is Visible */}
-                    <div className="flex items-center">
+                    {/* File Storage Bucket */}
+                    <div>
+                        <label htmlFor="file_storage_bucket" className="block text-sm font-medium text-[var(--color-text-secondary)] font-mono mb-1">
+                            File Storage Bucket (Optional)
+                        </label>
                         <input
-                            id="is_visible"
-                            name="is_visible"
-                            type="checkbox"
-                            checked={formData.is_visible}
-                            onChange={handleChange} // Standard handleChange will work for checkboxes
-                            className="h-4 w-4 text-emerald-600 border-[var(--color-border)] rounded focus:ring-emerald-500"
+                            type="text"
+                            id="file_storage_bucket"
+                            name="file_storage_bucket"
+                            value={formData.file_storage_bucket}
+                            onChange={handleChange}
+                            className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-input-bg)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono"
+                            placeholder="e.g., application-images"
                         />
-                        <label htmlFor="is_visible" className="ml-2 block text-sm text-[var(--color-text-secondary)] font-mono">Visible (Show to users)</label>
+                        <p className="mt-1 text-xs text-[var(--color-text-tertiary)] font-mono">
+                            If type is 'file', specify the Supabase storage bucket name here.
+                        </p>
+                    </div>
+
+                    {/* Visibility Rules */}
+                    <div className="pt-2 space-y-2 border-t border-[var(--color-border)] mt-4">
+                        <h3 className="text-sm font-medium text-[var(--color-text-primary)] font-mono pt-3">Visibility Rules (JSON)</h3>
+                        <label htmlFor="visibility_rules" className="block text-xs font-medium text-[var(--color-text-secondary)] font-mono mb-1">
+                            Define conditions for showing this question (e.g., {"{\"rules\": [{\"question_id\": \"some-uuid\", \"answer\": \"Yes\"}], \"condition\": \"AND\"}"} or {"{\"visible\": false}"} )
+                        </label>
+                        <textarea
+                            id="visibility_rules"
+                            name="visibility_rules"
+                            rows={5}
+                            value={formData.visibility_rules}
+                            onChange={handleChange}
+                            className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-input-bg)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono text-sm"
+                            placeholder='Enter JSON, e.g., {"visible": true}'
+                        />
+                        <p className="mt-1 text-xs text-[var(--color-text-tertiary)] font-mono">
+                           If empty or invalid JSON, it might default to always visible or as per backend logic.
+                           Example for simple hide: {"{\"visible\": false}"}
+                        </p>
                     </div>
 
                     {/* Buttons */}
@@ -336,7 +456,7 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
                          <button 
                             type="submit" 
                             disabled={loading}
-                            className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 font-mono transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[80px]" // Added min-width for loading state
+                            className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 font-mono transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[80px]"
                         >
                              {loading ? (
                                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Eye, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Eye, CheckCircle, XCircle, Clock, Trash2 } from 'lucide-react';
 import { ApplicationDetails } from './ApplicationDetails';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getFrontendUrl } from '../../lib/environment';
+import { getAnswer } from '../../lib/old_question_mapping';
+import type { QuestionForAnswerRetrieval } from '../../lib/old_question_mapping';
 
 interface Application {
   id: string;
@@ -28,6 +30,8 @@ export function Applications2() {
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [questions, setQuestions] = useState<any[]>([]);
   const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [applicationToDelete, setApplicationToDelete] = useState<Application | null>(null);
 
   useEffect(() => {
     loadApplications();
@@ -82,7 +86,7 @@ export function Applications2() {
   const loadQuestions = async () => {
     try {
       const { data, error: queryError } = await supabase
-        .from('application_questions')
+        .from('application_questions_2')
         .select('*')
         .order('order_number');
 
@@ -143,6 +147,43 @@ export function Applications2() {
     } finally {
       setLoadingStates(prev => ({ ...prev, [id]: false }));
     }
+  };
+
+  const handleDeleteApplication = async () => {
+    if (!applicationToDelete) return;
+
+    const { id } = applicationToDelete;
+    try {
+      setLoadingStates(prev => ({ ...prev, [id]: true }));
+      setError(null);
+
+      const { error: rpcError } = await supabase.rpc('delete_application', {
+        p_application_id: id
+      });
+
+      if (rpcError) throw rpcError;
+
+      console.log('Applications2: Application deleted successfully', { id });
+      setApplications(prev => prev.filter(app => app.id !== id));
+      setShowDeleteConfirmModal(false);
+      setApplicationToDelete(null);
+
+    } catch (err) {
+      console.error('Error deleting application:', err);
+      setError(err instanceof Error ? err.message : 'Failed to delete application');
+    } finally {
+      setLoadingStates(prev => ({ ...prev, [id]: false }));
+    }
+  };
+
+  const openDeleteConfirmModal = (application: Application) => {
+    setApplicationToDelete(application);
+    setShowDeleteConfirmModal(true);
+  };
+
+  const closeDeleteConfirmModal = () => {
+    setApplicationToDelete(null);
+    setShowDeleteConfirmModal(false);
   };
 
   const filteredApplications = applications.filter(app => {
@@ -229,11 +270,29 @@ export function Applications2() {
                     className="font-medium font-mono text-2xl text-[var(--color-text-primary)] hover:text-[var(--color-accent-primary)] transition-colors text-left group"
                   >
                     <span className="group-hover:underline">
-                      {questions.length > 0 && application.data && (
-                        <>
-                          {application.data[questions[1]?.order_number]} {application.data[questions[2]?.order_number]}
-                        </>
-                      )}
+                      {(() => {
+                        if (questions.length > 0 && application.data) {
+                          // Find questions by text, as short_code might not be on application_questions_2
+                          const firstNameQuestion = questions.find(q => q.text === "First Name") as QuestionForAnswerRetrieval | undefined;
+                          const lastNameQuestion = questions.find(q => q.text === "Last Name") as QuestionForAnswerRetrieval | undefined;
+
+                          let firstName = '';
+                          let lastName = '';
+
+                          if (firstNameQuestion) {
+                            firstName = getAnswer(application.data, firstNameQuestion) || '';
+                          }
+                          if (lastNameQuestion) {
+                            lastName = getAnswer(application.data, lastNameQuestion) || '';
+                          }
+                          
+                          if (!firstNameQuestion) console.warn(`Applications2: Could not find 'First Name' question definition for app ${application.id}`);
+                          if (!lastNameQuestion) console.warn(`Applications2: Could not find 'Last Name' question definition for app ${application.id}`);
+
+                          return `${firstName} ${lastName}`.trim() || "Applicant Name Missing";
+                        }
+                        return "Applicant Name Unavailable";
+                      })()}
                     </span>
                   </button>
                   <p className="text-sm text-[var(--color-text-secondary)] font-mono">
@@ -294,6 +353,17 @@ export function Applications2() {
                     </div>
                   )}
 
+                  <button
+                    onClick={() => openDeleteConfirmModal(application)}
+                    disabled={loadingStates[application.id]}
+                    className={`p-2 rounded-lg bg-slate-700 text-white hover:bg-slate-800 transition-colors ${
+                      loadingStates[application.id] ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
+                    title="Delete Application"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+
                   <span className={`px-3 py-1 rounded-full text-xs font-medium font-mono ${
                     application.status === 'pending'
                       ? 'bg-yellow-100 text-yellow-800'
@@ -314,7 +384,49 @@ export function Applications2() {
         <ApplicationDetails
           application={selectedApplication}
           onClose={() => setSelectedApplication(null)}
+          questions={questions}
         />
+      )}
+
+      {showDeleteConfirmModal && applicationToDelete && (
+        <div 
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm flex justify-center items-center z-50 p-4"
+          onClick={closeDeleteConfirmModal}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="bg-[var(--color-bg-surface)] p-6 md:p-8 rounded-xl shadow-2xl w-full max-w-md border border-[var(--color-border)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-xl font-semibold text-[var(--color-text-primary)] mb-4 font-mono">Confirm Deletion</h2>
+            <p className="text-[var(--color-text-secondary)] mb-6 font-mono">
+              Are you sure you want to permanently delete the application for <strong className="text-[var(--color-text-primary)]">{applicationToDelete.user_email}</strong>? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={closeDeleteConfirmModal}
+                className="px-4 py-2 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] transition-colors font-mono"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteApplication}
+                disabled={loadingStates[applicationToDelete.id]}
+                className={`px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors font-mono flex items-center justify-center ${
+                  loadingStates[applicationToDelete.id] ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
+                {loadingStates[applicationToDelete.id] ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                ) : (
+                  'Delete'
+                )}
+              </button>
+            </div>
+          </motion.div>
+        </div>
       )}
     </div>
   );

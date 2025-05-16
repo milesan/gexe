@@ -96,7 +96,7 @@ serve(async (req) => {
     
     // Send email using Resend
     const { error } = await resendClient.emails.send({
-      from: 'Garden Team <echo@echo.thegarden.pt>',
+      from: 'The Garden <echo@echo.thegarden.pt>',
       to: email,
       subject: 'Your Booking Confirmation - The Garden',
       html: generateBookingConfirmationEmail({

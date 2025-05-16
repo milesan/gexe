@@ -16,7 +16,6 @@ export function PendingPage({ status = 'pending' }: Props) {
       console.log('PendingPage: Signing out user');
       await supabase.auth.signOut();
       
-      // Use navigate for smoother transition
       navigate('/');
     } catch (error) {
       console.error('Error signing out:', error);
@@ -24,11 +23,11 @@ export function PendingPage({ status = 'pending' }: Props) {
   };
 
   return (
-    <div className="min-h-screen bg-black text-retro-accent font-mono flex items-center justify-center p-4">
+    <div className="min-h-screen bg-black text-retro-accent font-mono flex flex-col items-center justify-center p-4">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-md w-full bg-black rounded-sm border-4 border-retro-accent/30 p-8"
+        className="max-w-md w-full bg-black rounded-sm border-4 border-retro-accent/30 p-8 mb-6"
       >
         <div className="flex flex-col items-center text-center space-y-6">
           <img 
@@ -81,6 +80,28 @@ export function PendingPage({ status = 'pending' }: Props) {
           </div>
         </div>
       </motion.div>
+
+      {status === 'pending' && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="max-w-md w-full bg-black rounded-sm border-2 border-retro-accent/50 p-6"
+        >
+          <p className="text-retro-accent/80 text-sm font-mono leading-relaxed text-center">
+            If a low-income subsidy could support your participation, you can apply{' '}
+            <a 
+              href="https://www.notion.so/gardening/1e981af59c8680e6a791c2a185d350fe" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="underline hover:text-retro-accent"
+            >
+              here
+            </a>
+            .
+          </p>
+        </motion.div>
+      )}
     </div>
   );
 }

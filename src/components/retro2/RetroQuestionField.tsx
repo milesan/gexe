@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import { Check, Upload, X } from 'lucide-react';
 import type { ApplicationQuestion } from '../../types/application';
 import { supabase } from '../../lib/supabase';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 // Define the structure for uploaded file data
 interface UploadedFileData {
@@ -28,6 +30,38 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState<string | null>(null); // Track which file is being deleted
   const isImageUpload = question.type === 'file';
+
+  // --- START DEBUG LOG ---
+  console.log('[RetroQuestionField] Processing Question:', { 
+    id: question.id, 
+    text: question.text, 
+    type: question.type, 
+    options: question.options,
+    required: question.required 
+  });
+  // --- END DEBUG LOG ---
+
+  // Helper function to parse options safely
+  const parseOptions = (options?: string | string[]): string[] => {
+    // If options is already an array, return it
+    if (Array.isArray(options)) {
+      return options;
+    }
+    
+    // If options is a string, try to parse it
+    if (typeof options === 'string' && options) {
+      try {
+        const parsed = JSON.parse(options);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (error) {
+        console.warn('Failed to parse question.options JSON string:', options, error);
+        return [];
+      }
+    }
+    
+    // Default case: no options or invalid format
+    return [];
+  };
 
   // Ensure value is always an array for file uploads
   const currentFiles: UploadedFileData[] = useMemo(() => 
@@ -58,7 +92,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
       numberOfFiles: filesToUpload.length,
       attemptedFileNames: files.map(f => f.name),
       uploadingFileNames: filesToUpload.map(f => f.name),
-      questionId: question.order_number,
+      questionId: question.id,
       currentFileCount: currentFiles.length
     });
     
@@ -160,11 +194,26 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
     }
   };
 
+  if (question.type === 'markdown_text') {
+    return (
+      <div className="prose prose-invert prose-sm md:prose-base max-w-none my-6 p-3 font-mono text-retro-accent"
+      >
+        <ReactMarkdown 
+          remarkPlugins={[remarkGfm]}
+          components={{
+            a: ({node, ...props}) => <a {...props} className="underline hover:text-retro-accent/70" />
+          }}
+        >
+          {question.text}
+        </ReactMarkdown>
+      </div>
+    );
+  }
 
   if (isImageUpload) {
     const currentFileCount = currentFiles.length;
     const canUploadMore = currentFileCount < IMAGE_LIMIT;
-    const inputId = `file-upload-${question.order_number}`;
+    const inputId = `file-upload-${question.id}`;
     const isDisabled = !canUploadMore || (uploadProgress > 0 && uploadProgress < 100) || !!isDeleting;
 
     return (
@@ -278,9 +327,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
   }
 
   if (question.type === 'radio' && question.options) {
-    const options = Array.isArray(question.options) 
-      ? question.options 
-      : JSON.parse(question.options);
+    const options = parseOptions(question.options);
 
     const handleChange = (option: string) => {
       onChange(option);
@@ -324,12 +371,12 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
                 </div>
                 <input
                   type="radio"
-                  name={`question-${question.order_number}`}
+                  name={`question-${question.id}`}
                   value={option}
                   checked={value === option}
                   onChange={() => handleChange(option)}
                   className="sr-only"
-                  required={question.required}
+                  required={!!question.required}
                 />
                 <span className="text-retro-accent">{option}</span>
               </label>
@@ -341,9 +388,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
   }
 
   if (question.type === 'checkbox' && question.options) {
-    const options = Array.isArray(question.options) 
-      ? question.options 
-      : JSON.parse(question.options);
+    const options = parseOptions(question.options);
 
     // Ensure value is an array for checkboxes, default to empty array
     const currentSelections: string[] = useMemo(() => 
@@ -356,16 +401,20 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
       if (currentSelections.includes(option)) {
         // Remove option
         updatedSelections = currentSelections.filter(item => item !== option);
-        console.log('✅ Checkbox deselected:', { questionId: question.order_number, option, updatedSelections });
+        console.log('✅ Checkbox deselected:', { questionId: question.id, option, updatedSelections });
       } else {
         // Add option
         updatedSelections = [...currentSelections, option];
-        console.log('✅ Checkbox selected:', { questionId: question.order_number, option, updatedSelections });
+        console.log('✅ Checkbox selected:', { questionId: question.id, option, updatedSelections });
       }
       onChange(updatedSelections);
       // Note: onBlur might not make sense for checkboxes, but keeping for consistency if needed
       if (onBlur) onBlur(); 
     };
+
+    // --- START DEBUG LOG ---
+    console.log('[RetroQuestionField] Rendering STYLED CHECKBOXES for question:', question.id, 'with options:', options);
+    // --- END DEBUG LOG ---
 
     return (
       <div className="space-y-4">
@@ -405,12 +454,12 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
                 </div>
                 <input
                   type="checkbox"
-                  name={`question-${question.order_number}-${option.replace(/\s+/g, '-')}`}
+                  name={`question-${question.id}-${option.replace(/\s+/g, '-')}`}
                   value={option}
                   checked={isSelected}
                   onChange={() => handleChange(option)}
                   className="sr-only"
-                  required={question.required}
+                  required={!!question.required}
                 />
                 <span className="text-retro-accent">{option}</span>
               </label>
@@ -435,7 +484,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
             onBlur={onBlur}
             className="w-full bg-black p-3 text-retro-accent focus:outline-none focus:ring-2 focus:ring-retro-accent placeholder-retro-accent/30 border-4 border-retro-accent/30"
             rows={4}
-            required={question.required}
+            required={!!question.required}
             style={{
               clipPath: `polygon(
                 0 4px, 4px 4px, 4px 0,
@@ -451,6 +500,12 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
     );
   }
 
+  // --- START DEBUG LOG ---
+  if (question.type === 'checkbox' && !question.options) {
+    console.warn('[RetroQuestionField] Rendering DEFAULT FALLBACK for CHECKBOX type due to MISSING OPTIONS. Question ID:', question.id, 'Question Text:', question.text);
+  }
+  // --- END DEBUG LOG ---
+
   return (
     <div className="space-y-4">
       <h3 className="text-xl font-display text-retro-accent">
@@ -464,7 +519,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
           onChange={(e) => onChange(e.target.value)}
           onBlur={onBlur}
           className="w-full bg-black p-3 text-retro-accent focus:outline-none focus:ring-2 focus:ring-retro-accent placeholder-retro-accent/30 border-4 border-retro-accent/30"
-          required={question.required}
+          required={!!question.required}
           style={{
             clipPath: `polygon(
               0 4px, 4px 4px, 4px 0,
