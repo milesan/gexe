@@ -121,6 +121,29 @@ export function Whitelist() {
       
       console.log('✅ Successfully added to whitelist');
 
+      if (data) {
+        try {
+          console.log(`🚀 Invoking setup-whitelisted-auth-user for ${data.email} (ID: ${data.id})`);
+          const { error: funcError } = await supabase.functions.invoke('setup-whitelisted-auth-user', {
+            body: {
+              email: data.email,
+              whitelistId: data.id,
+            },
+          });
+          if (funcError) {
+            throw new Error(`Error in setup-whitelisted-auth-user function: ${funcError.message}`);
+          }
+          console.log(`✅ Successfully invoked setup-whitelisted-auth-user for ${data.email}`);
+        } catch (err) {
+          console.error('❌ Failed to setup auth user after adding to whitelist:', err);
+          setError(`Whitelist entry for ${data.email} created, but failed to set up auth user: ${err instanceof Error ? err.message : String(err)}`);
+          // Do not proceed with clearing form or reloading if this critical step fails for a single add
+          // The main error state will be set, and the admin can see the issue.
+          // We might want to consider rolling back the whitelist add or providing a retry mechanism in a more complex UI.
+          return; // Stop further processing in addToWhitelist if setup fails
+        }
+      }
+      
       // Send acceptance email
       // console.log('📧 Sending acceptance email to:', newEmail);
       // const { error: emailError } = await supabase.functions.invoke('send-whitelist-email', {
@@ -216,20 +239,36 @@ export function Whitelist() {
 
       if (error) throw error;
       
-      // // Send acceptance emails to all newly whitelisted users
-      // console.log(' Sending acceptance emails to', newEmails.length, 'users');
-      // for (const entry of data) {
-      //   const { error: emailError } = await supabase.functions.invoke('send-whitelist-email', {
-      //     body: { 
-      //       email: entry.email,
-      //       whitelistId: entry.id,
-      //       frontendUrl: getFrontendUrl()
-      //     }
-      //   });
-      //   if (emailError) {
-      //     console.error(' Error sending acceptance email to', entry.email, ':', emailError);
-      //   }
-      // }
+      if (data && data.length > 0) {
+        console.log(`🚀 Invoking setup-whitelisted-auth-user for ${data.length} new CSV entries.`);
+        let setupErrors: string[] = [];
+        for (const entry of data) {
+          try {
+            console.log(`  -> Setting up auth for ${entry.email} (ID: ${entry.id})`);
+            const { error: funcError } = await supabase.functions.invoke('setup-whitelisted-auth-user', {
+              body: {
+                email: entry.email,
+                whitelistId: entry.id,
+              },
+            });
+            if (funcError) {
+              const errorMessage = `Error in setup-whitelisted-auth-user for ${entry.email}: ${funcError.message}`;
+              console.error(`❌ ${errorMessage}`);
+              setupErrors.push(errorMessage);
+            } else {
+              console.log(`  ✅ Successfully invoked setup for ${entry.email}`);
+            }
+          } catch (err) {
+            const errorMessage = `Failed to invoke setup auth user for ${entry.email} from CSV: ${err instanceof Error ? err.message : String(err)}`;
+            console.error(`❌ ${errorMessage}`);
+            setupErrors.push(errorMessage);
+          }
+        }
+        if (setupErrors.length > 0) {
+          setError(`CSV uploaded. ${data.length - setupErrors.length}/${data.length} auth users set up. Errors: ${setupErrors.join('; ')}`);
+        }
+        console.log('✅ Finished invoking setup for CSV entries.');
+      }
       
       console.log(' Successfully uploaded CSV data'); // Removed "and sent emails"
       setShowUpload(false);

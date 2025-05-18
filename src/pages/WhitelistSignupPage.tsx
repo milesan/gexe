@@ -93,10 +93,10 @@ export function WhitelistSignupPage() {
       // Create application record with all user data
       console.log('📋 Creating application record...');
       const applicationData: Record<string, any> = {
-        "4000": formData.firstName,  // First name
-        "5000": formData.lastName,   // Last name
-        "10000": formData.contact.value,  // Contact value
-        "11000": `${formData.contact.type}: ${formData.contact.value}`,  // Contact with type
+        "39f455d1-0de8-438f-8f34-10818eaec15e": formData.firstName,  // First name
+        "246d0acf-25cd-4e4e-9434-765e6ea679cb": formData.lastName,   // Last name
+        "862413b2-5753-4020-bffc-4c8fd71b0568": formData.contact.value,  // Contact value
+        "74edfb7a-458e-4dca-bed5-90dd5ccc1bb7": `${formData.contact.type}: ${formData.contact.value}`,  // Contact with type
       };
 
       // Add avatar if uploaded
@@ -124,7 +124,9 @@ export function WhitelistSignupPage() {
         .upsert([
           { 
             id: user.id,
-            email: user.email
+            email: user.email,
+            first_name: formData.firstName,
+            last_name: formData.lastName
           }
         ], { onConflict: 'id' })
         .select()
@@ -134,23 +136,32 @@ export function WhitelistSignupPage() {
       console.log('✅ Profile created/updated:', profileData);
 
       // --- NEW: Update user metadata --- 
-      console.log('🔄 Updating user metadata for whitelisted user...');
+      const metadataToSet = { 
+        has_applied: true,       // Mark as applied
+        application_status: 'approved', // Mark as approved (since whitelisted)
+        is_whitelisted: true,        // Explicitly mark as whitelisted in metadata
+        has_seen_welcome: false,      // Set to false to trigger welcome modal (or let App.tsx handle this)
+        has_completed_whitelist_signup: true // ***** THIS IS THE KEY FLAG *****
+      };
+      console.log('🔄 WhitelistSignupPage: Attempting to update user metadata with:', metadataToSet);
+      
       const { data: updatedUserData, error: updateError } = await supabase.auth.updateUser({
-        data: { 
-          has_applied: true,       // Mark as applied
-          application_status: 'approved', // Mark as approved (since whitelisted)
-          // You might want to include other relevant metadata fields here if needed
-          // Ensure these keys match what AppRouterLogic checks
-        }
+        data: metadataToSet
       });
 
       if (updateError) {
-        // Log the error but maybe don't fail the whole process? 
-        // Or decide if this is critical.
-        console.error('❌ Error updating user metadata:', updateError);
-        // Optionally: throw updateError; 
+        console.error('❌ CRITICAL Error updating user metadata in WhitelistSignupPage:', updateError);
+        setError(`CRITICAL: Failed to update user metadata. ${updateError.message}`); // Show to user
+        setLoading(false); // Stop loading
+        return; // Halt the process
       } else {
-        console.log('✅ User metadata updated:', updatedUserData);
+        console.log('✅ WhitelistSignupPage: User metadata update successful. Response from Supabase:', updatedUserData);
+        // Check if the response contains the updated metadata as expected
+        if (updatedUserData?.user?.user_metadata?.has_completed_whitelist_signup === true) {
+          console.log('✅ WhitelistSignupPage: Confirmed has_completed_whitelist_signup is true in the response.');
+        } else {
+          console.warn('⚠️ WhitelistSignupPage: has_completed_whitelist_signup was NOT true in the updateUser response. Actual metadata:', updatedUserData?.user?.user_metadata);
+        }
       }
       // --- END NEW METADATA UPDATE ---
 
@@ -171,13 +182,14 @@ export function WhitelistSignupPage() {
 
       // Refresh the session to reflect the changes
       console.log('🔄 Refreshing session...');
+      // It's generally good practice to refresh the session after metadata updates if subsequent logic depends on it immediately.
       const { error: sessionError } = await supabase.auth.refreshSession();
       if (sessionError) {
            console.warn('⚠️ WhitelistSignupPage: Error refreshing session after signup (might be ok):', sessionError);
       }
 
       console.log('🎉 Whitelist signup data submission completed successfully! Navigating to / route.');
-      navigate('/', { replace: true });
+      navigate('/', { replace: true, state: { fromWhitelistSignup: true, justCompletedWhitelistSignup: true } });
 
     } catch (error) {
       console.error('❌ Error in whitelist signup:', error);

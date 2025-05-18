@@ -101,8 +101,8 @@ export function AcceptInvitePage({ isWhitelist = false }: AcceptInvitePageProps)
           }
           
           console.log('AcceptInvitePage: Session set successfully, redirecting to home');
-          // Redirect using React Router
-          navigate('/', { replace: true });
+          // Redirect using React Router, adding state for seamless modal display
+          navigate('/', { replace: true, state: { fromAcceptanceFlow: true } });
           return;
         }
 

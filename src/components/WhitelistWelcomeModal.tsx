@@ -29,7 +29,7 @@ export function WhitelistWelcomeModal({ isOpen, onClose }: Props) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={handleClose}
-          className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+          className="fixed inset-0 bg-overlay backdrop-blur-sm flex items-center justify-center p-4 z-50"
         >
           <motion.div
             initial={{ scale: 0.95, opacity: 0 }}

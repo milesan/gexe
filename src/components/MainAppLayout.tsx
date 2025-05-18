@@ -6,7 +6,7 @@ import { useSession } from '../hooks/useSession';
 // Assuming a ThemeContext exists and provides a useTheme hook
 // import { useTheme } from '../contexts/ThemeContext'; 
 import { Footer } from './Footer';
-import { WhitelistWelcomeModal } from './WhitelistWelcomeModal';
+// import { WhitelistWelcomeModal } from './WhitelistWelcomeModal'; // Remove import
 import { BugReportFAB } from './BugReportFAB';
 import { isAdminUser } from '../lib/authUtils'; // <-- Import the utility
 
@@ -29,7 +29,7 @@ interface MainAppLayoutProps {
 
 export function MainAppLayout({ children }: MainAppLayoutProps) {
   console.log('MainAppLayout: Initializing');
-  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  // const [showWelcomeModal, setShowWelcomeModal] = useState(false); // Remove state
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showHeader, setShowHeader] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
@@ -63,7 +63,7 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
   const debouncedScrollHandler = useCallback(debounce(handleScroll, 50), [handleScroll]);
 
   useEffect(() => {
-    checkWhitelistStatus(); // Check welcome modal status on mount
+    // checkWhitelistStatus(); // Remove call
     window.addEventListener('scroll', debouncedScrollHandler);
     console.log("MainAppLayout: Scroll listener attached");
     return () => {
@@ -102,32 +102,6 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
   };
   // END THEME MANAGEMENT Placeholder
 
-  const checkWhitelistStatus = async () => {
-    // This logic might need adjustment based on how `App.tsx` manages this state
-    try {
-      if (!session?.user?.email) return;
-      const userEmail = session.user.email;
-      console.log(`MainAppLayout: Checking whitelist status for ${userEmail}`);
-      
-      // Relying on metadata primarily, as RPC might be redundant if metadata is up-to-date
-      const hasSeenWelcome = session.user?.user_metadata?.has_seen_welcome ?? false;
-      const isApproved = session.user?.user_metadata?.approved === true || session.user?.user_metadata?.application_status === 'approved'; // Assuming approved status implies welcome shown or not needed
-
-      // Show welcome modal only if user is considered "approved" (or equivalent status needing welcome)
-      // AND they haven't seen it yet. Adjust 'isApproved' condition as needed for your flow.
-      if (isApproved && !hasSeenWelcome) {
-          console.log(`MainAppLayout: Showing welcome modal for ${userEmail}`);
-          setShowWelcomeModal(true);
-      } else {
-          console.log(`MainAppLayout: Not showing welcome modal for ${userEmail}`, { isApproved, hasSeenWelcome });
-          setShowWelcomeModal(false); // Ensure it's hidden otherwise
-      }
-    } catch (err) {
-      console.error('MainAppLayout: Error checking welcome status:', err);
-      setShowWelcomeModal(false); // Ensure it closes on error
-    }
-  };
-
   const handleSignOut = async () => {
     try {
       console.log('MainAppLayout: Signing out');
@@ -139,6 +113,7 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
     }
   };
 
+  /* // Remove entire handleWelcomeClose function
   const handleWelcomeClose = async () => {
      if (!session?.user?.email) {
         console.error('MainAppLayout: Cannot update metadata, no session/email.');
@@ -166,6 +141,7 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
         setShowWelcomeModal(false); 
      }
   };
+  */
   
   // Navigation helper for header links (avoids prop drilling from AuthenticatedApp)
   const handleHeaderNavigation = (path: string) => {
@@ -309,10 +285,12 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
       {/* === Footer End === */}
 
       {/* === Modals and FABs Start === */}
+      {/* 
       <WhitelistWelcomeModal
         isOpen={showWelcomeModal}
         onClose={handleWelcomeClose}
       />
+      */}
 
       <BugReportFAB />
       {/* === Modals and FABs End === */}

@@ -126,6 +126,27 @@ serve(async (req) => {
       throw new Error('Failed to sign in: ' + authError.message);
     }
 
+    if (authData.session && authData.user) {
+      const userId = authData.user.id;
+      console.log('[verify-acceptance-token] User signed in, attempting to update metadata for user_id:', userId);
+
+      const { error: metadataError } = await supabase.auth.admin.updateUserById(
+        userId,
+        {
+          data: {
+            application_status: 'approved',
+            has_applied: true,
+            has_seen_welcome: false
+          }
+        }
+      );
+
+      if (metadataError) {
+        console.error('[verify-acceptance-token] Error updating user metadata:', metadataError);
+      }
+      console.log('[verify-acceptance-token] User metadata updated for welcome modal flow.');
+    }
+
     console.log('User signed in successfully:', email);
     return new Response(
       JSON.stringify({ session: authData.session }),

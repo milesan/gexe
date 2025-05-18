@@ -195,9 +195,9 @@ export default function App() {
 
       const checkCombinedStatus = async () => {
         try {
-          console.log(`App: checkCombinedStatus - Calling get_user_app_entry_status for userId: ${userId}, email: ${userEmail}`);
+          console.log(`App: checkCombinedStatus - Calling get_user_app_entry_status_v2 for userId: ${userId}, email: ${userEmail}`);
           
-          const { data: statusData, error: rpcError } = await supabase.rpc('get_user_app_entry_status', {
+          const { data: statusData, error: rpcError } = await supabase.rpc('get_user_app_entry_status_v2', {
             p_user_id: userId,
             p_email: userEmail
           });
@@ -205,24 +205,24 @@ export default function App() {
           if (!mounted) return; // Component unmounted during async call
 
           if (rpcError) {
-            console.error('App: Error calling get_user_app_entry_status RPC:', rpcError);
+            console.error('App: Error calling get_user_app_entry_status_v2 RPC:', rpcError);
             setIsWhitelisted(false);
             setNeedsWelcomeCheckResult(false);
             setHasApplicationRecord(false);
           } else if (statusData) {
-            console.log('App: get_user_app_entry_status RPC result:', statusData);
+            console.log('App: get_user_app_entry_status_v2 RPC result:', statusData);
             setIsWhitelisted(statusData.is_whitelisted);
             setNeedsWelcomeCheckResult(statusData.needs_welcome); // Use the 'needs_welcome' field
             setHasApplicationRecord(statusData.has_application_record);
           } else {
             // Should not happen if RPCError is not set, but good to handle
-            console.warn('App: get_user_app_entry_status RPC returned no data and no error.');
+            console.warn('App: get_user_app_entry_status_v2 RPC returned no data and no error.');
             setIsWhitelisted(false);
             setNeedsWelcomeCheckResult(false);
             setHasApplicationRecord(false);
           }
         } catch (err) {
-          console.error('App: Exception during get_user_app_entry_status call:', err);
+          console.error('App: Exception during get_user_app_entry_status_v2 call:', err);
           if (mounted) {
             setIsWhitelisted(false);
             setNeedsWelcomeCheckResult(false);
@@ -352,107 +352,153 @@ interface AppContentProps {
 function AppContent({ 
   session, 
   isLoading, 
-  isWhitelisted, 
-  needsWelcomeCheckResult, 
+  isWhitelisted, // This prop will now come from metadata via get_user_app_entry_status_v2
+  needsWelcomeCheckResult, // This prop is the crucial 'needs_welcome' from get_user_app_entry_status_v2
   hasApplicationRecord,
-  setNeedsWelcomeCheckResult,
+  setNeedsWelcomeCheckResult, // This setter is for the parent App.tsx state
 }: AppContentProps) {
   
-  // Hooks are called inside component wrapped by Router
   const location = useLocation(); 
   const navigate = useNavigate();
-  const userEmail = session?.user?.email; // Get email from session prop
+  const user = session?.user; // Get user object for easier access to ID and metadata
 
-  // NEW: Local state for managing modal visibility within AppContent
   const [isWelcomeModalActuallyVisible, setIsWelcomeModalActuallyVisible] = useState<boolean>(false);
+  // Renaming for clarity from the previous WhitelistSignupPage.tsx change
+  const [triggerWelcomeModalFromNavFlag, setTriggerWelcomeModalFromNavFlag] = useState(false); 
+  // Removed triggerWelcomeModalFromAcceptance as it's not the current focus, can be added back if needed
 
-  // --- Effect to decide when to show the Welcome Modal ---
+  // Effect to detect navigation from WhitelistSignupPage
   useEffect(() => {
-    // Log the state values checked by this effect right when it runs
-    console.log('AppContent Welcome Modal Effect Check:', { 
-      isLoading, // from App.tsx props
-      isWhitelisted, 
-      hasApplicationRecord, 
-      needsWelcomeCheckResult,
-      currentModalVisibility: isWelcomeModalActuallyVisible,
+    // Check for the specific flag we set in WhitelistSignupPage
+    if (location.state?.justCompletedWhitelistSignup) {
+      console.log('AppContent: Detected navigation from WhitelistSignupPage (justCompletedWhitelistSignup: true).');
+      setTriggerWelcomeModalFromNavFlag(true);
+      // Clear the flag from navigation state to prevent re-triggering
+      const { justCompletedWhitelistSignup, ...restState } = location.state;
+      navigate(location.pathname, { state: restState, replace: true });
+    }
+  }, [location.state, navigate, location.pathname]);
+
+  // --- Effect to decide when to show the Welcome Modal (and mark as seen) ---
+  useEffect(() => {
+    // Guard: Don't do anything if user is not available
+    if (!user) {
+      if (isWelcomeModalActuallyVisible) setIsWelcomeModalActuallyVisible(false); // Hide if somehow visible
+      return;
+    }
+
+    console.log('AppContent Welcome Modal Effect Check:', {
+      isLoading,
+      isWhitelisted,
+      hasApplicationRecord,
+      needsWelcomeCheckResult, // from get_user_app_entry_status_v2 (metadata)
+      triggerWelcomeModalFromNavFlag, // from navigation state
+      isWelcomeModalActuallyVisible,
+      userId: user.id
     });
-    
-    // Use props for state checks
-    if (!isLoading && // Ensure App.tsx has finished its loading
-        isWhitelisted === true && 
-        hasApplicationRecord === true &&
-        needsWelcomeCheckResult === true) {
-      console.log('AppContent: Conditions met to show Welcome Modal.');
-      // Only set to true if it's currently false to avoid re-renders
-      if (!isWelcomeModalActuallyVisible) { 
-          setIsWelcomeModalActuallyVisible(true);
-      }
+
+    let shouldShowModal = false;
+    if (triggerWelcomeModalFromNavFlag) {
+      shouldShowModal = true;
+      console.log('AppContent: Modal decision: YES (triggered by navigation flag from signup page).');
+    } else if (
+      !isLoading &&
+      user.user_metadata?.is_whitelisted === true && // They are generally whitelisted
+      needsWelcomeCheckResult === true &&           // Metadata indicates they haven't seen it (has_seen_welcome is false)
+      hasApplicationRecord === true                 // CRUCIAL: They have completed the signup step
+    ) {
+      shouldShowModal = true;
+      console.log('AppContent: Modal decision: YES (DB conditions met: is_whitelisted, needs_welcome, AND has_application_record).');
     } else {
-      // If conditions are not met, or if loading is true (though effect shouldn't show if loading)
-      // ensure modal is hidden. This also handles the case after closing the modal
-      // where needsWelcomeCheckResult becomes false.
-      if (isWelcomeModalActuallyVisible) { 
-           console.log('AppContent: Conditions no longer met or still loading, ensuring Welcome Modal is hidden.');
-           setIsWelcomeModalActuallyVisible(false);
+      console.log('AppContent: Modal decision: NO.');
+      // Add some logging for why it might be no, if relevant conditions were met
+      if (!isLoading && user.user_metadata?.is_whitelisted === true && needsWelcomeCheckResult === true && hasApplicationRecord === false) {
+        console.log('AppContent: Modal deferred because user still needs to complete signup (hasApplicationRecord is false).');
       }
     }
-    // Depend on status props, loading state, and modal state/setter
-  }, [isLoading, isWhitelisted, hasApplicationRecord, needsWelcomeCheckResult, isWelcomeModalActuallyVisible]);
+
+    if (shouldShowModal && !isWelcomeModalActuallyVisible) {
+      console.log('AppContent: Showing Welcome Modal.');
+      setIsWelcomeModalActuallyVisible(true);
+      // Mark as seen immediately when we decide to show it
+      console.log(`AppContent: Attempting to update user metadata (has_seen_welcome: true) for user ${user.id} (on show).`);
+      supabase.auth.updateUser({ data: { has_seen_welcome: true } })
+        .then(({ data: updateData, error: updateError }) => {
+          if (updateError) {
+            console.error('AppContent: Error updating user metadata (has_seen_welcome):', updateError);
+          } else {
+            console.log('AppContent: Successfully updated user metadata (has_seen_welcome: true).');
+            // Update local state to reflect the change immediately, preventing re-trigger by DB check
+            setNeedsWelcomeCheckResult(false); 
+            if (user && user.user_metadata) { // Refresh local copy of metadata if possible
+              user.user_metadata.has_seen_welcome = true;
+            }
+          }
+        });
+    } else if (!shouldShowModal && isWelcomeModalActuallyVisible) {
+      console.log('AppContent: Hiding Welcome Modal.');
+      setIsWelcomeModalActuallyVisible(false);
+    }
+  }, [
+    user, // Add user as a dependency
+    isLoading, 
+    isWhitelisted, 
+    hasApplicationRecord, 
+    needsWelcomeCheckResult, 
+    triggerWelcomeModalFromNavFlag, 
+    isWelcomeModalActuallyVisible,
+    setNeedsWelcomeCheckResult // Already a dependency
+  ]);
 
   // --- Welcome Modal Close Handler ---
   const handleWelcomeModalClose = useCallback(async () => {
-    console.log('AppContent: Closing Welcome Modal and marking as seen.');
-    setIsWelcomeModalActuallyVisible(false); // Hide modal locally
+    console.log('AppContent: Closing Welcome Modal.');
+    setIsWelcomeModalActuallyVisible(false); 
+    setTriggerWelcomeModalFromNavFlag(false); // Reset the nav flag trigger
 
-    if (userEmail) {
+    // Update metadata (has_seen_welcome: true) if not already set or if call failed previously
+    // The primary update is now done when the modal is shown.
+    // This ensures it's set if the user closes the modal before the async update (on show) completes.
+    if (user && user.user_metadata?.has_seen_welcome !== true) {
       try {
-        console.log(`AppContent: Calling mark_whitelist_welcome_seen RPC for ${userEmail}...`);
-        const { error } = await supabase.rpc('mark_whitelist_welcome_seen', { p_email: userEmail }); 
+        console.log(`AppContent: Calling supabase.auth.updateUser({ data: { has_seen_welcome: true } }) for user ${user.id} (on close - as fallback).`);
+        const { error } = await supabase.auth.updateUser({ data: { has_seen_welcome: true } });
         if (error) {
-          console.error('Error calling mark_whitelist_welcome_seen:', error);
-          // Navigation is handled by AppRouterLogic reacting to state changes
+          console.error('Error updating has_seen_welcome (on close):', error);
         } else {
-          console.log('AppContent: Successfully marked welcome as seen via RPC.');
+          console.log('AppContent: Successfully updated has_seen_welcome (on close).');
+          setNeedsWelcomeCheckResult(false); // Reflect change locally
+          if (user.user_metadata) user.user_metadata.has_seen_welcome = true;
         }
-        setNeedsWelcomeCheckResult(false); // Update state in App.tsx; this will flow down
-                                          // and cause this component to re-render,
-                                          // and the useEffect will ensure isWelcomeModalActuallyVisible remains false.
       } catch (err) {
-        console.error('Exception calling mark_whitelist_welcome_seen:', err);
-        setNeedsWelcomeCheckResult(false); // Still update state on exception
+        console.error('Exception updating has_seen_welcome (on close):', err);
       }
-    } else {
-       console.warn('AppContent: Cannot mark welcome seen, user email not available.');
-       setNeedsWelcomeCheckResult(false); // Still update state
     }
-  // Depend on navigate and setters passed as props
-  }, [userEmail, navigate, setNeedsWelcomeCheckResult]); 
+  }, [user, setNeedsWelcomeCheckResult]); 
 
-  // --- Rendering Logic ---
-  if (isLoading) { 
+  // --- Rendering Logic --- 
+  // isLoading check for initial load. If nav flag is set, modal logic will handle visibility.
+  if (isLoading && !triggerWelcomeModalFromNavFlag) { 
     console.log('AppContent: Still in loading state passed from App.tsx.'); 
     return <div className="text-stone-600 font-mono">Loading...</div>;
   }
 
   console.log('AppContent: Rendering. isWelcomeModalActuallyVisible:', isWelcomeModalActuallyVisible);
   
-  if (isWelcomeModalActuallyVisible) {
-    return (
-      <WhitelistWelcomeModal 
-        isOpen={true} // Controlled by the if condition
-        onClose={handleWelcomeModalClose} 
-      />
-    );
-  }
-
-  // If modal is not visible (i.e., not loading and modal conditions not met or modal closed),
-  // render the AppRouterLogic.
   return (
-    <AppRouterLogic 
-        session={session} 
-        isWhitelisted={isWhitelisted}
-        needsWelcomeCheck={needsWelcomeCheckResult} // Pass the result from RPC (which is false after modal)
-        hasApplicationRecord={hasApplicationRecord}
-    />
+    <>
+      <AppRouterLogic 
+          session={session} 
+          isWhitelisted={isWhitelisted} // from metadata
+          needsWelcomeCheck={needsWelcomeCheckResult} // from metadata
+          hasApplicationRecord={hasApplicationRecord}
+      />
+      {isWelcomeModalActuallyVisible && (
+        <WhitelistWelcomeModal 
+          isOpen={true} 
+          onClose={handleWelcomeModalClose} 
+        />
+      )}
+    </>
   );
 }
