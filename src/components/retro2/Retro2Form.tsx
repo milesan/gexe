@@ -75,6 +75,17 @@ export function Retro2Form({ questions, onSubmit, initialData }: Props) {
   const [formData, setFormData] = useState<Record<string, any>>(initialData || {});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { saveData, loadSavedData, showSaveNotification, setShowSaveNotification } = useAutosave();
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentUserEmail(user.email || null);
+      }
+    };
+    fetchUser();
+  }, []);
 
   const sortedQuestionsProp = useMemo(() => {
     return [...questions].sort((a, b) => {
@@ -136,6 +147,77 @@ export function Retro2Form({ questions, onSubmit, initialData }: Props) {
       return value !== undefined && value !== '' && value !== null;
     });
   };
+
+  // --- START: Random Data Generation for Dev ---
+  const isDevUser = currentUserEmail && /^redis213\+.*@gmail\.com$/.test(currentUserEmail);
+
+  const generateRandomDataForQuestion = (question: ApplicationQuestion): any => {
+    const randomString = (length = 8) => Math.random().toString(36).substring(2, 2 + length);
+    const randomNumberString = (length = 10) => Math.random().toString().slice(2, 2 + length); // For tel/password
+    const randomNumber = (max = 100) => Math.floor(Math.random() * max);
+
+    switch (question.type) {
+      case 'text':
+        return randomString(10 + randomNumber(10)); // Shorter than textarea
+      case 'textarea':
+        return randomString(20 + randomNumber(30)); // Longer for textareas
+      case 'email':
+        return `${randomString()}@example.com`;
+      case 'tel': // Generate a string of random numbers
+        return randomNumberString(10);
+      case 'password':
+        return randomString(12);
+      case 'radio': // Handles select-like behavior
+        if (question.options && question.options.length > 0) {
+          return question.options[randomNumber(question.options.length)];
+        }
+        return undefined; // No options, no value
+      case 'checkbox': // Represents a single boolean checkbox
+        return Math.random() > 0.5;
+      case 'date': {
+        const d = new Date();
+        d.setDate(d.getDate() - randomNumber(365 * 2)); // Random date in the last 2 years
+        return d.toISOString().split('T')[0]; // YYYY-MM-DD
+      }
+      case 'file': // Skip file uploads
+      case 'markdown_text': // Skip display text
+        return undefined;
+      default:
+        // This default case should ideally not be hit if all ApplicationQuestion types are handled.
+        // However, if new types are added to ApplicationQuestion and not here, it provides a fallback.
+        console.warn(`[DevFill] Unhandled question type for random data: ${question.type} (ID: ${question.id}). Defaulting to short random string.`);
+        return randomString(5);
+    }
+  };
+
+  const handleFillRandomData = () => {
+    if (!isDevUser) return;
+
+    console.log("[DevFill] Filling form with random data for visible questions...");
+    const updatedFormData = { ...formData };
+    let changesMade = false;
+
+    currentVisibleQuestions.forEach(question => {
+      // Skip markdown display text
+      if (question.type === 'markdown_text') return;
+
+      const randomValue = generateRandomDataForQuestion(question);
+      if (randomValue !== undefined) {
+        updatedFormData[question.id] = randomValue;
+        console.log(`[DevFill] Q: ${question.id} (${question.type}), Value:`, randomValue);
+        changesMade = true;
+      }
+    });
+
+    if (changesMade) {
+      setFormData(updatedFormData);
+      saveData(updatedFormData); // Also trigger autosave
+      console.log("[DevFill] Random data applied.");
+    } else {
+      console.log("[DevFill] No applicable questions found to fill or no changes made.");
+    }
+  };
+  // --- END: Random Data Generation for Dev ---
 
   return (
     <div className="bg-black text-retro-accent font-mono flex flex-col min-h-screen">
@@ -220,6 +302,27 @@ export function Retro2Form({ questions, onSubmit, initialData }: Props) {
                 </>
               )}
             </button>
+            {/* --- START: Dev Fill Button --- */}
+            {isDevUser && (
+              <button
+                type="button"
+                onClick={handleFillRandomData}
+                className="ml-4 px-4 py-3 text-sm bg-purple-600/30 hover:bg-purple-500/50 text-purple-300 border border-purple-500"
+                style={{
+                  clipPath: `polygon(
+                    0 4px, 4px 4px, 4px 0,
+                    calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
+                    100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
+                    calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
+                    0 calc(100% - 4px)
+                  )`
+                }}
+                title="Fill form with random data (Dev Only)"
+              >
+                Fill Random (Dev)
+              </button>
+            )}
+            {/* --- END: Dev Fill Button --- */}
           </div>
         </div>
       </div>
