@@ -1154,12 +1154,12 @@ export function BookingSummary({
                           <div className="flex flex-col"> {/* Left block */}
                             <span className="text-xs text-shade-2 font-lettra-bold">ACCOMMODATION</span>
                             {/* Style duration like main dates, remove uppercase */}
-                            <span className="text-2xl text-primary font-display">
+                            <span className="text-2xl lg:text-xl xl:text-2xl text-primary font-display">
                               {formatNumber(pricing.weeksStaying)} {pricing.weeksStaying === 1 ? 'week' : 'weeks'}
                             </span>
                           </div>
                           {/* Price: Updated size, font, color */}
-                          <span className="text-xl font-display text-shade-1">{formatPriceDisplay(pricing.totalAccommodationCost)}</span> {/* Right block (price) */}
+                          <span className="text-xl lg:text-lg xl:text-xl font-display text-shade-1">{formatPriceDisplay(pricing.totalAccommodationCost)}</span> {/* Right block (price) */}
                         </div>
                         <hr className="border-t border-border my-2 opacity-30" /> {/* Horizontal line */}
                       </>
@@ -1171,13 +1171,13 @@ export function BookingSummary({
                     
                     <>
                       {/* --- Wrap the whole row in Popover.Root --- */}
-                      <div className="flex justify-between items-start"> {/* Changed items-end to items-start */}
+                      <div className="flex justify-between items-end"> {/* Align to bottom like Accommodation section */}
                         {/* Left block (label and sub-label) */}
-                        <div className="flex flex-col">
+                        <div className="flex flex-col flex-shrink-0"> {/* ADDED flex-shrink-0 HERE */}
                           <span className="text-xs text-shade-2 font-lettra-bold flex items-center">
                             FOOD AND FACILITIES
                           </span>
-                          <span className="text-2xl text-primary font-display">
+                          <span className="text-2xl lg:text-xl xl:text-2xl text-primary font-display">
                               {formatNumber(pricing.weeksStaying)} {pricing.weeksStaying === 1 ? 'week' : 'weeks'}
                           </span>
                         </div>
@@ -1195,7 +1195,7 @@ export function BookingSummary({
                             hoverCloseDelayMs={150}
                           />
                           {/* Price */}
-                          <span className="text-xl font-display text-shade-1">
+                          <span className="text-xl lg:text-lg xl:text-xl font-display text-shade-1">
                             {formatPriceDisplay(pricing.totalFoodAndFacilitiesCost)}
                           </span>
                         </div>
@@ -1268,13 +1268,13 @@ export function BookingSummary({
                                 {formatPriceDisplay(pricing.subtotal)}
                             </span>
                             {/* Updated style */}
-                            <span className="text-2xl font-display font-semibold text-primary">
+                            <span className="text-2xl font-display text-primary">
                                 {formatPriceDisplay(pricing.totalAmount)}
                             </span>
                         </div>
                     ) : (
                         // Updated style
-                        <span className="text-2xl font-display font-semibold text-primary">
+                        <span className="text-2xl font-display text-primary">
                             {formatPriceDisplay(pricing.totalAmount)}
                         </span>
                     )}
