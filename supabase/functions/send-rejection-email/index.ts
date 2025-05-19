@@ -80,6 +80,7 @@ serve(async (req) => {
     const { error } = await resendClient.emails.send({
       from: 'The Garden <echo@echo.thegarden.pt>',
       to: email,
+      replyTo: 'living@thegarden.pt',
       subject: 'Your Application to The Garden',
       html: `
         <p>Hi there!</p>

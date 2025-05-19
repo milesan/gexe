@@ -101,6 +101,7 @@ serve(async (req) => {
     const { error: emailError } = await resendClient.emails.send({
       from: 'The Garden <echo@echo.thegarden.pt>',
       to: email,
+      replyTo: 'living@thegarden.pt',
       subject: 'Welcome to The Garden',
       html: `
         <div style="${styles.container}">

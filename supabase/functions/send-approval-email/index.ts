@@ -77,6 +77,7 @@ serve(async (req) => {
     const { error } = await resendClient.emails.send({
       from: 'The Garden <echo@echo.thegarden.pt>',
       to: email,
+      replyTo: 'living@thegarden.pt',
       subject: 'Garden Application Status',
       html: `
         <div style="${styles.container || 'padding: 20px; font-family: sans-serif;'}">

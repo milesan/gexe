@@ -253,7 +253,7 @@ export function Retro2Page() {
         {step === 'consent' && consentQuestion && (
           <motion.div
             key="consent"
-            className="absolute inset-0"
+            className="absolute inset-0 overflow-y-auto"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1, transition: { duration: 0.3 } }}
             exit={{ opacity: 0, transition: { duration: 0.3 } }}
