@@ -7,18 +7,10 @@ import { getFrontendUrl } from '../../lib/environment';
 interface WhitelistEntry {
   id: string;
   email: string;
-  notes: string;
   created_at: string;
-  updated_at: string;
-  last_login: string | null;
-  has_seen_welcome: boolean;
-  has_created_account: boolean;
-  account_created_at: string | null;
-  has_booked: boolean;
-  first_booking_at: string | null;
-  last_booking_at: string | null;
-  total_bookings: number;
-  last_sign_in_at?: string | null;
+  has_account: boolean;
+  last_sign_in_at: string | null;
+  has_finished_signup: boolean;
 }
 
 export function Whitelist() {
@@ -348,20 +340,19 @@ export function Whitelist() {
           >
             <div>
               <div className="font-medium text-[var(--color-text-primary)]">{entry.email}</div>
-              {entry.notes && (
-                <div className="text-sm text-[var(--color-text-secondary)] mt-1">{entry.notes}</div>
-              )}
-              <div className="flex gap-4 mt-2">
-                {entry.has_created_account ? (
-                  <span className="text-sm text-emerald-600">Has Account</span>
+              <div className="flex flex-col sm:flex-row sm:gap-4 mt-2 text-sm">
+                {entry.has_account ? (
+                  <span className="text-emerald-600">Has Account</span>
                 ) : (
-                  <span className="text-sm text-[var(--color-text-secondary)]">No Account Yet</span>
+                  <span className="text-[var(--color-text-secondary)]">No Account Yet</span>
                 )}
-                {entry.has_seen_welcome && (
-                  <span className="text-sm text-emerald-600">Has Seen Welcome</span>
+                {entry.has_finished_signup ? (
+                  <span className="text-emerald-600">Signup Completed</span>
+                ) : (
+                  <span className="text-[var(--color-text-secondary)]">Signup Not Completed</span>
                 )}
                 {entry.last_sign_in_at && (
-                  <span className="text-sm text-[var(--color-text-secondary)]">
+                  <span className="text-[var(--color-text-secondary)]">
                     Last sign in: {new Date(entry.last_sign_in_at).toISOString().slice(0, 10)}
                   </span>
                 )}
