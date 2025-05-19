@@ -11,6 +11,7 @@ import * as Tooltip from '@radix-ui/react-tooltip';
 import * as Popover from '@radix-ui/react-popover';
 import { calculateTotalNights, calculateDurationDiscountWeeks, normalizeToUTCDate } from '../utils/dates';
 import { useSession } from '../hooks/useSession';
+import { HoverClickPopover } from './HoverClickPopover';
 
 // Define admin emails (consider moving to a central config/env variable later)
 const ADMIN_EMAILS = [
@@ -405,76 +406,30 @@ export function CabinSelector({
                         
                         {/* Conditionally render the Electricity/No Electricity Popover - hide for Van Parking */}
                         {acc.title !== 'Van Parking' && (
-                          <Popover.Root>
-                            <Popover.Trigger asChild>
-                              <button
-                                className="flex items-center gap-1 cursor-help bg-transparent border-none p-0.5"
-                                title={acc.has_electricity ? 'Has Electricity' : 'No Electricity'}
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                {acc.has_electricity ? <Zap size={12} /> : <ZapOff size={12} className="opacity-50"/>}
-                              </button>
-                            </Popover.Trigger>
-                            <Popover.Portal>
-                              <Popover.Content
-                                sideOffset={5}
-                                className="tooltip-content !font-mono z-50"
-                                onOpenAutoFocus={(e: Event) => e.preventDefault()}
-                              >
-                                <Popover.Arrow className="tooltip-arrow" width={11} height={5} />
-                                <span>{acc.has_electricity ? 'Has Electricity' : 'No Electricity'}</span>
-                              </Popover.Content>
-                            </Popover.Portal>
-                          </Popover.Root>
+                          <HoverClickPopover
+                            triggerContent={acc.has_electricity ? <Zap size={12} /> : <ZapOff size={12} className="opacity-50"/>}
+                            popoverContentNode={<span>{acc.has_electricity ? 'Has Electricity' : 'No Electricity'}</span>}
+                          />
                         )}
                         
-                        {/* Wifi Popover */}
-                        <Popover.Root>
-                          <Popover.Trigger asChild>
-                            <button
-                              className="flex items-center gap-1 cursor-help bg-transparent border-none p-0.5"
-                              title={acc.has_wifi ? 'Has WiFi' : 'No WiFi'}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {acc.has_wifi ? <Wifi size={12} /> : <WifiOff size={12} className="opacity-50"/>}
-                            </button>
-                          </Popover.Trigger>
-                          <Popover.Portal>
-                            <Popover.Content
-                              sideOffset={5}
-                              className="tooltip-content !font-mono z-50"
-                              onOpenAutoFocus={(e: Event) => e.preventDefault()}
-                            >
-                              <Popover.Arrow className="tooltip-arrow" width={11} height={5} />
-                              <span>{acc.has_wifi ? 'Has WiFi' : 'No WiFi'}</span>
-                            </Popover.Content>
-                          </Popover.Portal>
-                        </Popover.Root>
+                        {/* Wifi Popover - MODIFIED to use HoverClickPopover */}
+                        <HoverClickPopover
+                          triggerContent={acc.has_wifi ? <Wifi size={12} /> : <WifiOff size={12} className="opacity-50"/>}
+                          popoverContentNode={<span>{acc.has_wifi ? 'Has WiFi' : 'No WiFi'}</span>}
+                        />
                         
-                        {/* Bed Size Popover */}
-                        <Popover.Root>
-                          <Popover.Trigger asChild>
-                            <button
-                              className="flex items-center gap-1 cursor-help bg-transparent border-none p-0.5"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <Bed size={12} />
-                            </button>
-                          </Popover.Trigger>
-                          <Popover.Portal>
-                            <Popover.Content
-                              sideOffset={5}
-                              className="tooltip-content !font-mono z-50"
-                              onOpenAutoFocus={(e: Event) => e.preventDefault()}
-                            >
-                              <Popover.Arrow className="tooltip-arrow" width={11} height={5} />
+                        {/* Bed Size Popover - MODIFIED to use HoverClickPopover */}
+                        <HoverClickPopover
+                          triggerContent={<Bed size={12} />}
+                          popoverContentNode={(
+                            <>
                               <h4 className="font-medium font-mono mb-1">Bed Size</h4>
                               <p className="text-sm color-shade-2 font-mono">
                                 {acc.bed_size || 'N/A'}
                               </p>
-                            </Popover.Content>
-                          </Popover.Portal>
-                        </Popover.Root>
+                            </>
+                          )}
+                        />
 
                         {/* NEW: Quiet Zone Popover for Microcabins */}
                         {acc.title.includes('Microcabin') && (
@@ -497,25 +452,14 @@ export function CabinSelector({
                           </Popover.Root>
                         )}
 
-                        {/* NEW: Power Hookup Popover for Van Parking */}
+                        {/* NEW: Power Hookup Popover for Van Parking - MODIFIED to use HoverClickPopover */}
                         {acc.title === 'Van Parking' && (
-                          <Popover.Root>
-                            <Popover.Trigger asChild>
-                              <button className="flex items-center gap-1 cursor-help text-secondary"
-                              onClick={(e) => e.stopPropagation()}
-                              ><Zap size={12} /></button>
-                            </Popover.Trigger>
-                            <Popover.Portal>
-                              <Popover.Content
-                                sideOffset={5}
-                                className="tooltip-content !font-mono z-50"
-                                onOpenAutoFocus={(e: Event) => e.preventDefault()}
-                              >
-                                <Popover.Arrow className="tooltip-arrow" width={11} height={5} />
-                                <span>Power hook-ups available on request</span>
-                              </Popover.Content>
-                            </Popover.Portal>
-                          </Popover.Root>
+                          <HoverClickPopover
+                            triggerContent={<Zap size={12} />}
+                            triggerWrapperClassName="flex items-center gap-1 text-secondary cursor-default" // Maintain text-secondary, use default cursor
+                            popoverContentNode={<span>Power hook-ups available on request</span>}
+                            // Default hoverCloseDelayMs (10ms) will be used
+                          />
                         )}
                       </div>
                     </div>
@@ -535,21 +479,13 @@ export function CabinSelector({
                       
                       {/* Ensure weeklyPrice is not null for discount display, and check hasAnyDiscount flag */}
                       {weeklyPrice !== null && weeklyPrice > 0 && hasAnyDiscount && (
-                        <Popover.Root>
-                          <Popover.Trigger asChild>
-                            <button className="text-accent-primary flex items-center gap-0.5 cursor-help"
-                            onClick={(e) => e.stopPropagation()}
-                            >
-                              <Percent size={14} />
-                            </button>
-                          </Popover.Trigger>
-                          <Popover.Portal>
-                            <Popover.Content
-                              sideOffset={5}
-                              className="tooltip-content tooltip-content--accent !font-mono z-50"
-                              onOpenAutoFocus={(e: Event) => e.preventDefault()}
-                            >
-                              <Popover.Arrow className="tooltip-arrow tooltip-arrow--accent" width={11} height={5} />
+                        <HoverClickPopover
+                          triggerContent={<Percent size={14} />}
+                          triggerWrapperClassName="text-accent-primary flex items-center gap-0.5 cursor-default" // Custom trigger style
+                          contentClassName="tooltip-content tooltip-content--accent !font-mono z-50" // Custom content style
+                          arrowClassName="tooltip-arrow tooltip-arrow--accent" // Custom arrow style
+                          popoverContentNode={(
+                            <>
                               <h4 className="font-medium font-mono mb-2">Weekly Rate Breakdown</h4>
                               <div className="text-sm space-y-2">
                                  {/* Base Price */}
@@ -589,9 +525,9 @@ export function CabinSelector({
                                  </div>
                               </div>
                                <p className="text-xs color-shade-3 mt-2 font-mono">Discounts applied multiplicatively.</p>
-                            </Popover.Content>
-                          </Popover.Portal>
-                        </Popover.Root>
+                            </>
+                          )}
+                        />
                       )}
                     </div>
                   </div>

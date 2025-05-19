@@ -16,11 +16,12 @@ import type { DayPickerSingleProps } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import { formatDateForDisplay } from '../utils/dates';
 import * as Tooltip from '@radix-ui/react-tooltip';
-import * as Popover from '@radix-ui/react-popover'; // Import Popover
+import * as Popover from '@radix-ui/react-popover';
+import { HoverClickPopover } from './HoverClickPopover';
 import { calculateTotalNights, calculateDurationDiscountWeeks, calculateTotalDays, calculateTotalWeeksDecimal } from '../utils/dates';
 import { DiscountModal } from './DiscountModal';
 import { formatInTimeZone } from 'date-fns-tz';
-import { isAdminUser } from '../lib/authUtils'; // Import isAdminUser
+import { isAdminUser } from '../lib/authUtils';
 
 // Define the season breakdown type
 export interface SeasonBreakdown {
@@ -1119,17 +1120,31 @@ export function BookingSummary({
                   <div className="flex items-center justify-between mb-3">
                     {/* Restyle heading to match accommodation title */}
                     <h3 className="text-primary font-display text-2xl block">Price breakdown</h3>
-                    {/* Remove Popover wrapper, keep the button and its onClick */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation(); // Prevent event bubbling
-                        setShowDiscountModal(true);
-                      }}
-                      className="p-1.5 text-[var(--color-accent-primary)] hover:text-[var(--color-accent-secondary)] rounded-md transition-colors"
-                    >
-                      <Info className="w-4 h-4" />
-                      <span className="sr-only">View Discount Details</span>
-                    </button>
+                    <Tooltip.Provider>
+                      <Tooltip.Root delayDuration={50}>
+                        <Tooltip.Trigger asChild>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation(); // Prevent event bubbling
+                              setShowDiscountModal(true);
+                            }}
+                            className="p-1.5 text-[var(--color-accent-primary)] hover:text-[var(--color-accent-secondary)] rounded-md transition-colors cursor-pointer"
+                          >
+                            <Info className="w-4 h-4" />
+                            <span className="sr-only">View Discount Details</span>
+                          </button>
+                        </Tooltip.Trigger>
+                        <Tooltip.Portal>
+                          <Tooltip.Content
+                            className="tooltip-content !font-mono z-50"
+                            sideOffset={5}
+                          >
+                            Click for detailed breakdown
+                            <Tooltip.Arrow className="tooltip-arrow" />
+                          </Tooltip.Content>
+                        </Tooltip.Portal>
+                      </Tooltip.Root>
+                    </Tooltip.Provider>
                   </div>
                   
                   <div className="bg-surface space-y-4 p-4 rounded-sm"> {/* Increased spacing between items */}
@@ -1156,82 +1171,57 @@ export function BookingSummary({
                     
                     <>
                       {/* --- Wrap the whole row in Popover.Root --- */}
-                      <Popover.Root>
-                        <div className="flex justify-between items-start"> {/* Changed items-end to items-start */}
-                          {/* Left block (label and sub-label) */}
-                          <div className="flex flex-col">
-                            <span className="text-xs text-shade-2 font-lettra-bold flex items-center"> 
-                              FOOD AND FACILITIES
-                            </span>
-                            <span className="text-2xl text-primary font-display"> 
-                                {formatNumber(pricing.weeksStaying)} {pricing.weeksStaying === 1 ? 'week' : 'weeks'}
-                            </span>
-                          </div>
-
-                          {/* Right block (Icon Trigger + Price) */}
-                          <div className="flex flex-col items-end"> {/* Column layout, align items to the end (right) */}
-                            {/* Icon Trigger */}
-                            <Popover.Trigger asChild>
-                              <button className="text-accent-primary hover:text-accent-secondary mb-1"> {/* Add bottom margin */} 
-                                <Info className="w-4 h-4" /> {/* Slightly larger icon? */}
-                              </button>
-                            </Popover.Trigger>
-                            {/* Price */}
-                            <span className="text-xl font-display text-shade-1">
-                              {formatPriceDisplay(pricing.totalFoodAndFacilitiesCost)}
-                            </span>
-                          </div>
+                      <div className="flex justify-between items-start"> {/* Changed items-end to items-start */}
+                        {/* Left block (label and sub-label) */}
+                        <div className="flex flex-col">
+                          <span className="text-xs text-shade-2 font-lettra-bold flex items-center">
+                            FOOD AND FACILITIES
+                          </span>
+                          <span className="text-2xl text-primary font-display">
+                              {formatNumber(pricing.weeksStaying)} {pricing.weeksStaying === 1 ? 'week' : 'weeks'}
+                          </span>
                         </div>
 
-                        {/* Popover Content */} 
-                        <Popover.Portal>
-                          <Popover.Content
-                            className="tooltip-content !font-mono text-sm z-50"
-                            sideOffset={5}
+                        {/* Right block (Icon Trigger + Price) */}
+                        <div className="flex flex-col items-end"> {/* Column layout, align items to the end (right) */}
+                          {/* Icon Trigger - Now HoverClickPopover */}
+                          <HoverClickPopover
+                            triggerContent={<Info className="w-4 h-4" />}
+                            triggerWrapperClassName="text-accent-primary hover:text-accent-secondary mb-1 cursor-default"
+                            popoverContentNode={<span className="text-primary">Community meals & operations costs</span>}
+                            contentClassName="tooltip-content !font-mono text-sm z-50"
                             side="top"
-                            align="end" // Align to the end (right) of the trigger (icon)
-                            onOpenAutoFocus={(e: Event) => e.preventDefault()}
-                          >
-                            <Popover.Arrow className="tooltip-arrow" width={11} height={5} />
-                            <span className="text-primary">Community meals & operations costs</span>
-                          </Popover.Content>
-                        </Popover.Portal>
-                      </Popover.Root>
+                            align="end"
+                            hoverCloseDelayMs={150}
+                          />
+                          {/* Price */}
+                          <span className="text-xl font-display text-shade-1">
+                            {formatPriceDisplay(pricing.totalFoodAndFacilitiesCost)}
+                          </span>
+                        </div>
+                      </div>
                       <hr className="border-t border-border my-2 opacity-30" /> {/* Horizontal line */}
                     </>
 
                     {/* Optional Contribution Slider */}
                     {foodContribution !== null && selectedWeeks.length > 0 && (
                       <div className="pt-2"> {/* Reduced top padding */}
-                         {/* --- Wrap label row in Popover Root --- */}
-                         <Popover.Root>
-                           {/* --- Label row with space-between --- */}
-                           <div className="flex justify-between items-center mb-2">
-                             <label htmlFor="food-contribution" className="text-xs text-shade-2 font-lettra-bold"> {/* Label */}
-                                SLIDING CONTRIBUTION
-                              </label>
-                              <Popover.Trigger asChild>
-                                  <button 
-                                    className="text-accent-primary hover:text-accent-secondary" /* No margin needed now */
-                                  >
-                                      <Info className="w-4 h-4" /> {/* Slightly larger? */}
-                                  </button>
-                              </Popover.Trigger>
-                            </div>
-                            {/* --- Popover Content --- */}
-                            <Popover.Portal>
-                                <Popover.Content
-                                    sideOffset={5}
-                                    className="tooltip-content !font-mono text-sm z-50" // Reused styles, added z-index
-                                    side="top"
-                                    align="end" // Keep align='end'
-                                    onOpenAutoFocus={(e: Event) => e.preventDefault()} // Added typing
-                                >
-                                    <Popover.Arrow className="tooltip-arrow" width={11} height={5} />
-                                    Adjust your contribution based on your means. Minimum varies by stay length.
-                                </Popover.Content>
-                            </Popover.Portal>
-                         </Popover.Root>
+                         {/* --- Label row with space-between --- */}
+                         <div className="flex justify-between items-center mb-2">
+                           <label htmlFor="food-contribution" className="text-xs text-shade-2 font-lettra-bold"> {/* Label */}
+                              SLIDING CONTRIBUTION
+                            </label>
+                            {/* MODIFIED: Replaced with HoverClickPopover */}
+                            <HoverClickPopover
+                              triggerContent={<Info className="w-4 h-4" />}
+                              triggerWrapperClassName="text-accent-primary hover:text-accent-secondary cursor-default"
+                              popoverContentNode="Adjust your contribution based on your means. Minimum varies by stay length."
+                              contentClassName="tooltip-content !font-mono text-sm z-50"
+                              side="top"
+                              align="end"
+                              hoverCloseDelayMs={150}
+                            />
+                          </div>
 
                          {/* --- Slider remains outside Popover Root --- */}
                          <input

@@ -89,7 +89,7 @@ export function PendingPage({ status = 'pending' }: Props) {
           className="max-w-md w-full bg-black rounded-sm border-2 border-retro-accent/50 p-6"
         >
           <p className="text-retro-accent/80 text-sm font-mono leading-relaxed text-center">
-            If a low-income subsidy could support your participation, you can apply{' '}
+            If a low-income subsidy could support your participation, please let us know{' '}
             <a 
               href="https://www.notion.so/gardening/1e981af59c8680e6a791c2a185d350fe" 
               target="_blank" 
