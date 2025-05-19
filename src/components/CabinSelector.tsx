@@ -230,13 +230,14 @@ export function CabinSelector({
       const m = normalizedCurrentMonth.getUTCMonth();
       const d = normalizedCurrentMonth.getUTCDate();
       return (m > 3 || (m === 3 && d >= 15)) && 
-             (m < 8 || (m === 8 && d <= 1));
+             (m < 9 || (m === 9 && d <= 7)); // Ends Oct 7th inclusive
     }
     
     const isInTentSeason = (date: Date) => {
       const m = date.getUTCMonth();
       const d = date.getUTCDate();
-      return (m > 3 || (m === 3 && d >= 15)) && (m < 8 || (m === 8 && d <= 1));
+      // April 15th to October 7th inclusive
+      return (m > 3 || (m === 3 && d >= 15)) && (m < 9 || (m === 9 && d <= 7));
     };
     
     let allDays: Date[] = [];
@@ -357,7 +358,7 @@ export function CabinSelector({
                     zIndex={2}
                     className="border-amber-500 dark:border-amber-600" // Pass specific class for amber border
                   >
-                    Seasonal<br />Apr 15 - Sep 1
+                    Seasonal<br />Apr 15 - Oct 7
                   </StatusOverlay>
 
                   {/* Badge container - place above overlays */}
