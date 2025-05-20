@@ -237,6 +237,13 @@ export function BookingSummary({
   const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
   // --- End Discount Code State ---
 
+  // --- START: Price Feedback State ---
+  const [feedbackOptionClicked, setFeedbackOptionClicked] = useState<'steep' | 'fair' | 'cheap' | null>(null);
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+  const [feedbackSubmissionError, setFeedbackSubmissionError] = useState<string | null>(null);
+  // --- END: Price Feedback State ---
+
   // State for internally calculated season breakdown
   const [seasonBreakdownState, setSeasonBreakdownState] = useState<SeasonBreakdown | undefined>(initialSeasonBreakdown);
   const [accommodations, setAccommodations] = useState<Accommodation[]>([]);
@@ -915,6 +922,68 @@ export function BookingSummary({
   }, []);
   // --- End Placeholder Handlers ---
 
+  // --- START: Price Feedback Handler ---
+  const handlePriceFeedbackSubmit = async (option: 'steep' | 'fair' | 'cheap') => {
+    if (!authToken) {
+      setFeedbackSubmissionError("Authentication is required to submit feedback. Please sign in.");
+      console.warn('[BookingSummary] Price feedback submission halted: Auth token missing.');
+      return;
+    }
+    setFeedbackOptionClicked(option);
+    setIsSubmittingFeedback(true);
+    setFeedbackSubmissionError(null);
+
+    const bookingContext = {
+      totalAmount: pricing.totalAmount,
+      weeksStaying: pricing.weeksStaying,
+      totalNights: pricing.totalNights,
+      accommodationId: selectedAccommodation?.id,
+      accommodationTitle: selectedAccommodation?.title,
+      accommodationBasePrice: selectedAccommodation?.base_price,
+      calculatedWeeklyAccommodationPrice: calculatedWeeklyAccommodationPrice, // Prop
+      foodContributionSelected: foodContribution,
+      totalAccommodationCost: pricing.totalAccommodationCost,
+      totalFoodAndFacilitiesCost: pricing.totalFoodAndFacilitiesCost,
+      durationDiscountPercentAppliedToFood: pricing.durationDiscountPercent, // This is on food
+      durationDiscountAmountFood: pricing.durationDiscountAmount, // This is on food
+      appliedDiscountCode: appliedDiscount?.code || null,
+      appliedDiscountPercentage: appliedDiscount?.percentage_discount || null,
+      appliedDiscountAppliesTo: appliedDiscount?.applies_to || null,
+      isStateOfTheArtist: isStateOfTheArtist,
+      seasonBreakdown: seasonBreakdownState, // The entire breakdown object
+      // Add any other relevant details from 'pricing' or component state
+    };
+
+    console.log('[BookingSummary] Submitting price feedback with context:', { option, bookingContext });
+
+    try {
+      const { error: functionError } = await supabase.functions.invoke('log-price-feedback', {
+        body: {
+          selected_option: option,
+          booking_context: bookingContext,
+          frontend_url: window.location.href,
+        },
+        headers: {
+          'Authorization': `Bearer ${authToken}`
+        }
+      });
+
+      if (functionError) {
+        throw functionError;
+      }
+
+      setFeedbackSubmitted(true);
+      console.log('[BookingSummary] Price feedback submitted successfully.');
+    } catch (error: any) {
+      console.error('[BookingSummary] Error submitting price feedback:', error);
+      setFeedbackSubmissionError(error.message || 'An unexpected error occurred while submitting your feedback.');
+      // Keep feedbackOptionClicked as is, so the UI doesn't revert if submission fails
+    } finally {
+      setIsSubmittingFeedback(false);
+    }
+  };
+  // --- END: Price Feedback Handler ---
+
   // --- LOGGING: Final Render Values ---
   console.log('[BookingSummary] --- Final Render Values ---');
   console.log('[BookingSummary] Pricing details:', pricing);
@@ -1287,7 +1356,49 @@ export function BookingSummary({
                 {/* Add HR after Total description */}
                 <hr className="border-t border-border my-2 opacity-30" />
 
-                {/* --- START: Discount Code Section --- */} 
+                {/* --- START: Price Feedback Section --- */}
+                <div className="pt-4 mt-4 font-mono text-sm">
+                  {!feedbackSubmitted ? (
+                    <>
+                      <h4 className="text-primary font-display text-lg mb-2">How's our rates?</h4>
+                      {feedbackSubmissionError && (
+                        <div className="mb-2 text-xs text-error flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+                          <span>Error: {feedbackSubmissionError}</span>
+                        </div>
+                      )}
+                      <div className="flex gap-2">
+                        {(['steep', 'fair', 'cheap'] as const).map((option) => (
+                          <button
+                            key={option}
+                            onClick={() => handlePriceFeedbackSubmit(option)}
+                            disabled={isSubmittingFeedback}
+                            className={`px-3 py-1.5 border rounded-sm text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-colors
+                              ${isSubmittingFeedback || feedbackOptionClicked === option
+                                ? 'bg-accent-muted text-accent-primary border-accent-primary ring-accent-primary'
+                                : 'bg-surface hover:bg-surface-hover border-border text-primary hover:border-shade-1 focus:ring-accent-primary'
+                              }
+                              ${isSubmittingFeedback ? 'cursor-wait' : ''}`}
+                          >
+                            {isSubmittingFeedback && feedbackOptionClicked === option ? 'SENDING...' : option.charAt(0).toUpperCase() + option.slice(1)}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="p-3 bg-success-muted rounded-md border border-success text-success text-sm">
+                      <p className="font-medium">Thanks for your feedback!</p>
+                      {feedbackOptionClicked === 'steep' && (
+                        <p className="mt-1 text-xs">
+                          Money is weird. We value financial inclusivity and a sense of shared trust. If rates are a concern, please tell us more <a href="https://www.notion.so/gardening/1e981af59c8680e6a791c2a185d350fe" target="_blank" rel="noopener noreferrer" className="underline hover:text-success-dark font-medium">here</a>.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {/* --- END: Price Feedback Section --- */}
+
+                {/* --- START: Discount Code Section --- */}
                 <div className="pt-4 mt-4 font-mono">
                   {!appliedDiscount ? (
                     <div>

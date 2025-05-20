@@ -11,6 +11,7 @@ interface EmailPayload {
 }
 
 serve(async (req) => {
+  console.log('send-approval-email version: reply_to_living_thegarden_pt_check_001');
   // Handle CORS
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
