@@ -41,6 +41,7 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
   // TODO: Consider moving adminEmails to a config file or context if used elsewhere
   // const adminEmails = ['andre@thegarden.pt', 'redis213@gmail.com', 'dawn@thegarden.pt', 'simone@thegarden.pt', 'samjlloa@gmail.com', 'redis213+testadmin@gmail.com']; // <-- Remove this!
   const isAdmin = isAdminUser(session); // <-- Use the utility function
+  const isAdminPage = location.pathname === '/admin'; // <-- Add this line
 
   // Add a log to check the isAdmin value here too
   console.log('[MainAppLayout] isAdmin check result:', isAdmin, 'isLoading:', sessionLoading);
@@ -200,7 +201,7 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
       }}
     >
       {/* === Header Start === */}
-      <header className={`fixed top-0 left-0 right-0 z-50 border-border/50 transition-all duration-300 ease-in-out ${!showHeader ? '-translate-y-full' : ''} ${theme === 'light' ? 'border-b border-border/50' : ''}`}>
+      <header className={`fixed top-0 left-0 right-0 z-50 border-border/50 transition-all duration-300 ease-in-out ${!showHeader ? '-translate-y-full' : ''} ${theme === 'light' ? 'border-b border-border/50' : ''} ${isAdminPage ? 'bg-black/50' : ''}`}>
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-10 sm:h-14">
             <button

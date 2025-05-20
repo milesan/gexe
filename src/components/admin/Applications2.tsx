@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Eye, CheckCircle, XCircle, Clock, Trash2 } from 'lucide-react';
+import { Eye, CheckCircle, XCircle, Clock, Trash2, Search, X as ClearSearchIcon } from 'lucide-react';
 import { ApplicationDetails } from './ApplicationDetails';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getFrontendUrl } from '../../lib/environment';
 import { getAnswer } from '../../lib/old_question_mapping';
 import type { QuestionForAnswerRetrieval } from '../../lib/old_question_mapping';
+import { usePagination, DOTS } from '../../hooks/usePagination';
 
 interface Application {
   id: string;
@@ -22,6 +23,8 @@ interface Application {
   seen_welcome?: boolean;
 }
 
+const ITEMS_PER_PAGE = 15;
+
 export function Applications2() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,17 +35,30 @@ export function Applications2() {
   const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [applicationToDelete, setApplicationToDelete] = useState<Application | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalApplicationsCount, setTotalApplicationsCount] = useState(0);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeSearchQuery, setActiveSearchQuery] = useState('');
 
-  useEffect(() => {
-    loadApplications();
-    loadQuestions();
-  }, []);
+  const debounce = <F extends (...args: any[]) => any>(func: F, waitFor: number) => {
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    return (...args: Parameters<F>): Promise<ReturnType<F>> =>
+      new Promise(resolve => {
+        if (timeout) {
+          clearTimeout(timeout);
+        }
+        timeout = setTimeout(() => resolve(func(...args)), waitFor);
+      });
+  };
 
-  const loadApplications = async () => {
+  const loadApplications = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const { data, error: queryError } = await supabase
+      const from = (currentPage - 1) * ITEMS_PER_PAGE;
+      const to = from + ITEMS_PER_PAGE - 1;
+
+      let query = supabase
         .from('application_details')
         .select(`
           id,
@@ -56,12 +72,23 @@ export function Applications2() {
           linked_application_id,
           last_sign_in_at,
           raw_user_meta_data
-        `)
-        .order('created_at', { ascending: false });
+        `, { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(from, to);
+
+      if (filter !== 'all') {
+        query = query.eq('status', filter);
+      }
+
+      if (activeSearchQuery) {
+        query = query.ilike('user_email', `%${activeSearchQuery}%`);
+      }
+
+      const { data, error: queryError, count } = await query;
 
       if (queryError) throw queryError;
 
-      console.log('Applications2: Raw data fetched:', data);
+      console.log('Applications2: Raw data fetched:', data, 'Total count:', count);
 
       const processedApplications = (data || []).map(app => {
         const seenWelcome = !!app.raw_user_meta_data?.has_seen_welcome;
@@ -73,15 +100,28 @@ export function Applications2() {
 
       console.log('Applications2: Processed applications with user data:', processedApplications);
       setApplications(processedApplications);
+      setTotalApplicationsCount(count || 0);
 
     } catch (err) {
       console.error('Error loading applications:', err);
       setError(err instanceof Error ? err.message : 'Failed to load applications');
       setApplications([]);
+      setTotalApplicationsCount(0);
     } finally {
       setLoading(false);
     }
-  };
+  }, [filter, currentPage, activeSearchQuery, supabase]);
+
+  const debouncedLoadApplications = useCallback(debounce(loadApplications, 500), [loadApplications]);
+
+  useEffect(() => {
+    loadQuestions();
+  }, []);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    loadApplications();
+  }, [loadApplications]);
 
   const loadQuestions = async () => {
     try {
@@ -122,8 +162,6 @@ export function Applications2() {
       } else if (status === 'rejected') {
         const application = applications.find(app => app.id === id);
         console.log('Applications2: Rejecting application', { id, email: application?.user_email });
-        console.log('type of id', typeof id);
-        console.log('Is valid UUID?', /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
         const { error } = await supabase.rpc('reject_application', {
           p_application_id: id
         });
@@ -164,7 +202,11 @@ export function Applications2() {
       if (rpcError) throw rpcError;
 
       console.log('Applications2: Application deleted successfully', { id });
-      setApplications(prev => prev.filter(app => app.id !== id));
+      if (applications.length === 1 && currentPage > 1) {
+        setCurrentPage(currentPage - 1);
+      } else {
+        await loadApplications();
+      }
       setShowDeleteConfirmModal(false);
       setApplicationToDelete(null);
 
@@ -186,12 +228,32 @@ export function Applications2() {
     setShowDeleteConfirmModal(false);
   };
 
-  const filteredApplications = applications.filter(app => {
-    if (filter === 'all') return true;
-    return app.status === filter;
+  const handleFilterChange = (newFilter: 'all' | 'pending' | 'approved' | 'rejected') => {
+    setFilter(newFilter);
+    setCurrentPage(1);
+  };
+
+  const handleSearch = () => {
+    setActiveSearchQuery(searchTerm.trim());
+    setCurrentPage(1);
+  };
+
+  const handleClearSearch = () => {
+    setSearchTerm('');
+    setActiveSearchQuery('');
+    setCurrentPage(1);
+  };
+
+  const paginationRange = usePagination({
+    currentPage,
+    totalCount: totalApplicationsCount,
+    siblingCount: 1,
+    pageSize: ITEMS_PER_PAGE
   });
 
-  if (loading) {
+  const totalPageCount = Math.ceil(totalApplicationsCount / ITEMS_PER_PAGE);
+
+  if (loading && applications.length === 0) {
     return (
       <div className="flex justify-center items-center p-12">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-accent-primary)]"></div>
@@ -207,55 +269,90 @@ export function Applications2() {
         </div>
       )}
 
-      <div className="flex gap-4 mb-6">
-        <button
-          onClick={() => setFilter('all')}
-          className={`px-3 py-1.5 rounded-lg transition-colors text-sm ${
-            filter === 'all'
-              ? 'bg-emerald-900 text-white font-mono'
-              : 'bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] border border-[var(--color-border)] font-mono'
-          }`}
-        >
-          All
-        </button>
-        <button
-          onClick={() => setFilter('pending')}
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm ${
-            filter === 'pending'
-              ? 'bg-emerald-900 text-white font-mono'
-              : 'bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] border border-[var(--color-border)] font-mono'
-          }`}
-        >
-          <Clock className="w-4 h-4" />
-          Pending
-        </button>
-        <button
-          onClick={() => setFilter('approved')}
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm ${
-            filter === 'approved'
-              ? 'bg-emerald-900 text-white font-mono'
-              : 'bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] border border-[var(--color-border)] font-mono'
-          }`}
-        >
-          <CheckCircle className="w-4 h-4" />
-          Approved
-        </button>
-        <button
-          onClick={() => setFilter('rejected')}
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm ${
-            filter === 'rejected'
-              ? 'bg-emerald-900 text-white font-mono'
-              : 'bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] border border-[var(--color-border)] font-mono'
-          }`}
-        >
-          <XCircle className="w-4 h-4" />
-          Rejected
-        </button>
+      <div className="flex flex-wrap gap-4 mb-6 items-center">
+        <div className="flex gap-4">
+          <button
+            onClick={() => handleFilterChange('all')}
+            className={`px-3 py-1.5 rounded-lg transition-colors text-sm whitespace-nowrap ${
+              filter === 'all'
+                ? 'bg-emerald-900 text-white font-mono'
+                : 'bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] border border-[var(--color-border)] font-mono'
+            }`}
+          >
+            All
+          </button>
+          <button
+            onClick={() => handleFilterChange('pending')}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm ${
+              filter === 'pending'
+                ? 'bg-emerald-900 text-white font-mono'
+                : 'bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] border border-[var(--color-border)] font-mono'
+            }`}
+          >
+            <Clock className="w-4 h-4" />
+            Pending
+          </button>
+          <button
+            onClick={() => handleFilterChange('approved')}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm ${
+              filter === 'approved'
+                ? 'bg-emerald-900 text-white font-mono'
+                : 'bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] border border-[var(--color-border)] font-mono'
+            }`}
+          >
+            <CheckCircle className="w-4 h-4" />
+            Approved
+          </button>
+          <button
+            onClick={() => handleFilterChange('rejected')}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm ${
+              filter === 'rejected'
+                ? 'bg-emerald-900 text-white font-mono'
+                : 'bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] border border-[var(--color-border)] font-mono'
+            }`}
+          >
+            <XCircle className="w-4 h-4" />
+            Rejected
+          </button>
+        </div>
+
+        <div className="flex gap-2 items-center flex-grow sm:flex-grow-0">
+          <input 
+            type="text"
+            placeholder="Search by email..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyPress={(e) => { if (e.key === 'Enter') handleSearch(); }}
+            className="px-3 py-1.5 border border-[var(--color-border)] rounded-lg bg-[var(--color-bg-input)] text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono text-sm flex-grow"
+          />
+          <button
+            onClick={handleSearch}
+            className="p-2 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-primary)] hover:bg-[var(--color-button-secondary-bg-hover)] border border-[var(--color-border)]"
+            title="Search"
+          >
+            <Search className="w-4 h-4" />
+          </button>
+          {activeSearchQuery && (
+            <button
+              onClick={handleClearSearch}
+              className="p-2 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-error)] hover:bg-[var(--color-error-bg-hover)] border border-[var(--color-border)]"
+              title="Clear Search"
+            >
+              <ClearSearchIcon className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
-      <div className="space-y-4">
+      {loading && (
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-accent-primary)]"></div>
+        </div>
+      )}
+
+      <div className="space-y-4 relative">
         <AnimatePresence>
-          {filteredApplications.map((application) => (
+          {applications.map((application) => (
             <motion.div
               key={application.id}
               initial={{ opacity: 0, y: 20 }}
@@ -272,7 +369,6 @@ export function Applications2() {
                     <span className="group-hover:underline">
                       {(() => {
                         if (questions.length > 0 && application.data) {
-                          // Find questions by text, as short_code might not be on application_questions_2
                           const firstNameQuestion = questions.find(q => q.text === "First Name") as QuestionForAnswerRetrieval | undefined;
                           const lastNameQuestion = questions.find(q => q.text === "Last Name") as QuestionForAnswerRetrieval | undefined;
 
@@ -378,6 +474,79 @@ export function Applications2() {
             </motion.div>
           ))}
         </AnimatePresence>
+        {(!loading && applications.length === 0) && (
+          <div className="text-center py-10 text-[var(--color-text-secondary)] font-mono">
+            No applications found for the current filter.
+          </div>
+        )}
+      </div>
+
+      <div className="mt-8 flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
+        <div className="font-mono text-sm text-[var(--color-text-secondary)] order-2 sm:order-1">
+          Page {currentPage} of {totalPageCount > 0 ? totalPageCount : 1}
+          {totalApplicationsCount > 0 && !activeSearchQuery &&
+            ` (Showing ${((currentPage - 1) * ITEMS_PER_PAGE) + 1} - ${Math.min(currentPage * ITEMS_PER_PAGE, totalApplicationsCount)} of ${totalApplicationsCount})`
+          }
+          {totalApplicationsCount > 0 && activeSearchQuery &&
+            ` (Found ${totalApplicationsCount} matching "${activeSearchQuery}")`
+          }
+          {totalApplicationsCount === 0 && activeSearchQuery && ` (No matches for "${activeSearchQuery}")`}
+          {totalApplicationsCount === 0 && !activeSearchQuery && ` (No applications)`}
+        </div>
+
+        {totalPageCount > 0 && (
+          <div className="flex items-center space-x-1 order-1 sm:order-2">
+            <button
+              onClick={() => setCurrentPage(1)}
+              disabled={currentPage === 1 || loading}
+              className="px-3 py-1.5 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
+            >
+              First
+            </button>
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1 || loading}
+              className="px-3 py-1.5 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
+            >
+              Prev
+            </button>
+            {paginationRange?.map((pageNumber, index) => {
+              if (pageNumber === DOTS) {
+                return <span key={`${pageNumber}-${index}`} className="px-3 py-1.5 text-[var(--color-text-secondary)] font-mono text-xs">...</span>;
+              }
+
+              const pageNum = pageNumber as number;
+              return (
+                <button
+                  key={`${pageNumber}-${index}`}
+                  onClick={() => setCurrentPage(pageNum)}
+                  disabled={loading}
+                  className={`px-3 py-1.5 rounded-lg font-mono text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                    currentPage === pageNum
+                      ? 'bg-emerald-900 text-white'
+                      : 'bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)]'
+                  }`}
+                >
+                  {pageNumber}
+                </button>
+              );
+            })}
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(totalPageCount, prev + 1))}
+              disabled={currentPage === totalPageCount || loading || totalPageCount === 0}
+              className="px-3 py-1.5 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
+            >
+              Next
+            </button>
+            <button
+              onClick={() => setCurrentPage(totalPageCount)}
+              disabled={currentPage === totalPageCount || loading || totalPageCount === 0}
+              className="px-3 py-1.5 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
+            >
+              Last
+            </button>
+          </div>
+        )}
       </div>
 
       {selectedApplication && (

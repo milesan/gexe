@@ -2,9 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
-import { X, AlertCircle, Plus, Trash2 } from 'lucide-react';
+import { X, AlertCircle, Plus, Trash2, Eye, EyeOff, ListFilter } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { ApplicationQuestion } from '../../types/application'; // Corrected import path
+import type { ApplicationQuestion, VisibilityRules, VisibilityRule } from '../../types/application'; // Corrected import path
 import { APPLICATION_SECTION_ORDER } from '../../config/applicationConfig'; // For order_number logic
 
 // Updated ApplicationQuestion interface (mirroring what should be in ../../types/application.ts)
@@ -20,7 +20,7 @@ interface ApplicationQuestion {
   created_at: string;
   updated_at: string;
   file_storage_bucket?: string | null;
-  visibility_rules?: string | null; // json, defining conditions
+  visibility_rules?: VisibilityRules | null; // Now an object
 }
 */
 
@@ -40,6 +40,13 @@ const QUESTION_TYPES: ApplicationQuestion['type'][] = [
 // For the dropdown, let's derive from APPLICATION_SECTION_ORDER for consistency.
 const QUESTION_SECTIONS: string[] = [...APPLICATION_SECTION_ORDER, 'Uncategorized'];
 
+const VISIBILITY_OPERATORS: VisibilityRule['operator'][] = ['equals', 'not_equals', 'contains', 'not_contains'];
+
+
+interface RuleUI extends VisibilityRule {
+  ui_id: string; // For React key
+}
+
 
 export function QuestionFormModal({ question, allQuestions, onClose }: QuestionFormModalProps) {
   const [formData, setFormData] = useState(() => ({
@@ -49,8 +56,13 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
     required: null as boolean | null, // Default to null
     section: QUESTION_SECTIONS[0], // Default section
     file_storage_bucket: '',
-    visibility_rules: '{}', // Default to empty JSON object string
   }));
+
+  // --- State for Rule Builder ---
+  const [visibilityType, setVisibilityType] = useState<'alwaysVisible' | 'alwaysHidden' | 'conditional'>('alwaysVisible');
+  const [conditionalLogic, setConditionalLogic] = useState<'AND' | 'OR'>('AND');
+  const [rules, setRules] = useState<RuleUI[]>([]);
+  // --- End State for Rule Builder ---
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,8 +73,7 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
       console.log("QuestionFormModal: Initializing with provided question object", { question, isActuallyEditing: isEditing });
       
       let initialOptions: string[] = [];
-      // Ensure options is an array before trying to use array methods
-      if (question.type === 'radio' && Array.isArray(question.options)) {
+      if ((question.type === 'radio' || question.type === 'checkbox') && Array.isArray(question.options)) {
         initialOptions = question.options;
       }
 
@@ -70,14 +81,39 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
         text: question.text || '',
         type: question.type || QUESTION_TYPES[0],
         options: initialOptions,
-        required: question.required ?? null, // Use nullish coalescing for required
+        required: question.required ?? null,
         section: question.section || QUESTION_SECTIONS[0],
         file_storage_bucket: question.file_storage_bucket || '',
-        visibility_rules: JSON.stringify(question.visibility_rules || {}),
       });
+
+      // --- Parse visibility_rules ---
+      const existingRules = question.visibility_rules;
+      if (existingRules && typeof existingRules === 'object') {
+        if (existingRules.visible === false) {
+          setVisibilityType('alwaysHidden');
+          setConditionalLogic('AND');
+          setRules([]);
+        } else if (existingRules.rules && Array.isArray(existingRules.rules) && existingRules.rules.length > 0) {
+          setVisibilityType('conditional');
+          setConditionalLogic(existingRules.condition === 'OR' ? 'OR' : 'AND');
+          setRules(existingRules.rules.map((rule, index) => ({
+            ...rule,
+            ui_id: `rule-${Date.now()}-${index}` // Simple unique ID
+          })));
+        } else { // Includes { visible: true } or empty object {} or other invalid states
+          setVisibilityType('alwaysVisible');
+          setConditionalLogic('AND');
+          setRules([]);
+        }
+      } else { // Null, undefined, or non-object (e.g. old string format if any survived)
+        setVisibilityType('alwaysVisible');
+        setConditionalLogic('AND');
+        setRules([]);
+      }
+      // --- End Parse visibility_rules ---
+
     } else {
        console.log("QuestionFormModal: Initializing for brand new question (no pre-fill)");
-       // Reset to default for new question
        setFormData({
          text: '',
          type: QUESTION_TYPES[0],
@@ -85,8 +121,11 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
          required: null,
          section: QUESTION_SECTIONS[0],
          file_storage_bucket: '',
-         visibility_rules: '{}',
        });
+       // Reset rule builder state for new question
+       setVisibilityType('alwaysVisible');
+       setConditionalLogic('AND');
+       setRules([]);
     }
   }, [question, isEditing]);
 
@@ -104,7 +143,7 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
     }
     else {
          setFormData(prev => {
-            const updatedOptions = (name === 'type' && value !== 'radio') ? [] : prev.options;
+            const updatedOptions = (name === 'type' && value !== 'radio' && value !== 'checkbox') ? [] : prev.options;
             return {
                 ...prev,
                 [name]: value,
@@ -129,39 +168,78 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
     setFormData(prev => ({ ...prev, options: newOptions }));
   };
 
+  // --- Rule Builder Handlers ---
+  const handleAddRule = () => {
+    setRules(prev => [...prev, {
+      ui_id: `rule-${Date.now()}-${prev.length}`,
+      question_id: '',
+      operator: 'equals',
+      answer: ''
+    }]);
+  };
+
+  const handleRuleChange = (ui_id: string, field: keyof Omit<RuleUI, 'ui_id'>, value: string) => {
+    setRules(prev => prev.map(r => r.ui_id === ui_id ? { ...r, [field]: value } : r));
+  };
+
+  const handleRemoveRule = (ui_id: string) => {
+    setRules(prev => prev.filter(r => r.ui_id !== ui_id));
+  };
+  // --- End Rule Builder Handlers ---
+
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    console.log("QuestionFormModal: Form submitted", { isEditing, formData });
+    console.log("QuestionFormModal: Form submitted", { isEditing, formData, visibilityType, conditionalLogic, rules });
 
-    const typesThatUseOptions: ApplicationQuestion['type'][] = ['radio', 'checkbox']; // Define types that use the options array
+    const typesThatUseOptions: ApplicationQuestion['type'][] = ['radio', 'checkbox'];
 
     const finalOptions = typesThatUseOptions.includes(formData.type)
         ? formData.options.map(opt => opt.trim()).filter(opt => opt !== '')
         : null;
 
-    // Updated validation to include checkbox and make message dynamic
     if (typesThatUseOptions.includes(formData.type) && (!finalOptions || finalOptions.length === 0)) {
         setError(`${formData.type.charAt(0).toUpperCase() + formData.type.slice(1)} questions must have at least one non-empty option.`);
         setLoading(false);
         return;
     }
 
-    try {
-        let visibilityRulesJson: any = null;
-        if (formData.visibility_rules && formData.visibility_rules.trim() !== "") {
-            try {
-                visibilityRulesJson = JSON.parse(formData.visibility_rules);
-            } catch (parseError) {
-                setError("Visibility Rules JSON is invalid. Please check the syntax.");
-                setLoading(false);
-                console.error("JSON Parse Error for visibility_rules:", parseError);
-                return;
-            }
+    // --- Serialize Visibility Rules ---
+    let finalVisibilityRules: VisibilityRules | null = null;
+    if (visibilityType === 'alwaysHidden') {
+      finalVisibilityRules = { visible: false };
+    } else if (visibilityType === 'conditional') {
+      if (rules.length === 0) {
+        // If conditional is selected but no rules, treat as always visible. Or show error.
+        // For now, let's treat as always visible to avoid blocking save.
+        // Consider adding validation to ensure at least one rule if 'conditional' is chosen.
+        finalVisibilityRules = { visible: true }; // Or null to let backend default
+      } else {
+        const processedRules = rules
+          .filter(r => r.question_id && r.operator && r.answer.trim() !== '') // Basic validation
+          .map(r => ({
+            question_id: r.question_id,
+            operator: r.operator as VisibilityRule['operator'],
+            answer: r.answer,
+          }));
+        if (processedRules.length > 0) {
+          finalVisibilityRules = {
+            condition: conditionalLogic,
+            rules: processedRules,
+          };
+        } else {
+          // No valid rules, so treat as always visible
+           finalVisibilityRules = { visible: true };
         }
+      }
+    } else { // 'alwaysVisible'
+      finalVisibilityRules = { visible: true }; // Or null, depending on how backend handles absence
+    }
+    // --- End Serialize Visibility Rules ---
 
-
+    try {
       const questionDataPayload = {
         text: formData.text,
         type: formData.type,
@@ -169,7 +247,7 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
         required: formData.required, 
         section: formData.section,
         file_storage_bucket: formData.file_storage_bucket || null, 
-        visibility_rules: visibilityRulesJson, 
+        visibility_rules: finalVisibilityRules,
         updated_at: new Date().toISOString(),
         // order_number will be handled below
       };
@@ -327,9 +405,9 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
                             name="type"
                             value={formData.type}
                             onChange={handleChange}
-                            className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-furface-modal,theme(colors.gray.800))] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono [&>option]:bg-[var(--color-furface-modal)] [&>option]:text-white"
+                            className="w-full px-3 py-2 bg-[var(--color-furface-modal,theme(colors.gray.800))] border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent text-primary font-mono"
                         >
-                            {QUESTION_TYPES.map(typeOpt => ( // Renamed 'type' to 'typeOpt' to avoid conflict
+                            {QUESTION_TYPES.map(typeOpt => (
                                 <option key={typeOpt} value={typeOpt}>{typeOpt}</option>
                             ))}
                         </select>
@@ -379,9 +457,9 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
                             name="section"
                             value={formData.section}
                             onChange={handleChange}
-                            className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-furface-modal,theme(colors.gray.800))] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono [&>option]:bg-[var(--color-furface-modal)] [&>option]:text-white"
+                            className="w-full px-3 py-2 bg-[var(--color-furface-modal,theme(colors.gray.800))] border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent text-primary font-mono"
                          >
-                            {QUESTION_SECTIONS.map(sectionOpt => ( // Renamed 'section' to 'sectionOpt'
+                            {QUESTION_SECTIONS.map(sectionOpt => (
                                 <option key={sectionOpt} value={sectionOpt}>{sectionOpt}</option>
                             ))}
                         </select>
@@ -395,7 +473,7 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
                             name="required"
                             value={formData.required === null ? "null" : String(formData.required)}
                             onChange={handleChange}
-                            className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-furface-modal,theme(colors.gray.800))] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono [&>option]:bg-[var(--color-furface-modal)] [&>option]:text-white"
+                            className="w-full px-3 py-2 bg-[var(--color-furface-modal,theme(colors.gray.800))] border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent text-primary font-mono"
                         >
                             <option value="null">Not Set</option>
                             <option value="true">Yes</option>
@@ -422,26 +500,157 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
                         </p>
                     </div>
 
-                    {/* Visibility Rules */}
-                    <div className="pt-2 space-y-2 border-t border-[var(--color-border)] mt-4">
-                        <h3 className="text-sm font-medium text-[var(--color-text-primary)] font-mono pt-3">Visibility Rules (JSON)</h3>
-                        <label htmlFor="visibility_rules" className="block text-xs font-medium text-[var(--color-text-secondary)] font-mono mb-1">
-                            Define conditions for showing this question (e.g., {"{\"rules\": [{\"question_id\": \"some-uuid\", \"answer\": \"Yes\"}], \"condition\": \"AND\"}"} or {"{\"visible\": false}"} )
-                        </label>
-                        <textarea
-                            id="visibility_rules"
-                            name="visibility_rules"
-                            rows={5}
-                            value={formData.visibility_rules}
-                            onChange={handleChange}
-                            className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-input-bg)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono text-sm"
-                            placeholder='Enter JSON, e.g., {"visible": true}'
-                        />
-                        <p className="mt-1 text-xs text-[var(--color-text-tertiary)] font-mono">
-                           If empty or invalid JSON, it might default to always visible or as per backend logic.
-                           Example for simple hide: {"{\"visible\": false}"}
-                        </p>
+                    {/* --- Visibility Rules UI --- */}
+                    <div className="pt-2 space-y-3 border-t border-[var(--color-border)] mt-4">
+                        <h3 className="text-sm font-medium text-[var(--color-text-primary)] font-mono pt-3 flex items-center">
+                            <ListFilter className="w-4 h-4 mr-2 text-[var(--color-text-secondary)]" />
+                            Visibility Rules
+                        </h3>
+                        <div className="space-y-2">
+                            <label className="flex items-center space-x-2 cursor-pointer">
+                                <input
+                                    type="radio"
+                                    name="visibilityType"
+                                    value="alwaysVisible"
+                                    checked={visibilityType === 'alwaysVisible'}
+                                    onChange={() => setVisibilityType('alwaysVisible')}
+                                    className="form-radio text-emerald-500 bg-[var(--color-input-bg)] border-[var(--color-border)] focus:ring-emerald-400"
+                                />
+                                <Eye className="w-4 h-4 text-emerald-500" />
+                                <span className="text-sm text-[var(--color-text-secondary)] font-mono">Always Visible</span>
+                            </label>
+                            <label className="flex items-center space-x-2 cursor-pointer">
+                                <input
+                                    type="radio"
+                                    name="visibilityType"
+                                    value="alwaysHidden"
+                                    checked={visibilityType === 'alwaysHidden'}
+                                    onChange={() => setVisibilityType('alwaysHidden')}
+                                    className="form-radio text-red-500 bg-[var(--color-input-bg)] border-[var(--color-border)] focus:ring-red-400"
+                                />
+                                <EyeOff className="w-4 h-4 text-red-500" />
+                                <span className="text-sm text-[var(--color-text-secondary)] font-mono">Always Hidden</span>
+                            </label>
+                            <label className="flex items-center space-x-2 cursor-pointer">
+                                <input
+                                    type="radio"
+                                    name="visibilityType"
+                                    value="conditional"
+                                    checked={visibilityType === 'conditional'}
+                                    onChange={() => setVisibilityType('conditional')}
+                                    className="form-radio text-blue-500 bg-[var(--color-input-bg)] border-[var(--color-border)] focus:ring-blue-400"
+                                />
+                                <ListFilter className="w-4 h-4 text-blue-500" />
+                                <span className="text-sm text-[var(--color-text-secondary)] font-mono">Conditional Visibility</span>
+                            </label>
+                        </div>
+
+                        {visibilityType === 'conditional' && (
+                            <motion.div 
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="p-3 space-y-3 border border-[var(--color-border-accent)] rounded-md bg-[var(--color-bg-surface-raised)] mt-2"
+                            >
+                                <div className="flex items-center space-x-3">
+                                    <label className="text-xs font-medium text-[var(--color-text-secondary)] font-mono">Show if:</label>
+                                    <label className="flex items-center space-x-1 cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            name="conditionalLogic"
+                                            value="AND"
+                                            checked={conditionalLogic === 'AND'}
+                                            onChange={() => setConditionalLogic('AND')}
+                                            className="form-radio text-blue-500 bg-[var(--color-input-bg)] border-[var(--color-border)] focus:ring-blue-400"
+                                        />
+                                        <span className="text-xs text-[var(--color-text-secondary)] font-mono">ALL rules match (AND)</span>
+                                    </label>
+                                    <label className="flex items-center space-x-1 cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            name="conditionalLogic"
+                                            value="OR"
+                                            checked={conditionalLogic === 'OR'}
+                                            onChange={() => setConditionalLogic('OR')}
+                                            className="form-radio text-blue-500 bg-[var(--color-input-bg)] border-[var(--color-border)] focus:ring-blue-400"
+                                        />
+                                        <span className="text-xs text-[var(--color-text-secondary)] font-mono">ANY rule matches (OR)</span>
+                                    </label>
+                                </div>
+
+                                {rules.map((rule, index) => (
+                                    <div key={rule.ui_id} className="p-2 space-y-2 border border-[var(--color-border)] rounded bg-[var(--color-bg-surface)]">
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
+                                            <div>
+                                                <label htmlFor={`rule-question-${rule.ui_id}`} className="block text-xs font-medium text-[var(--color-text-secondary)] font-mono mb-0.5">Target Question</label>
+                                                <select
+                                                    id={`rule-question-${rule.ui_id}`}
+                                                    value={rule.question_id}
+                                                    onChange={(e) => handleRuleChange(rule.ui_id, 'question_id', e.target.value)}
+                                                    className="w-full px-2 py-1.5 bg-[var(--color-furface-modal,theme(colors.gray.800))] border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent text-primary font-mono text-xs"
+                                                >
+                                                    <option value="">Select a question...</option>
+                                                    {allQuestions.filter(q => q.id !== question?.id && q.type !== 'markdown_text').map(q => (
+                                                        <option key={q.id} value={q.id} title={q.text}>
+                                                            {q.text.substring(0, 50)}{q.text.length > 50 ? '...' : ''} (ID: ...{q.id.slice(-6)})
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label htmlFor={`rule-operator-${rule.ui_id}`} className="block text-xs font-medium text-[var(--color-text-secondary)] font-mono mb-0.5">Operator</label>
+                                                <select
+                                                    id={`rule-operator-${rule.ui_id}`}
+                                                    value={rule.operator}
+                                                    onChange={(e) => handleRuleChange(rule.ui_id, 'operator', e.target.value)}
+                                                    className="w-full px-2 py-1.5 bg-[var(--color-furface-modal,theme(colors.gray.800))] border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent text-primary font-mono text-xs"
+                                                >
+                                                    {VISIBILITY_OPERATORS.map(op => (
+                                                        <option key={op} value={op}>{op}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div className="flex items-end gap-1">
+                                                <div className="flex-grow">
+                                                    <label htmlFor={`rule-answer-${rule.ui_id}`} className="block text-xs font-medium text-[var(--color-text-secondary)] font-mono mb-0.5">Answer</label>
+                                                    <input
+                                                        type="text"
+                                                        id={`rule-answer-${rule.ui_id}`}
+                                                        value={rule.answer}
+                                                        onChange={(e) => handleRuleChange(rule.ui_id, 'answer', e.target.value)}
+                                                        className="w-full px-2 py-1.5 border border-[var(--color-border)] rounded-md bg-[var(--color-input-bg)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono text-xs"
+                                                        placeholder="Expected answer"
+                                                    />
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRemoveRule(rule.ui_id)}
+                                                    className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-md transition-colors self-end mb-[1px]" // Adjust margin to align with input
+                                                    aria-label="Remove rule"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                                <button
+                                    type="button"
+                                    onClick={handleAddRule}
+                                    className="flex items-center gap-1 px-3 py-1.5 rounded-md text-xs bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] transition-colors border border-[var(--color-border)]"
+                                >
+                                    <Plus className="w-3.5 h-3.5" />
+                                    Add Rule
+                                </button>
+                                {rules.length === 0 && (
+                                     <p className="text-xs text-[var(--color-text-tertiary)] font-mono italic">
+                                        Add at least one rule for conditional visibility. If no rules are added, question will default to being visible.
+                                    </p>
+                                )}
+                            </motion.div>
+                        )}
                     </div>
+                    {/* --- End Visibility Rules UI --- */}
 
                     {/* Buttons */}
                     <div className="flex justify-end gap-3 pt-4">

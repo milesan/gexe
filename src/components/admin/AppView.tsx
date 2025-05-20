@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle, XCircle, X } from 'lucide-react';
+import { CheckCircle, XCircle, X, Search, X as ClearSearchIcon } from 'lucide-react';
 import { ImageModal } from '../shared/ImageModal';
 import { getFrontendUrl } from '../../lib/environment';
 import { ApplicationDetails } from './ApplicationDetails';
 import { getAnswer } from '../../lib/old_question_mapping';
 import type { QuestionForAnswerRetrieval } from '../../lib/old_question_mapping';
+import { usePagination, DOTS } from '../../hooks/usePagination';
 
 interface Application {
   id: string;
@@ -38,6 +39,8 @@ const SELF_IDENTIFY_NEW_UUID = "702ae994-6f64-4e81-a2b3-2593fbc0c937";
 const MBTI_QUESTION_KEY = 'mbti';
 const MBTI_OLD_ORDER_NUMBER = "8500";
 const MBTI_NEW_UUID = "241d9c89-0323-4003-9a20-7c19309ba488";
+
+const ITEMS_PER_PAGE = 15;
 
 function AnswerTooltip({ children, content }: { children: React.ReactNode; content: any }) {
   const [showTooltip, setShowTooltip] = useState(false);
@@ -85,9 +88,16 @@ export function AppView() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
   const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalApplicationsCount, setTotalApplicationsCount] = useState(0);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeSearchQuery, setActiveSearchQuery] = useState('');
 
   React.useEffect(() => {
     loadApplications();
+  }, [currentPage, activeTab, activeSearchQuery]);
+
+  React.useEffect(() => {
     loadQuestions();
   }, []);
 
@@ -107,16 +117,34 @@ export function AppView() {
 
   const loadApplications = async () => {
     try {
-      const { data, error: queryError } = await supabase
+      setLoading(true);
+      setError(null);
+
+      const from = (currentPage - 1) * ITEMS_PER_PAGE;
+      const to = from + ITEMS_PER_PAGE - 1;
+
+      let query = supabase
         .from('application_details')
-        .select('id, user_id, data, status, created_at, user_email')
+        .select('id, user_id, data, status, created_at, user_email', { count: 'exact' })
+        .eq('status', activeTab)
         .order('created_at', { ascending: false });
+
+      if (activeSearchQuery) {
+        query = query.ilike('user_email', `%${activeSearchQuery}%`);
+      }
+
+      query = query.range(from, to);
+
+      const { data, error: queryError, count } = await query;
 
       if (queryError) throw queryError;
       setApplications(data || []);
+      setTotalApplicationsCount(count || 0);
     } catch (err) {
       console.error('Error loading applications:', err);
       setError(err instanceof Error ? err.message : 'Failed to load applications');
+      setApplications([]);
+      setTotalApplicationsCount(0);
     } finally {
       setLoading(false);
     }
@@ -439,6 +467,26 @@ export function AppView() {
     );
   };
 
+  const handleSearch = () => {
+    setActiveSearchQuery(searchTerm.trim());
+    setCurrentPage(1);
+  };
+
+  const handleClearSearch = () => {
+    setSearchTerm('');
+    setActiveSearchQuery('');
+    setCurrentPage(1);
+  };
+
+  const paginationRange = usePagination({
+    currentPage,
+    totalCount: totalApplicationsCount,
+    siblingCount: 1,
+    pageSize: ITEMS_PER_PAGE
+  });
+
+  const totalPageCount = Math.ceil(totalApplicationsCount / ITEMS_PER_PAGE);
+
   if (loading) {
     return (
       <div className="flex justify-center items-center p-12">
@@ -455,32 +503,128 @@ export function AppView() {
     );
   }
 
-  const filteredApplications = applications.filter(app => app.status === activeTab);
-
   return (
     <div className="space-y-6">
-      <div className="flex gap-4 mb-6 mt-4 ml-4">
-        {(['pending', 'approved', 'rejected'] as const).map((tab) => (
+      <div className="flex flex-wrap gap-4 mb-6 mt-4 ml-4 items-center">
+        <div className="flex gap-2">
+          {(['pending', 'approved', 'rejected'] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => {
+                setActiveTab(tab);
+                setCurrentPage(1);
+              }}
+              className={`px-4 py-2 rounded-lg transition-colors text-sm font-mono ${
+                activeTab === tab
+                  ? 'bg-emerald-900 text-white'
+                  : 'bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] border border-[var(--color-border)]'
+              }`}
+            >
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2 items-center flex-grow sm:flex-grow-0">
+          <input 
+            type="text"
+            placeholder="Search by email..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyPress={(e) => { if (e.key === 'Enter') handleSearch(); }}
+            className="px-3 py-1.5 border border-[var(--color-border)] rounded-lg bg-[var(--color-bg-input)] text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono text-sm flex-grow"
+          />
           <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 rounded-lg transition-colors text-sm font-mono ${
-              activeTab === tab
-                ? 'bg-emerald-900 text-white'
-                : 'bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] border border-[var(--color-border)]'
-            }`}
+            onClick={handleSearch}
+            className="p-2 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-primary)] hover:bg-[var(--color-button-secondary-bg-hover)] border border-[var(--color-border)]"
+            title="Search"
           >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            <Search className="w-4 h-4" />
           </button>
-        ))}
+          {activeSearchQuery && (
+            <button
+              onClick={handleClearSearch}
+              className="p-2 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-error)] hover:bg-[var(--color-error-bg-hover)] border border-[var(--color-border)]"
+              title="Clear Search"
+            >
+              <ClearSearchIcon className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 px-4">
         <AnimatePresence>
-          {filteredApplications.map(app => (
+          {applications.map(app => (
             renderApplicationCard(app)
           ))}
         </AnimatePresence>
+      </div>
+
+      <div className="mt-8 flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0 px-4 pb-4">
+        <div className="font-mono text-sm text-[var(--color-text-secondary)] order-2 sm:order-1">
+          Page {currentPage} of {totalPageCount > 0 ? totalPageCount : 1}
+          {totalApplicationsCount > 0 && !activeSearchQuery &&
+            ` (Showing ${((currentPage - 1) * ITEMS_PER_PAGE) + 1} - ${Math.min(currentPage * ITEMS_PER_PAGE, totalApplicationsCount)} of ${totalApplicationsCount})`
+          }
+          {totalApplicationsCount > 0 && activeSearchQuery &&
+            ` (Found ${totalApplicationsCount} matching "${activeSearchQuery}")`
+          }
+          {totalApplicationsCount === 0 && activeSearchQuery && ` (No matches for "${activeSearchQuery}")`}
+          {totalApplicationsCount === 0 && !activeSearchQuery && ` (No applications for this filter)`}
+        </div>
+
+        {totalPageCount > 0 && (
+           <div className="flex items-center space-x-1 order-1 sm:order-2">
+            <button
+              onClick={() => setCurrentPage(1)}
+              disabled={currentPage === 1 || loading}
+              className="px-3 py-1.5 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
+            >
+              First
+            </button>
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1 || loading}
+              className="px-3 py-1.5 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
+            >
+              Prev
+            </button>
+            {paginationRange?.map((pageNumber, index) => {
+              if (pageNumber === DOTS) {
+                return <span key={`${pageNumber}-${index}`} className="px-3 py-1.5 text-[var(--color-text-secondary)] font-mono text-xs">...</span>;
+              }
+              const pageNum = pageNumber as number;
+              return (
+                <button
+                  key={`${pageNumber}-${index}`}
+                  onClick={() => setCurrentPage(pageNum)}
+                  disabled={loading}
+                  className={`px-3 py-1.5 rounded-lg font-mono text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                    currentPage === pageNum
+                      ? 'bg-emerald-900 text-white'
+                      : 'bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)]'
+                  }`}
+                >
+                  {pageNumber}
+                </button>
+              );
+            })}
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(totalPageCount, prev + 1))}
+              disabled={currentPage === totalPageCount || loading || totalPageCount === 0}
+              className="px-3 py-1.5 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
+            >
+              Next
+            </button>
+            <button
+              onClick={() => setCurrentPage(totalPageCount)}
+              disabled={currentPage === totalPageCount || loading || totalPageCount === 0}
+              className="px-3 py-1.5 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
+            >
+              Last
+            </button>
+          </div>
+        )}
       </div>
 
       {selectedApplication && (

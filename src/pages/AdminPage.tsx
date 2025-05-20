@@ -22,7 +22,7 @@ export function AdminPage() {
   const [showHousekeeping, setShowHousekeeping] = useState(false);
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg-main)]">
+    <div className="min-h-screen bg-black/50">
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-display font-light text-[var(--color-text-primary)]">Admin Dashboard</h1>

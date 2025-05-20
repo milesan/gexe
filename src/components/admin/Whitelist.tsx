@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { Plus, Trash2, Upload, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getFrontendUrl } from '../../lib/environment';
+import { usePagination, DOTS } from '../../hooks/usePagination';
 
 interface WhitelistEntry {
   id: string;
@@ -21,38 +22,56 @@ export function Whitelist() {
   const [newNotes, setNewNotes] = useState('');
   const [showUpload, setShowUpload] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalEntriesCount, setTotalEntriesCount] = useState(0);
+
+  const ITEMS_PER_PAGE = 15;
 
   useEffect(() => {
-    console.log(' Initializing Whitelist component');
-    loadWhitelist();
+    console.log(' Initializing Whitelist component and setting up realtime subscription');
+    // loadWhitelist(); // Initial load will be handled by the useEffect below that depends on currentPage
 
-    const subscription = supabase
-      .channel('whitelist')
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'whitelist' 
-        }, 
+    const channel = supabase
+      .channel('whitelist-changes') // Use a more specific channel name
+      .on('postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'whitelist_user_details' // Listen to the view we are actually querying
+        },
         (payload) => {
-          console.log(' Realtime update received:', payload);
+          console.log(' Realtime update received on whitelist_user_details:', payload);
+          // Reload the current page of data
+          // No need to check if payload.new or payload.old matches current entries explicitly,
+          // as the view might change in ways that affect the current page (e.g. reordering if sort changes, or count changes)
           loadWhitelist();
         }
       )
-      .subscribe();
-
-    console.log(' Realtime subscription established');
+      .subscribe((status, err) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Realtime subscription to whitelist_user_details established');
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          console.error('❌ Realtime subscription error/closed:', { status, err });
+          setError(`Realtime connection error: ${status}. Data may be stale.`);
+        }
+      });
 
     return () => {
-      console.log(' Cleaning up realtime subscription');
-      subscription.unsubscribe();
+      console.log(' Cleaning up realtime subscription to whitelist_user_details');
+      supabase.removeChannel(channel);
     };
-  }, []);
+  }, []); // This effect only runs on mount and unmount for subscription management
+
+  // Effect for loading data when currentPage changes or on initial load
+  useEffect(() => {
+    loadWhitelist();
+  }, [currentPage]);
 
   const loadWhitelist = async () => {
-    console.log('📥 Loading whitelist data...');
+    console.log('📥 Loading whitelist data for page:', currentPage);
     try {
       setLoading(true);
+      window.scrollTo(0, 0);
 
       // Check auth state
       const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -69,17 +88,22 @@ export function Whitelist() {
 
       console.log('📊 Schema info:', { data: schemaData, error: schemaError });
 
-      console.log('🔍 Executing Supabase query...');
-      const { data, error: queryError } = await supabase
-        .from('whitelist_user_details')
-        .select('*')
-        .order('created_at', { ascending: false });
+      console.log('🔍 Executing Supabase query for whitelist_user_details...');
+      const from = (currentPage - 1) * ITEMS_PER_PAGE;
+      const to = from + ITEMS_PER_PAGE - 1;
 
-      console.log('📊 Raw Supabase response:', { data, error: queryError });
+      const { data, error: queryError, count } = await supabase
+        .from('whitelist_user_details')
+        .select('*', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(from, to);
+
+      console.log('📊 Raw Supabase response:', { data, error: queryError, count });
 
       if (queryError) throw queryError;
-      console.log('✅ Whitelist data loaded:', data?.length, 'entries');
+      console.log('✅ Whitelist data loaded:', data?.length, 'entries. Total count:', count);
       setEntries(data || []);
+      setTotalEntriesCount(count || 0);
     } catch (err) {
       console.error('❌ Error loading whitelist:', err);
       setError(err instanceof Error ? err.message : 'Failed to load whitelist');
@@ -264,6 +288,8 @@ export function Whitelist() {
       
       console.log(' Successfully uploaded CSV data'); // Removed "and sent emails"
       setShowUpload(false);
+      // Reset to page 1 after CSV upload as content has changed significantly
+      if (currentPage !== 1) setCurrentPage(1);
       await loadWhitelist();
     } catch (err) {
       console.error(' Error uploading CSV:', err);
@@ -271,7 +297,15 @@ export function Whitelist() {
     }
   };
 
-  if (loading) {
+  const paginationRange = usePagination({
+    currentPage,
+    totalCount: totalEntriesCount,
+    siblingCount: 1,
+    pageSize: ITEMS_PER_PAGE
+  });
+  const totalPageCount = Math.ceil(totalEntriesCount / ITEMS_PER_PAGE);
+
+  if (loading && entries.length === 0 && currentPage === 1) { // Show full page loader only on initial load of page 1
     return (
       <div className="flex justify-center items-center p-12">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-accent-primary)]"></div>
@@ -404,6 +438,72 @@ export function Whitelist() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Pagination Controls */}
+      {totalEntriesCount > ITEMS_PER_PAGE && (
+        <div className="mt-8 flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
+          <div className="font-mono text-sm text-[var(--color-text-secondary)] order-2 sm:order-1">
+            Page {currentPage} of {totalPageCount > 0 ? totalPageCount : 1}
+            {totalEntriesCount > 0 &&
+              ` (Showing ${((currentPage - 1) * ITEMS_PER_PAGE) + 1} - ${Math.min(currentPage * ITEMS_PER_PAGE, totalEntriesCount)} of ${totalEntriesCount})`
+            }
+            {totalEntriesCount === 0 && ` (No entries)`}
+          </div>
+
+          {totalPageCount > 0 && (
+            <div className="flex items-center space-x-1 order-1 sm:order-2">
+              <button
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1 || loading}
+                className="px-3 py-1.5 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
+              >
+                First
+              </button>
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1 || loading}
+                className="px-3 py-1.5 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
+              >
+                Prev
+              </button>
+              {paginationRange?.map((pageNumber, index) => {
+                if (pageNumber === DOTS) {
+                  return <span key={`${pageNumber}-${index}`} className="px-3 py-1.5 text-[var(--color-text-secondary)] font-mono text-xs">...</span>;
+                }
+                const pageNum = pageNumber as number;
+                return (
+                  <button
+                    key={`${pageNumber}-${index}`}
+                    onClick={() => setCurrentPage(pageNum)}
+                    disabled={loading}
+                    className={`px-3 py-1.5 rounded-lg font-mono text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                      currentPage === pageNum
+                        ? 'bg-emerald-900 text-white'
+                        : 'bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)]'
+                    }`}
+                  >
+                    {pageNumber}
+                  </button>
+                );
+              })}
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(totalPageCount, prev + 1))}
+                disabled={currentPage === totalPageCount || loading || totalPageCount === 0}
+                className="px-3 py-1.5 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
+              >
+                Next
+              </button>
+              <button
+                onClick={() => setCurrentPage(totalPageCount)}
+                disabled={currentPage === totalPageCount || loading || totalPageCount === 0}
+                className="px-3 py-1.5 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
+              >
+                Last
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
