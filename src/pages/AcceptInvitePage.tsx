@@ -43,7 +43,7 @@ export function AcceptInvitePage({ isWhitelist = false }: AcceptInvitePageProps)
           body: JSON.stringify({ token }),
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_KEY}`,
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           },
         });
         console.log('Raw response:', {
