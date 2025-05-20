@@ -30,6 +30,12 @@ export function DiscountCodesManager() {
   const [newAppliesTo, setNewAppliesTo] = useState('total');
   const [isAdding, setIsAdding] = useState(false);
 
+  // State for delete confirmation
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [codeToDelete, setCodeToDelete] = useState<DiscountCode | null>(null);
+  const [deleteConfirmationInput, setDeleteConfirmationInput] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+
   // --- Fetch codes --- 
   const fetchCodes = useCallback(async () => {
     console.log('Fetching discount codes...');
@@ -124,6 +130,58 @@ export function DiscountCodesManager() {
     } finally {
         setIsAdding(false);
     }
+  };
+
+  // --- Delete Code Handler ---
+  const handleDeleteCode = async () => {
+    if (!codeToDelete || deleteConfirmationInput !== codeToDelete.code) {
+      setError('Confirmation text does not match the code.'); // Should ideally show in modal
+      return;
+    }
+
+    setError(null);
+    setSuccessMessage(null);
+    setIsDeleting(true);
+    console.log(`Attempting to delete code: ${codeToDelete.code} (ID: ${codeToDelete.id})`);
+
+    try {
+      const { error: deleteError } = await supabase
+        .from('discount_codes')
+        .delete()
+        .match({ id: codeToDelete.id });
+
+      if (deleteError) {
+        console.error('Error deleting code:', deleteError);
+        throw new Error(deleteError.message || 'Failed to delete code.');
+      }
+
+      setSuccessMessage(`Code '${codeToDelete.code}' deleted successfully.`);
+      closeDeleteModal();
+      await fetchCodes(); // Refresh list
+
+    } catch (err: any) {
+      console.error('Delete code failed', err);
+      // setError will be set inside the modal or a general error can be shown.
+      // For now, let's set a general error if modal one isn't specific.
+      setError(`Failed to delete code: ${err.message}`); 
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const openDeleteModal = (code: DiscountCode) => {
+    setCodeToDelete(code);
+    setDeleteConfirmationInput(''); // Clear previous input
+    setError(null); // Clear previous modal errors
+    setSuccessMessage(null); // Clear success messages
+    setShowDeleteConfirmModal(true);
+  };
+
+  const closeDeleteModal = () => {
+    setShowDeleteConfirmModal(false);
+    setCodeToDelete(null);
+    setDeleteConfirmationInput('');
+    setIsDeleting(false); // Reset deleting state
   };
 
   // --- Toggle Active State Handler ---
@@ -285,14 +343,7 @@ export function DiscountCodesManager() {
         <div className="overflow-x-auto border border-border rounded-lg shadow-sm">
           <table className="min-w-full divide-y divide-border">
             <thead className="bg-surface-subtle">
-              <tr>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">Code</th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">Discount</th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">Description</th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">Applies To</th>
-                <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-secondary uppercase tracking-wider">Active</th>
-                <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-secondary uppercase tracking-wider">Actions</th> {/* Centered Actions */}
-              </tr>
+              <tr><th scope="col" className="px-4 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">Code</th><th scope="col" className="px-4 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">Discount</th><th scope="col" className="px-4 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">Description</th><th scope="col" className="px-4 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">Applies To</th><th scope="col" className="px-4 py-3 text-center text-xs font-medium text-secondary uppercase tracking-wider">Active</th><th scope="col" className="px-4 py-3 text-center text-xs font-medium text-secondary uppercase tracking-wider">Actions</th></tr>
             </thead>
             <tbody className="bg-surface divide-y divide-border">
               {codes.map((code) => (
@@ -306,7 +357,7 @@ export function DiscountCodesManager() {
                          'Total Amount'}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${code.is_active ? 'bg-success-muted text-success' : 'bg-error-muted text-error'}`}>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${code.is_active ? 'bg-[var(--color-accent-primary)] text-[var(--color-badge-active-text)]' : 'bg-[var(--color-error)] text-[var(--color-badge-inactive-text)]'}`}>
                         {code.is_active ? 'Yes' : 'No'}
                       </span>
                     </td>
@@ -319,20 +370,78 @@ export function DiscountCodesManager() {
                             {code.is_active ? <ToggleRight className="w-5 h-5" /> : <ToggleLeft className="w-5 h-5" />}
                         </button>
                         {/* Optional Delete Button - uncomment if needed and implement handleDelete */}
-                        {/*
+                        
                         <button
-                            onClick={() => handleDeleteCode(code.id)}
+                            onClick={() => openDeleteModal(code)} // Changed from handleDeleteCode to openDeleteModal
                             title="Delete Code Permanently"
-                            className="text-secondary hover:text-error p-1 rounded hover:bg-error-muted"
+                            className="text-secondary hover:text-error p-1 rounded hover:bg-error-muted disabled:opacity-50"
+                            disabled={isDeleting} // Disable if a delete is in progress globally, though modal handles its own loading
                         >
                             <Trash2 className="w-4 h-4" />
                         </button>
-                        */}
+                        
                     </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirmModal && codeToDelete && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex justify-center items-center z-50 p-4" onClick={closeDeleteModal}>
+            <div 
+                className="bg-[var(--color-bg-surface)] p-6 md:p-8 rounded-xl shadow-2xl w-full max-w-md border border-[var(--color-border)]"
+                onClick={(e) => e.stopPropagation()} // Prevent closing modal when clicking inside
+            >
+                <h2 className="text-xl font-semibold text-[var(--color-text-primary)] mb-3 font-display">Confirm Deletion</h2>
+                <p className="text-[var(--color-text-secondary)] mb-1">
+                    Are you sure you want to permanently delete the discount code:
+                </p>
+                <p className="text-[var(--color-text-primary)] font-bold text-lg mb-4 bg-surface-subtle p-2 rounded-md text-center">
+                    {codeToDelete.code}
+                </p>
+                
+                {error && (
+                    <div className="mb-4 p-3 bg-error-muted text-error rounded-lg text-sm flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                        <span>{error}</span>
+                    </div>
+                )}
+
+                <p className="text-[var(--color-text-secondary)] mb-2 text-sm">
+                    To confirm, please type the code <strong className="text-[var(--color-text-primary)]">{codeToDelete.code}</strong> in the box below.
+                </p>
+                <input
+                    type="text"
+                    value={deleteConfirmationInput}
+                    onChange={(e) => setDeleteConfirmationInput(e.target.value)}
+                    placeholder={`Type "${codeToDelete.code}" to confirm`}
+                    className="w-full px-3 py-2 border border-[var(--color-border)] rounded-lg bg-[var(--color-bg-input)] text-[var(--color-text-primary)] focus:ring-1 focus:ring-accent-error focus:border-accent-error font-mono text-sm mb-6 disabled:opacity-70"
+                    disabled={isDeleting}
+                />
+                <div className="flex justify-end gap-3">
+                    <button
+                        onClick={closeDeleteModal}
+                        className="px-4 py-2 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] transition-colors font-mono disabled:opacity-70"
+                        disabled={isDeleting}
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={handleDeleteCode}
+                        disabled={isDeleting || deleteConfirmationInput !== codeToDelete.code}
+                        className="px-4 py-2 rounded-lg bg-error text-white hover:bg-error-hover transition-colors font-mono flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {isDeleting ? (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        ) : (
+                            'Delete Permanently'
+                        )}
+                    </button>
+                </div>
+            </div>
         </div>
       )}
     </div>

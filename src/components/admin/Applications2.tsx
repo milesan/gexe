@@ -35,6 +35,7 @@ export function Applications2() {
   const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [applicationToDelete, setApplicationToDelete] = useState<Application | null>(null);
+  const [deleteConfirmationEmailInput, setDeleteConfirmationEmailInput] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalApplicationsCount, setTotalApplicationsCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
@@ -187,39 +188,62 @@ export function Applications2() {
     }
   };
 
-  const handleDeleteApplication = async () => {
-    if (!applicationToDelete) return;
+  const handleConfirmDeleteUserAndApplication = async () => {
+    if (!applicationToDelete || deleteConfirmationEmailInput !== applicationToDelete.user_email) return;
 
-    const { id } = applicationToDelete;
+    const { id: applicationId, user_id: userId, user_email: userEmail } = applicationToDelete;
     try {
-      setLoadingStates(prev => ({ ...prev, [id]: true }));
+      setLoadingStates(prev => ({ ...prev, [applicationId]: true }));
       setError(null);
 
-      const { error: rpcError } = await supabase.rpc('delete_application', {
-        p_application_id: id
+      console.log(`Applications2: Attempting to delete auth user ${userId} (${userEmail})`);
+      // Step 1: Delete the auth user via Edge Function
+      const { error: authUserDeleteError } = await supabase.functions.invoke('delete-auth-user', {
+        body: { userId: userId }
       });
 
-      if (rpcError) throw rpcError;
-
-      console.log('Applications2: Application deleted successfully', { id });
-      if (applications.length === 1 && currentPage > 1) {
-        setCurrentPage(currentPage - 1);
-      } else {
-        await loadApplications();
+      if (authUserDeleteError) {
+        console.error('Error deleting auth user:', authUserDeleteError);
+        throw new Error(`Failed to delete user account: ${authUserDeleteError.message}`);
       }
+      console.log(`Applications2: Auth user ${userId} deleted successfully.`);
+
+      // Step 2: Delete the application record via RPC (REMOVED - Handled by DB cascade)
+      // console.log(`Applications2: Attempting to delete application record ${applicationId}`);
+      // const { error: rpcError } = await supabase.rpc('delete_application', {
+      //   p_application_id: applicationId
+      // });
+
+      // if (rpcError) {
+      //   console.error('Error deleting application record:', rpcError);
+      //   throw new Error(`User account ${userEmail} deleted, but failed to delete application record: ${rpcError.message}`);
+      // }
+
+      console.log('Applications2: Application record should be cascade deleted.', { applicationId });
+      
+      // Refresh data or remove item from list
+      if (applications.length === 1 && currentPage > 1) {
+        setCurrentPage(currentPage - 1); // This will trigger a reload via useEffect
+      } else {
+        await loadApplications(); // Explicitly reload if not changing page
+      }
+      
       setShowDeleteConfirmModal(false);
       setApplicationToDelete(null);
+      setDeleteConfirmationEmailInput('');
 
     } catch (err) {
-      console.error('Error deleting application:', err);
-      setError(err instanceof Error ? err.message : 'Failed to delete application');
+      console.error('Error in delete user/application process:', err);
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred during user deletion.');
+      // Keep modal open on error so user sees the message, or decide on other UX
     } finally {
-      setLoadingStates(prev => ({ ...prev, [id]: false }));
+      setLoadingStates(prev => ({ ...prev, [applicationId]: false }));
     }
   };
 
   const openDeleteConfirmModal = (application: Application) => {
     setApplicationToDelete(application);
+    setDeleteConfirmationEmailInput('');
     setShowDeleteConfirmModal(true);
   };
 
@@ -455,7 +479,7 @@ export function Applications2() {
                     className={`p-2 rounded-lg bg-slate-700 text-white hover:bg-slate-800 transition-colors ${
                       loadingStates[application.id] ? 'opacity-50 cursor-not-allowed' : ''
                     }`}
-                    title="Delete Application"
+                    title="Delete User & Application"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -569,10 +593,31 @@ export function Applications2() {
             className="bg-[var(--color-bg-surface)] p-6 md:p-8 rounded-xl shadow-2xl w-full max-w-md border border-[var(--color-border)]"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-xl font-semibold text-[var(--color-text-primary)] mb-4 font-mono">Confirm Deletion</h2>
-            <p className="text-[var(--color-text-secondary)] mb-6 font-mono">
-              Are you sure you want to permanently delete the application for <strong className="text-[var(--color-text-primary)]">{applicationToDelete.user_email}</strong>? This action cannot be undone.
+            <h2 className="text-xl font-semibold text-[var(--color-text-primary)] mb-4 font-mono">Confirm User & Application Deletion</h2>
+            <p className="text-[var(--color-text-secondary)] mb-1 font-mono">
+              You are about to permanently delete the user <strong className="text-[var(--color-text-primary)]">{applicationToDelete.user_email}</strong>.
             </p>
+            <p className="text-[var(--color-text-secondary)] mb-2 font-mono">This will also permanently delete:</p>
+            <ul className="list-disc list-inside text-[var(--color-text-secondary)] mb-4 font-mono text-sm space-y-1 pl-4">
+              <li>Their user account</li>
+              <li>Their application</li>
+              <li>All their associated bookings</li>
+              <li>Their whitelist entry</li>
+              <li>Their profile information</li>
+            </ul>
+            <p className="text-[var(--color-text-error)] mb-4 font-mono font-bold">
+              This action is irreversible.
+            </p>
+            <p className="text-[var(--color-text-secondary)] mb-2 font-mono">
+              To confirm, please type the user's email address below:
+            </p>
+            <input
+              type="email"
+              value={deleteConfirmationEmailInput}
+              onChange={(e) => setDeleteConfirmationEmailInput(e.target.value)}
+              placeholder={applicationToDelete.user_email}
+              className="w-full px-3 py-2 border border-[var(--color-border)] rounded-lg bg-[var(--color-bg-input)] text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono text-sm mb-6"
+            />
             <div className="flex justify-end gap-3">
               <button
                 onClick={closeDeleteConfirmModal}
@@ -581,10 +626,10 @@ export function Applications2() {
                 Cancel
               </button>
               <button
-                onClick={handleDeleteApplication}
-                disabled={loadingStates[applicationToDelete.id]}
+                onClick={handleConfirmDeleteUserAndApplication}
+                disabled={loadingStates[applicationToDelete.id] || deleteConfirmationEmailInput !== applicationToDelete.user_email}
                 className={`px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors font-mono flex items-center justify-center ${
-                  loadingStates[applicationToDelete.id] ? 'opacity-50 cursor-not-allowed' : ''
+                  (loadingStates[applicationToDelete.id] || deleteConfirmationEmailInput !== applicationToDelete.user_email) ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
               >
                 {loadingStates[applicationToDelete.id] ? (

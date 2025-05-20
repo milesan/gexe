@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Plus, Trash2, Upload, X } from 'lucide-react';
+import { Plus, Trash2, Upload, X, Search, X as ClearSearchIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getFrontendUrl } from '../../lib/environment';
 import { usePagination, DOTS } from '../../hooks/usePagination';
@@ -24,8 +24,20 @@ export function Whitelist() {
   const [isAdding, setIsAdding] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalEntriesCount, setTotalEntriesCount] = useState(0);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeSearchQuery, setActiveSearchQuery] = useState('');
 
   const ITEMS_PER_PAGE = 15;
+
+  const debounce = <F extends (...args: any[]) => any>(func: F, waitFor: number) => {
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    return (...args: Parameters<F>): void => {
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+      timeout = setTimeout(() => func(...args), waitFor);
+    };
+  };
 
   useEffect(() => {
     console.log(' Initializing Whitelist component and setting up realtime subscription');
@@ -65,10 +77,10 @@ export function Whitelist() {
   // Effect for loading data when currentPage changes or on initial load
   useEffect(() => {
     loadWhitelist();
-  }, [currentPage]);
+  }, [currentPage, activeSearchQuery]);
 
   const loadWhitelist = async () => {
-    console.log('📥 Loading whitelist data for page:', currentPage);
+    console.log('📥 Loading whitelist data for page:', currentPage, 'Search:', activeSearchQuery);
     try {
       setLoading(true);
       window.scrollTo(0, 0);
@@ -92,9 +104,15 @@ export function Whitelist() {
       const from = (currentPage - 1) * ITEMS_PER_PAGE;
       const to = from + ITEMS_PER_PAGE - 1;
 
-      const { data, error: queryError, count } = await supabase
+      let query = supabase
         .from('whitelist_user_details')
-        .select('*', { count: 'exact' })
+        .select('*', { count: 'exact' });
+
+      if (activeSearchQuery) {
+        query = query.ilike('email', `%${activeSearchQuery}%`);
+      }
+      
+      const { data, error: queryError, count } = await query
         .order('created_at', { ascending: false })
         .range(from, to);
 
@@ -289,8 +307,11 @@ export function Whitelist() {
       console.log(' Successfully uploaded CSV data'); // Removed "and sent emails"
       setShowUpload(false);
       // Reset to page 1 after CSV upload as content has changed significantly
-      if (currentPage !== 1) setCurrentPage(1);
-      await loadWhitelist();
+      if (currentPage === 1) {
+        await loadWhitelist(); // Reload if already on page 1
+      } else {
+        setCurrentPage(1); // Change page, which triggers loadWhitelist via useEffect
+      }
     } catch (err) {
       console.error(' Error uploading CSV:', err);
       setError(err instanceof Error ? err.message : 'Failed to upload CSV');
@@ -305,7 +326,40 @@ export function Whitelist() {
   });
   const totalPageCount = Math.ceil(totalEntriesCount / ITEMS_PER_PAGE);
 
-  if (loading && entries.length === 0 && currentPage === 1) { // Show full page loader only on initial load of page 1
+  const triggerSearch = useCallback(() => {
+    setActiveSearchQuery(searchTerm.trim());
+    if (currentPage !== 1) {
+        setCurrentPage(1);
+    } else {
+        // If already on page 1, loadWhitelist won't be triggered by currentPage change, so call it directly
+        // This is covered by activeSearchQuery changing in the loadWhitelist useEffect dependency array
+    }
+  }, [searchTerm, currentPage]);
+
+  const debouncedSearch = useCallback(debounce(triggerSearch, 500), [triggerSearch]);
+
+  useEffect(() => {
+    // Only call debouncedSearch if searchTerm has actually changed 
+    // and is different from the currently active search query (to avoid initial call or redundant calls)
+    if (searchTerm.trim() !== activeSearchQuery) {
+        debouncedSearch();
+    }
+  }, [searchTerm, activeSearchQuery, debouncedSearch]);
+
+  const handleManualSearch = () => {
+    setActiveSearchQuery(searchTerm.trim());
+    if(currentPage !== 1) setCurrentPage(1);
+    // if on page 1, activeSearchQuery change in useEffect for loadWhitelist will trigger it.
+  };
+
+  const handleClearSearch = () => {
+    setSearchTerm('');
+    setActiveSearchQuery('');
+    if(currentPage !== 1) setCurrentPage(1);
+    // if on page 1, activeSearchQuery change (to empty) in useEffect for loadWhitelist will trigger it.
+  };
+
+  if (loading && entries.length === 0 && currentPage === 1 && !activeSearchQuery) { // Show full page loader only on initial load of page 1
     return (
       <div className="flex justify-center items-center p-12">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-accent-primary)]"></div>
@@ -363,7 +417,47 @@ export function Whitelist() {
         </div>
       </div>
 
-      <div className="space-y-4">
+      {/* Search Bar */}
+      <div className="mb-6 flex gap-2 items-center">
+        <input
+          type="text"
+          placeholder="Search by email..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          onKeyPress={(e) => { if (e.key === 'Enter') handleManualSearch(); }}
+          className="flex-grow px-3 py-2 border border-[var(--color-border)] rounded-lg bg-[var(--color-bg-input)] text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono text-sm"
+        />
+        <button
+          onClick={handleManualSearch}
+          className="p-2 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-primary)] hover:bg-[var(--color-button-secondary-bg-hover)] border border-[var(--color-border)]"
+          title="Search"
+        >
+          <Search className="w-5 h-5" />
+        </button>
+        {activeSearchQuery && (
+          <button
+            onClick={handleClearSearch}
+            className="p-2 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-error)] hover:bg-[var(--color-error-bg-hover)] border border-[var(--color-border)]"
+            title="Clear Search"
+          >
+            <ClearSearchIcon className="w-5 h-5" />
+          </button>
+        )}
+      </div>
+
+      <div className="space-y-4 relative">
+        {loading && entries.length > 0 && currentPage !==1 && ( // Show subtle loading indicator when reloading list, but not on initial full load
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 mt-2 z-10">
+             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--color-accent-primary)]"></div>
+          </div>
+        )}
+        {!loading && entries.length === 0 && (
+           <div className="text-center py-10 text-[var(--color-text-secondary)] font-mono">
+            {activeSearchQuery 
+              ? `No entries found matching "${activeSearchQuery}".`
+              : "No entries in the whitelist yet."}
+          </div>
+        )}
         {entries.map((entry) => (
           <motion.div
             key={entry.id}
@@ -443,11 +537,15 @@ export function Whitelist() {
       {totalEntriesCount > ITEMS_PER_PAGE && (
         <div className="mt-8 flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
           <div className="font-mono text-sm text-[var(--color-text-secondary)] order-2 sm:order-1">
-            Page {currentPage} of {totalPageCount > 0 ? totalPageCount : 1}
-            {totalEntriesCount > 0 &&
+            {`Page ${currentPage} of ${totalPageCount > 0 ? totalPageCount : 1}`}
+            {totalEntriesCount > 0 && !activeSearchQuery &&
               ` (Showing ${((currentPage - 1) * ITEMS_PER_PAGE) + 1} - ${Math.min(currentPage * ITEMS_PER_PAGE, totalEntriesCount)} of ${totalEntriesCount})`
             }
-            {totalEntriesCount === 0 && ` (No entries)`}
+            {totalEntriesCount > 0 && activeSearchQuery &&
+              ` (Found ${totalEntriesCount} matching "${activeSearchQuery}")`
+            }
+            {totalEntriesCount === 0 && activeSearchQuery && ` (No matches for "${activeSearchQuery}")`}
+            {totalEntriesCount === 0 && !activeSearchQuery && ` (No entries)`}
           </div>
 
           {totalPageCount > 0 && (

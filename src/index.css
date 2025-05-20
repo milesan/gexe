@@ -68,6 +68,14 @@
   --color-shade-2: #93938B;
   --color-shade-3: #6F6F68;
 
+  /* Custom Status/Priority Colors */
+  --color-status-medium: #9C8450; /* User's "medium" */
+  --color-status-low: #607C8F;    /* User's "low" */
+
+  /* Badge Specific Text Colors */
+  --color-badge-active-text: var(--color-stone-800);
+  --color-badge-inactive-text: var(--color-white);
+
   /* Tooltip Specific Variables */
   --color-tooltip-bg: color-mix(in srgb, var(--color-bg-surface) 90%, black 10%); /* Slightly darker surface */
   --color-tooltip-border: color-mix(in srgb, var(--color-border) 50%, transparent);
@@ -103,6 +111,14 @@
   --color-button-secondary-bg: var(--color-stone-100);
   --color-button-secondary-bg-hover: var(--color-stone-200);
   --color-retro-accent: 162 203 160; /* Dedicated accent color for retro components - same in both themes */
+
+  /* Custom Status/Priority Colors */
+  --color-status-medium: #9C8450; /* User's "medium" - kept same for light mode, adjust if needed */
+  --color-status-low: #607C8F;    /* User's "low" - kept same for light mode, adjust if needed */
+
+  /* Badge Specific Text Colors */
+  --color-badge-active-text: var(--color-white);
+  --color-badge-inactive-text: var(--color-white);
 
   /* Also add original light theme colors needed for overrides */
   --color-stone-600: #57534e;
