@@ -69,10 +69,11 @@ serve(async (req) => {
       throw tokenError
     }
 
-    const acceptanceUrl = `${frontendUrl}/accept?token=${tokenData.token}`
-    
+    //const acceptanceUrl = `${frontendUrl}/accept?token=${tokenData.token}`
+    const acceptanceUrl = `${frontendUrl}`
+
     console.log('Attempting to send email via Resend...')
-    
+
     // Send email using Resend
     const { error } = await resendClient.emails.send({
       from: 'The Garden <echo@echo.thegarden.pt>',
@@ -86,11 +87,12 @@ serve(async (req) => {
           </a>
           <div style="padding: 20px 0; text-align: center; color: #555; font-size: 14px;">
             <ul style="padding: 0; margin: 0 0 20px 0; display: inline-block; text-align: left;">
-              <li style="margin-bottom: 8px;">Spaces are first come, first serve</li>
+            <li style="margin-bottom: 8px;">You can now sign in to The Garden</li>
+            <li style="margin-bottom: 8px;">Spaces are first come, first serve</li>
               <li style="margin-bottom: 8px;">Valid for 14 days</li>
             </ul>
             <p style="margin-top: 20px; font-size: 12px; color: #777;">
-              If the image above doesn't work, click here: <br/>
+              If the image above doesn't work, sign in here: <br/>
               <a href="${acceptanceUrl}" target="_blank" style="color: #115e59; text-decoration: underline;">${acceptanceUrl}</a>
             </p>
           </div>

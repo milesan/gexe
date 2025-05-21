@@ -206,7 +206,7 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
       description, 
       stepsToReproduce: stepsToReproduce || null,
       pageUrl: window.location.href,
-      attachments: uploadedFiles.map(file => file.url)
+      image_urls: uploadedFiles.map(file => file.url)
     };
     logger.log('[BugReportModal] Submitting bug report:', submissionData);
 
