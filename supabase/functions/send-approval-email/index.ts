@@ -69,8 +69,8 @@ serve(async (req) => {
       throw tokenError
     }
 
-    //const acceptanceUrl = `${frontendUrl}/accept?token=${tokenData.token}`
-    const acceptanceUrl = `${frontendUrl}`
+    const acceptanceUrl = `${frontendUrl}/accept?token=${tokenData.token}`
+    //const acceptanceUrl = `${frontendUrl}`
 
     console.log('Attempting to send email via Resend...')
 
@@ -92,7 +92,7 @@ serve(async (req) => {
               <li style="margin-bottom: 8px;">Valid for 14 days</li>
             </ul>
             <p style="margin-top: 20px; font-size: 12px; color: #777;">
-              If the image above doesn't work, sign in here: <br/>
+              If the image above doesn't work, sign in here or log in normally: <br/>
               <a href="${acceptanceUrl}" target="_blank" style="color: #115e59; text-decoration: underline;">${acceptanceUrl}</a>
             </p>
           </div>

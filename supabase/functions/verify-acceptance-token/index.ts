@@ -43,26 +43,15 @@ serve(async (req) => {
     }
 
     const { data: tokenData, error: tokenError } = await supabase
-      .from('acceptance_tokens')
-      .select(`
-        token,
-        application_id,
-        used_at,
-        expires_at,
-        applications (
-          user_id,
-          users (
-            email
-          )
-        )
-      `)
-      .eq('token', token)
+      .rpc('get_application_token_data', { token_text: token })
       .single();
 
     if (tokenError) {
-      console.error('Error fetching token:', tokenError);
-      throw new Error('Token verification failed: ' + tokenError.message);
+      throw new Error(`Token verification failed: ${tokenError.message}`);
     }
+
+    // Use tokenData, which includes token, application_id, used_at, expires_at, user_id, and user_email
+    console.log(tokenData);
 
     if (!tokenData) {
       throw new Error('Token not found');
@@ -78,7 +67,7 @@ serve(async (req) => {
       throw new Error('Token has expired');
     }
 
-    const email = tokenData.applications?.users?.email;
+    const email = tokenData.user_email;
     if (!email) {
       throw new Error('No email associated with this token');
     }
@@ -107,7 +96,7 @@ serve(async (req) => {
 
     // Set a temporary password and sign in
     const tempPassword = crypto.randomUUID();
-    const { error: updateUserError } = await supabase.auth.admin.updateUserById(tokenData.applications.user_id, {
+    const { error: updateUserError } = await supabase.auth.admin.updateUserById(tokenData.user_id, {
       password: tempPassword,
     });
 
