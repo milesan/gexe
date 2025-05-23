@@ -39,12 +39,15 @@ serve(async (req) => {
       })
     }
 
+    // Normalize email to lowercase to match Supabase Auth behavior
+    const normalizedEmail = email.toLowerCase().trim()
+
     const supabaseAdmin = getSupabaseAdminClient()
     let authUserId: string
     let userExists = false
 
     // 1. Check if user exists in auth.users
-    console.log(`Checking for existing user with email: ${email}`)
+    console.log(`Checking for existing user with email: ${normalizedEmail}`)
     const { data: existingUsersData, error: listUsersError } = await supabaseAdmin.auth.admin.listUsers({
       // The listUsers filter by email is a substring match, so we need to be careful
       // However, Supabase enforces email uniqueness in auth.users by default.
@@ -56,7 +59,7 @@ serve(async (req) => {
         throw new Error(`Failed to list users: ${listUsersError.message}`);
     }
 
-    const existingUser = existingUsersData?.users.find(u => u.email === email);
+    const existingUser = existingUsersData?.users.find(u => u.email === normalizedEmail);
 
     const userMetadata = {
       is_whitelisted: true,
@@ -78,10 +81,10 @@ serve(async (req) => {
       }
       console.log(`Successfully updated metadata for user: ${authUserId}`)
     } else {
-      console.log(`No existing user found for ${email}. Creating new user.`)
+      console.log(`No existing user found for ${normalizedEmail}. Creating new user.`)
       const tempPassword = `temp-${crypto.randomUUID()}` // Secure random temporary password
       const { data: newUserData, error: createUserError } = await supabaseAdmin.auth.admin.createUser({
-        email: email,
+        email: normalizedEmail,
         password: tempPassword,
         email_confirm: false, // Don't send confirmation email
         user_metadata: userMetadata,
@@ -90,7 +93,7 @@ serve(async (req) => {
       if (createUserError) {
         console.error('Error creating user:', createUserError)
         if (createUserError.message.includes('User already registered')) {
-          throw new Error(`User registration conflict for email: ${email}`)
+          throw new Error(`User registration conflict for email: ${normalizedEmail}`)
         }
         throw new Error(`Failed to create user: ${createUserError.message}`)
       }
@@ -99,7 +102,7 @@ serve(async (req) => {
         throw new Error('User creation failed to return expected data.')
       }
       authUserId = newUserData.user.id
-      console.log(`Successfully created new user: ${authUserId} for email: ${email}`)
+      console.log(`Successfully created new user: ${authUserId} for email: ${normalizedEmail}`)
     }
 
     // 2. Update the whitelist table

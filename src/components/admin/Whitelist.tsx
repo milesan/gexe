@@ -136,19 +136,22 @@ export function Whitelist() {
       return;
     }
 
-    console.log('➕ Adding to whitelist:', { email: newEmail, notes: newNotes });
+    // Normalize email to lowercase to match Supabase Auth behavior
+    const normalizedEmail = newEmail.toLowerCase().trim();
+
+    console.log('➕ Adding to whitelist:', { email: normalizedEmail, notes: newNotes });
     try {
       setIsAdding(true);
       const { data, error } = await supabase
         .from('whitelist')
-        .insert({ email: newEmail, notes: newNotes })
+        .insert({ email: normalizedEmail, notes: newNotes })
         .select()
         .single();
 
       if (error) {
         // Check for unique constraint violation
         if (error.code === '23505') {
-          throw new Error(`Email "${newEmail}" is already in the whitelist`);
+          throw new Error(`Email "${normalizedEmail}" is already in the whitelist`);
         }
         throw error;
       }
@@ -234,7 +237,7 @@ export function Whitelist() {
     try {
       const text = await file.text();
       const emails = text.split('\n')
-        .map(line => line.trim())
+        .map(line => line.trim().toLowerCase())
         .filter(email => email && email.includes('@'));
       
       console.log(' Found', emails.length, 'valid email addresses in CSV');

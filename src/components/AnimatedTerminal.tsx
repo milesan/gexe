@@ -136,13 +136,16 @@ export function AnimatedTerminal({ onComplete }: Props) {
     setIsLoading(true);
     setOtpSent(false);
 
+    // Normalize email to lowercase to match Supabase Auth behavior
+    const normalizedEmail = email.toLowerCase().trim();
+
     try {
-      console.log('[AnimatedTerminal] Requesting code for:', email);
-      const { error } = await supabase.auth.signInWithOtp({ email });
+      console.log('[AnimatedTerminal] Requesting code for:', normalizedEmail);
+      const { error } = await supabase.auth.signInWithOtp({ email: normalizedEmail });
       if (error) throw error;
       setSuccess('Code sent! Check your email (and spam/junk folder).');
       setOtpSent(true);
-      console.log('[AnimatedTerminal] OTP request successful for:', email);
+      console.log('[AnimatedTerminal] OTP request successful for:', normalizedEmail);
     } catch (err) {
       console.error('[AnimatedTerminal] Error requesting code:', err);
       setError(err instanceof Error ? err.message : 'Failed to send code');
@@ -158,10 +161,13 @@ export function AnimatedTerminal({ onComplete }: Props) {
     setSuccess(null);
     setIsLoading(true);
 
+    // Normalize email to lowercase to match Supabase Auth behavior
+    const normalizedEmail = email.toLowerCase().trim();
+
     try {
-      console.log(`[AnimatedTerminal] Verifying code for: ${email} with token: ${otp}`);
+      console.log(`[AnimatedTerminal] Verifying code for: ${normalizedEmail} with token: ${otp}`);
       const { data, error } = await supabase.auth.verifyOtp({
-        email,
+        email: normalizedEmail,
         token: otp,
         type: 'email',
       });
