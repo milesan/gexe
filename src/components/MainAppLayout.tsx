@@ -46,6 +46,22 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
   // Add a log to check the isAdmin value here too
   console.log('[MainAppLayout] isAdmin check result:', isAdmin, 'isLoading:', sessionLoading);
 
+  // Routes that should trigger scroll-to-top when navigated to
+  const scrollToTopRoutes = ['/confirmation', '/my-bookings'];
+
+  // Scroll to top effect for specific routes
+  useEffect(() => {
+    if (scrollToTopRoutes.includes(location.pathname)) {
+      console.log(`MainAppLayout: Scrolling to top for route: ${location.pathname}`);
+      // Small delay to ensure content is rendered
+      const timeoutId = setTimeout(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+      }, 100);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [location.pathname]);
+
   useEffect(() => {
     if (sessionLoading) {
       console.log('MainAppLayout: Session loading, deferring welcome modal check.');
