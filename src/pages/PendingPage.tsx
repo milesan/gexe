@@ -28,17 +28,32 @@ export function PendingPage({ status = 'pending' }: Props) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="max-w-md w-full bg-black rounded-sm border-4 border-retro-accent/30 p-8 mb-6"
+        style={{
+          clipPath: `polygon(
+            0 4px, 4px 4px, 4px 0,
+            calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
+            100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
+            calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
+            0 calc(100% - 4px)
+          )`
+        }}
       >
         <div className="flex flex-col items-center text-center space-y-6">
-          <img 
-            src="https://raw.githubusercontent.com/milesan/synesthesia/refs/heads/main/Enso%20Zen%20Soto%20Symbol.png"
-            alt="Enso Logo"
+          <div
             className="w-12 h-12"
-            style={{ 
-              filter: 'brightness(0) invert(0.75) sepia(0.6) saturate(400%) hue-rotate(360deg)',
-              opacity: 0.9
+            style={{
+              backgroundColor: 'var(--color-garden-matrix)',
+              maskImage: 'url(https://raw.githubusercontent.com/milesan/synesthesia/refs/heads/main/Enso%20Zen%20Soto%20Symbol.png)',
+              WebkitMaskImage: 'url(https://raw.githubusercontent.com/milesan/synesthesia/refs/heads/main/Enso%20Zen%20Soto%20Symbol.png)',
+              maskSize: 'contain',
+              WebkitMaskSize: 'contain',
+              maskRepeat: 'no-repeat',
+              WebkitMaskRepeat: 'no-repeat',
+              maskPosition: 'center',
+              WebkitMaskPosition: 'center',
+              opacity: 0.9 
             }}
-          />
+          ></div>
           
           {status === 'pending' && (
             <h1 className="text-3xl font-display font-light text-retro-accent">
@@ -87,6 +102,15 @@ export function PendingPage({ status = 'pending' }: Props) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
           className="max-w-md w-full bg-black rounded-sm border-2 border-retro-accent/50 p-6"
+          style={{
+            clipPath: `polygon(
+              0 4px, 4px 4px, 4px 0,
+              calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
+              100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
+              calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
+              0 calc(100% - 4px)
+            )`
+          }}
         >
           <p className="text-retro-accent/80 text-sm font-mono leading-relaxed text-center">
             If a low-income subsidy could support your participation, please let us know{' '}
