@@ -5,6 +5,7 @@ import { getAnswer as getSharedAnswer } from '../../lib/old_question_mapping';
 import type { QuestionForAnswerRetrieval } from '../../lib/old_question_mapping';
 import type { ApplicationQuestion } from '../../types/application';
 import { ImageModal } from '../shared/ImageModal';
+import { SmartImage } from '../shared/SmartImage';
 
 interface ApplicationDetailsProps {
   application: any;
@@ -58,7 +59,7 @@ export function ApplicationDetails({ application, onClose, questions }: Applicat
     return (
       <div className={`grid ${gridConfig[Math.min(photoUrls.length, 4) as keyof typeof gridConfig]} gap-2 aspect-square`}>
         {photoUrls.slice(0, 4).map((url, index) => (
-          <img
+          <SmartImage
             key={index}
             src={url}
             alt={`Applicant photo ${index + 1}`}

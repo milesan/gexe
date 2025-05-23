@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle, XCircle, X, Search, X as ClearSearchIcon } from 'lucide-react';
 import { ImageModal } from '../shared/ImageModal';
+import { SmartImage } from '../shared/SmartImage';
 import { getFrontendUrl } from '../../lib/environment';
 import { ApplicationDetails } from './ApplicationDetails';
 import { getAnswer } from '../../lib/old_question_mapping';
@@ -228,7 +229,7 @@ export function AppView() {
     return (
       <div className={`grid ${gridConfig[Math.min(photoUrls.length, 4) as keyof typeof gridConfig]} gap-2 aspect-square`}>
         {photoUrls.slice(0, 4).map((url, index) => (
-          <img
+          <SmartImage
             key={index}
             src={url}
             alt={`Applicant photo ${index + 1}`}
