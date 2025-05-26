@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Applications2 } from '../components/admin/Applications2';
 import { AppView } from '../components/admin/AppView';
-// import { BookingsList } from '../components/BookingsList';
+import { BookingsList } from '../components/BookingsList';
 import { InventoryCalendar } from '../components/InventoryCalendar';
 import { Weekly } from '../components/admin/Weekly';
 import { Whitelist } from '../components/admin/Whitelist';
@@ -9,13 +9,11 @@ import { Housekeeping } from '../components/admin/Housekeeping';
 import { Accommodations } from '../components/admin/Accommodations';
 import { ApplicationQuestionsManager } from '../components/admin/ApplicationQuestionsManager';
 import { DiscountCodesManager } from '../components/admin/DiscountCodesManager';
-// import { ClipboardList, Calendar, Users, LayoutGrid, ListChecks, UserPlus, Home, Building2, ArrowLeft, HelpCircle, Percent } from 'lucide-react';
-import { Calendar, Users, LayoutGrid, ListChecks, UserPlus, Home, Building2, ArrowLeft, HelpCircle, Percent } from 'lucide-react';
+import { ClipboardList, Calendar, Users, LayoutGrid, ListChecks, UserPlus, Home, Building2, ArrowLeft, HelpCircle, Percent } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 
-// type AdminView = 'applications' | 'appview' | 'bookings' | 'calendar' | 'weekly' | 'whitelist' | 'housekeeping' | 'accommodations' | 'questions' | 'discounts';
-type AdminView = 'applications' | 'appview' | 'calendar' | 'weekly' | 'whitelist' | 'housekeeping' | 'accommodations' | 'questions' | 'discounts';
+type AdminView = 'applications' | 'appview' | 'bookings' | 'calendar' | 'weekly' | 'whitelist' | 'housekeeping' | 'accommodations' | 'questions' | 'discounts';
 
 export function AdminPage() {
   const [currentView, setCurrentView] = useState<AdminView>('applications');
@@ -54,7 +52,7 @@ export function AdminPage() {
             <LayoutGrid className="w-4 h-4" />
             AppView
           </button>
-          {/* <button
+          <button
             onClick={() => setCurrentView('bookings')}
             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap font-mono text-sm ${
               currentView === 'bookings'
@@ -64,7 +62,7 @@ export function AdminPage() {
           >
             <ClipboardList className="w-4 h-4" />
             Bookings
-          </button> */}
+          </button>
           <button
             onClick={() => setShowCalendar(true)}
             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap font-mono text-sm ${
@@ -147,7 +145,7 @@ export function AdminPage() {
         <div className="bg-[var(--color-bg-main)] rounded-xl border border-[var(--color-border)] shadow-sm">
           {currentView === 'applications' && <Applications2 />}
           {currentView === 'appview' && <AppView />}
-          {/* {currentView === 'bookings' && <BookingsList />} */}
+          {currentView === 'bookings' && <BookingsList />}
           {currentView === 'whitelist' && <Whitelist />}
           {currentView === 'accommodations' && <Accommodations />}
           {currentView === 'questions' && <ApplicationQuestionsManager />}
