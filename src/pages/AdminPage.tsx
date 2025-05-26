@@ -11,15 +11,35 @@ import { ApplicationQuestionsManager } from '../components/admin/ApplicationQues
 import { DiscountCodesManager } from '../components/admin/DiscountCodesManager';
 import { ClipboardList, Calendar, Users, LayoutGrid, ListChecks, UserPlus, Home, Building2, ArrowLeft, HelpCircle, Percent } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 type AdminView = 'applications' | 'appview' | 'bookings' | 'calendar' | 'weekly' | 'whitelist' | 'housekeeping' | 'accommodations' | 'questions' | 'discounts';
 
-export function AdminPage() {
-  const [currentView, setCurrentView] = useState<AdminView>('applications');
+interface AdminPageProps {
+  housekeepingOnly?: boolean;
+}
+
+export function AdminPage({ housekeepingOnly = false }: AdminPageProps) {
+  const navigate = useNavigate();
+  const [currentView, setCurrentView] = useState<AdminView>(housekeepingOnly ? 'housekeeping' : 'applications');
   const [showCalendar, setShowCalendar] = useState(false);
   const [showWeekly, setShowWeekly] = useState(false);
-  const [showHousekeeping, setShowHousekeeping] = useState(false);
+  const [showHousekeeping, setShowHousekeeping] = useState(housekeepingOnly);
+
+  // If housekeepingOnly mode, only show housekeeping view
+  if (housekeepingOnly) {
+    return (
+      <div className="min-h-screen bg-black/50">
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-display font-light text-[var(--color-text-primary)]">Housekeeping Dashboard</h1>
+            <p className="text-[var(--color-text-secondary)] font-mono">View check-ins and check-outs</p>
+          </div>
+          <Housekeeping onClose={() => navigate('/')} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-black/50">

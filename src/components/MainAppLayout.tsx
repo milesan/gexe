@@ -8,7 +8,7 @@ import { useSession } from '../hooks/useSession';
 import { Footer } from './Footer';
 import { WhitelistWelcomeModal } from './WhitelistWelcomeModal'; // Import the modal
 import { BugReportFAB } from './BugReportFAB';
-import { isAdminUser } from '../lib/authUtils'; // <-- Import the utility
+import { useUserPermissions } from '../hooks/useUserPermissions'; // <-- Import the new hook
 
 // Basic debounce function (Consider moving to a utils file if not already there)
 function debounce<T extends (...args: any[]) => void>(func: T, wait: number) {
@@ -36,15 +36,18 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
   // THEME FUNCTIONALITY - Placeholder, replace with your actual theme hook/context
   const [theme, setTheme] = useState<'dark' | 'light'>('dark'); // Default or load from context/localStorage
   const { session, isLoading: sessionLoading } = useSession(); // <-- Destructure session and loading state
+  const { isAdmin, hasHousekeeping, isLoading: permissionsLoading } = useUserPermissions(session); // <-- Use the new hook
   const navigate = useNavigate();
   const location = useLocation();
-  // TODO: Consider moving adminEmails to a config file or context if used elsewhere
-  // const adminEmails = ['andre@thegarden.pt', 'redis213@gmail.com', 'dawn@thegarden.pt', 'simone@thegarden.pt', 'samjlloa@gmail.com', 'redis213+testadmin@gmail.com']; // <-- Remove this!
-  const isAdmin = isAdminUser(session); // <-- Use the utility function
-  const isAdminPage = location.pathname === '/admin'; // <-- Add this line
 
-  // Add a log to check the isAdmin value here too
-  console.log('[MainAppLayout] isAdmin check result:', isAdmin, 'isLoading:', sessionLoading);
+  const isAdminPage = location.pathname === '/admin'; // <-- Add this line
+  const isHousekeepingPage = location.pathname === '/housekeeping'; // <-- Add this line
+
+  // Add a log to check the access values
+  console.log('[MainAppLayout] Access check results:', { isAdmin, hasHousekeeping, sessionLoading, permissionsLoading });
+
+  // Calculate loading state but don't return early yet
+  const isLoading = sessionLoading || permissionsLoading;
 
   // Routes that should trigger scroll-to-top when navigated to
   const scrollToTopRoutes = ['/confirmation', '/my-bookings'];
@@ -198,6 +201,14 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
       setIsMobileMenuOpen(false); // Close mobile menu on navigation
   };
 
+  // Show loading screen if either session or permissions are loading
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-neutral-900 text-stone-400 font-mono">
+        <div>Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col"
@@ -217,7 +228,7 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
       }}
     >
       {/* === Header Start === */}
-      <header className={`fixed top-0 left-0 right-0 z-50 border-border/50 transition-all duration-300 ease-in-out ${!showHeader ? '-translate-y-full' : ''} ${theme === 'light' ? 'border-b border-border/50' : ''} ${isAdminPage ? 'bg-black/50' : ''}`}>
+      <header className={`fixed top-0 left-0 right-0 z-50 border-border/50 transition-all duration-300 ease-in-out ${!showHeader ? '-translate-y-full' : ''} ${theme === 'light' ? 'border-b border-border/50' : ''} ${(isAdminPage || isHousekeepingPage) ? 'bg-black/50' : ''}`}>
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-10 sm:h-14">
             <button
@@ -264,6 +275,14 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
                     ADMIN PANEL
                   </button>
                 )}
+                {hasHousekeeping && !isAdmin && (
+                  <button
+                    onClick={() => handleHeaderNavigation('/housekeeping')}
+                    className={`p-1.5 text-sm transition-colors uppercase font-lettra text-primary border border-shade-1 bg-surface-dark rounded-sm ${location.pathname === '/housekeeping' ? 'font-medium' : 'hover:opacity-80'}`}
+                  >
+                    HOUSEKEEPING
+                  </button>
+                )}
               </nav>
               <button
                 onClick={handleSignOut}
@@ -304,6 +323,14 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
                   ADMIN PANEL
                 </button>
               )}
+              {hasHousekeeping && !isAdmin && (
+                <button
+                  onClick={() => handleHeaderNavigation('/housekeeping')}
+                  className={`w-full text-left py-3 transition-colors text-sm uppercase font-lettra text-primary ${location.pathname === '/housekeeping' ? 'font-medium' : 'hover:opacity-80'}`}
+                >
+                  HOUSEKEEPING
+                </button>
+              )}
               <button
                 onClick={() => { handleSignOut(); setIsMobileMenuOpen(false); }} // Close menu on sign out
                 className="w-full text-left py-3 transition-colors text-sm uppercase font-lettra text-primary hover:opacity-80"
@@ -326,9 +353,9 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
       <Footer
         // Pass location to Footer if it needs it, or let Footer use its own hook
         wrapperClassName={
-          location.pathname === '/admin'
+          (location.pathname === '/admin' || location.pathname === '/housekeeping')
             ? "bg-[var(--color-bg-main)] border-t border-border mt-auto py-6"
-            : undefined // Use default classes if not admin
+            : undefined // Use default classes if not admin/housekeeping
         }
       />
       {/* === Footer End === */}

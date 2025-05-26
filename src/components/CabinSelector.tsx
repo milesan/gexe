@@ -12,16 +12,7 @@ import * as Popover from '@radix-ui/react-popover';
 import { calculateTotalNights, calculateDurationDiscountWeeks, normalizeToUTCDate } from '../utils/dates';
 import { useSession } from '../hooks/useSession';
 import { HoverClickPopover } from './HoverClickPopover';
-
-// Define admin emails (consider moving to a central config/env variable later)
-const ADMIN_EMAILS = [
-  'andre@thegarden.pt',
-  'redis213@gmail.com',
-  'dawn@thegarden.pt',
-  'simone@thegarden.pt',
-  'samjlloa@gmail.com',
-  'living@thegarden.pt'
-];
+import { isAdminUserSync } from '../lib/authUtils';
 
 interface Props {
   accommodations: Accommodation[];
@@ -65,8 +56,8 @@ export function CabinSelector({
   isDisabled = false,
   displayWeeklyAccommodationPrice
 }: Props) {
-  const session = useSession();
-  const isAdmin = session?.user?.email ? ADMIN_EMAILS.includes(session.user.email) : false;
+  const { session } = useSession();
+  const isAdmin = isAdminUserSync(session);
 
   console.log('[CabinSelector] Rendering with props:', {
     accommodationsCount: accommodations?.length,

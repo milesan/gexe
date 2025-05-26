@@ -18,6 +18,7 @@ import { AuthCallback } from './components/AuthCallback';
 import { MainAppLayout } from './components/MainAppLayout';
 import { WhitelistWelcomeModal } from './components/WhitelistWelcomeModal';
 import { BugReportFAB } from './components/BugReportFAB';
+import { isAdminUserSync } from './lib/authUtils';
 
 // Configure logging early to silence logs in production
 configureLogging();
@@ -77,12 +78,7 @@ function AppRouterLogic({
   const metadata = user?.user_metadata; // Keep metadata for OTHER checks (admin, approved, etc.)
   
   // Keep checks that STILL rely on metadata or application status
-  const isAdminCheck = user?.email === 'andre@thegarden.pt' ||
-                  user?.email === 'redis213@gmail.com' ||
-                  user?.email === 'dawn@thegarden.pt' ||
-                  user?.email === 'simone@thegarden.pt' ||
-                  user?.email === 'samjlloa@gmail.com' ||
-                  user?.email === 'living@thegarden.pt';
+  const isAdminCheck = isAdminUserSync(session);
   const hasAppliedCheck = metadata?.has_applied === true;
   const isApprovedCheck = metadata?.approved === true || metadata?.application_status === 'approved';
   const applicationStatusValue = metadata?.application_status || 'pending';
