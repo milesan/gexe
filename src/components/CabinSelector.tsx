@@ -19,7 +19,8 @@ const ADMIN_EMAILS = [
   'redis213@gmail.com',
   'dawn@thegarden.pt',
   'simone@thegarden.pt',
-  'samjlloa@gmail.com'
+  'samjlloa@gmail.com',
+  'living@thegarden.pt'
 ];
 
 interface Props {

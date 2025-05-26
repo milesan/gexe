@@ -82,7 +82,7 @@ function AppRouterLogic({
                   user?.email === 'dawn@thegarden.pt' ||
                   user?.email === 'simone@thegarden.pt' ||
                   user?.email === 'samjlloa@gmail.com' ||
-                  user?.email === 'redis213+testadmin@gmail.com';
+                  user?.email === 'living@thegarden.pt';
   const hasAppliedCheck = metadata?.has_applied === true;
   const isApprovedCheck = metadata?.approved === true || metadata?.application_status === 'approved';
   const applicationStatusValue = metadata?.application_status || 'pending';

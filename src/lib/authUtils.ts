@@ -8,7 +8,7 @@ const adminEmails = new Set([
   'dawn@thegarden.pt',
   'simone@thegarden.pt',
   'samjlloa@gmail.com',
-  'redis213+testadmin@gmail.com' // Including the one previously only in AuthenticatedApp
+  'living@thegarden.pt' // Including the one previously only in AuthenticatedApp
 ]);
 
 /**
