@@ -1,10 +1,17 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Check, Upload, X } from 'lucide-react';
+import { Check, Upload, X, Calendar, ChevronDown } from 'lucide-react';
 import type { ApplicationQuestion } from '../../types/application';
 import { supabase } from '../../lib/supabase';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+// --- START: Import calendar dependencies ---
+import { CalendarService } from '../../services/CalendarService';
+import { Week } from '../../types/calendar';
+import { formatInTimeZone } from 'date-fns-tz';
+import { addWeeks } from 'date-fns';
+import { isWeekSelectable } from '../../utils/dates';
+// --- END: Import calendar dependencies ---
 
 // Define the structure for uploaded file data
 interface UploadedFileData {
@@ -30,6 +37,14 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState<string | null>(null); // Track which file is being deleted
   const isImageUpload = question.type === 'file';
+  
+  // --- START: Add state for arrival date selector ---
+  const [weeks, setWeeks] = useState<Week[]>([]);
+  const [weeksLoading, setWeeksLoading] = useState(false);
+  const [weeksError, setWeeksError] = useState<string | null>(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const isArrivalDateSelector = question.type === 'arrival_date_selector';
+  // --- END: Add state for arrival date selector ---
 
   // --- START DEBUG LOG ---
   console.log('[RetroQuestionField] Processing Question:', { 
@@ -40,6 +55,91 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
     required: question.required 
   });
   // --- END DEBUG LOG ---
+
+  // --- START: Fetch weeks for arrival date selector ---
+  useEffect(() => {
+    if (!isArrivalDateSelector) return;
+    
+    async function fetchWeeks() {
+      setWeeksLoading(true);
+      setWeeksError(null);
+      
+      try {
+        // Fetch weeks for next 6 months from today
+        const startDate = new Date();
+        const endDate = addWeeks(startDate, 26); // 26 weeks = ~6 months
+        
+        console.log('[RetroQuestionField] Fetching weeks for arrival date selector:', {
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString()
+        });
+        
+        const fetchedWeeks = await CalendarService.getWeeks(startDate, endDate, false);
+        
+        console.log('[RetroQuestionField] All fetched weeks with status:', 
+          fetchedWeeks.map(w => ({
+            startDate: w.startDate.toISOString().split('T')[0],
+            endDate: w.endDate.toISOString().split('T')[0],
+            status: w.status,
+            name: w.name,
+            isCustom: w.isCustom
+          }))
+        );
+        
+        // Use isWeekSelectable to apply all business rules (including November cutoff, hidden weeks, etc.)
+        const selectableWeeks = fetchedWeeks.filter(week => {
+          // For arrival date selection, we pass empty array as selectedWeeks since this is for initial selection
+          const isSelectable = isWeekSelectable(week, false, []);
+          if (!isSelectable) {
+            console.log('[RetroQuestionField] Excluding week (not selectable):', {
+              startDate: week.startDate.toISOString().split('T')[0],
+              status: week.status,
+              reason: 'failed isWeekSelectable check'
+            });
+          }
+          return isSelectable;
+        });
+        
+        console.log('[RetroQuestionField] Final filtered weeks:', {
+          total: selectableWeeks.length,
+          excluded: fetchedWeeks.length - selectableWeeks.length,
+          sample: selectableWeeks.slice(0, 3).map(w => ({
+            startDate: w.startDate.toISOString(),
+            endDate: w.endDate.toISOString(),
+            name: w.name,
+            status: w.status
+          }))
+        });
+        
+        setWeeks(selectableWeeks);
+      } catch (err) {
+        console.error('[RetroQuestionField] Error fetching weeks:', err);
+        setWeeksError(err instanceof Error ? err.message : 'Failed to load available dates');
+      } finally {
+        setWeeksLoading(false);
+      }
+    }
+    
+    fetchWeeks();
+  }, [isArrivalDateSelector]);
+  // --- END: Fetch weeks for arrival date selector ---
+
+  // --- START: Click outside handler for dropdown ---
+  useEffect(() => {
+    if (!isArrivalDateSelector || !dropdownOpen) return;
+    
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      const dropdown = target.closest('[data-dropdown="arrival-selector"]');
+      if (!dropdown) {
+        setDropdownOpen(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isArrivalDateSelector, dropdownOpen]);
+  // --- END: Click outside handler for dropdown ---
 
   // Helper function to parse options safely
   const parseOptions = (options?: string | string[]): string[] => {
@@ -209,6 +309,118 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
       </div>
     );
   }
+
+  // --- START: Arrival Date Selector ---
+  if (isArrivalDateSelector) {
+    const selectedWeek = weeks.find(week => 
+      value === week.startDate.toISOString()
+    );
+
+    const formatWeekOption = (week: Week) => {
+      const startDateFormatted = formatInTimeZone(week.startDate, 'UTC', 'MMM d');
+      const endDateFormatted = formatInTimeZone(week.endDate, 'UTC', 'MMM d, yyyy');
+      const weekName = week.name ? ` - ${week.name}` : '';
+      return `${startDateFormatted} - ${endDateFormatted}${weekName}`;
+    };
+
+    return (
+      <div className="space-y-4">
+        <h3 className="text-xl font-display text-retro-accent">
+          {question.text}
+          {question.required && <span className="text-red-500 ml-1">*</span>}
+        </h3>
+        
+        {weeksError && (
+          <div className="flex items-center text-red-500 p-3 border border-red-500/30 bg-red-500/10"
+               style={{
+                 clipPath: `polygon(
+                   0 4px, 4px 4px, 4px 0,
+                   calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
+                   100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
+                   calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
+                   0 calc(100% - 4px)
+                 )`
+               }}>
+            <X className="w-4 h-4 mr-2" />
+            {weeksError}
+          </div>
+        )}
+
+        <div className="relative" data-dropdown="arrival-selector">
+          <button
+            type="button"
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+            disabled={weeksLoading || !!weeksError}
+            className={`w-full bg-black p-3 text-retro-accent focus:outline-none focus:ring-2 focus:ring-retro-accent border-4 border-retro-accent/30 flex items-center justify-between transition-colors ${
+              weeksLoading || weeksError ? 'opacity-50 cursor-not-allowed' : 'hover:bg-retro-accent/10'
+            }`}
+            style={{
+              clipPath: `polygon(
+                0 4px, 4px 4px, 4px 0,
+                calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
+                100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
+                calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
+                0 calc(100% - 4px)
+              )`
+            }}
+          >
+            <div className="flex items-center">
+              <Calendar className="w-5 h-5 mr-2" />
+              <span className="font-mono text-sm">
+                {weeksLoading 
+                  ? 'Loading available dates...'
+                  : selectedWeek 
+                    ? formatWeekOption(selectedWeek)
+                    : 'Select arrival week'
+                }
+              </span>
+            </div>
+            <ChevronDown className={`w-5 h-5 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {dropdownOpen && !weeksLoading && !weeksError && (
+            <div 
+              className="absolute top-full left-0 right-0 z-50 mt-1 bg-black border-4 border-retro-accent/30 max-h-60 overflow-y-auto"
+              style={{
+                clipPath: `polygon(
+                  0 4px, 4px 4px, 4px 0,
+                  calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
+                  100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
+                  calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
+                  0 calc(100% - 4px)
+                )`
+              }}>
+              {weeks.length === 0 ? (
+                <div className="p-3 text-retro-accent/60 text-sm">
+                  No available arrival dates found
+                </div>
+              ) : (
+                weeks.map((week) => (
+                  <button
+                    key={week.id || week.startDate.toISOString()}
+                    type="button"
+                    onClick={() => {
+                      onChange(week.startDate.toISOString());
+                      setDropdownOpen(false);
+                      if (onBlur) onBlur();
+                    }}
+                    className={`w-full text-left p-3 hover:bg-retro-accent/20 transition-colors border-b border-retro-accent/10 last:border-b-0 ${
+                      value === week.startDate.toISOString() ? 'bg-retro-accent/20' : ''
+                    }`}
+                  >
+                    <span className="font-mono text-sm text-retro-accent">
+                      {formatWeekOption(week)}
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+  // --- END: Arrival Date Selector ---
 
   if (isImageUpload) {
     const currentFileCount = currentFiles.length;

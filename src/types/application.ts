@@ -2,7 +2,7 @@ export interface ApplicationQuestion {
   id: string;
   order_number: number;
   text: string;
-  type: 'text' | 'radio' | 'date' | 'email' | 'tel' | 'file' | 'textarea' | 'password' | 'checkbox' | 'markdown_text';
+  type: 'text' | 'radio' | 'date' | 'email' | 'tel' | 'file' | 'textarea' | 'password' | 'checkbox' | 'markdown_text' | 'arrival_date_selector';
   options?: string[] | null;
   required?: boolean | null;
   section: 'intro' | 'personal' | 'stay' | 'philosophy' | string;

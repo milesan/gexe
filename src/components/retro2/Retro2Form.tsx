@@ -179,6 +179,12 @@ export function Retro2Form({ questions, onSubmit, initialData }: Props) {
         d.setDate(d.getDate() - randomNumber(365 * 2)); // Random date in the last 2 years
         return d.toISOString().split('T')[0]; // YYYY-MM-DD
       }
+      case 'arrival_date_selector': {
+        // Generate a random future date as ISO string (mimicking a selected week start date)
+        const futureDate = new Date();
+        futureDate.setDate(futureDate.getDate() + randomNumber(180)); // Random date in next 6 months
+        return futureDate.toISOString();
+      }
       case 'file': // Skip file uploads
       case 'markdown_text': // Skip display text
         return undefined;
