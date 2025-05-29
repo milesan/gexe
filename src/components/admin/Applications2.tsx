@@ -418,6 +418,32 @@ export function Applications2() {
                   <p className="text-sm text-[var(--color-text-secondary)] font-mono">
                     {application.user_email}
                   </p>
+                  {(() => {
+                    // Display special weeks selection
+                    if (questions.length > 0 && application.data) {
+                      const specialWeeksQuestion = questions.find(q => q.id === "bfde0ed9-319a-45e4-8b0d-5c694ca2c850") as QuestionForAnswerRetrieval | undefined;
+                      
+                      if (specialWeeksQuestion) {
+                        const answer = getAnswer(application.data, specialWeeksQuestion);
+                        if (answer && answer !== "No <3") {
+                          // Extract just the program name (before the "|" character)
+                          const programName = answer.split(" | ")[0] || answer;
+                          return (
+                            <p className="text-xs text-[var(--color-accent-primary)] font-mono mt-1 bg-[var(--color-accent-primary)]/10 px-2 py-1 rounded inline-block">
+                              Special Week: {programName}
+                            </p>
+                          );
+                        } else if (answer === "No <3") {
+                          return (
+                            <p className="text-xs text-[var(--color-text-tertiary)] font-mono mt-1">
+                              No special week selected
+                            </p>
+                          );
+                        }
+                      }
+                    }
+                    return null;
+                  })()}
                   <p className="text-xs text-[var(--color-text-tertiary)] font-mono mt-1">
                     Submitted: {new Date(application.created_at).toISOString().slice(0, 10)}
                   </p>
