@@ -141,6 +141,31 @@ export function AnimatedTerminal({ onComplete }: Props) {
 
     try {
       console.log('[AnimatedTerminal] Requesting code for:', normalizedEmail);
+      
+      // STEP 1: Check if this email is whitelisted and create auth user if needed
+      console.log('[AnimatedTerminal] Checking whitelist status...');
+      try {
+        const { data: whitelistResult, error: whitelistError } = await supabase.functions.invoke('create-whitelisted-auth-user', {
+          body: { email: normalizedEmail }
+        });
+
+        if (whitelistError) {
+          // If it's a 403 (not whitelisted), continue with normal flow
+          if (whitelistError.status === 403) {
+            console.log('[AnimatedTerminal] Email not whitelisted, proceeding with normal signup flow');
+          } else {
+            // Other errors are actual problems
+            throw new Error(`Whitelist check failed: ${whitelistError.message}`);
+          }
+        } else if (whitelistResult?.success) {
+          console.log(`[AnimatedTerminal] Whitelisted user auth account ${whitelistResult.operation}: ${whitelistResult.userId}`);
+        }
+      } catch (whitelistCheckError) {
+        console.warn('[AnimatedTerminal] Whitelist check failed, continuing with normal flow:', whitelistCheckError);
+        // Continue with normal flow - this handles cases where the function doesn't exist or other issues
+      }
+
+      // STEP 2: Send magic link (works for both whitelisted and normal users now)
       const { error } = await supabase.auth.signInWithOtp({ email: normalizedEmail });
       if (error) throw error;
       setSuccess('Code sent! Check your email (and spam/junk folder).');

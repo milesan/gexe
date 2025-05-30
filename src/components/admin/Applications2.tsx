@@ -445,7 +445,7 @@ export function Applications2() {
                     return null;
                   })()}
                   <p className="text-xs text-[var(--color-text-tertiary)] font-mono mt-1">
-                    Submitted: {new Date(application.created_at).toISOString().slice(0, 10)}
+                    Submitted: {new Date(new Date(application.created_at).getTime() + 60 * 60 * 1000).toISOString().slice(0, 16).replace('T', ' ')}
                   </p>
                   {application.last_sign_in_at && (
                     <p className="text-xs text-[var(--color-text-tertiary)] font-mono mt-1">
