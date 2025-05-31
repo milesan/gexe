@@ -408,11 +408,6 @@ export function Whitelist() {
             <div>
               <div className="font-medium text-[var(--color-text-primary)]">{entry.email}</div>
               <div className="flex flex-col sm:flex-row sm:gap-4 mt-2 text-sm">
-                {entry.has_account ? (
-                  <span className="text-emerald-600">Has Account</span>
-                ) : (
-                  <span className="text-[var(--color-text-secondary)]">No Account Yet</span>
-                )}
                 {entry.has_finished_signup ? (
                   <span className="text-emerald-600">Signup Completed</span>
                 ) : (
