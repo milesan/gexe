@@ -87,14 +87,14 @@ export function localDayToUTCMidnight(localDate: Date | null | undefined): Date 
  */
 export function formatDateForDisplay(date: Date | null | undefined): string {
   if (!date) return 'null';
-  // Use the correct function to get UTC midnight for the *local* calendar day
-  const utcMidnightDate = localDayToUTCMidnight(date);
-  if (!utcMidnightDate) {
-    console.warn('[formatDateForDisplay] localDayToUTCMidnight returned null for date:', date);
-    return 'invalid-date'; // Return a distinct string for invalid conversion
+  if (isNaN(date.getTime())) {
+    console.warn('[formatDateForDisplay] Received invalid date:', date);
+    return 'invalid-date';
   }
-  // Use formatInTimeZone to guarantee UTC display based on the correctly converted date
-  return formatInTimeZone(utcMidnightDate, 'UTC', 'yyyy-MM-dd');
+  
+  // If the date is already normalized to UTC midnight, format it directly
+  // Use formatInTimeZone to guarantee UTC display
+  return formatInTimeZone(date, 'UTC', 'yyyy-MM-dd');
 }
 
 /**

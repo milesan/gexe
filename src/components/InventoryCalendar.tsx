@@ -46,7 +46,11 @@ export function InventoryCalendar({ onClose }: Props) {
   const [dailyAvailability, setDailyAvailability] = useState<DailyAvailability>({});
 
   const daysInMonth = Array.from({ length: new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate() }, 
-    (_, i) => new Date(currentDate.getFullYear(), currentDate.getMonth(), i + 1));
+    (_, i) => {
+      // Create dates in UTC from the start to avoid timezone conversion issues
+      const utcDate = new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), i + 1));
+      return utcDate;
+    });
 
   useEffect(() => {
     loadData();
@@ -63,7 +67,13 @@ export function InventoryCalendar({ onClose }: Props) {
         .order('title');
 
       if (accommodationsError) throw accommodationsError;
-      setAccommodations(accommodationsData);
+      
+      // Filter out unlimited accommodations (Your own tent, van parking, etc.) and test accommodations
+      const filteredAccommodations = accommodationsData.filter(acc => 
+        !acc.is_unlimited && 
+        !acc.title.toLowerCase().includes('test')
+      );
+      setAccommodations(filteredAccommodations);
 
       // Get availability data for the current month
       // Normalize to UTC before sending to API
@@ -137,7 +147,7 @@ export function InventoryCalendar({ onClose }: Props) {
     }
   }
 
-  const getDateStatus = (date: Date, accommodationId: string): AvailabilityStatus | number => {
+  const getDateStatus = (date: Date, accommodationId: string): AvailabilityStatus | number | string => {
     // Normalize the input date to UTC midnight
     const normalizedDate = normalizeToUTCDate(date);
     const dateStr = formatDateForDisplay(normalizedDate);
@@ -145,13 +155,7 @@ export function InventoryCalendar({ onClose }: Props) {
     
     if (!availabilityData) return 'AVAILABLE';
     
-    // If it's a dorm, return the available capacity
-    const accommodation = accommodations.find(a => a.id === accommodationId);
-    if (accommodation?.title.includes('Dorm')) {
-      return availabilityData.available_capacity ?? accommodation.capacity ?? 0;
-    }
-    
-    // Check for check-in/out dates regardless of availability status
+    // Check for check-in/out dates first - this takes priority over capacity
     if (availabilityData.bookings && availabilityData.bookings.length > 0) {
       const hasCheckIn = availabilityData.bookings.some(b => 
         formatDateForDisplay(b.check_in) === dateStr
@@ -174,16 +178,32 @@ export function InventoryCalendar({ onClose }: Props) {
         }))
       });
       
-      // If both check-in and check-out occur on the same day, treat as fully booked
-      if (hasCheckIn && hasCheckOut) {
-        return 'BOOKED';
+      // Simple rule: check-out day = available, check-in day = occupied
+      if (hasCheckOut && !hasCheckIn) {
+        // Pure check-out day: available (just show normal capacity)
+        if (typeof availabilityData.available_capacity === 'number') {
+          return availabilityData.available_capacity;
+        }
+        return 'AVAILABLE';
       }
       
-      if (hasCheckIn) return 'CHECK_IN';
-      if (hasCheckOut) return 'CHECK_OUT';
+      if (hasCheckIn) {
+        // Check-in day (with or without checkout): occupied
+        if (typeof availabilityData.available_capacity === 'number') {
+          // For capacity accommodations, just show the API's available capacity
+          // (it already accounts for the booking)
+          return availabilityData.available_capacity;
+        }
+        return 'BOOKED';
+      }
     }
     
-    // For regular accommodations
+    // For regular days, show available capacity if it's a number
+    if (typeof availabilityData.available_capacity === 'number') {
+      return availabilityData.available_capacity;
+    }
+    
+    // Fallback for accommodations without explicit capacity info
     if (!availabilityData.is_available) {
       return 'BOOKED';
     }
@@ -192,64 +212,54 @@ export function InventoryCalendar({ onClose }: Props) {
   };
 
   const getCellContent = (accommodation: any, date: Date) => {
-    // Normalize the input date to UTC midnight
-    const normalizedDate = normalizeToUTCDate(date);
-    const dateStr = formatDateForDisplay(normalizedDate);
-    const availabilityData = dailyAvailability[dateStr]?.[accommodation.id];
-
-    // Handle dorms
-    if (accommodation.title.includes('Dorm') && availabilityData) {
-      return (availabilityData.available_capacity ?? 0).toString();
-    }
-
-    // Regular accommodation handling
     const status = getDateStatus(date, accommodation.id);
-    switch (status) {
-      case 'CHECK_IN':
-        return '→'; // Right arrow for check-in
-      case 'CHECK_OUT':
-        return '→'; // Right arrow for check-out (indicating leaving)
-      case 'BOOKED':
-        return '×';
-      case 'PENDING':
-        return '⌛';
-      default:
-        return '✓';
+    
+    // Handle status-based display (symbols)
+    if (typeof status === 'string') {
+      switch (status) {
+        case 'BOOKED':
+          return '×';
+        case 'PENDING':
+          return '⌛';
+        default: // 'AVAILABLE'
+          return '✓';
+      }
     }
+    
+    // For capacity numbers, show the number
+    if (typeof status === 'number') {
+      return status.toString();
+    }
+    
+    return '✓';
   };
 
-  const getCellStyle = (status: AvailabilityStatus | number) => {
+  const getCellStyle = (status: AvailabilityStatus | number | string) => {
     const baseStyle = 'h-8 px-2 text-center text-xs border-r cursor-pointer transition-colors';
     
     console.log('[InventoryCalendar] Getting cell style for status:', status);
     
     if (typeof status === 'number') {
-      // For dorm occupancy numbers
+      // For capacity-based accommodations (bell tents, dorms, etc.)
       if (status === 0) {
         return `${baseStyle} bg-black text-white`; // Fully booked - black
       }
-      // Get the accommodation to determine max capacity
-      const dorm = accommodations.find(a => a.title.includes('Dorm'));
-      const maxCapacity = dorm?.capacity || 8; // Default to 8 if not found
-      const availablePercentage = Math.min((status / maxCapacity) * 100, 100);
       
-      // Create a gradient from emerald (available) to black (booked)
-      if (availablePercentage >= 75) {
-        return `${baseStyle} bg-emerald-500 text-white`; // Mostly available - emerald
-      } else if (availablePercentage >= 50) {
-        return `${baseStyle} bg-emerald-900 text-white`; // Half available - dark emerald
-      } else if (availablePercentage >= 25) {
-        return `${baseStyle} bg-stone-800 text-white`; // Getting full - very dark gray
+      // Create a visual indicator using different shades of green
+      if (status >= 10) {
+        return `${baseStyle} bg-emerald-500 text-white`; // High availability - bright emerald
+      } else if (status >= 5) {
+        return `${baseStyle} bg-emerald-700 text-white`; // Medium availability - darker emerald
+      } else if (status >= 3) {
+        return `${baseStyle} bg-emerald-800 text-white`; // Low availability - very dark emerald
+      } else if (status >= 1) {
+        return `${baseStyle} bg-emerald-900 text-white`; // Very low availability - almost black emerald
       } else {
-        return `${baseStyle} bg-stone-950 text-white`; // Almost full - nearly black
+        return `${baseStyle} bg-black text-white`; // No availability - black
       }
     }
 
     switch (status) {
-      case 'CHECK_IN':
-        return `${baseStyle} bg-gradient-to-r from-emerald-500 to-black text-white font-bold`;
-      case 'CHECK_OUT':
-        return `${baseStyle} bg-gradient-to-l from-emerald-500 to-black text-white font-bold`;
       case 'BOOKED':
         return `${baseStyle} bg-black text-white cursor-not-allowed`;
       case 'PENDING':
@@ -315,35 +325,29 @@ export function InventoryCalendar({ onClose }: Props) {
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-4 text-xs text-[var(--color-text-secondary)]">
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
-                    <span className="font-mono">Available</span>
+                    <div className="w-8 h-3 bg-emerald-600 text-white text-xs flex items-center justify-center font-mono">25</div>
+                    <span className="font-mono">Available Arrival Slots</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
-                    <span className="font-mono">Hold</span>
+                    <div className="w-8 h-3 bg-emerald-500 text-white text-xs flex items-center justify-center font-mono">✓</div>
+                    <span className="font-mono">Available to Check-in</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-black"></div>
-                    <span className="font-mono">Booked</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-20 h-3 rounded-full bg-gradient-to-r from-emerald-500 to-black"></div>
-                    <span className="font-mono">Check-in →</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-20 h-3 rounded-full bg-gradient-to-l from-emerald-500 to-black"></div>
-                    <span className="font-mono">Check-out →</span>
+                    <div className="w-8 h-3 bg-black text-white text-xs flex items-center justify-center font-mono">×</div>
+                    <span className="font-mono">Occupied</span>
                   </div>
                   <div className="h-6 border-l border-[var(--color-border)] mx-2"></div>
                   <div className="flex items-center gap-2">
-                    <div className="flex gap-1">
-                      <div className="w-3 h-3 bg-emerald-500"></div>
-                      <div className="w-3 h-3 bg-emerald-900"></div>
-                      <div className="w-3 h-3 bg-stone-800"></div>
-                      <div className="w-3 h-3 bg-stone-950"></div>
-                      <div className="w-3 h-3 bg-black"></div>
-                    </div>
-                    <span className="font-mono">Dorm Occupancy (Available → Full)</span>
+                    <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
+                    <span className="font-mono">High Availability (10+)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-emerald-800"></div>
+                    <span className="font-mono">Low Availability (1-2)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-black"></div>
+                    <span className="font-mono">No Availability (0)</span>
                   </div>
                 </div>
 
@@ -376,12 +380,11 @@ export function InventoryCalendar({ onClose }: Props) {
                           Accommodation
                         </th>
                         {daysInMonth.map(day => {
-                          // Convert local day to UTC for display
-                          const utcDay = normalizeToUTCDate(day);
+                          // day is already a UTC date from daysInMonth generation
                           return (
-                            <th key={utcDay.toISOString()} className="px-2 py-2 text-center text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
-                              <div>{format(utcDay, 'd')}</div>
-                              <div>{format(utcDay, 'EEE')}</div>
+                            <th key={day.toISOString()} className="px-2 py-2 text-center text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
+                              <div>{format(day, 'd')}</div>
+                              <div>{format(day, 'EEE')}</div>
                             </th>
                           );
                         })}
@@ -396,16 +399,15 @@ export function InventoryCalendar({ onClose }: Props) {
                             </div>
                           </td>
                           {daysInMonth.map(day => {
-                            // Convert local day to UTC for display and lookup
-                            const utcDay = normalizeToUTCDate(day);
-                            const dateStr = formatDateForDisplay(utcDay);
+                            // day is already a UTC date from daysInMonth generation
+                            const dateStr = formatDateForDisplay(day);
                             const availabilityData = dailyAvailability[dateStr]?.[accommodation.id];
                             const status = getDateStatus(day, accommodation.id);
                             return (
                               <td
-                                key={utcDay.toISOString()}
+                                key={day.toISOString()}
                                 className={getCellStyle(status)}
-                                onClick={() => handleDateClick(utcDay, accommodation.id)}
+                                onClick={() => handleDateClick(day, accommodation.id)}
                               >
                                 {getCellContent(accommodation, day)}
                               </td>
