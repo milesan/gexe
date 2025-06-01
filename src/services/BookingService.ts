@@ -1,12 +1,9 @@
 import { supabase } from '../lib/supabase';
 import type { Accommodation, Booking } from '../types';
 import type { AvailabilityResult } from '../types/availability';
-import type { Database } from '../types/database';
 import { addDays, startOfWeek, endOfWeek, isBefore, isEqual } from 'date-fns';
 import { normalizeToUTCDate, formatDateOnly } from '../utils/dates';
 import { getFrontendUrl } from '../lib/environment';
-
-type AccommodationType = Database['public']['Tables']['accommodations']['Row'];
 
 class BookingService {
   private static instance: BookingService;
@@ -33,10 +30,10 @@ class BookingService {
     }
 
     console.log('[BookingService] Received accommodations:', data);
-    return data as AccommodationType[];
+    return data as Accommodation[];
   }
 
-  async updateAccommodation(id: string, updates: Partial<AccommodationType>) {
+  async updateAccommodation(id: string, updates: Partial<Accommodation>) {
     console.log('[BookingService] Updating accommodation:', { id, updates });
     const { data, error } = await supabase
       .from('accommodations')
@@ -154,6 +151,7 @@ class BookingService {
     checkOut: Date | string;
     totalPrice: number;
     isAdmin?: boolean;
+    appliedDiscountCode?: string;
   }): Promise<Booking> {
     console.log('[BookingService] Creating booking with data:', {
       ...booking,
@@ -198,7 +196,8 @@ class BookingService {
         processedCheckOut: checkOutISO,
         accommodationId: booking.accommodationId,
         userId: user?.id || 'admin',
-        totalPrice: booking.totalPrice
+        totalPrice: booking.totalPrice,
+        appliedDiscountCode: booking.appliedDiscountCode
       });
 
       const { data: newBooking, error } = await supabase
@@ -211,6 +210,7 @@ class BookingService {
           total_price: booking.totalPrice,
           status: 'confirmed',
           payment_intent_id: null,
+          applied_discount_code: booking.appliedDiscountCode || null,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })

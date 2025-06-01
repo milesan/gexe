@@ -21,6 +21,7 @@ export interface Booking {
   total_price: number;
   status: string;
   payment_intent_id: string | null;
+  applied_discount_code: string | null;
   created_at: string;
   updated_at: string;
   accommodation?: {

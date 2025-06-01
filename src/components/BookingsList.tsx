@@ -18,6 +18,7 @@ interface Booking {
   accommodation_title: string;
   user_email: string | null;
   guest_email?: string | null;
+  applied_discount_code: string | null;
   accommodations?: { title: string } | null;
 }
 
@@ -56,8 +57,9 @@ export function BookingsList() {
       const { data: bookingsData, error: bookingsError, count } = await supabase
         .from('bookings_with_emails')
         .select(`
-          *, 
-          accommodations ( title ) 
+          *,
+          applied_discount_code,
+          accommodations ( title )
         `, { count: 'exact' })
         .neq('status', 'cancelled')
         .order('created_at', { ascending: false });
@@ -184,6 +186,9 @@ export function BookingsList() {
                 Price
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
+                Discount Code
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
                 Status
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
@@ -215,6 +220,17 @@ export function BookingsList() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--color-text-primary)]">
                   €{booking.total_price}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--color-text-primary)]">
+                  {booking.applied_discount_code ? (
+                    <span className="px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-800 rounded-full">
+                      {booking.applied_discount_code}
+                    </span>
+                  ) : (
+                    <span className="text-[var(--color-text-secondary)]">
+                      {new Date(booking.created_at) < new Date('2025-06-02') ? 'Unknown' : 'None'}
+                    </span>
+                  )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${

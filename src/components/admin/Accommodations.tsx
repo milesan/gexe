@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Upload, Image as ImageIcon, X, Check, Save, Pencil, Wifi, Zap } from 'lucide-react';
+import { Upload, Image as ImageIcon, X, Check, Save, Pencil, Wifi, Zap, Plus, Trash2 } from 'lucide-react';
 
 interface Accommodation {
   id: string;
@@ -19,6 +19,9 @@ interface Accommodation {
 
 // Helper type for subset of fields allowed for editing
 type EditableAccommodationFields = Omit<Accommodation, 'id' | 'image_url' | 'is_unlimited'>;
+
+// Template for new accommodation
+type NewAccommodationData = EditableAccommodationFields;
 
 // Define allowed accommodation types (Ideally fetch this from DB enum `accommodation_type`)
 const ALLOWED_ACCOMMODATION_TYPES = [
@@ -41,6 +44,16 @@ export function Accommodations() {
   const [currentEditData, setCurrentEditData] = useState<Accommodation | null>(null);
   const [editLoading, setEditLoading] = useState<boolean>(false);
   const [editError, setEditError] = useState<string | null>(null);
+  
+  // Add new accommodation states
+  const [isCreatingNew, setIsCreatingNew] = useState<boolean>(false);
+  const [newAccommodationData, setNewAccommodationData] = useState<NewAccommodationData | null>(null);
+  const [createLoading, setCreateLoading] = useState<boolean>(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  
+  // Delete confirmation states
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAccommodations();
@@ -59,6 +72,195 @@ export function Accommodations() {
       console.error('Error fetching accommodations:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Initialize new accommodation form
+  const handleCreateNewClick = () => {
+    console.log('[ACCOM] Create New Mode Activated');
+    setIsCreatingNew(true);
+    setNewAccommodationData({
+      title: '',
+      base_price: 0,
+      type: 'room', // Default to first type
+      capacity: 1,
+      has_wifi: false,
+      has_electricity: false,
+      bed_size: ''
+    });
+    setCreateError(null);
+    setCreateLoading(false);
+  };
+
+  // Cancel new accommodation creation
+  const handleCancelCreate = () => {
+    console.log('[ACCOM] Create Cancelled');
+    setIsCreatingNew(false);
+    setNewAccommodationData(null);
+    setCreateError(null);
+    setCreateLoading(false);
+  };
+
+  // Handle input changes for new accommodation
+  const handleNewAccommodationInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
+    fieldName: keyof NewAccommodationData
+  ) => {
+    if (!newAccommodationData) return;
+
+    const { value, type } = e.target;
+    let processedValue: string | number | boolean = value;
+
+    // Handle checkbox type
+    if (type === 'checkbox' && e.target instanceof HTMLInputElement) {
+      processedValue = e.target.checked;
+    }
+    // Handle number type - Ensure we store numbers, not strings
+    else if (type === 'number') {
+       // Allow empty string temporarily, validation happens on save
+      processedValue = value === '' ? '' : parseFloat(value);
+       if (isNaN(processedValue as number) && value !== '') {
+         console.warn('[ACCOM] Invalid number input blocked for field:', fieldName, 'value:', value);
+         return;
+       }
+    }
+
+    console.log('[ACCOM] New Accommodation Input Change:', { fieldName, processedValue });
+    setNewAccommodationData({
+      ...newAccommodationData,
+      [fieldName]: processedValue,
+    });
+  };
+
+  // Save new accommodation
+  const handleSaveNewAccommodation = async () => {
+    if (!newAccommodationData) {
+        console.error('[ACCOM] Create Error: No data to save.');
+        setCreateError("Cannot create, no data provided.");
+        return;
+    }
+
+    setCreateLoading(true);
+    setCreateError(null);
+    console.log('[ACCOM] Attempting Create:', { data: newAccommodationData });
+
+    // --- Validation (similar to edit validation) ---
+    const errors: string[] = [];
+    const dataToSave: NewAccommodationData = { ...newAccommodationData };
+
+    // Title validation
+    const title = String(dataToSave.title).trim();
+    if (!title) {
+        errors.push("Title cannot be empty.");
+    } else {
+        dataToSave.title = title;
+    }
+
+    // Base Price validation
+    const base_price_str = String(dataToSave.base_price).trim();
+    const base_price_num = parseInt(base_price_str, 10);
+    if (base_price_str === '' || isNaN(base_price_num) || base_price_num < 0 || !Number.isInteger(base_price_num) || String(base_price_num) !== base_price_str) {
+        errors.push("Price must be a non-negative whole number.");
+    } else {
+        dataToSave.base_price = base_price_num;
+    }
+
+    // Type validation
+    const type = String(dataToSave.type).trim();
+     if (!type) {
+         errors.push("Type cannot be empty.");
+     } else if (!ALLOWED_ACCOMMODATION_TYPES.includes(type)) {
+         errors.push(`Invalid type selected: ${type}. Allowed types: ${ALLOWED_ACCOMMODATION_TYPES.join(', ')}`);
+     } else {
+         dataToSave.type = type;
+     }
+
+    // Capacity validation
+     const capacity_str = String(dataToSave.capacity).trim();
+     const capacity_num = parseInt(capacity_str, 10);
+     if (capacity_str === '' || isNaN(capacity_num) || capacity_num <= 0 || !Number.isInteger(capacity_num) || String(capacity_num) !== capacity_str) {
+         errors.push("Capacity must be a positive whole number.");
+     } else {
+         dataToSave.capacity = capacity_num;
+     }
+
+     // Bed Size (optional)
+     const bed_size = String(dataToSave.bed_size ?? '').trim();
+     dataToSave.bed_size = bed_size;
+
+    if (errors.length > 0) {
+      const errorMessage = errors.join(' ');
+      console.error('[ACCOM] Create Validation Error:', { errors });
+      setCreateError(errorMessage);
+      setCreateLoading(false);
+      return;
+    }
+
+    // --- Perform Create ---
+    try {
+      console.log('[ACCOM] Creating in Supabase:', { data: dataToSave });
+      const { data: createdData, error: createError } = await supabase
+        .from('accommodations')
+        .insert([{
+          ...dataToSave,
+          is_unlimited: false, // Default value
+          image_url: null // Will be set later via upload
+        }])
+        .select()
+        .single();
+
+      if (createError) throw createError;
+
+      console.log('[ACCOM] Create Successful:', { id: createdData.id });
+
+      // Add to local state immediately for responsiveness
+      setAccommodations(prev => [...prev, createdData].sort((a, b) => a.title.localeCompare(b.title)));
+
+      handleCancelCreate(); // Exit create mode
+
+    } catch (err: any) {
+      console.error('[ACCOM] Supabase Create Error:', err);
+      setCreateError(err.message || "Failed to create accommodation.");
+    } finally {
+      setCreateLoading(false);
+    }
+  };
+
+  // Delete confirmation handlers
+  const handleDeleteClick = (accommodationId: string) => {
+    console.log('[ACCOM] Delete Requested:', { id: accommodationId });
+    setDeleteConfirmId(accommodationId);
+  };
+
+  const handleCancelDelete = () => {
+    console.log('[ACCOM] Delete Cancelled');
+    setDeleteConfirmId(null);
+  };
+
+  const handleConfirmDelete = async (accommodationId: string) => {
+    setDeleteLoading(accommodationId);
+    console.log('[ACCOM] Confirming Delete:', { id: accommodationId });
+
+    try {
+      const { error: deleteError } = await supabase
+        .from('accommodations')
+        .delete()
+        .eq('id', accommodationId);
+
+      if (deleteError) throw deleteError;
+
+      console.log('[ACCOM] Delete Successful:', { id: accommodationId });
+
+      // Remove from local state immediately
+      setAccommodations(prev => prev.filter(acc => acc.id !== accommodationId));
+      setDeleteConfirmId(null);
+
+    } catch (err: any) {
+      console.error('[ACCOM] Supabase Delete Error:', err);
+      // Could set a delete error state here if needed
+      alert(`Failed to delete accommodation: ${err.message}`);
+    } finally {
+      setDeleteLoading(null);
     }
   };
 
@@ -318,8 +520,164 @@ export function Accommodations() {
           </div>
       )}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Create New Accommodation Card */}
+        {isCreatingNew ? (
+          // Create New Form Card
+          <div className="bg-[var(--color-bg-surface)] rounded-lg shadow-sm border border-[var(--color-accent-primary)] ring-1 ring-[var(--color-accent-primary)] p-4 flex flex-col">
+            {/* Image Placeholder */}
+            <div className="relative aspect-video mb-4 bg-[var(--color-bg-surface-hover)] rounded-lg flex items-center justify-center">
+              <ImageIcon className="w-8 h-8 text-[var(--color-text-secondary)]" />
+              <div className="absolute bottom-2 right-2 text-xs text-[var(--color-text-secondary)]">Upload after creation</div>
+            </div>
+
+            {/* Header: Title and Controls */}
+            <div className="flex justify-between items-start mb-3">
+              <div className='flex-grow mr-2'>
+                <label htmlFor="new-title" className={labelClassName}>Title</label>
+                <input
+                  type="text"
+                  id="new-title"
+                  value={newAccommodationData?.title || ''}
+                  onChange={(e) => handleNewAccommodationInputChange(e, 'title')}
+                  disabled={createLoading}
+                  className={inputClassName}
+                  placeholder="Enter accommodation title"
+                />
+              </div>
+              <div className="flex items-center space-x-1 shrink-0 mt-1">
+                <button
+                  onClick={handleSaveNewAccommodation}
+                  disabled={createLoading || !newAccommodationData}
+                  className="p-1 text-green-500 hover:text-green-700 hover:bg-green-100 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label="Save new accommodation"
+                >
+                  {createLoading ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div> : <Save className="w-4 h-4" />}
+                </button>
+                <button
+                  onClick={handleCancelCreate}
+                  disabled={createLoading}
+                  className="p-1 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label="Cancel creation"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Body: Form Fields */}
+            {newAccommodationData && (
+              <div className="space-y-2 text-sm text-[var(--color-text-secondary)] flex-grow mb-2">
+                {/* Type */}
+                <div>
+                  <label htmlFor="new-type" className={labelClassName}>Type</label>
+                  <select
+                    id="new-type"
+                    value={newAccommodationData.type}
+                    onChange={(e) => handleNewAccommodationInputChange(e, 'type')}
+                    disabled={createLoading}
+                    className={`${inputClassName.replace("bg-[var(--color-input-bg)]", "bg-[var(--color-furface-modal,theme(colors.gray.800))]")} `}
+                  >
+                    {ALLOWED_ACCOMMODATION_TYPES.map(t => (
+                      <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
+                    ))}
+                  </select>
+                </div>
+                {/* Price */}
+                <div>
+                  <label htmlFor="new-price" className={labelClassName}>Price (€)</label>
+                  <input 
+                    type="number" 
+                    id="new-price" 
+                    value={newAccommodationData.base_price === null || newAccommodationData.base_price === undefined ? '' : newAccommodationData.base_price} 
+                    onChange={(e) => handleNewAccommodationInputChange(e, 'base_price')} 
+                    disabled={createLoading} 
+                    className={numberInputClassName} 
+                    step="1" 
+                    min="0" 
+                    placeholder="0"
+                  />
+                </div>
+                {/* Capacity */}
+                <div>
+                  <label htmlFor="new-capacity" className={labelClassName}>Capacity</label>
+                  <input 
+                    type="number" 
+                    id="new-capacity" 
+                    value={newAccommodationData.capacity === null || newAccommodationData.capacity === undefined ? '' : newAccommodationData.capacity} 
+                    onChange={(e) => handleNewAccommodationInputChange(e, 'capacity')} 
+                    disabled={createLoading} 
+                    className={numberInputClassName} 
+                    step="1" 
+                    min="1" 
+                    placeholder="1"
+                  />
+                </div>
+                {/* Bed Size */}
+                <div>
+                  <label htmlFor="new-bed_size" className={labelClassName}>Bed Size</label>
+                  <input 
+                    type="text" 
+                    id="new-bed_size" 
+                    value={newAccommodationData.bed_size ?? ''} 
+                    onChange={(e) => handleNewAccommodationInputChange(e, 'bed_size')} 
+                    disabled={createLoading} 
+                    className={inputClassName} 
+                    placeholder="e.g. Queen, Twin, etc."
+                  />
+                </div>
+                {/* Features - Checkboxes */}
+                <div className='flex flex-col space-y-1 pt-1'>
+                  <label className={checkboxLabelClassName}>
+                    <input 
+                      type="checkbox" 
+                      checked={!!newAccommodationData.has_wifi} 
+                      onChange={(e) => handleNewAccommodationInputChange(e, 'has_wifi')} 
+                      disabled={createLoading} 
+                      className={checkboxInputClassName}
+                    />
+                    <span>Has WiFi</span>
+                  </label>
+                  <label className={checkboxLabelClassName}>
+                    <input 
+                      type="checkbox" 
+                      checked={!!newAccommodationData.has_electricity} 
+                      onChange={(e) => handleNewAccommodationInputChange(e, 'has_electricity')} 
+                      disabled={createLoading} 
+                      className={checkboxInputClassName}
+                    />
+                    <span>Has Electricity</span>
+                  </label>
+                </div>
+              </div>
+            )}
+
+            {/* Error Display */}
+            {createError && (
+              <div className="mt-2 p-2 bg-red-100 border border-red-400 text-red-700 rounded-md text-sm">
+                {createError}
+              </div>
+            )}
+          </div>
+        ) : (
+          // Create New Button Card
+          <div 
+            className="bg-[var(--color-bg-surface)] rounded-lg shadow-sm border border-dashed border-[var(--color-border)] p-4 flex flex-col items-center justify-center cursor-pointer hover:border-[var(--color-accent-primary)] hover:bg-[var(--color-bg-surface-hover)] transition-colors"
+            onClick={handleCreateNewClick}
+          >
+            <div className="aspect-video w-full flex items-center justify-center mb-4">
+              <Plus className="w-12 h-12 text-[var(--color-text-secondary)]" />
+            </div>
+            <h3 className="font-medium text-[var(--color-text-primary)] mb-1">Add New Accommodation</h3>
+            <p className="text-sm text-[var(--color-text-secondary)] text-center">Click to create a new accommodation</p>
+          </div>
+        )}
+
+        {/* Existing Accommodations */}
         {accommodations.map((accommodation) => {
           const isEditingThis = editingAccommodationId === accommodation.id;
+          const isDeleteConfirming = deleteConfirmId === accommodation.id;
+          const isDeleting = deleteLoading === accommodation.id;
+          
           return (
             <div key={accommodation.id} className={`bg-[var(--color-bg-surface)] rounded-lg shadow-sm border ${isEditingThis ? 'border-[var(--color-accent-primary)] ring-1 ring-[var(--color-accent-primary)]' : 'border-[var(--color-border)]'} p-4 flex flex-col`}>
               {/* Image Section */} 
@@ -353,7 +711,7 @@ export function Accommodations() {
                 {/* Maybe show progress indicator specific to this card? */} 
               </div>
 
-              {/* Header: Title and Edit/Save/Cancel Controls */} 
+              {/* Header: Title and Edit/Save/Cancel/Delete Controls */} 
               <div className="flex justify-between items-start mb-3">
                 {isEditingThis && currentEditData ? (
                     <div className='flex-grow mr-2'>
@@ -390,18 +748,55 @@ export function Accommodations() {
                         <X className="w-4 h-4" />
                       </button>
                     </>
+                  ) : isDeleteConfirming ? (
+                    <>
+                      <button
+                        onClick={() => handleConfirmDelete(accommodation.id)}
+                        disabled={isDeleting}
+                        className="p-1 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        aria-label="Confirm delete"
+                      >
+                        {isDeleting ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div> : <Check className="w-4 h-4" />}
+                      </button>
+                      <button
+                        onClick={handleCancelDelete}
+                        disabled={isDeleting}
+                        className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        aria-label="Cancel delete"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </>
                   ) : (
-                    <button
-                      onClick={() => handleEditClick(accommodation)}
-                      disabled={!!editingAccommodationId} // Disable if ANY row is being edited
-                      className={`p-1 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
-                      aria-label="Edit accommodation"
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </button>
+                    <>
+                      <button
+                        onClick={() => handleEditClick(accommodation)}
+                        disabled={!!editingAccommodationId || isCreatingNew} // Disable if ANY row is being edited or creating
+                        className={`p-1 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
+                        aria-label="Edit accommodation"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClick(accommodation.id)}
+                        disabled={!!editingAccommodationId || isCreatingNew} // Disable if ANY row is being edited or creating
+                        className={`p-1 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
+                        aria-label="Delete accommodation"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
+
+              {/* Delete Confirmation Message */}
+              {isDeleteConfirming && (
+                <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-md">
+                  <p className="text-sm text-red-700 font-medium">Are you sure you want to delete this accommodation?</p>
+                  <p className="text-xs text-red-600 mt-1">This action cannot be undone.</p>
+                </div>
+              )}
 
               {/* Body: Editable Fields */} 
               <div className="space-y-2 text-sm text-[var(--color-text-secondary)] flex-grow mb-2"> 
