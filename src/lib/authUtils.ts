@@ -2,6 +2,12 @@ import { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 // import { logError } from './logging'; // Assuming you have a logging utility
 
+// Centralized list of housekeeping access emails
+const housekeepingEmails = new Set([
+  'solarlovesong@gmail.com',
+  'samckclarke@gmail.com'
+]);
+
 /**
  * Checks if the provided Supabase session belongs to an admin user.
  * Uses the Supabase is_admin() RPC function as the single source of truth.
@@ -60,6 +66,17 @@ export async function hasHousekeepingAccess(session: Session | null): Promise<bo
     console.error('[hasHousekeepingAccess] Exception calling has_housekeeping_access RPC:', err);
     return false;
   }
+}
+
+/**
+ * TEMPORARY: Synchronous fallback function for housekeeping access.
+ * @deprecated Use hasHousekeepingAccess() instead when possible
+ */
+export function hasHousekeepingAccessSync(session: Session | null): boolean {
+  const userEmail = session?.user?.email;
+  if (!userEmail) return false;
+  
+  return housekeepingEmails.has(userEmail);
 }
 
 // Example of adding a basic logging function if you don't have one
