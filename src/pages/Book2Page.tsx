@@ -25,7 +25,7 @@ import { bookingService } from '../services/BookingService';
 import { loadStripe } from '@stripe/stripe-js';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { InfoBox } from '../components/InfoBox';
-import { isAdminUser } from '../lib/authUtils';
+import { useUserPermissions } from '../hooks/useUserPermissions';
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
@@ -141,7 +141,7 @@ export function Book2Page() {
   const combinedDiscount = calculateCombinedDiscount(selectedWeeks);
 
   const { session, isLoading: sessionLoading } = useSession();
-  const isAdmin = isAdminUser(session);
+  const { isAdmin, isLoading: permissionsLoading } = useUserPermissions(session);
   const isMobile = window.innerWidth < 768;
 
   // --- START: Normalize date specifically for the calendar hook ---
@@ -823,8 +823,8 @@ export function Book2Page() {
   console.log('[Book2Page] Rendering - isAdmin check result:', isAdmin);
 
   // ---> ADDING LOADING CHECK HERE <--- 
-  if (sessionLoading) {
-      // Render loading state or null while session is loading
+  if (sessionLoading || permissionsLoading) {
+      // Render loading state or null while session/permissions are loading
       return (
           <div className="min-h-screen flex items-center justify-center">
               <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-accent-primary"></div>

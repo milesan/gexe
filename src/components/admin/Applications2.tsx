@@ -21,6 +21,7 @@ interface Application {
   linked_user_email?: string;
   last_sign_in_at?: string | null;
   seen_welcome?: boolean;
+  is_whitelisted?: boolean;
 }
 
 const ITEMS_PER_PAGE = 15;
@@ -50,6 +51,23 @@ export function Applications2() {
         }
         timeout = setTimeout(() => resolve(func(...args)), waitFor);
       });
+  };
+
+  const fetchWhitelistStatus = async (emails: string[]) => {
+    try {
+      const { data, error } = await supabase
+        .from('whitelist')
+        .select('email')
+        .in('email', emails);
+      
+      if (error) throw error;
+      
+      const whitelistedEmails = new Set(data?.map(w => w.email) || []);
+      return whitelistedEmails;
+    } catch (err) {
+      console.error('Error fetching whitelist status:', err);
+      return new Set<string>();
+    }
   };
 
   const loadApplications = useCallback(async () => {
@@ -99,8 +117,18 @@ export function Applications2() {
         };
       });
 
-      console.log('Applications2: Processed applications with user data:', processedApplications);
-      setApplications(processedApplications);
+      // Fetch whitelist status for all applications in this page
+      const emails = processedApplications.map(app => app.user_email);
+      const whitelistedEmails = await fetchWhitelistStatus(emails);
+
+      // Add whitelist status to applications
+      const applicationsWithWhitelist = processedApplications.map(app => ({
+        ...app,
+        is_whitelisted: whitelistedEmails.has(app.user_email)
+      }));
+
+      console.log('Applications2: Processed applications with user data:', applicationsWithWhitelist);
+      setApplications(applicationsWithWhitelist);
       setTotalApplicationsCount(count || 0);
 
     } catch (err) {
@@ -445,11 +473,11 @@ export function Applications2() {
                     return null;
                   })()}
                   <p className="text-xs text-[var(--color-text-tertiary)] font-mono mt-1">
-                    Submitted: {new Date(new Date(application.created_at).getTime() + 60 * 60 * 1000).toISOString().slice(0, 16).replace('T', ' ')}
+                    {application.is_whitelisted ? 'Sign up completed at:' : 'Submitted:'} {new Date(new Date(application.created_at).getTime() + 60 * 60 * 1000).toISOString().slice(0, 16).replace('T', ' ')}
                   </p>
                   {application.last_sign_in_at && (
                     <p className="text-xs text-[var(--color-text-tertiary)] font-mono mt-1">
-                      Last sign in: {new Date(application.last_sign_in_at).toISOString().slice(0, 10)}
+                      Last sign in: {new Date(new Date(application.last_sign_in_at).getTime() + 60 * 60 * 1000).toISOString().slice(0, 16).replace('T', ' ')}
                     </p>
                   )}
                   {application.seen_welcome && (
@@ -457,6 +485,17 @@ export function Applications2() {
                       Welcome Seen
                     </p>
                   )}
+                  <div className="flex gap-2 mt-1">
+                    {application.is_whitelisted ? (
+                      <span className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded font-mono">
+                        ✓ Whitelisted
+                      </span>
+                    ) : (
+                      <span className="text-xs bg-[var(--color-bg-surface)] text-[var(--color-text-tertiary)] border border-[var(--color-border)] px-2 py-0.5 rounded font-mono">
+                        Not Whitelisted
+                      </span>
+                    )}
+                  </div>
                   {application.linked_name && (
                     <div className="mt-2 text-sm text-[var(--color-text-secondary)] font-mono">
                       Linked with: {application.linked_name} ({application.linked_email})

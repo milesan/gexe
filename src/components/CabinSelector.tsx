@@ -12,7 +12,7 @@ import * as Popover from '@radix-ui/react-popover';
 import { calculateTotalNights, calculateDurationDiscountWeeks, normalizeToUTCDate } from '../utils/dates';
 import { useSession } from '../hooks/useSession';
 import { HoverClickPopover } from './HoverClickPopover';
-import { isAdminUserSync } from '../lib/authUtils';
+import { useUserPermissions } from '../hooks/useUserPermissions';
 
 interface Props {
   accommodations: Accommodation[];
@@ -57,7 +57,7 @@ export function CabinSelector({
   displayWeeklyAccommodationPrice
 }: Props) {
   const { session } = useSession();
-  const isAdmin = isAdminUserSync(session);
+  const { isAdmin, isLoading: permissionsLoading } = useUserPermissions(session);
 
   console.log('[CabinSelector] Rendering with props:', {
     accommodationsCount: accommodations?.length,
@@ -67,6 +67,7 @@ export function CabinSelector({
     currentMonthNumber: currentMonth.getUTCMonth(),
     currentMonthName: new Intl.DateTimeFormat('en-US', { month: 'long', timeZone: 'UTC' }).format(currentMonth),
     isAdmin,
+    permissionsLoading,
     selectedWeeks: selectedWeeks?.map(w => {
       if (!w || typeof w === 'string') return null;
       

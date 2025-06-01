@@ -18,7 +18,7 @@ import { AuthCallback } from './components/AuthCallback';
 import { MainAppLayout } from './components/MainAppLayout';
 import { WhitelistWelcomeModal } from './components/WhitelistWelcomeModal';
 import { BugReportFAB } from './components/BugReportFAB';
-import { isAdminUserSync } from './lib/authUtils';
+import { useUserPermissions } from './hooks/useUserPermissions';
 
 // Configure logging early to silence logs in production
 configureLogging();
@@ -39,13 +39,19 @@ function AppRouterLogic({
 }: AppRouterLogicProps) {
   const location = useLocation();
   const navigate = useNavigate();
+  
+  // Use the proper hook instead of sync function
+  const { isAdmin: isAdminCheck, isLoading: permissionsLoading } = useUserPermissions(session);
+  
   // Log received props for debugging routing issues
   console.log('AppRouterLogic: Render START', { 
     pathname: location.pathname, 
     hasSession: !!session, 
     isWhitelistedProp: isWhitelisted, //test
     needsWelcomeCheckProp: needsWelcomeCheck, 
-    hasApplicationRecordProp: hasApplicationRecord // Log the new prop
+    hasApplicationRecordProp: hasApplicationRecord, // Log the new prop
+    isAdminCheck,
+    permissionsLoading
   });
 
   // --- Logged Out State ---
@@ -64,6 +70,16 @@ function AppRouterLogic({
     );
   }
 
+  // Show loading while permissions are being checked
+  if (permissionsLoading) {
+    console.log('AppRouterLogic: Loading permissions...');
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-accent-primary"></div>
+      </div>
+    );
+  }
+
   // --- Logged In State ---
   console.log('AppRouterLogic: Rendering AUTHENTICATED routes BLOCK');
   
@@ -78,7 +94,6 @@ function AppRouterLogic({
   const metadata = user?.user_metadata; // Keep metadata for OTHER checks (admin, approved, etc.)
   
   // Keep checks that STILL rely on metadata or application status
-  const isAdminCheck = isAdminUserSync(session);
   const hasAppliedCheck = metadata?.has_applied === true;
   const isApprovedCheck = metadata?.approved === true || metadata?.application_status === 'approved';
   const applicationStatusValue = metadata?.application_status || 'pending';

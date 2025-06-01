@@ -2,22 +2,6 @@ import { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 // import { logError } from './logging'; // Assuming you have a logging utility
 
-// Centralized list of admin emails - THE SINGLE SOURCE OF TRUTH
-const adminEmails = new Set([
-  'andre@thegarden.pt',
-  'redis213@gmail.com',
-  'dawn@thegarden.pt',
-  'simone@thegarden.pt',
-  'samjlloa@gmail.com',
-  'living@thegarden.pt' // Including the one previously only in AuthenticatedApp
-]);
-
-// Centralized list of housekeeping access emails
-const housekeepingEmails = new Set([
-  'solarlovesong@gmail.com',
-  'samckclarke@gmail.com'
-]);
-
 /**
  * Checks if the provided Supabase session belongs to an admin user.
  * Uses the Supabase is_admin() RPC function as the single source of truth.
@@ -78,48 +62,9 @@ export async function hasHousekeepingAccess(session: Session | null): Promise<bo
   }
 }
 
-/**
- * TEMPORARY: Synchronous fallback functions using hardcoded lists.
- * These will be removed once all components are updated to use async versions.
- * @deprecated Use isAdminUser() instead
- */
-export function isAdminUserSync(session: Session | null): boolean {
-  const adminEmails = new Set([
-    'andre@thegarden.pt',
-    'redis213@gmail.com',
-    'dawn@thegarden.pt',
-    'simone@thegarden.pt',
-    'samjlloa@gmail.com',
-    'living@thegarden.pt'
-  ]);
-
-  const userEmail = session?.user?.email;
-  if (!userEmail) return false;
-  
-  return adminEmails.has(userEmail);
-}
-
-/**
- * TEMPORARY: Synchronous fallback function for housekeeping access.
- * @deprecated Use hasHousekeepingAccess() instead
- */
-export function hasHousekeepingAccessSync(session: Session | null): boolean {
-  const housekeepingEmails = new Set([
-    'solarlovesong@gmail.com',
-    'samckclarke@gmail.com',
-    'redis213+testtest@gmail.com'
-  ]);
-
-  const userEmail = session?.user?.email;
-  if (!userEmail) return false;
-  
-  return housekeepingEmails.has(userEmail);
-}
-
 // Example of adding a basic logging function if you don't have one
 // You should replace this with your actual logging setup
 // export function logError(message: string, context?: object) {
 //   console.error(`ERROR: ${message}`, context || '');
 //   // Send to error tracking service (e.g., Sentry) here
-// } 
 // } 

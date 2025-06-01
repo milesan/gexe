@@ -21,7 +21,7 @@ import { HoverClickPopover } from './HoverClickPopover';
 import { calculateTotalNights, calculateDurationDiscountWeeks, calculateTotalDays, calculateTotalWeeksDecimal } from '../utils/dates';
 import { DiscountModal } from './DiscountModal';
 import { formatInTimeZone } from 'date-fns-tz';
-import { isAdminUser } from '../lib/authUtils';
+import { useUserPermissions } from '../hooks/useUserPermissions';
 
 // Define the season breakdown type
 export interface SeasonBreakdown {
@@ -261,7 +261,7 @@ export function BookingSummary({
   const { getArrivalDepartureForDate } = useSchedulingRules();
   const navigate = useNavigate();
   const session = useSession();
-  const isAdmin = isAdminUser(session?.session); // Pass session?.session instead
+  const { isAdmin, isLoading: permissionsLoading } = useUserPermissions(session?.session);
   const userEmail = session?.session?.user?.email; // Also update this to use session.session
 
   // Get flexible dates from the first week if available
@@ -1360,7 +1360,7 @@ export function BookingSummary({
                     </span>
                   </button>
                   
-                  {isAdmin && (
+                  {!permissionsLoading && isAdmin && (
                     <button
                       onClick={handleAdminConfirm}
                       disabled={isBooking || !selectedAccommodation || selectedWeeks.length === 0}
