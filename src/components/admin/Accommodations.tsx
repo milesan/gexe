@@ -1,6 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Upload, Image as ImageIcon, X, Check, Save, Pencil, Wifi, Zap, Plus, Trash2 } from 'lucide-react';
+import { Image as ImageIcon, X, Check, Save, Pencil, Wifi, Zap, Plus, Trash2, Camera, Trash } from 'lucide-react';
+
+interface AccommodationImage {
+  id: string;
+  accommodation_id: string;
+  image_url: string;
+  display_order: number;
+  is_primary: boolean;
+  created_at: string;
+}
 
 interface Accommodation {
   id: string;
@@ -10,15 +19,13 @@ interface Accommodation {
   capacity: number;
   has_wifi: boolean;
   has_electricity: boolean;
-  image_url: string;
   is_unlimited: boolean;
   bed_size: string;
-  // bathroom_type: string; // REMOVE
-  // bathrooms: number; // REMOVE
+  images?: AccommodationImage[]; // New field for multiple images
 }
 
 // Helper type for subset of fields allowed for editing
-type EditableAccommodationFields = Omit<Accommodation, 'id' | 'image_url' | 'is_unlimited'>;
+type EditableAccommodationFields = Omit<Accommodation, 'id' | 'is_unlimited' | 'images'>;
 
 // Template for new accommodation
 type NewAccommodationData = EditableAccommodationFields;
@@ -37,7 +44,7 @@ const ALLOWED_ACCOMMODATION_TYPES = [
 export function Accommodations() {
   const [accommodations, setAccommodations] = useState<Accommodation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [editingAccommodationId, setEditingAccommodationId] = useState<string | null>(null);
   // State to hold the *copy* of the data being edited
@@ -61,18 +68,52 @@ export function Accommodations() {
 
   const fetchAccommodations = async () => {
     try {
-      const { data, error } = await supabase
+      // Fetch accommodations and their images
+      const { data: accommodationsData, error: accommodationsError } = await supabase
         .from('accommodations')
         .select('*')
         .order('title');
 
-      if (error) throw error;
-      setAccommodations(data || []);
+      if (accommodationsError) throw accommodationsError;
+
+      // Fetch all images for all accommodations
+      const { data: imagesData, error: imagesError } = await supabase
+        .from('accommodation_images')
+        .select('*')
+        .order('display_order');
+
+      if (imagesError) throw imagesError;
+
+      // Combine the data
+      const accommodationsWithImages = (accommodationsData || []).map(acc => {
+        const accommodationImages = (imagesData || []).filter(img => img.accommodation_id === acc.id);
+        return {
+          ...acc,
+          images: accommodationImages
+        };
+      });
+
+      setAccommodations(accommodationsWithImages);
     } catch (error) {
       console.error('Error fetching accommodations:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Get primary image (NEW IMAGES TABLE ONLY)
+  const getPrimaryImageUrl = (accommodation: Accommodation): string | null => {
+    // Only check new images table for primary image
+    const primaryImage = accommodation.images?.find(img => img.is_primary);
+    if (primaryImage) return primaryImage.image_url;
+    
+    // No fallback to old image_url field - only use new table
+    return null;
+  };
+
+  // Get all images for display (NEW IMAGES TABLE ONLY)
+  const getAllImages = (accommodation: Accommodation): AccommodationImage[] => {
+    return accommodation.images || [];
   };
 
   // Initialize new accommodation form
@@ -203,8 +244,7 @@ export function Accommodations() {
         .from('accommodations')
         .insert([{
           ...dataToSave,
-          is_unlimited: false, // Default value
-          image_url: null // Will be set later via upload
+          is_unlimited: false // Default value
         }])
         .select()
         .single();
@@ -435,7 +475,18 @@ export function Accommodations() {
     }
   };
 
-  const handleImageUpload = async (file: File, accommodationId: string) => {
+  // Handle multiple image upload
+  const handleMultipleImageUpload = async (files: FileList, accommodationId: string) => {
+    const fileArray = Array.from(files);
+    
+    for (let i = 0; i < fileArray.length; i++) {
+      const file = fileArray[i];
+      await handleSingleImageUpload(file, accommodationId, i);
+    }
+  };
+
+  // Handle single image upload to new table
+  const handleSingleImageUpload = async (file: File, accommodationId: string, displayOrder: number = 0) => {
     if (!file.type.startsWith('image/')) {
       setUploadError('Please upload only image files');
       return;
@@ -446,7 +497,7 @@ export function Accommodations() {
     }
 
     setUploadError(null);
-    setUploadProgress(0);
+    setUploadProgress({ [accommodationId]: 0 });
 
     try {
       const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '')}`;
@@ -468,34 +519,102 @@ export function Accommodations() {
 
       console.log('🔗 Generated public URL:', { publicUrl, accommodationId });
 
-      const { error: updateError } = await supabase
-        .from('accommodations')
-        .update({ image_url: publicUrl })
-        .eq('id', accommodationId);
+      // Get current max display order
+      const { data: maxOrderData } = await supabase
+        .from('accommodation_images')
+        .select('display_order')
+        .eq('accommodation_id', accommodationId)
+        .order('display_order', { ascending: false })
+        .limit(1);
 
-      if (updateError) throw updateError;
-      console.log('✅ Image URL updated in DB:', { publicUrl, accommodationId });
+      const nextOrder = maxOrderData && maxOrderData.length > 0 ? maxOrderData[0].display_order + 1 : 0;
 
-      // Update local state immediately
-      setAccommodations(prev =>
-        prev.map(acc =>
-          acc.id === accommodationId ? { ...acc, image_url: publicUrl } : acc
-        )
-      );
-      // If currently editing this accommodation, update edit state too
-      if (editingAccommodationId === accommodationId && currentEditData) {
-          setCurrentEditData({...currentEditData, image_url: publicUrl});
-      }
-      setUploadProgress(100); // Maybe reset after a short delay?
-       // Optional: Refetch? Or rely on local state update.
-      // await fetchAccommodations(); 
+      // Check if this should be primary (first image)
+      const { data: existingImages } = await supabase
+        .from('accommodation_images')
+        .select('id')
+        .eq('accommodation_id', accommodationId);
+
+      const isPrimary = !existingImages || existingImages.length === 0;
+
+      // Insert into new images table
+      const { error: insertError } = await supabase
+        .from('accommodation_images')
+        .insert({
+          accommodation_id: accommodationId,
+          image_url: publicUrl,
+          display_order: nextOrder,
+          is_primary: isPrimary
+        });
+
+      if (insertError) throw insertError;
+      console.log('✅ Image added to database:', { publicUrl, accommodationId });
+
+      // Update local state
+      await fetchAccommodations();
+      setUploadProgress({ [accommodationId]: 100 });
+
     } catch (err: any) {
       console.error('Upload error:', err);
       setUploadError(err.message || 'Failed to upload image');
-      setUploadProgress(0);
-    } finally {
-      // Reset progress potentially here or after a timeout
-      // setUploadProgress(0);
+      setUploadProgress({ [accommodationId]: 0 });
+    }
+  };
+
+  // Delete an image
+  const handleDeleteImage = async (imageId: string, accommodationId: string) => {
+    if (!window.confirm('Are you sure you want to delete this image?')) {
+      return;
+    }
+
+    try {
+      console.log('🗑️ Deleting image:', { imageId, accommodationId });
+      
+      const { error } = await supabase
+        .from('accommodation_images')
+        .delete()
+        .eq('id', imageId);
+
+      if (error) throw error;
+      console.log('✅ Image deleted:', { imageId });
+
+      // Update local state
+      await fetchAccommodations();
+
+    } catch (err: any) {
+      console.error('Delete error:', err);
+      setUploadError(err.message || 'Failed to delete image');
+    }
+  };
+
+  // Set image as primary
+  const handleSetPrimary = async (imageId: string, accommodationId: string) => {
+    try {
+      console.log('🎯 Setting primary image:', { imageId, accommodationId });
+      
+      // First, unset all primary flags for this accommodation
+      const { error: unsetError } = await supabase
+        .from('accommodation_images')
+        .update({ is_primary: false })
+        .eq('accommodation_id', accommodationId);
+
+      if (unsetError) throw unsetError;
+
+      // Then set the selected image as primary
+      const { error: setPrimaryError } = await supabase
+        .from('accommodation_images')
+        .update({ is_primary: true })
+        .eq('id', imageId);
+
+      if (setPrimaryError) throw setPrimaryError;
+      console.log('✅ Primary image set:', { imageId });
+
+      // Update local state
+      await fetchAccommodations();
+
+    } catch (err: any) {
+      console.error('Set primary error:', err);
+      setUploadError(err.message || 'Failed to set primary image');
     }
   };
 
@@ -680,35 +799,111 @@ export function Accommodations() {
           
           return (
             <div key={accommodation.id} className={`bg-[var(--color-bg-surface)] rounded-lg shadow-sm border ${isEditingThis ? 'border-[var(--color-accent-primary)] ring-1 ring-[var(--color-accent-primary)]' : 'border-[var(--color-border)]'} p-4 flex flex-col`}>
-              {/* Image Section */} 
-              <div className="relative aspect-video mb-4 group">
-                {accommodation.image_url ? (
-                  <img
-                    src={accommodation.image_url}
-                    alt={accommodation.title}
-                    className="w-full h-full object-cover rounded-lg"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-[var(--color-bg-surface-hover)] rounded-lg flex items-center justify-center">
-                    <ImageIcon className="w-8 h-8 text-[var(--color-text-secondary)]" />
-                  </div>
-                )}
-                <label className={`absolute bottom-2 right-2 bg-[var(--color-bg-surface-transparent)] backdrop-blur-sm p-2 rounded-full shadow-sm cursor-pointer transition-colors ${isEditingThis ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-700'}`}>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    disabled={isEditingThis} // Disable upload while editing other fields
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        handleImageUpload(file, accommodation.id);
-                      }
-                    }}
-                  />
-                  <Upload className={`w-4 h-4 text-yellow-300 ${uploadProgress > 0 && uploadProgress < 100 ? 'animate-spin text-white' : ''}`} />
-                </label>
-                {/* Maybe show progress indicator specific to this card? */} 
+              {/* Image Section - Updated for Multiple Images */} 
+              <div className="relative mb-4 group">
+                {(() => {
+                  const allImages = getAllImages(accommodation);
+                  const primaryImageUrl = getPrimaryImageUrl(accommodation);
+                  
+                  if (allImages.length === 0) {
+                    // No images
+                    return (
+                      <div className="aspect-video w-full bg-[var(--color-bg-surface-hover)] rounded-lg flex items-center justify-center">
+                        <ImageIcon className="w-8 h-8 text-[var(--color-text-secondary)]" />
+                      </div>
+                    );
+                  } else if (allImages.length === 1) {
+                    // Single image
+                    return (
+                      <div className="aspect-video relative">
+                        <img
+                          src={primaryImageUrl || ''}
+                          alt={accommodation.title}
+                          className="w-full h-full object-cover rounded-lg"
+                        />
+                        <button
+                          onClick={() => handleDeleteImage(allImages[0].id, accommodation.id)}
+                          disabled={isEditingThis}
+                          className="absolute top-2 right-2 px-2 py-1 bg-red-500 text-white rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed hover:bg-red-600 flex items-center gap-1"
+                          aria-label="Remove image"
+                        >
+                          <Trash className="w-3 h-3" />
+                          <span>Remove image</span>
+                        </button>
+                      </div>
+                    );
+                  } else {
+                    // Multiple images - show gallery
+                    return (
+                      <div className="space-y-2">
+                        {/* Primary Image */}
+                        <div className="aspect-video relative">
+                          <img
+                            src={primaryImageUrl || ''}
+                            alt={accommodation.title}
+                            className="w-full h-full object-cover rounded-lg"
+                          />
+                          <div className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded text-xs font-semibold">
+                            Primary
+                          </div>
+                        </div>
+                        
+                        {/* Thumbnail Gallery */}
+                        <div className="grid grid-cols-4 gap-1">
+                          {allImages.map((image, index) => (
+                            <div key={image.id} className="relative aspect-square group/thumb">
+                              <img
+                                src={image.image_url}
+                                alt={`${accommodation.title} ${index + 1}`}
+                                className={`w-full h-full object-cover rounded cursor-pointer ${
+                                  image.is_primary ? 'ring-2 ring-green-500' : 'opacity-70 hover:opacity-100'
+                                }`}
+                                onClick={() => !image.is_primary && handleSetPrimary(image.id, accommodation.id)}
+                              />
+                              {!image.is_primary && (
+                                <button
+                                  onClick={() => handleDeleteImage(image.id, accommodation.id)}
+                                  disabled={isEditingThis}
+                                  className="absolute -top-1 -right-1 px-1 py-0.5 bg-red-500 text-white rounded text-xs opacity-0 group-hover/thumb:opacity-100 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed hover:bg-red-600 flex items-center gap-0.5 whitespace-nowrap"
+                                  aria-label="Remove image"
+                                >
+                                  <X className="w-2 h-2" />
+                                  <span className="text-xs">Remove</span>
+                                </button>
+                              )}
+                              {image.is_primary && (
+                                <div className="absolute -top-1 -right-1 p-0.5 bg-green-500 text-white rounded-full">
+                                  <Check className="w-2 h-2" />
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  }
+                })()}
+                
+                {/* Upload Controls */}
+                <div className="absolute bottom-2 right-2 flex gap-1">
+                  {/* Multiple Image Upload */}
+                  <label className={`bg-[var(--color-bg-surface-transparent)] backdrop-blur-sm p-2 rounded-full shadow-sm cursor-pointer transition-colors ${isEditingThis ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-700'}`}>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      disabled={isEditingThis}
+                      onChange={(e) => {
+                        const files = e.target.files;
+                        if (files && files.length > 0) {
+                          handleMultipleImageUpload(files, accommodation.id);
+                        }
+                      }}
+                    />
+                    <Camera className="w-4 h-4 text-blue-300" />
+                  </label>
+                </div>
               </div>
 
               {/* Header: Title and Edit/Save/Cancel/Delete Controls */} 

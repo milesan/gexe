@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Wifi, Zap, Bed, BedDouble, WifiOff, ZapOff, Bath, Percent, Info, Ear } from 'lucide-react';
+import { Wifi, Zap, Bed, BedDouble, WifiOff, ZapOff, Bath, Percent, Info, Ear, ChevronLeft, ChevronRight } from 'lucide-react';
 import clsx from 'clsx';
 import type { Accommodation } from '../types';
 import { Week } from '../types/calendar';
@@ -14,8 +14,23 @@ import { useSession } from '../hooks/useSession';
 import { HoverClickPopover } from './HoverClickPopover';
 import { useUserPermissions } from '../hooks/useUserPermissions';
 
+// Local interface for accommodation images
+interface AccommodationImage {
+  id: string;
+  accommodation_id: string;
+  image_url: string;
+  display_order: number;
+  is_primary: boolean;
+  created_at: string;
+}
+
+// Extend the Accommodation type to include images
+interface ExtendedAccommodation extends Accommodation {
+  images?: AccommodationImage[];
+}
+
 interface Props {
-  accommodations: Accommodation[];
+  accommodations: ExtendedAccommodation[];
   selectedAccommodationId: string | null;
   onSelectAccommodation: (id: string) => void;
   isLoading?: boolean;
@@ -24,6 +39,22 @@ interface Props {
   isDisabled?: boolean;
   displayWeeklyAccommodationPrice: (accommodationId: string) => { price: number | null; avgSeasonalDiscount: number | null } | null;
 }
+
+// Helper function to get primary image (NEW IMAGES TABLE ONLY)
+const getPrimaryImageUrl = (accommodation: ExtendedAccommodation): string | null => {
+  // Only check new images table for primary image
+  const primaryImage = accommodation.images?.find(img => img.is_primary);
+  if (primaryImage) return primaryImage.image_url;
+  
+  // No fallback to old image_url field - only use new table
+  return null;
+};
+
+// Helper function to get all images sorted by display order
+const getAllImages = (accommodation: ExtendedAccommodation): AccommodationImage[] => {
+  if (!accommodation.images || accommodation.images.length === 0) return [];
+  return [...accommodation.images].sort((a, b) => a.display_order - b.display_order);
+};
 
 // Helper Component for Overlays
 const StatusOverlay: React.FC<{ 
@@ -58,6 +89,133 @@ export function CabinSelector({
 }: Props) {
   const { session } = useSession();
   const { isAdmin, isLoading: permissionsLoading } = useUserPermissions(session);
+
+  // State to track current image index for each accommodation
+  const [currentImageIndices, setCurrentImageIndices] = useState<Record<string, number>>({});
+
+  // Helper function to get current image for an accommodation
+  const getCurrentImage = (accommodation: ExtendedAccommodation): string | null => {
+    const allImages = getAllImages(accommodation);
+    if (allImages.length === 0) return null;
+    
+    const currentIndex = currentImageIndices[accommodation.id] || 0;
+    const validIndex = Math.min(currentIndex, allImages.length - 1);
+    return allImages[validIndex]?.image_url || null;
+  };
+
+  // Navigation functions
+  const navigateToImage = (accommodationId: string, direction: 'prev' | 'next', totalImages: number) => {
+    setCurrentImageIndices(prev => {
+      const currentIndex = prev[accommodationId] || 0;
+      let newIndex;
+      
+      if (direction === 'next') {
+        newIndex = (currentIndex + 1) % totalImages;
+      } else {
+        newIndex = currentIndex === 0 ? totalImages - 1 : currentIndex - 1;
+      }
+      
+      return {
+        ...prev,
+        [accommodationId]: newIndex
+      };
+    });
+  };
+
+  const setImageIndex = (accommodationId: string, index: number) => {
+    setCurrentImageIndices(prev => ({
+      ...prev,
+      [accommodationId]: index
+    }));
+  };
+
+  // Image Gallery Component
+  const ImageGallery: React.FC<{ accommodation: ExtendedAccommodation }> = ({ accommodation }) => {
+    const allImages = getAllImages(accommodation);
+    const currentIndex = currentImageIndices[accommodation.id] || 0;
+    const currentImageUrl = getCurrentImage(accommodation);
+
+    if (allImages.length === 0) {
+      return (
+        <div className="w-full h-full flex items-center justify-center text-secondary">
+          <BedDouble size={32} />
+        </div>
+      );
+    }
+
+    const handlePrevious = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      navigateToImage(accommodation.id, 'prev', allImages.length);
+    };
+
+    const handleNext = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      navigateToImage(accommodation.id, 'next', allImages.length);
+    };
+
+    const handleDotClick = (e: React.MouseEvent, index: number) => {
+      e.stopPropagation();
+      setImageIndex(accommodation.id, index);
+    };
+
+    return (
+      <div className="relative w-full h-full group/gallery">
+        {/* Main Image */}
+        <img 
+          src={currentImageUrl || ''} 
+          alt={`${accommodation.title} ${currentIndex + 1}`} 
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ease-in-out"
+          loading="lazy"
+        />
+
+        {/* Navigation arrows - always visible when more than 1 image */}
+        {allImages.length > 1 && (
+          <>
+            <button
+              onClick={handlePrevious}
+              className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/70 hover:bg-black/90 text-white rounded-full p-2 transition-all duration-200 hover:scale-110 shadow-lg z-20"
+              aria-label="Previous image"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <button
+              onClick={handleNext}
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/70 hover:bg-black/90 text-white rounded-full p-2 transition-all duration-200 hover:scale-110 shadow-lg z-20"
+              aria-label="Next image"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </>
+        )}
+
+        {/* Dots indicator - only show if more than 1 image */}
+        {allImages.length > 1 && (
+          <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1 z-10">
+            {allImages.map((_, index) => (
+              <button
+                key={index}
+                onClick={(e) => handleDotClick(e, index)}
+                className={clsx(
+                  "w-2 h-2 rounded-full transition-all duration-200 border border-white/30",
+                  index === currentIndex 
+                    ? "bg-white shadow-sm scale-110" 
+                    : "bg-white/30 hover:bg-white/60 hover:scale-105"
+                )}
+                aria-label={`Go to image ${index + 1}`}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Image counter - only show if more than 1 image */}
+        {allImages.length > 1 && (
+          <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded shadow-lg z-10">
+            {currentIndex + 1} / {allImages.length}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   console.log('[CabinSelector] Rendering with props:', {
     accommodationsCount: accommodations?.length,
@@ -370,18 +528,7 @@ export function CabinSelector({
                     (!isDisabled && isFullyBooked) && "blur-sm opacity-20 grayscale-[0.7]",
                     (!isDisabled && isOutOfSeason && !isFullyBooked) && "blur-sm opacity-40 grayscale-[0.3]"
                   )}>
-                    {acc.image_url ? (
-                      <img 
-                        src={acc.image_url} 
-                        alt={acc.title} 
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ease-in-out"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-secondary">
-                         <BedDouble size={32} /> 
-                      </div>
-                    )}
+                    <ImageGallery accommodation={acc} />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div> {/* Increased gradient opacity from 40% to 60% */}
                   </div>
 

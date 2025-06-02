@@ -4,11 +4,14 @@ export const styles = {
   heading: 'color: #064e3b; text-align: center;',
   card: 'background-color: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0;',
   infoCard: 'background-color: #ecfdf5; padding: 20px; border-radius: 8px; margin: 20px 0;',
+  policyCard: 'background-color: #fffbeb; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #d97706;',
   label: 'display: block; color: #334155; margin-bottom: 4px;',
   value: 'font-size: 16px; color: #1f2937;',
   timeNote: 'margin: 4px 0 0 0; color: #059669; font-size: 13px;',
   button: 'background-color: #064e3b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;',
-  footer: 'color: #64748b; text-align: center; font-size: 14px;'
+  footer: 'color: #64748b; text-align: center; font-size: 14px;',
+  policyText: 'color: #a16207; font-size: 14px; line-height: 1.5;',
+  policyList: 'color: #a16207; font-size: 14px; line-height: 1.6; margin: 10px 0; padding-left: 20px;'
 };
 
 interface BookingEmailData {
@@ -78,6 +81,30 @@ export function generateBookingConfirmationEmail({
         <a href="${bookingDetailsUrl}" style="${styles.button}">
           View Booking Details
         </a>
+      </div>
+      
+      <div style="${styles.policyCard}">
+        <h3 style="color: #a16207; margin-top: 0; margin-bottom: 15px;">Cancellation Policy</h3>
+        <p style="${styles.policyText}">
+          As a non-profit association, your contributions are considered donations that directly support our mission and the operations of this space. While donations are typically non-refundable, we understand that plans can change and offer the following flexibility:
+        </p>
+        <ol style="${styles.policyList}">
+          <li style="margin-bottom: 8px;"><strong>Guests with independent accommodations (van/camping):</strong><br>
+              Always eligible for 85% refund or 100% credit, regardless of timing.</li>
+          <li style="margin-bottom: 8px;"><strong>More than 30 days before arrival:</strong><br>
+              We can offer a 85% refund of your donation or 100% credit for future use within 12 months.</li>
+          <li style="margin-bottom: 8px;"><strong>15 to 30 days before arrival:</strong><br>
+              We can offer a 50%-60% refund of your donation or 75% credit for future use within 12 months.</li>
+          <li style="margin-bottom: 8px;"><strong>Less than 15 days before arrival:</strong><br>
+              Donations are non-refundable at this stage, but we can offer a 50% credit for future use within 12 months.</li>
+          <li style="margin-bottom: 8px;"><strong>Special circumstances (force majeure, injury, or accident):</strong><br>
+              With valid documentation:
+              <ul style="margin: 5px 0; padding-left: 15px;">
+                <li>More than 15 days before arrival: 85% refund of donation or 100% credit.</li>
+                <li>15 days or less before arrival: 75% credit.</li>
+              </ul>
+          </li>
+        </ol>
       </div>
     </div>
   `;

@@ -18,19 +18,42 @@ class BookingService {
   }
 
   async getAccommodations() {
-    console.log('[BookingService] Fetching accommodations');
-    const { data, error } = await supabase
+    console.log('[BookingService] Fetching accommodations with images');
+    
+    // Fetch accommodations
+    const { data: accommodationsData, error: accommodationsError } = await supabase
       .from('accommodations')
       .select('*')
       .order('title');
 
-    if (error) {
-      console.error('[BookingService] Error fetching accommodations:', error);
-      throw error;
+    if (accommodationsError) {
+      console.error('[BookingService] Error fetching accommodations:', accommodationsError);
+      throw accommodationsError;
     }
 
-    console.log('[BookingService] Received accommodations:', data);
-    return data as Accommodation[];
+    // Fetch all images for all accommodations
+    const { data: imagesData, error: imagesError } = await supabase
+      .from('accommodation_images')
+      .select('*')
+      .order('display_order');
+
+    if (imagesError) {
+      console.error('[BookingService] Error fetching accommodation images:', imagesError);
+      // Don't throw error - just continue without new images (backward compatibility)
+      console.warn('[BookingService] Continuing without new images, falling back to image_url field');
+    }
+
+    // Combine accommodations with their images
+    const accommodationsWithImages = (accommodationsData || []).map(acc => {
+      const accommodationImages = (imagesData || []).filter(img => img.accommodation_id === acc.id);
+      return {
+        ...acc,
+        images: accommodationImages
+      };
+    });
+
+    console.log('[BookingService] Received accommodations with images:', accommodationsWithImages);
+    return accommodationsWithImages as Accommodation[];
   }
 
   async updateAccommodation(id: string, updates: Partial<Accommodation>) {

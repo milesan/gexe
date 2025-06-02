@@ -1,3 +1,12 @@
+export interface AccommodationImage {
+  id: string;
+  accommodation_id: string;
+  image_url: string;
+  display_order: number;
+  is_primary: boolean;
+  created_at: string;
+}
+
 export interface Accommodation {
   id: string;
   title: string;
@@ -10,6 +19,8 @@ export interface Accommodation {
   is_unlimited: boolean;
   is_fungible: boolean;
   parent_accommodation_id: string | null;
+  bed_size?: string;
+  images?: AccommodationImage[];
 }
 
 export interface Booking {

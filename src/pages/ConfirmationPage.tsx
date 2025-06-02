@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle, Calendar, MapPin, Users, ArrowLeft, ExternalLink } from 'lucide-react';
+import { CheckCircle, Calendar, MapPin, Users, ArrowLeft, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
 import { formatInTimeZone } from 'date-fns-tz';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
@@ -8,6 +8,7 @@ export function ConfirmationPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const booking = location.state?.booking;
+  const [isPolicyOpen, setIsPolicyOpen] = React.useState(false);
 
   React.useEffect(() => {
     // If user tries to access confirmation page directly without booking data
@@ -138,6 +139,78 @@ export function ConfirmationPage() {
                 <span>Breakfast, lunch & dinner included Monday-Friday</span>
               </li>
             </ul>
+          </div>
+
+          <div className="bg-slate-50 dark:bg-slate-900/20 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
+            <button
+              onClick={() => setIsPolicyOpen(!isPolicyOpen)}
+              className="w-full p-4 flex items-center justify-between text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900/30 transition-colors"
+            >
+              <span className="font-mono text-lg">Cancellation Policy</span>
+              {isPolicyOpen ? (
+                <ChevronUp className="w-5 h-5" />
+              ) : (
+                <ChevronDown className="w-5 h-5" />
+              )}
+            </button>
+            
+            {isPolicyOpen && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="border-t border-slate-200 dark:border-slate-800"
+              >
+                <div className="p-4 space-y-4">
+                  <p className="text-slate-600 dark:text-slate-400 text-sm font-mono leading-relaxed">
+                    As a non-profit association, your contributions are considered donations that directly support our mission and the operations of this space. While donations are typically non-refundable, we understand that plans can change and offer the following flexibility:
+                  </p>
+                  
+                  <ol className="space-y-3 text-sm text-slate-700 dark:text-slate-300 font-mono">
+                    <li className="flex items-start gap-2">
+                      <span className="font-semibold min-w-[1.2rem]">1.</span>
+                      <div>
+                        <span className="font-semibold">Guests with independent accommodations (van/camping):</span>
+                        <br />Always eligible for 85% refund or 100% credit, regardless of timing.
+                      </div>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="font-semibold min-w-[1.2rem]">2.</span>
+                      <div>
+                        <span className="font-semibold">More than 30 days before arrival:</span>
+                        <br />We can offer a 85% refund of your donation or 100% credit for future use within 12 months.
+                      </div>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="font-semibold min-w-[1.2rem]">3.</span>
+                      <div>
+                        <span className="font-semibold">15 to 30 days before arrival:</span>
+                        <br />We can offer a 50%-60% refund of your donation or 75% credit for future use within 12 months.
+                      </div>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="font-semibold min-w-[1.2rem]">4.</span>
+                      <div>
+                        <span className="font-semibold">Less than 15 days before arrival:</span>
+                        <br />Donations are non-refundable at this stage, but we can offer a 50% credit for future use within 12 months.
+                      </div>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="font-semibold min-w-[1.2rem]">5.</span>
+                      <div>
+                        <span className="font-semibold">Special circumstances (force majeure, injury, or accident):</span>
+                        <br />With valid documentation:
+                        <ul className="mt-1 ml-4 space-y-1">
+                          <li>• More than 15 days before arrival: 85% refund of donation or 100% credit.</li>
+                          <li>• 15 days or less before arrival: 75% credit.</li>
+                        </ul>
+                      </div>
+                    </li>
+                  </ol>
+                </div>
+              </motion.div>
+            )}
           </div>
 
           <a 
