@@ -1,10 +1,10 @@
 /* Dead code */
 
-/*import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Trees } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { WeekSelector } from '../components/WeekSelector';
-import { CabinSelector } from '../components/CabinSelector';
+import CabinSelector from '../components/CabinSelector';
 import { BookingSummary } from '../components/BookingSummary';
 import { useWeeklyAccommodations } from '../hooks/useWeeklyAccommodations';
 

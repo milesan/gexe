@@ -3,7 +3,7 @@ import { Calendar, ChevronLeft, ChevronRight, Home, X, HelpCircle } from 'lucide
 import { isSameWeek, addWeeks, isAfter, isBefore, startOfMonth, format, addMonths, subMonths, startOfDay, isSameDay, addDays, differenceInDays } from 'date-fns';
 import { WeekSelector } from '../components/WeekSelector';
 import { formatDateForDisplay, normalizeToUTCDate, doDateRangesOverlap, calculateDurationDiscountWeeks, calculateTotalWeeksDecimal } from '../utils/dates';
-import { CabinSelector } from '../components/CabinSelector';
+import CabinSelector from '../components/CabinSelector';
 import { BookingSummary, SeasonBreakdown } from '../components/BookingSummary';
 import { MaxWeeksModal } from '../components/MaxWeeksModal';
 import { WeekCustomizationModal } from '../components/admin/WeekCustomizationModal';

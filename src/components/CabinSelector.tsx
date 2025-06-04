@@ -682,3 +682,6 @@ export function CabinSelector({
     </div>
   );
 }
+
+// Add default export
+export default CabinSelector;
