@@ -65,7 +65,7 @@ export function MyBookings() {
           
           {bookings.length === 0 ? (
             <div className="text-center font-mono text-primary">
-              No bookings found. Book your first stay!
+              No bookings found. Book your stay first!
             </div>
           ) : (
             <div className="space-y-6">

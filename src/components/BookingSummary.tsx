@@ -981,7 +981,7 @@ export function BookingSummary({
                     ? testPaymentAmount // Otherwise use admin test amount if set
                     : pricing.totalAmount // Otherwise use the calculated total
                 }
-                description={`${selectedAccommodation?.title || 'Accommodation'} for ${pricing.totalNights} nights`}
+                description={`${selectedAccommodation?.title || 'Accommodation'} for ${pricing.totalNights} nights${selectedCheckInDate ? ` from ${selectedCheckInDate.getDate()}. ${selectedCheckInDate.toLocaleDateString('en-US', { month: 'long' })}` : ''}`}
                 onSuccess={handleBookingSuccess}
                 onClose={() => setShowStripeModal(false)}
               />

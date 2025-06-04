@@ -79,7 +79,7 @@ serve(async (req) => {
       from: 'The Garden <echo@echo.thegarden.pt>',
       to: email,
       replyTo: 'living@thegarden.pt',
-      subject: 'Garden Application Status',
+      subject: 'The Garden Application Status',
       html: `
         <div style="${styles.container || 'padding: 20px; font-family: sans-serif;'}">
           <a href="${acceptanceUrl}" target="_blank" style="display: block; text-align: center;">
