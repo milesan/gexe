@@ -7,16 +7,18 @@ import { WeekSelector } from '../components/WeekSelector';
 import CabinSelector from '../components/CabinSelector';
 import { BookingSummary } from '../components/BookingSummary';
 import { useWeeklyAccommodations } from '../hooks/useWeeklyAccommodations';
+import { Week, WeekStatus } from '../types/calendar';
+import { addDays } from 'date-fns';
 
 const WEEKS_TO_SHOW = 16;
 const BACKGROUND_IMAGE = "https://guquxpxxycfmmlqajdyw.supabase.co/storage/v1/object/public/background-image//fern-background.jpg"
 
 export function FinalPage() {
   const { accommodations, loading } = useWeeklyAccommodations();
-  const [selectedWeeks, setSelectedWeeks] = useState<Date[]>([]);
+  const [selectedWeeks, setSelectedWeeks] = useState<Week[]>([]);
   const [selectedAccommodation, setSelectedAccommodation] = useState<string | null>(null);
 
-  const toggleWeek = (week: Date) => {
+  const handleWeekSelect = (week: Week) => {
     setSelectedWeeks(prev => {
       if (prev.length === 0) {
         return [week];
@@ -25,8 +27,9 @@ export function FinalPage() {
     });
   };
 
-  const isConsecutiveWeek = () => false;
-  const isFirstOrLastSelected = () => false;
+  const handleDateSelect = (date: Date, week: Week) => {
+    // Handle flexible date selection
+  };
 
   return (
     <div 
@@ -50,28 +53,29 @@ export function FinalPage() {
           <WeekSelector
             weeks={[]}
             selectedWeeks={selectedWeeks}
-            onToggleWeek={toggleWeek}
-            isConsecutiveWeek={isConsecutiveWeek}
-            isFirstOrLastSelected={isFirstOrLastSelected}
+            onWeekSelect={handleWeekSelect}
+            onDateSelect={handleDateSelect}
+            accommodationTitle=""
             currentMonth={new Date()}
           />
           
           <CabinSelector
-            accommodations={accommodations}
-            selectedAccommodation={selectedAccommodation}
+            accommodations={accommodations || []}
+            selectedAccommodationId={selectedAccommodation}
             onSelectAccommodation={setSelectedAccommodation}
             selectedWeeks={selectedWeeks}
             currentMonth={new Date()}
+            displayWeeklyAccommodationPrice={() => null}
           />
         </section>
 
         <BookingSummary
           selectedWeeks={selectedWeeks}
-          selectedAccommodation={selectedAccommodation ? 
-            accommodations.find(a => a.id === selectedAccommodation) : null}
-          baseRate={190}
+          selectedAccommodation={selectedAccommodation && accommodations ? 
+            accommodations.find(a => a.id === selectedAccommodation) || null : null}
           onClearWeeks={() => setSelectedWeeks([])}
           onClearAccommodation={() => setSelectedAccommodation(null)}
+          calculatedWeeklyAccommodationPrice={null}
         />
       </div>
     </div>
