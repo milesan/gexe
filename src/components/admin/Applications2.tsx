@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Eye, CheckCircle, XCircle, Clock, Trash2, Search, X as ClearSearchIcon } from 'lucide-react';
+import { Eye, CheckCircle, XCircle, Clock, Trash2, Search, X as ClearSearchIcon, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { ApplicationDetails } from './ApplicationDetails';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getFrontendUrl } from '../../lib/environment';
 import { getAnswer } from '../../lib/old_question_mapping';
 import type { QuestionForAnswerRetrieval } from '../../lib/old_question_mapping';
 import { usePagination, DOTS } from '../../hooks/usePagination';
+import { useSession } from '../../hooks/useSession';
+import { useUserPermissions } from '../../hooks/useUserPermissions';
 
 interface Application {
   id: string;
@@ -22,11 +24,28 @@ interface Application {
   last_sign_in_at?: string | null;
   seen_welcome?: boolean;
   is_whitelisted?: boolean;
+  admin_verdicts?: Record<string, string>;
 }
 
 const ITEMS_PER_PAGE = 15;
 
+// Add new type for action type
+type ActionType = 'approve' | 'reject';
+
+// Helper function to get admin name from email
+const getAdminName = (email: string): string => {
+  const names: Record<string, string> = {
+    'dawn@thegarden.pt': 'Dawn',
+    'andre@thegarden.pt': 'Andre',
+    'simone@thegarden.pt': 'Simone',
+    'redis213@gmail.com': 'Test Admin'
+  };
+  return names[email] || email.split('@')[0];
+};
+
 export function Applications2() {
+  const { session } = useSession();
+  const { isAdmin } = useUserPermissions(session);
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +60,10 @@ export function Applications2() {
   const [totalApplicationsCount, setTotalApplicationsCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeSearchQuery, setActiveSearchQuery] = useState('');
+  // Add new state variables for action confirmation
+  const [showActionConfirmModal, setShowActionConfirmModal] = useState(false);
+  const [applicationToAction, setApplicationToAction] = useState<Application | null>(null);
+  const [actionType, setActionType] = useState<ActionType | null>(null);
 
   const debounce = <F extends (...args: any[]) => any>(func: F, waitFor: number) => {
     let timeout: ReturnType<typeof setTimeout> | null = null;
@@ -90,7 +113,8 @@ export function Applications2() {
           linked_email,
           linked_application_id,
           last_sign_in_at,
-          raw_user_meta_data
+          raw_user_meta_data,
+          admin_verdicts
         `, { count: 'exact' })
         .order('created_at', { ascending: false })
         .range(from, to);
@@ -216,6 +240,30 @@ export function Applications2() {
     }
   };
 
+  const updateAdminVerdict = async (applicationId: string, verdict: 'thumbs_up' | 'thumbs_down') => {
+    try {
+      setLoadingStates(prev => ({ ...prev, [`${applicationId}_verdict`]: true }));
+
+      const { error } = await supabase.rpc('update_admin_verdict', {
+        p_application_id: applicationId,
+        p_verdict: verdict
+      });
+
+      if (error) {
+        console.error('Error updating admin verdict:', error);
+        throw error;
+      }
+
+      // Reload applications to show updated verdicts
+      await loadApplications();
+    } catch (err) {
+      console.error('Error updating verdict:', err);
+      setError(err instanceof Error ? err.message : 'Failed to update verdict');
+    } finally {
+      setLoadingStates(prev => ({ ...prev, [`${applicationId}_verdict`]: false }));
+    }
+  };
+
   const handleConfirmDeleteUserAndApplication = async () => {
     if (!applicationToDelete || deleteConfirmationEmailInput !== applicationToDelete.user_email) return;
 
@@ -304,6 +352,27 @@ export function Applications2() {
   });
 
   const totalPageCount = Math.ceil(totalApplicationsCount / ITEMS_PER_PAGE);
+
+  const initiateApplicationAction = (application: Application, action: ActionType) => {
+    setApplicationToAction(application);
+    setActionType(action);
+    setShowActionConfirmModal(true);
+  };
+
+  const handleConfirmAction = async () => {
+    if (!applicationToAction || !actionType) return;
+    
+    await updateApplicationStatus(applicationToAction.id, actionType === 'approve' ? 'approved' : 'rejected');
+    setShowActionConfirmModal(false);
+    setApplicationToAction(null);
+    setActionType(null);
+  };
+
+  const closeActionConfirmModal = () => {
+    setShowActionConfirmModal(false);
+    setApplicationToAction(null);
+    setActionType(null);
+  };
 
   if (loading && applications.length === 0) {
     return (
@@ -518,7 +587,7 @@ export function Applications2() {
                   {application.status === 'pending' && (
                     <div className="flex gap-2">
                       <button
-                        onClick={() => updateApplicationStatus(application.id, 'approved')}
+                        onClick={() => initiateApplicationAction(application, 'approve')}
                         disabled={loadingStates[application.id]}
                         className={`p-2 rounded-lg bg-emerald-700 text-white hover:bg-emerald-800 transition-colors ${
                           loadingStates[application.id] ? 'opacity-50 cursor-not-allowed' : ''
@@ -527,7 +596,7 @@ export function Applications2() {
                         <CheckCircle className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => updateApplicationStatus(application.id, 'rejected')}
+                        onClick={() => initiateApplicationAction(application, 'reject')}
                         disabled={loadingStates[application.id]}
                         className={`p-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors ${
                           loadingStates[application.id] ? 'opacity-50 cursor-not-allowed' : ''
@@ -560,6 +629,68 @@ export function Applications2() {
                   </span>
                 </div>
               </div>
+
+              {/* Admin Verdict Section */}
+              {isAdmin && (
+                <div className="mt-4 pt-4 border-t border-[var(--color-border)]">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-medium text-[var(--color-text-primary)] font-mono">Admin Verdicts</h4>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => updateAdminVerdict(application.id, 'thumbs_up')}
+                        disabled={loadingStates[`${application.id}_verdict`]}
+                        className={`p-2 rounded-lg transition-colors font-mono text-xs flex items-center gap-1 ${
+                          application.admin_verdicts?.[session?.user?.email || ''] === 'thumbs_up'
+                            ? 'bg-emerald-700 text-white'
+                            : 'bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-emerald-600 hover:text-white'
+                        } ${
+                          loadingStates[`${application.id}_verdict`] ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
+                        title="Thumbs Up"
+                      >
+                        <ThumbsUp className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => updateAdminVerdict(application.id, 'thumbs_down')}
+                        disabled={loadingStates[`${application.id}_verdict`]}
+                        className={`p-2 rounded-lg transition-colors font-mono text-xs flex items-center gap-1 ${
+                          application.admin_verdicts?.[session?.user?.email || ''] === 'thumbs_down'
+                            ? 'bg-red-600 text-white'
+                            : 'bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-red-500 hover:text-white'
+                        } ${
+                          loadingStates[`${application.id}_verdict`] ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
+                        title="Thumbs Down"
+                      >
+                        <ThumbsDown className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Display all admin verdicts */}
+                  {application.admin_verdicts && Object.keys(application.admin_verdicts).length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {Object.entries(application.admin_verdicts).map(([email, verdict]) => (
+                        <div
+                          key={email}
+                          className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-mono ${
+                            verdict === 'thumbs_up'
+                              ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                              : 'bg-red-100 text-red-700 border border-red-200'
+                          }`}
+                        >
+                          {verdict === 'thumbs_up' ? (
+                            <ThumbsUp className="w-3 h-3" />
+                          ) : (
+                            <ThumbsDown className="w-3 h-3" />
+                          )}
+                          <span>{getAdminName(email)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </motion.div>
           ))}
         </AnimatePresence>
@@ -701,6 +832,63 @@ export function Applications2() {
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                 ) : (
                   'Delete'
+                )}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Add Action Confirmation Modal */}
+      {showActionConfirmModal && applicationToAction && actionType && (
+        <div 
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm flex justify-center items-center z-50 p-4"
+          onClick={closeActionConfirmModal}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="bg-[var(--color-bg-surface)] p-6 md:p-8 rounded-xl shadow-2xl w-full max-w-md border border-[var(--color-border)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-xl font-semibold text-[var(--color-text-primary)] mb-4 font-mono">
+              Confirm {actionType === 'approve' ? 'Approval' : 'Rejection'}
+            </h2>
+            <p className="text-[var(--color-text-secondary)] mb-4 font-mono">
+              Are you sure you want to {actionType === 'approve' ? 'approve' : 'reject'} the application for{' '}
+              <strong className="text-[var(--color-text-primary)]">{applicationToAction.user_email}</strong>?
+            </p>
+            {actionType === 'approve' && (
+              <p className="text-[var(--color-text-secondary)] mb-4 font-mono">
+                This will send an approval email to the applicant and grant them access to the platform.
+              </p>
+            )}
+            {actionType === 'reject' && (
+              <p className="text-[var(--color-text-secondary)] mb-4 font-mono">
+                This will send a rejection email to the applicant.
+              </p>
+            )}
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={closeActionConfirmModal}
+                className="px-4 py-2 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] transition-colors font-mono"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmAction}
+                disabled={loadingStates[applicationToAction.id]}
+                className={`px-4 py-2 rounded-lg transition-colors font-mono flex items-center justify-center ${
+                  actionType === 'approve'
+                    ? 'bg-emerald-700 text-white hover:bg-emerald-800'
+                    : 'bg-red-600 text-white hover:bg-red-700'
+                } ${loadingStates[applicationToAction.id] ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                {loadingStates[applicationToAction.id] ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                ) : (
+                  actionType === 'approve' ? 'Approve' : 'Reject'
                 )}
               </button>
             </div>
