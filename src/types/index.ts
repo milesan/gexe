@@ -10,16 +10,22 @@ export interface AccommodationImage {
 export interface Accommodation {
   id: string;
   title: string;
+  description: string | null;
+  location: string;
   base_price: number;
   type: string;
-  capacity: number;
+  inventory: number;
+  bathrooms: number;
   has_wifi: boolean;
   has_electricity: boolean;
+  bed_size: string | null;
   image_url: string | null;
-  is_unlimited: boolean;
   is_fungible: boolean;
+  is_unlimited: boolean;
   parent_accommodation_id: string | null;
-  bed_size?: string;
+  inventory_count: number;
+  created_at: string;
+  updated_at: string;
   images?: AccommodationImage[];
 }
 

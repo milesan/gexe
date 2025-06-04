@@ -738,7 +738,7 @@ export function BookingSummary({
             booking: {
               ...booking,
               accommodation: selectedAccommodation.title,
-              guests: selectedAccommodation.capacity,
+              guests: selectedAccommodation.inventory,
               totalPrice: roundedTotal, // Use rounded total
               checkIn: selectedCheckInDate,
               checkOut: checkOut

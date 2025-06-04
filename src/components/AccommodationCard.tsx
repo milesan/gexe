@@ -115,7 +115,7 @@ export function AccommodationCard({ accommodation, checkIn, checkOut }: Accommod
           </div>
 
           <p className="text-stone-500 mt-2">
-            {accommodation.type} · {accommodation.capacity} guests
+            {accommodation.type} · {accommodation.inventory} guests
             {accommodation.has_wifi ? ' · WiFi' : ''}
             {accommodation.has_electricity ? ' · Electricity' : ''}
           </p>
@@ -152,3 +152,4 @@ export function AccommodationCard({ accommodation, checkIn, checkOut }: Accommod
     </>
   );
 }
+*/

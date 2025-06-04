@@ -8,27 +8,29 @@ DECLARE
     end_date date := '2025-03-05';
 BEGIN
     -- Create test accommodations
-    INSERT INTO accommodations (id, title, capacity, is_unlimited)
+    INSERT INTO accommodations (id, title, inventory, is_unlimited)
     VALUES 
-        (gen_random_uuid(), '4-Bed Test Dorm', 4, false) 
+        ('11111111-1111-1111-1111-111111111111', 'Test Room 1', 2, false),
+        ('22222222-2222-2222-2222-222222222222', 'Test Room 2', 1, false)
     RETURNING id INTO test_dorm_id;
 
-    INSERT INTO accommodations (id, title, capacity, is_unlimited)
+    INSERT INTO accommodations (id, title, inventory, is_unlimited)
     VALUES 
         (gen_random_uuid(), 'Test Bell Tent', 1, false)
     RETURNING id INTO test_tent_id;
 
-    -- Test 1: Empty period - should show full capacity available
+    -- Test 1: Empty period - should show full inventory available
     FOR result IN 
         SELECT * FROM get_accommodation_availability_range(start_date::text, end_date::text)
         WHERE accommodation_id IN (test_dorm_id, test_tent_id)
         ORDER BY availability_date, title
     LOOP
-        RAISE NOTICE 'Test 1 - Date: %, Accommodation: %, Available: %, Capacity: %', 
+        RAISE NOTICE 'Test 1 - Date: %, Accommodation: %, Available: %, Inventory: %', 
             result.availability_date,
             result.title,
+            result.is_available,
             result.available_capacity,
-            result.is_available;
+            2; -- Expected inventory
     END LOOP;
 
     -- Test 2: Add some bookings and check availability
@@ -83,11 +85,12 @@ BEGIN
         WHERE accommodation_id IN (test_dorm_id, test_tent_id)
         ORDER BY availability_date, title
     LOOP
-        RAISE NOTICE 'Test 2 - Date: %, Accommodation: %, Available: %, Capacity: %', 
+        RAISE NOTICE 'Test 2 - Date: %, Accommodation: %, Available: %, Inventory: %', 
             result.availability_date,
             result.title,
+            result.is_available,
             result.available_capacity,
-            result.is_available;
+            2; -- Expected inventory
     END LOOP;
 
     -- Test 3: Add a cancelled booking - should not affect availability
@@ -111,11 +114,12 @@ BEGIN
         WHERE accommodation_id IN (test_dorm_id, test_tent_id)
         ORDER BY availability_date, title
     LOOP
-        RAISE NOTICE 'Test 3 - Date: %, Accommodation: %, Available: %, Capacity: %', 
+        RAISE NOTICE 'Test 3 - Date: %, Accommodation: %, Available: %, Inventory: %', 
             result.availability_date,
             result.title,
+            result.is_available,
             result.available_capacity,
-            result.is_available;
+            2; -- Expected inventory
     END LOOP;
 
     -- Cleanup

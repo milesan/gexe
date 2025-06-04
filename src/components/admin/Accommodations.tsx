@@ -16,7 +16,7 @@ interface Accommodation {
   title: string;
   base_price: number;
   type: string;
-  capacity: number;
+  inventory: number;
   has_wifi: boolean;
   has_electricity: boolean;
   is_unlimited: boolean;
@@ -124,7 +124,7 @@ export function Accommodations() {
       title: '',
       base_price: 0,
       type: 'room', // Default to first type
-      capacity: 1,
+      inventory: 1,
       has_wifi: false,
       has_electricity: false,
       bed_size: ''
@@ -216,13 +216,13 @@ export function Accommodations() {
          dataToSave.type = type;
      }
 
-    // Capacity validation
-     const capacity_str = String(dataToSave.capacity).trim();
-     const capacity_num = parseInt(capacity_str, 10);
-     if (capacity_str === '' || isNaN(capacity_num) || capacity_num <= 0 || !Number.isInteger(capacity_num) || String(capacity_num) !== capacity_str) {
-         errors.push("Capacity must be a positive whole number.");
+    // Inventory validation
+     const inventory_str = String(dataToSave.inventory).trim();
+     const inventory_num = parseInt(inventory_str, 10);
+     if (inventory_str === '' || isNaN(inventory_num) || inventory_num <= 0 || !Number.isInteger(inventory_num) || String(inventory_num) !== inventory_str) {
+         errors.push("Inventory must be a positive whole number.");
      } else {
-         dataToSave.capacity = capacity_num;
+         dataToSave.inventory = inventory_num;
      }
 
      // Bed Size (optional)
@@ -405,13 +405,13 @@ export function Accommodations() {
          dataToSave.type = type;
      }
 
-    // Capacity (example: required, positive integer)
-     const capacity_str = String(currentEditData.capacity).trim();
-     const capacity_num = parseInt(capacity_str, 10);
-     if (capacity_str === '' || isNaN(capacity_num) || capacity_num <= 0 || !Number.isInteger(capacity_num) || String(capacity_num) !== capacity_str) {
-         errors.push("Capacity must be a positive whole number.");
-     } else if (!originalAccommodation || capacity_num !== originalAccommodation.capacity) {
-         dataToSave.capacity = capacity_num;
+    // Inventory (example: required, positive integer)
+     const inventory_str = String(currentEditData.inventory).trim();
+     const inventory_num = parseInt(inventory_str, 10);
+     if (inventory_str === '' || isNaN(inventory_num) || inventory_num <= 0 || !Number.isInteger(inventory_num) || String(inventory_num) !== inventory_str) {
+         errors.push("Inventory must be a positive whole number.");
+     } else if (!originalAccommodation || inventory_num !== originalAccommodation.inventory) {
+         dataToSave.inventory = inventory_num;
      }
 
      // Bed Size (example: optional, string) - Assuming optional for now
@@ -716,14 +716,14 @@ export function Accommodations() {
                     placeholder="0"
                   />
                 </div>
-                {/* Capacity */}
+                {/* Inventory */}
                 <div>
-                  <label htmlFor="new-capacity" className={labelClassName}>Capacity</label>
+                  <label htmlFor="new-inventory" className={labelClassName}>Inventory</label>
                   <input 
                     type="number" 
-                    id="new-capacity" 
-                    value={newAccommodationData.capacity === null || newAccommodationData.capacity === undefined ? '' : newAccommodationData.capacity} 
-                    onChange={(e) => handleNewAccommodationInputChange(e, 'capacity')} 
+                    id="new-inventory" 
+                    value={newAccommodationData.inventory === null || newAccommodationData.inventory === undefined ? '' : newAccommodationData.inventory} 
+                    onChange={(e) => handleNewAccommodationInputChange(e, 'inventory')} 
                     disabled={createLoading} 
                     className={numberInputClassName} 
                     step="1" 
@@ -1019,10 +1019,10 @@ export function Accommodations() {
                         <label htmlFor={`price-${accommodation.id}`} className={labelClassName}>Price (€)</label>
                         <input type="number" id={`price-${accommodation.id}`} value={currentEditData.base_price === null || currentEditData.base_price === undefined ? '' : currentEditData.base_price} onChange={(e) => handleInputChange(e, 'base_price')} disabled={editLoading} className={numberInputClassName} step="1" min="0" />
                     </div>
-                    {/* Capacity */} 
+                    {/* Inventory */} 
                     <div>
-                        <label htmlFor={`capacity-${accommodation.id}`} className={labelClassName}>Capacity</label>
-                        <input type="number" id={`capacity-${accommodation.id}`} value={currentEditData.capacity === null || currentEditData.capacity === undefined ? '' : currentEditData.capacity} onChange={(e) => handleInputChange(e, 'capacity')} disabled={editLoading} className={numberInputClassName} step="1" min="1" />
+                        <label htmlFor={`inventory-${accommodation.id}`} className={labelClassName}>Inventory</label>
+                        <input type="number" id={`inventory-${accommodation.id}`} value={currentEditData.inventory === null || currentEditData.inventory === undefined ? '' : currentEditData.inventory} onChange={(e) => handleInputChange(e, 'inventory')} disabled={editLoading} className={numberInputClassName} step="1" min="1" />
                     </div>
                      {/* Bed Size */} 
                     <div>
@@ -1045,7 +1045,7 @@ export function Accommodations() {
                   <> 
                     <p><span className='font-medium'>Type:</span> {accommodation.type}</p>
                     <p><span className='font-medium'>Price:</span> €{accommodation.base_price}</p>
-                    <p><span className='font-medium'>Capacity:</span> {accommodation.capacity || 'N/A'}</p>
+                    <p><span className='font-medium'>Inventory:</span> {accommodation.inventory || 'N/A'}</p>
                     <p><span className='font-medium'>Bed Size:</span> {accommodation.bed_size || 'N/A'}</p>
                     <div className="flex gap-2 pt-1"> 
                       {accommodation.has_wifi && <span className="inline-flex items-center gap-1 bg-[var(--color-bg-success-subtle)] text-[var(--color-text-success)] px-2 py-0.5 rounded text-xs"><Wifi size={12}/> WiFi</span>}

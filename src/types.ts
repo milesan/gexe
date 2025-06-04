@@ -4,12 +4,13 @@ export type BookingStatus = 'pending' | 'confirmed' | 'cancelled';
 export interface Accommodation {
   id: string;
   title: string;
+  description?: string;
+  image_url?: string;
   base_price: number;
-  type: AccommodationType;
-  capacity: number | null;
+  type: string;
+  inventory: number | null;
   has_wifi: boolean;
   has_electricity: boolean;
-  image_url: string | null;
   is_unlimited: boolean;
   bed_size: string | null;
 }

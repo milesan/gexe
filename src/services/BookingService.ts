@@ -253,7 +253,7 @@ class BookingService {
 
       const { data: accommodation, error: accError } = await supabase
         .from('accommodations')
-        .select('title, type, image_url, capacity')
+        .select('title, type, image_url, inventory')
         .eq('id', newBooking.accommodation_id)
         .single();
 
