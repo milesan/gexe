@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar, Clock, ArrowRight, LogOut, Home, Bed, ChevronDown, ChevronUp, Info, Tag, AlertTriangle } from 'lucide-react';
+import { X, Info, Tag, AlertTriangle, Calendar } from 'lucide-react';
 import { useSchedulingRules } from '../hooks/useSchedulingRules';
 import { getSeasonalDiscount, getDurationDiscount, getSeasonBreakdown } from '../utils/pricing';
 import type { Week } from '../types/calendar';
@@ -20,6 +20,7 @@ import * as Popover from '@radix-ui/react-popover';
 import { HoverClickPopover } from './HoverClickPopover';
 import { calculateTotalNights, calculateDurationDiscountWeeks, calculateTotalDays, calculateTotalWeeksDecimal } from '../utils/dates';
 import { DiscountModal } from './DiscountModal';
+import { CancellationPolicyModal } from './CancellationPolicyModal';
 import { formatInTimeZone } from 'date-fns-tz';
 import { useUserPermissions } from '../hooks/useUserPermissions';
 
@@ -229,6 +230,7 @@ export function BookingSummary({
   const [showDiscountDetails, setShowDiscountDetails] = useState(false);
   const [testPaymentAmount, setTestPaymentAmount] = useState<number | null>(null);
   const [showDiscountModal, setShowDiscountModal] = useState(false);
+  const [showCancellationModal, setShowCancellationModal] = useState(false);
 
   // --- State for Discount Code ---
   const [discountCodeInput, setDiscountCodeInput] = useState('');
@@ -236,9 +238,6 @@ export function BookingSummary({
   const [discountError, setDiscountError] = useState<string | null>(null);
   const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
   // --- End Discount Code State ---
-
-  // State for cancellation policy
-  const [isPolicyOpen, setIsPolicyOpen] = useState(false);
 
   // State for internally calculated season breakdown
   const [seasonBreakdownState, setSeasonBreakdownState] = useState<SeasonBreakdown | undefined>(initialSeasonBreakdown);
@@ -1346,78 +1345,13 @@ export function BookingSummary({
                 {/* --- END: Discount Code Section --- */} 
 
                 {/* --- START: Cancellation Policy Section --- */}
-                <div className="pt-4 mt-4">
-                  <div className="bg-surface border border-border rounded-sm overflow-hidden">
-                    <button
-                      onClick={() => setIsPolicyOpen(!isPolicyOpen)}
-                      className="w-full p-4 flex items-center justify-between text-primary hover:bg-surface/80 transition-colors"
-                    >
-                      <span className="uppercase text-primary font-display text-l">Cancellation Policy</span>
-                      {isPolicyOpen ? (
-                        <ChevronUp className="w-5 h-5" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5" />
-                      )}
-                    </button>
-                    
-                    {isPolicyOpen && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="border-t border-border"
-                      >
-                        <div className="p-4 space-y-4">
-                          <p className="text-shade-1 text-sm font-display leading-relaxed">
-                            As a non-profit association, your contributions are considered donations that directly support our mission and the operations of this space. While donations are typically non-refundable, we understand that plans can change and offer the following flexibility:
-                          </p>
-                          
-                          <ol className="space-y-3 text-sm text-primary font-display">
-                            <li className="flex items-start gap-2">
-                              <span className="font-semibold min-w-[1.2rem]">1.</span>
-                              <div>
-                                <span className="font-semibold">Guests with independent accommodations (van/camping):</span>
-                                <br />Always eligible for 85% refund or 100% credit, regardless of timing.
-                              </div>
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <span className="font-semibold min-w-[1.2rem]">2.</span>
-                              <div>
-                                <span className="font-semibold">More than 30 days before arrival:</span>
-                                <br />We can offer a 85% refund of your donation or 100% credit for future use within 12 months.
-                              </div>
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <span className="font-semibold min-w-[1.2rem]">3.</span>
-                              <div>
-                                <span className="font-semibold">15 to 30 days before arrival:</span>
-                                <br />We can offer a 50%-60% refund of your donation or 75% credit for future use within 12 months.
-                              </div>
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <span className="font-semibold min-w-[1.2rem]">4.</span>
-                              <div>
-                                <span className="font-semibold">Less than 15 days before arrival:</span>
-                                <br />Donations are non-refundable at this stage, but we can offer a 50% credit for future use within 12 months.
-                              </div>
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <span className="font-semibold min-w-[1.2rem]">5.</span>
-                              <div>
-                                <span className="font-semibold">Special circumstances (force majeure, injury, or accident):</span>
-                                <br />With valid documentation:
-                                <ul className="mt-1 ml-4 space-y-1">
-                                  <li>• More than 15 days before arrival: 85% refund of donation or 100% credit.</li>
-                                  <li>• 15 days or less before arrival: 75% credit.</li>
-                                </ul>
-                              </div>
-                            </li>
-                          </ol>
-                        </div>
-                      </motion.div>
-                    )}
-                  </div>
+                <div className="pt-2 mt-2">
+                  <button
+                    onClick={() => setShowCancellationModal(true)}
+                    className="text-xs text-shade-2 hover:text-shade-1 underline underline-offset-2 transition-colors font-display"
+                  >
+                    Cancellation Policy
+                  </button>
                 </div>
                 {/* --- END: Cancellation Policy Section --- */}
 
@@ -1467,6 +1401,12 @@ export function BookingSummary({
           )}
         </div>
       </div>
+
+      {/* Cancellation Policy Modal */}
+      <CancellationPolicyModal
+        isOpen={showCancellationModal}
+        onClose={() => setShowCancellationModal(false)}
+      />
 
       {/* Discount Modal */}
       <DiscountModal
