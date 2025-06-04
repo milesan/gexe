@@ -240,25 +240,51 @@ export function Applications2() {
     }
   };
 
-  const updateAdminVerdict = async (applicationId: string, verdict: 'thumbs_up' | 'thumbs_down') => {
+  const updateAdminVerdict = async (applicationId: string, clickedVerdict: 'thumbs_up' | 'thumbs_down') => {
+    const adminEmail = session?.user?.email;
+    if (!adminEmail) {
+      setError("User session not found. Cannot update verdict.");
+      console.error("Applications2: Admin email not found in session for verdict update.");
+      return;
+    }
+
+    const application = applications.find(app => app.id === applicationId);
+    if (!application) {
+      setError("Application not found. Cannot update verdict.");
+      console.error("Applications2: Application not found for verdict update:", applicationId);
+      return;
+    }
+
+    const currentAdminSavedVerdict = application.admin_verdicts?.[adminEmail];
+    let newVerdictForRPC: 'thumbs_up' | 'thumbs_down' | null = clickedVerdict;
+
+    if (currentAdminSavedVerdict === clickedVerdict) {
+      newVerdictForRPC = null; // This signals to the RPC to remove the verdict
+    }
+
     try {
       setLoadingStates(prev => ({ ...prev, [`${applicationId}_verdict`]: true }));
 
+      // The RPC 'update_admin_verdict' needs to be able_to handle p_verdict = null
+      // as an instruction to remove the admin's verdict for this application.
       const { error } = await supabase.rpc('update_admin_verdict', {
         p_application_id: applicationId,
-        p_verdict: verdict
+        p_verdict: newVerdictForRPC // This can now be 'thumbs_up', 'thumbs_down', or null
       });
 
       if (error) {
-        console.error('Error updating admin verdict:', error);
-        throw error;
+        console.error('Applications2: Error updating admin verdict via RPC:', error);
+        // It might be useful to provide more specific error messages if the RPC returns structured errors
+        throw new Error(`Failed to update verdict: ${error.message}`);
       }
 
-      // Reload applications to show updated verdicts
+      // Reload applications to reflect the change.
+      // loadApplications() will fetch the fresh state including updated admin_verdicts.
       await loadApplications();
     } catch (err) {
-      console.error('Error updating verdict:', err);
-      setError(err instanceof Error ? err.message : 'Failed to update verdict');
+      console.error('Applications2: Error in updateAdminVerdict function:', err);
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred while updating verdict.');
+      // Optionally, revert optimistic UI updates here if any were made, though loadApplications() should correct it.
     } finally {
       setLoadingStates(prev => ({ ...prev, [`${applicationId}_verdict`]: false }));
     }
