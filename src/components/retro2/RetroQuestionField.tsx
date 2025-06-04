@@ -346,41 +346,15 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
           </div>
         )}
 
-        <div className="relative" data-dropdown="arrival-selector">
-          <button
-            type="button"
-            onClick={() => setDropdownOpen(!dropdownOpen)}
-            disabled={weeksLoading || !!weeksError}
-            className={`w-full bg-black p-3 text-retro-accent focus:outline-none focus:ring-2 focus:ring-retro-accent border-4 border-retro-accent/30 flex items-center justify-between transition-colors ${
-              weeksLoading || weeksError ? 'opacity-50 cursor-not-allowed' : 'hover:bg-retro-accent/10'
-            }`}
-            style={{
-              clipPath: `polygon(
-                0 4px, 4px 4px, 4px 0,
-                calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
-                100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
-                calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
-                0 calc(100% - 4px)
-              )`
-            }}
-          >
-            <div className="flex items-center">
-              <Calendar className="w-5 h-5 mr-2" />
-              <span className="font-mono text-sm">
-                {weeksLoading 
-                  ? 'Loading available dates...'
-                  : selectedWeek 
-                    ? formatWeekOption(selectedWeek)
-                    : 'Select arrival week'
-                }
-              </span>
-            </div>
-            <ChevronDown className={`w-5 h-5 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
-          </button>
-
-          {dropdownOpen && !weeksLoading && !weeksError && (
-            <div 
-              className="absolute top-full left-0 right-0 z-50 mt-1 bg-black border-4 border-retro-accent/30 max-h-60 overflow-y-auto"
+        <div className="flex gap-2">
+          <div className="relative flex-1" data-dropdown="arrival-selector">
+            <button
+              type="button"
+              onClick={() => setDropdownOpen(!dropdownOpen)}
+              disabled={weeksLoading || !!weeksError}
+              className={`w-full bg-black p-3 text-retro-accent focus:outline-none focus:ring-2 focus:ring-retro-accent border-4 border-retro-accent/30 flex items-center justify-between transition-colors ${
+                weeksLoading || weeksError ? 'opacity-50 cursor-not-allowed' : 'hover:bg-retro-accent/10'
+              }`}
               style={{
                 clipPath: `polygon(
                   0 4px, 4px 4px, 4px 0,
@@ -389,32 +363,83 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
                   calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
                   0 calc(100% - 4px)
                 )`
-              }}>
-              {weeks.length === 0 ? (
-                <div className="p-3 text-retro-accent/60 text-sm">
-                  No available arrival dates found
-                </div>
-              ) : (
-                weeks.map((week) => (
-                  <button
-                    key={week.id || week.startDate.toISOString()}
-                    type="button"
-                    onClick={() => {
-                      onChange(week.startDate.toISOString());
-                      setDropdownOpen(false);
-                      if (onBlur) onBlur();
-                    }}
-                    className={`w-full text-left p-3 hover:bg-retro-accent/20 transition-colors border-b border-retro-accent/10 last:border-b-0 ${
-                      value === week.startDate.toISOString() ? 'bg-retro-accent/20' : ''
-                    }`}
-                  >
-                    <span className="font-mono text-sm text-retro-accent">
-                      {formatWeekOption(week)}
-                    </span>
-                  </button>
-                ))
-              )}
-            </div>
+              }}
+            >
+              <div className="flex items-center">
+                <Calendar className="w-5 h-5 mr-2" />
+                <span className="font-mono text-sm">
+                  {weeksLoading 
+                    ? 'Loading available dates...'
+                    : selectedWeek 
+                      ? formatWeekOption(selectedWeek)
+                      : 'Select arrival week'
+                  }
+                </span>
+              </div>
+              <ChevronDown className={`w-5 h-5 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {dropdownOpen && !weeksLoading && !weeksError && (
+              <div 
+                className="absolute top-full left-0 right-0 z-50 mt-1 bg-black border-4 border-retro-accent/30 max-h-60 overflow-y-auto"
+                style={{
+                  clipPath: `polygon(
+                    0 4px, 4px 4px, 4px 0,
+                    calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
+                    100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
+                    calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
+                    0 calc(100% - 4px)
+                  )`
+                }}>
+                {weeks.length === 0 ? (
+                  <div className="p-3 text-retro-accent/60 text-sm">
+                    No available arrival dates found
+                  </div>
+                ) : (
+                  weeks.map((week) => (
+                    <button
+                      key={week.id || week.startDate.toISOString()}
+                      type="button"
+                      onClick={() => {
+                        onChange(week.startDate.toISOString());
+                        setDropdownOpen(false);
+                        if (onBlur) onBlur();
+                      }}
+                      className={`w-full text-left p-3 hover:bg-retro-accent/20 transition-colors border-b border-retro-accent/10 last:border-b-0 ${
+                        value === week.startDate.toISOString() ? 'bg-retro-accent/20' : ''
+                      }`}
+                    >
+                      <span className="font-mono text-sm text-retro-accent">
+                        {formatWeekOption(week)}
+                      </span>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+
+          {selectedWeek && (
+            <button
+              type="button"
+              onClick={() => {
+                onChange(undefined);
+                setDropdownOpen(false);
+                if (onBlur) onBlur();
+              }}
+              className="bg-black p-3 text-retro-accent focus:outline-none focus:ring-2 focus:ring-retro-accent border-4 border-retro-accent/30 flex items-center justify-center transition-colors hover:bg-retro-accent/10"
+              style={{
+                clipPath: `polygon(
+                  0 4px, 4px 4px, 4px 0,
+                  calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
+                  100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
+                  calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
+                  0 calc(100% - 4px)
+                )`
+              }}
+            >
+              <X className="w-5 h-5" />
+            </button>
           )}
         </div>
       </div>

@@ -294,11 +294,32 @@ export default function App() {
 
     // --- BEGIN ADDED FUNCTION ---
     const handleSignOut = async () => {
-      console.log('[App] Signing out user from loading screen.');
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error('[App] Error signing out from loading screen:', error);
-        // Optionally, inform the user, though the screen might change quickly
+      console.log('[App] Signing out user from loading screen...');
+
+      try {
+        // Attempt to sign out globally (invalidate server session)
+        console.log('[App] Attempting global sign out from loading screen...');
+        const { error: globalError } = await supabase.auth.signOut({ scope: 'global' });
+        if (globalError) {
+          console.warn('[App] Global sign out from loading screen failed or session already invalid:', globalError.message);
+        } else {
+          console.log('[App] Global sign out from loading screen successful.');
+        }
+      } catch (err) {
+        console.error('[App] Unexpected error during global sign out from loading screen:', err);
+      }
+
+      try {
+        // Always attempt to sign out locally (clear client-side session)
+        console.log('[App] Performing local sign out from loading screen...');
+        const { error: localError } = await supabase.auth.signOut({ scope: 'local' });
+        if (localError) {
+          console.error('[App] Local sign out from loading screen failed:', localError.message);
+        } else {
+          console.log('[App] Local sign out from loading screen successful.');
+        }
+      } catch (err) {
+        console.error('[App] Unexpected error during local sign out from loading screen:', err);
       }
       // Session state will change, leading to re-route or different view
     };

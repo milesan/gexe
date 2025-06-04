@@ -12,14 +12,37 @@ export function PendingPage({ status = 'pending' }: Props) {
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
+    console.log('PendingPage: Signing out user...');
+
     try {
-      console.log('PendingPage: Signing out user');
-      await supabase.auth.signOut();
-      
-      navigate('/');
-    } catch (error) {
-      console.error('Error signing out:', error);
+      // Attempt to sign out globally (invalidate server session)
+      console.log('PendingPage: Attempting global sign out...');
+      const { error: globalError } = await supabase.auth.signOut({ scope: 'global' });
+      if (globalError) {
+        console.warn('PendingPage: Global sign out failed or session already invalid:', globalError.message);
+      } else {
+        console.log('PendingPage: Global sign out successful.');
+      }
+    } catch (err) {
+      console.error('PendingPage: Unexpected error during global sign out:', err);
     }
+
+    try {
+      // Always attempt to sign out locally (clear client-side session)
+      console.log('PendingPage: Performing local sign out...');
+      const { error: localError } = await supabase.auth.signOut({ scope: 'local' });
+      if (localError) {
+        console.error('PendingPage: Local sign out failed:', localError.message);
+      } else {
+        console.log('PendingPage: Local sign out successful.');
+      }
+    } catch (err) {
+      console.error('PendingPage: Unexpected error during local sign out:', err);
+    }
+    
+    // After all sign-out attempts, navigate.
+    console.log('PendingPage: Navigating to / after sign out process.');
+    navigate('/');
   };
 
   return (

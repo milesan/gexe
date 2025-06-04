@@ -31,13 +31,37 @@ export function WhitelistSignupPage() {
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
-    console.log('⏳ WhitelistSignupPage: Attempting sign out...');
+    console.log('WhitelistSignupPage: Signing out user...');
+
     try {
-      await supabase.auth.signOut();
-      console.log('✅ WhitelistSignupPage: Sign out successful');
-    } catch (error) {
-      console.error('❌ WhitelistSignupPage: Error during sign out:', error instanceof Error ? error.message : error);
+      // Attempt to sign out globally (invalidate server session)
+      console.log('WhitelistSignupPage: Attempting global sign out...');
+      const { error: globalError } = await supabase.auth.signOut({ scope: 'global' });
+      if (globalError) {
+        console.warn('WhitelistSignupPage: Global sign out failed or session already invalid:', globalError.message);
+      } else {
+        console.log('WhitelistSignupPage: Global sign out successful.');
+      }
+    } catch (err) {
+      console.error('WhitelistSignupPage: Unexpected error during global sign out:', err);
     }
+
+    try {
+      // Always attempt to sign out locally (clear client-side session)
+      console.log('WhitelistSignupPage: Performing local sign out...');
+      const { error: localError } = await supabase.auth.signOut({ scope: 'local' });
+      if (localError) {
+        console.error('WhitelistSignupPage: Local sign out failed:', localError.message);
+      } else {
+        console.log('WhitelistSignupPage: Local sign out successful.');
+      }
+    } catch (err) {
+      console.error('WhitelistSignupPage: Unexpected error during local sign out:', err);
+    }
+    
+    // After all sign-out attempts, navigate.
+    console.log('WhitelistSignupPage: Navigating to / after sign out process.');
+    navigate('/');
   };
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {

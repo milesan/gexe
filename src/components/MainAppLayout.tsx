@@ -163,15 +163,43 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
   // END THEME MANAGEMENT Placeholder
 
   const handleSignOut = async () => {
+    console.log('MainAppLayout: Signing out...');
+    setShowWelcomeModal(false); // Ensure modal is hidden on sign out
+
     try {
-      console.log('MainAppLayout: Signing out');
-      setShowWelcomeModal(false); // Ensure modal is hidden on sign out
-      await supabase.auth.signOut();
-      // Navigate to root, App.tsx routing logic will handle redirect to LandingPage
-      navigate('/'); 
-    } catch (error) {
-      console.error('MainAppLayout: Error signing out:', error);
+      // Attempt to sign out globally (invalidate server session)
+      console.log('MainAppLayout: Attempting global sign out...');
+      const { error: globalError } = await supabase.auth.signOut({ scope: 'global' });
+      if (globalError) {
+        // Log the error, but don't let it stop the process.
+        // This is expected if the session was already invalid on the server.
+        console.warn('MainAppLayout: Global sign out failed or session already invalid:', globalError.message);
+      } else {
+        console.log('MainAppLayout: Global sign out successful.');
+      }
+    } catch (err) {
+      // Catch any unexpected errors during the global sign out attempt
+      console.error('MainAppLayout: Unexpected error during global sign out:', err);
     }
+
+    try {
+      // Always attempt to sign out locally (clear client-side session)
+      // This is the crucial part to ensure the user is not "stuck".
+      console.log('MainAppLayout: Performing local sign out...');
+      const { error: localError } = await supabase.auth.signOut({ scope: 'local' });
+      if (localError) {
+        // This would be more unusual, an error clearing local state.
+        console.error('MainAppLayout: Local sign out failed:', localError.message);
+      } else {
+        console.log('MainAppLayout: Local sign out successful.');
+      }
+    } catch (err) {
+      console.error('MainAppLayout: Unexpected error during local sign out:', err);
+    }
+    
+    // After all sign-out attempts, navigate.
+    console.log('MainAppLayout: Navigating to / after sign out process.');
+    navigate('/');
   };
 
   const handleWelcomeModalClose = async () => {

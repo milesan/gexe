@@ -7,7 +7,36 @@ export function SignUpHeader() {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    console.log('SignUpHeader: Signing out...');
+
+    try {
+      // Attempt to sign out globally (invalidate server session)
+      console.log('SignUpHeader: Attempting global sign out...');
+      const { error: globalError } = await supabase.auth.signOut({ scope: 'global' });
+      if (globalError) {
+        console.warn('SignUpHeader: Global sign out failed or session already invalid:', globalError.message);
+      } else {
+        console.log('SignUpHeader: Global sign out successful.');
+      }
+    } catch (err) {
+      console.error('SignUpHeader: Unexpected error during global sign out:', err);
+    }
+
+    try {
+      // Always attempt to sign out locally (clear client-side session)
+      console.log('SignUpHeader: Performing local sign out...');
+      const { error: localError } = await supabase.auth.signOut({ scope: 'local' });
+      if (localError) {
+        console.error('SignUpHeader: Local sign out failed:', localError.message);
+      } else {
+        console.log('SignUpHeader: Local sign out successful.');
+      }
+    } catch (err) {
+      console.error('SignUpHeader: Unexpected error during local sign out:', err);
+    }
+    
+    // After all sign-out attempts, navigate.
+    console.log('SignUpHeader: Navigating to / after sign out process.');
     navigate('/'); // Navigate to landing after sign out
   };
 
