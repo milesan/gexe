@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Wifi, Zap, Bed, BedDouble, WifiOff, ZapOff, Bath, Percent, Info, Ear, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Wifi, Zap, Bed, BedDouble, WifiOff, ZapOff, Bath, Percent, Info, Ear, ChevronLeft, ChevronRight, Users } from 'lucide-react';
 import clsx from 'clsx';
 import type { Accommodation } from '../types';
 import { Week } from '../types/calendar';
@@ -520,6 +520,15 @@ export function CabinSelector({
                     )}
                   </div>
 
+                  {/* Capacity Badge - top right corner */}
+                  {acc.capacity && !isFullyBooked && (!['parking', 'tent'].includes(acc.type) || acc.title.toLowerCase().includes('tipi') || acc.title.toLowerCase().includes('bell tent')) && !acc.title.toLowerCase().includes('van parking') && !acc.title.toLowerCase().includes('own tent') && !acc.title.toLowerCase().includes('staying with somebody') && !acc.title.toLowerCase().includes('dorm') && (
+                    <div className="absolute top-2 right-2 z-[5]">
+                      <div className="text-xs font-medium px-3 py-1 rounded-full shadow-lg bg-gray-600/90 text-white border border-white/30 font-mono">
+                        Fits {acc.capacity} {acc.capacity === 1 ? 'person' : 'people'}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Image */}
                   <div className={clsx(
                     "relative h-56 overflow-hidden", // REMOVED bg-surface
@@ -574,23 +583,10 @@ export function CabinSelector({
 
                         {/* NEW: Quiet Zone Popover for Microcabins */}
                         {acc.title.includes('Microcabin') && (
-                          <Popover.Root>
-                            <Popover.Trigger asChild>
-                              <button className="flex items-center gap-1 cursor-help text-secondary"
-                              onClick={(e) => e.stopPropagation()}
-                              ><Ear size={12} /></button>
-                            </Popover.Trigger>
-                            <Popover.Portal>
-                              <Popover.Content
-                                sideOffset={5}
-                                className="tooltip-content !font-mono z-50"
-                                onOpenAutoFocus={(e: Event) => e.preventDefault()}
-                              >
-                                <Popover.Arrow className="tooltip-arrow" width={11} height={5} />
-                                <span>We invite those who seek quiet to stay here.</span>
-                              </Popover.Content>
-                            </Popover.Portal>
-                          </Popover.Root>
+                          <HoverClickPopover
+                            triggerContent={<Ear size={12} />}
+                            popoverContentNode={<span>We invite those who seek quiet to stay here.</span>}
+                          />
                         )}
 
                         {/* NEW: Power Hookup Popover for Van Parking - MODIFIED to use HoverClickPopover */}

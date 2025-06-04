@@ -1350,7 +1350,7 @@ export function BookingSummary({
                     onClick={() => setShowCancellationModal(true)}
                     className="text-xs text-shade-2 hover:text-shade-1 underline underline-offset-2 transition-colors font-display"
                   >
-                    Cancellation Policy
+                    ► Cancellation Policy
                   </button>
                 </div>
                 {/* --- END: Cancellation Policy Section --- */}

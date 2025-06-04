@@ -9,6 +9,7 @@ export interface Accommodation {
   base_price: number;
   type: string;
   inventory: number | null;
+  capacity: number | null;
   has_wifi: boolean;
   has_electricity: boolean;
   is_unlimited: boolean;

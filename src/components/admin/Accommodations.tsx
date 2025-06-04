@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Image as ImageIcon, X, Check, Save, Pencil, Wifi, Zap, Plus, Trash2, Camera, Trash } from 'lucide-react';
+import { Image as ImageIcon, X, Check, Save, Pencil, Wifi, Zap, Plus, Trash2, Camera, Trash, Info } from 'lucide-react';
+import * as Tooltip from '@radix-ui/react-tooltip';
 
 interface AccommodationImage {
   id: string;
@@ -17,6 +18,7 @@ interface Accommodation {
   base_price: number;
   type: string;
   inventory: number;
+  capacity: number;
   has_wifi: boolean;
   has_electricity: boolean;
   is_unlimited: boolean;
@@ -125,6 +127,7 @@ export function Accommodations() {
       base_price: 0,
       type: 'room', // Default to first type
       inventory: 1,
+      capacity: 1, // Add default capacity
       has_wifi: false,
       has_electricity: false,
       bed_size: ''
@@ -223,6 +226,15 @@ export function Accommodations() {
          errors.push("Inventory must be a positive whole number.");
      } else {
          dataToSave.inventory = inventory_num;
+     }
+
+     // Capacity validation
+     const capacity_str = String(dataToSave.capacity).trim();
+     const capacity_num = parseInt(capacity_str, 10);
+     if (capacity_str === '' || isNaN(capacity_num) || capacity_num <= 0 || !Number.isInteger(capacity_num) || String(capacity_num) !== capacity_str) {
+         errors.push("Capacity must be a positive whole number.");
+     } else {
+         dataToSave.capacity = capacity_num;
      }
 
      // Bed Size (optional)
@@ -412,6 +424,15 @@ export function Accommodations() {
          errors.push("Inventory must be a positive whole number.");
      } else if (!originalAccommodation || inventory_num !== originalAccommodation.inventory) {
          dataToSave.inventory = inventory_num;
+     }
+
+     // Capacity (example: required, positive integer)
+     const capacity_str = String(currentEditData.capacity).trim();
+     const capacity_num = parseInt(capacity_str, 10);
+     if (capacity_str === '' || isNaN(capacity_num) || capacity_num <= 0 || !Number.isInteger(capacity_num) || String(capacity_num) !== capacity_str) {
+         errors.push("Capacity must be a positive whole number.");
+     } else if (!originalAccommodation || capacity_num !== originalAccommodation.capacity) {
+         dataToSave.capacity = capacity_num;
      }
 
      // Bed Size (example: optional, string) - Assuming optional for now
@@ -718,12 +739,61 @@ export function Accommodations() {
                 </div>
                 {/* Inventory */}
                 <div>
-                  <label htmlFor="new-inventory" className={labelClassName}>Inventory</label>
+                  <div className="flex items-center gap-1">
+                    <label htmlFor="new-inventory" className={labelClassName}>Inventory</label>
+                    <Tooltip.Provider>
+                      <Tooltip.Root delayDuration={50}>
+                        <Tooltip.Trigger asChild>
+                          <button className="p-1 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] rounded-md transition-colors">
+                            <Info className="w-3 h-3" />
+                          </button>
+                        </Tooltip.Trigger>
+                        <Tooltip.Portal>
+                          <Tooltip.Content className="tooltip-content !font-mono text-xs z-50" sideOffset={5}>
+                            Number of identical units that can be booked separately
+                            <Tooltip.Arrow className="tooltip-arrow" />
+                          </Tooltip.Content>
+                        </Tooltip.Portal>
+                      </Tooltip.Root>
+                    </Tooltip.Provider>
+                  </div>
                   <input 
                     type="number" 
                     id="new-inventory" 
                     value={newAccommodationData.inventory === null || newAccommodationData.inventory === undefined ? '' : newAccommodationData.inventory} 
                     onChange={(e) => handleNewAccommodationInputChange(e, 'inventory')} 
+                    disabled={createLoading} 
+                    className={numberInputClassName} 
+                    step="1" 
+                    min="1" 
+                    placeholder="1"
+                  />
+                </div>
+                {/* Capacity */}
+                <div>
+                  <div className="flex items-center gap-1">
+                    <label htmlFor="new-capacity" className={labelClassName}>Capacity</label>
+                    <Tooltip.Provider>
+                      <Tooltip.Root delayDuration={50}>
+                        <Tooltip.Trigger asChild>
+                          <button className="p-1 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] rounded-md transition-colors">
+                            <Info className="w-3 h-3" />
+                          </button>
+                        </Tooltip.Trigger>
+                        <Tooltip.Portal>
+                          <Tooltip.Content className="tooltip-content !font-mono text-xs z-50" sideOffset={5}>
+                            Number of people that can sleep in one unit
+                            <Tooltip.Arrow className="tooltip-arrow" />
+                          </Tooltip.Content>
+                        </Tooltip.Portal>
+                      </Tooltip.Root>
+                    </Tooltip.Provider>
+                  </div>
+                  <input 
+                    type="number" 
+                    id="new-capacity" 
+                    value={newAccommodationData.capacity === null || newAccommodationData.capacity === undefined ? '' : newAccommodationData.capacity} 
+                    onChange={(e) => handleNewAccommodationInputChange(e, 'capacity')} 
                     disabled={createLoading} 
                     className={numberInputClassName} 
                     step="1" 
@@ -1021,8 +1091,47 @@ export function Accommodations() {
                     </div>
                     {/* Inventory */} 
                     <div>
-                        <label htmlFor={`inventory-${accommodation.id}`} className={labelClassName}>Inventory</label>
+                        <div className="flex items-center gap-1">
+                          <label htmlFor={`inventory-${accommodation.id}`} className={labelClassName}>Inventory</label>
+                          <Tooltip.Provider>
+                            <Tooltip.Root delayDuration={50}>
+                              <Tooltip.Trigger asChild>
+                                <button className="p-1 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] rounded-md transition-colors">
+                                  <Info className="w-3 h-3" />
+                                </button>
+                              </Tooltip.Trigger>
+                              <Tooltip.Portal>
+                                <Tooltip.Content className="tooltip-content !font-mono text-xs z-50" sideOffset={5}>
+                                  Number of identical units that can be booked separately
+                                  <Tooltip.Arrow className="tooltip-arrow" />
+                                </Tooltip.Content>
+                              </Tooltip.Portal>
+                            </Tooltip.Root>
+                          </Tooltip.Provider>
+                        </div>
                         <input type="number" id={`inventory-${accommodation.id}`} value={currentEditData.inventory === null || currentEditData.inventory === undefined ? '' : currentEditData.inventory} onChange={(e) => handleInputChange(e, 'inventory')} disabled={editLoading} className={numberInputClassName} step="1" min="1" />
+                    </div>
+                     {/* Capacity */} 
+                    <div>
+                        <div className="flex items-center gap-1">
+                          <label htmlFor={`capacity-${accommodation.id}`} className={labelClassName}>Capacity</label>
+                          <Tooltip.Provider>
+                            <Tooltip.Root delayDuration={50}>
+                              <Tooltip.Trigger asChild>
+                                <button className="p-1 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] rounded-md transition-colors">
+                                  <Info className="w-3 h-3" />
+                                </button>
+                              </Tooltip.Trigger>
+                              <Tooltip.Portal>
+                                <Tooltip.Content className="tooltip-content !font-mono text-xs z-50" sideOffset={5}>
+                                  Number of people that can sleep in one unit
+                                  <Tooltip.Arrow className="tooltip-arrow" />
+                                </Tooltip.Content>
+                              </Tooltip.Portal>
+                            </Tooltip.Root>
+                          </Tooltip.Provider>
+                        </div>
+                        <input type="number" id={`capacity-${accommodation.id}`} value={currentEditData.capacity === null || currentEditData.capacity === undefined ? '' : currentEditData.capacity} onChange={(e) => handleInputChange(e, 'capacity')} disabled={editLoading} className={numberInputClassName} step="1" min="1" />
                     </div>
                      {/* Bed Size */} 
                     <div>
@@ -1045,7 +1154,42 @@ export function Accommodations() {
                   <> 
                     <p><span className='font-medium'>Type:</span> {accommodation.type}</p>
                     <p><span className='font-medium'>Price:</span> €{accommodation.base_price}</p>
-                    <p><span className='font-medium'>Inventory:</span> {accommodation.inventory || 'N/A'}</p>
+                    <div className="flex items-center gap-1">
+                      <p><span className='font-medium'>Inventory:</span> {accommodation.inventory || 'N/A'}</p>
+                      <Tooltip.Provider>
+                        <Tooltip.Root delayDuration={50}>
+                          <Tooltip.Trigger asChild>
+                            <button className="p-1 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] rounded-md transition-colors">
+                              <Info className="w-3 h-3" />
+                            </button>
+                          </Tooltip.Trigger>
+                          <Tooltip.Portal>
+                            <Tooltip.Content className="tooltip-content !font-mono text-xs z-50" sideOffset={5}>
+                              Number of identical units that can be booked separately
+                              <Tooltip.Arrow className="tooltip-arrow" />
+                            </Tooltip.Content>
+                          </Tooltip.Portal>
+                        </Tooltip.Root>
+                      </Tooltip.Provider>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <p><span className='font-medium'>Capacity:</span> {accommodation.capacity || 'N/A'}</p>
+                      <Tooltip.Provider>
+                        <Tooltip.Root delayDuration={50}>
+                          <Tooltip.Trigger asChild>
+                            <button className="p-1 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] rounded-md transition-colors">
+                              <Info className="w-3 h-3" />
+                            </button>
+                          </Tooltip.Trigger>
+                          <Tooltip.Portal>
+                            <Tooltip.Content className="tooltip-content !font-mono text-xs z-50" sideOffset={5}>
+                              Number of people that can sleep in one unit
+                              <Tooltip.Arrow className="tooltip-arrow" />
+                            </Tooltip.Content>
+                          </Tooltip.Portal>
+                        </Tooltip.Root>
+                      </Tooltip.Provider>
+                    </div>
                     <p><span className='font-medium'>Bed Size:</span> {accommodation.bed_size || 'N/A'}</p>
                     <div className="flex gap-2 pt-1"> 
                       {accommodation.has_wifi && <span className="inline-flex items-center gap-1 bg-[var(--color-bg-success-subtle)] text-[var(--color-text-success)] px-2 py-0.5 rounded text-xs"><Wifi size={12}/> WiFi</span>}
