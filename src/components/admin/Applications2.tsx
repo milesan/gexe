@@ -135,6 +135,11 @@ export function Applications2() {
 
       const processedApplications = (data || []).map(app => {
         const seenWelcome = !!app.raw_user_meta_data?.has_seen_welcome;
+        console.log('Applications2: Processing app', {
+          id: app.id,
+          email: app.user_email,
+          admin_verdicts: app.admin_verdicts
+        });
         return {
           ...app,
           seen_welcome: seenWelcome,
@@ -256,20 +261,29 @@ export function Applications2() {
     }
 
     const currentAdminSavedVerdict = application.admin_verdicts?.[adminEmail];
-    let newVerdictForRPC: 'thumbs_up' | 'thumbs_down' | null = clickedVerdict;
+    let newVerdictForRPC: 'thumbs_up' | 'thumbs_down' | 'remove' = clickedVerdict;
 
     if (currentAdminSavedVerdict === clickedVerdict) {
-      newVerdictForRPC = null; // This signals to the RPC to remove the verdict
+      newVerdictForRPC = 'remove'; // This signals to the RPC to remove the verdict
     }
 
     try {
       setLoadingStates(prev => ({ ...prev, [`${applicationId}_verdict`]: true }));
 
-      // The RPC 'update_admin_verdict' needs to be able_to handle p_verdict = null
+      console.log('Applications2: Before RPC call', {
+        applicationId,
+        adminEmail,
+        currentVerdict: currentAdminSavedVerdict,
+        clickedVerdict,
+        newVerdictForRPC,
+        currentAdminVerdicts: application.admin_verdicts
+      });
+
+      // The RPC 'update_admin_verdict' needs to handle p_verdict = 'remove'
       // as an instruction to remove the admin's verdict for this application.
       const { error } = await supabase.rpc('update_admin_verdict', {
         p_application_id: applicationId,
-        p_verdict: newVerdictForRPC // This can now be 'thumbs_up', 'thumbs_down', or null
+        p_verdict: newVerdictForRPC // This can now be 'thumbs_up', 'thumbs_down', or 'remove'
       });
 
       if (error) {
@@ -278,9 +292,13 @@ export function Applications2() {
         throw new Error(`Failed to update verdict: ${error.message}`);
       }
 
+      console.log('Applications2: RPC call successful, reloading applications...');
+
       // Reload applications to reflect the change.
       // loadApplications() will fetch the fresh state including updated admin_verdicts.
       await loadApplications();
+      
+      console.log('Applications2: Applications reloaded');
     } catch (err) {
       console.error('Applications2: Error in updateAdminVerdict function:', err);
       setError(err instanceof Error ? err.message : 'An unexpected error occurred while updating verdict.');
