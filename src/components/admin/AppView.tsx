@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle, XCircle, X, Search, X as ClearSearchIcon } from 'lucide-react';
+import { X, Search, X as ClearSearchIcon } from 'lucide-react';
 import { ImageModal } from '../shared/ImageModal';
 import { SmartImage } from '../shared/SmartImage';
 import { getFrontendUrl } from '../../lib/environment';
@@ -19,7 +19,7 @@ interface Application {
   user_email: string;
 }
 
-type ActionType = 'approve' | 'reject';
+
 
 const DISPLAY_QUESTIONS = {
   firstName: "First Name",
@@ -95,9 +95,6 @@ export function AppView() {
   const [totalApplicationsCount, setTotalApplicationsCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeSearchQuery, setActiveSearchQuery] = useState('');
-  const [showActionConfirmModal, setShowActionConfirmModal] = useState(false);
-  const [applicationToAction, setApplicationToAction] = useState<Application | null>(null);
-  const [actionType, setActionType] = useState<ActionType | null>(null);
 
   React.useEffect(() => {
     loadApplications();
@@ -382,39 +379,15 @@ export function AppView() {
               Submitted: {new Date(application.created_at).toISOString().slice(0, 10)}
             </p>
           </div>
-          <div className="flex gap-2 items-center">
-            {application.status === 'pending' && (
-              <>
-                <button
-                  onClick={() => initiateApplicationAction(application, 'approve')}
-                  disabled={loadingStates[application.id]}
-                  className={`p-2 rounded-lg bg-emerald-700 text-white hover:bg-emerald-800 transition-colors ${
-                    loadingStates[application.id] ? 'opacity-50 cursor-not-allowed' : ''
-                  }`}
-                >
-                  <CheckCircle className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => initiateApplicationAction(application, 'reject')}
-                  disabled={loadingStates[application.id]}
-                  className={`p-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors ${
-                    loadingStates[application.id] ? 'opacity-50 cursor-not-allowed' : ''
-                  }`}
-                >
-                  <XCircle className="w-4 h-4" />
-                </button>
-              </>
-            )}
-            <span className={`px-3 py-1 rounded-full text-xs font-medium font-mono ${
-              application.status === 'pending'
-                ? 'bg-yellow-100 text-yellow-800'
-                : application.status === 'approved'
-                ? 'bg-emerald-100 text-emerald-800'
-                : 'bg-rose-100 text-rose-800'
-            }`}>
-              {application.status}
-            </span>
-          </div>
+          <span className={`px-3 py-1 rounded-full text-xs font-medium font-mono ${
+            application.status === 'pending'
+              ? 'bg-yellow-100 text-yellow-800'
+              : application.status === 'approved'
+              ? 'bg-emerald-100 text-emerald-800'
+              : 'bg-rose-100 text-rose-800'
+          }`}>
+            {application.status}
+          </span>
         </div>
 
         {renderPhotoGrid(photos)}
@@ -493,26 +466,7 @@ export function AppView() {
 
   const totalPageCount = Math.ceil(totalApplicationsCount / ITEMS_PER_PAGE);
 
-  const initiateApplicationAction = (application: Application, action: ActionType) => {
-    setApplicationToAction(application);
-    setActionType(action);
-    setShowActionConfirmModal(true);
-  };
 
-  const handleConfirmAction = async () => {
-    if (!applicationToAction || !actionType) return;
-    
-    await updateApplicationStatus(applicationToAction.id, actionType === 'approve' ? 'approved' : 'rejected');
-    setShowActionConfirmModal(false);
-    setApplicationToAction(null);
-    setActionType(null);
-  };
-
-  const closeActionConfirmModal = () => {
-    setShowActionConfirmModal(false);
-    setApplicationToAction(null);
-    setActionType(null);
-  };
 
   if (loading) {
     return (
@@ -669,61 +623,7 @@ export function AppView() {
         />
       )}
 
-      {showActionConfirmModal && applicationToAction && actionType && (
-        <div 
-          className="fixed inset-0 bg-black/30 backdrop-blur-sm flex justify-center items-center z-50 p-4"
-          onClick={closeActionConfirmModal}
-        >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            className="bg-[var(--color-bg-surface)] p-6 md:p-8 rounded-xl shadow-2xl w-full max-w-md border border-[var(--color-border)]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-xl font-semibold text-[var(--color-text-primary)] mb-4 font-mono">
-              Confirm {actionType === 'approve' ? 'Approval' : 'Rejection'}
-            </h2>
-            <p className="text-[var(--color-text-secondary)] mb-4 font-mono">
-              Are you sure you want to {actionType === 'approve' ? 'approve' : 'reject'} the application for{' '}
-              <strong className="text-[var(--color-text-primary)]">{applicationToAction.user_email}</strong>?
-            </p>
-            {actionType === 'approve' && (
-              <p className="text-[var(--color-text-secondary)] mb-4 font-mono">
-                This will send an approval email to the applicant and grant them access to the platform.
-              </p>
-            )}
-            {actionType === 'reject' && (
-              <p className="text-[var(--color-text-secondary)] mb-4 font-mono">
-                This will send a rejection email to the applicant.
-              </p>
-            )}
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={closeActionConfirmModal}
-                className="px-4 py-2 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] transition-colors font-mono"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmAction}
-                disabled={loadingStates[applicationToAction.id]}
-                className={`px-4 py-2 rounded-lg transition-colors font-mono flex items-center justify-center ${
-                  actionType === 'approve'
-                    ? 'bg-emerald-700 text-white hover:bg-emerald-800'
-                    : 'bg-red-600 text-white hover:bg-red-700'
-                } ${loadingStates[applicationToAction.id] ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                {loadingStates[applicationToAction.id] ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                ) : (
-                  actionType === 'approve' ? 'Approve' : 'Reject'
-                )}
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
+
     </div>
   );
 }

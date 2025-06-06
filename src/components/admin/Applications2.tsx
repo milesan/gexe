@@ -457,88 +457,88 @@ export function Applications2() {
       )}
 
       <div className="flex flex-wrap gap-4 mb-6 items-center">
-        <div className="flex gap-4">
+        <div className="flex gap-2">
           <button
             onClick={() => handleFilterChange('all')}
-            className={`px-3 py-1.5 rounded-lg transition-colors text-sm whitespace-nowrap ${
+            className={`px-2.5 py-1 rounded-md transition-colors text-xs whitespace-nowrap font-mono ${
               filter === 'all'
-                ? 'bg-emerald-900 text-white font-mono'
-                : 'bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] border border-[var(--color-border)] font-mono'
+                ? 'bg-[var(--color-accent-primary)]/20 text-[var(--color-accent-primary)] border border-[var(--color-accent-primary)]/50'
+                : 'bg-[var(--color-bg-surface)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-surface-hover)] border border-[var(--color-border)]'
             }`}
           >
             All
           </button>
           <button
             onClick={() => handleFilterChange('pending')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors text-xs font-mono ${
               filter === 'pending'
-                ? 'bg-emerald-900 text-white font-mono'
-                : 'bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] border border-[var(--color-border)] font-mono'
+                ? 'bg-[var(--color-accent-primary)]/20 text-[var(--color-accent-primary)] border border-[var(--color-accent-primary)]/50'
+                : 'bg-[var(--color-bg-surface)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-surface-hover)] border border-[var(--color-border)]'
             }`}
           >
-            <Clock className="w-4 h-4" />
+            <Clock className="w-3 h-3" />
             Pending
           </button>
           <button
             onClick={() => handleFilterChange('approved')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors text-xs font-mono ${
               filter === 'approved'
-                ? 'bg-emerald-900 text-white font-mono'
-                : 'bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] border border-[var(--color-border)] font-mono'
+                ? 'bg-[var(--color-accent-primary)]/20 text-[var(--color-accent-primary)] border border-[var(--color-accent-primary)]/50'
+                : 'bg-[var(--color-bg-surface)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-surface-hover)] border border-[var(--color-border)]'
             }`}
           >
-            <CheckCircle className="w-4 h-4" />
+            <CheckCircle className="w-3 h-3" />
             Approved
           </button>
           <button
             onClick={() => handleFilterChange('rejected')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors text-xs font-mono ${
               filter === 'rejected'
-                ? 'bg-emerald-900 text-white font-mono'
-                : 'bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] border border-[var(--color-border)] font-mono'
+                ? 'bg-[var(--color-accent-primary)]/20 text-[var(--color-accent-primary)] border border-[var(--color-accent-primary)]/50'
+                : 'bg-[var(--color-bg-surface)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-surface-hover)] border border-[var(--color-border)]'
             }`}
           >
-            <XCircle className="w-4 h-4" />
+            <XCircle className="w-3 h-3" />
             Rejected
           </button>
         </div>
 
         <div className="flex items-center gap-2">
-            <label htmlFor="sort-order" className="text-sm font-mono text-[var(--color-text-secondary)] whitespace-nowrap">Sort by:</label>
+            <label htmlFor="sort-order" className="text-xs font-mono text-[var(--color-text-secondary)] whitespace-nowrap">Sort by:</label>
             <select
                 id="sort-order"
                 value={sortBy}
                 onChange={handleSortChange}
-                className="px-3 py-1.5 rounded-lg transition-colors text-sm bg-[var(--color-button-secondary-bg)] text-[var(--color-text-primary)] hover:bg-[var(--color-button-secondary-bg-hover)] border border-[var(--color-border)] font-mono focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)]"
+                className="px-2.5 py-1 rounded-md text-xs border border-[var(--color-border)] font-mono bg-gray-800 text-gray-200 focus:outline-none hover:bg-gray-700 cursor-pointer"
             >
                 <option value="created_at_desc">Submission Date (Newest)</option>
                 <option value="arrival_date_asc">Arrival Date (Soonest)</option>
             </select>
         </div>
 
-        <div className="flex gap-2 items-center flex-grow sm:flex-grow-0">
+        <div className="flex gap-1.5 items-center flex-grow sm:flex-grow-0">
           <input 
             type="text"
             placeholder="Search by email..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             onKeyPress={(e) => { if (e.key === 'Enter') handleSearch(); }}
-            className="px-3 py-1.5 border border-[var(--color-border)] rounded-lg bg-[var(--color-bg-input)] text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono text-sm flex-grow"
+            className="px-2.5 py-1 border border-[var(--color-border)] rounded-md bg-[var(--color-bg-input)] text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono text-xs flex-grow"
           />
           <button
             onClick={handleSearch}
-            className="p-2 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-primary)] hover:bg-[var(--color-button-secondary-bg-hover)] border border-[var(--color-border)]"
+            className="p-1.5 rounded-md bg-[var(--color-bg-surface)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-surface-hover)] border border-[var(--color-border)]"
             title="Search"
           >
-            <Search className="w-4 h-4" />
+            <Search className="w-3 h-3" />
           </button>
           {activeSearchQuery && (
             <button
               onClick={handleClearSearch}
-              className="p-2 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-error)] hover:bg-[var(--color-error-bg-hover)] border border-[var(--color-border)]"
+              className="p-1.5 rounded-md bg-[var(--color-bg-surface)] text-[var(--color-text-error)] hover:bg-[var(--color-error-bg-hover)] border border-[var(--color-border)]"
               title="Clear Search"
             >
-              <ClearSearchIcon className="w-4 h-4" />
+              <ClearSearchIcon className="w-3 h-3" />
             </button>
           )}
         </div>
@@ -558,236 +558,226 @@ export function Applications2() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="bg-[var(--color-bg-surface)] p-6 rounded-lg border border-[var(--color-border)] hover:border-[var(--color-border-hover)] transition-colors"
+              className="bg-[var(--color-bg-surface)] p-6 rounded-lg border border-[var(--color-border)] hover:border-[var(--color-border-hover)] transition-colors group"
             >
-              <div className="flex justify-between items-start">
-                <div>
-                  <button
-                    onClick={() => setSelectedApplication(application)}
-                    className="font-medium font-mono text-2xl text-[var(--color-text-primary)] hover:text-[var(--color-accent-primary)] transition-colors text-left group"
-                  >
-                    <span className="group-hover:underline">
-                      {(() => {
-                        if (questions.length > 0 && application.data) {
-                          const firstNameQuestion = questions.find(q => q.text === "First Name") as QuestionForAnswerRetrieval | undefined;
-                          const lastNameQuestion = questions.find(q => q.text === "Last Name") as QuestionForAnswerRetrieval | undefined;
-
-                          let firstName = '';
-                          let lastName = '';
-
-                          if (firstNameQuestion) {
-                            firstName = getAnswer(application.data, firstNameQuestion) || '';
-                          }
-                          if (lastNameQuestion) {
-                            lastName = getAnswer(application.data, lastNameQuestion) || '';
-                          }
-                          
-                          if (!firstNameQuestion) console.warn(`Applications2: Could not find 'First Name' question definition for app ${application.id}`);
-                          if (!lastNameQuestion) console.warn(`Applications2: Could not find 'Last Name' question definition for app ${application.id}`);
-
-                          return `${firstName} ${lastName}`.trim() || "Applicant Name Missing";
-                        }
-                        return "Applicant Name Unavailable";
-                      })()}
-                    </span>
-                  </button>
-                  <p className="text-sm text-[var(--color-text-secondary)] font-mono">
+              {/* HEADER: Name, Email, Status */}
+              <div className="flex justify-between items-center mb-4">
+                <div 
+                  className="cursor-pointer flex-1"
+                  onClick={() => setSelectedApplication(application)}
+                >
+                  <h3 className="font-medium font-mono text-xl text-[var(--color-text-primary)] hover:text-[var(--color-accent-primary)] transition-colors hover:underline">
+                    {(() => {
+                      if (questions.length > 0 && application.data) {
+                        const firstNameQuestion = questions.find(q => q.text === "First Name") as QuestionForAnswerRetrieval | undefined;
+                        const lastNameQuestion = questions.find(q => q.text === "Last Name") as QuestionForAnswerRetrieval | undefined;
+                        let firstName = firstNameQuestion ? getAnswer(application.data, firstNameQuestion) || '' : '';
+                        let lastName = lastNameQuestion ? getAnswer(application.data, lastNameQuestion) || '' : '';
+                        return `${firstName} ${lastName}`.trim() || "Applicant Name Missing";
+                      }
+                      return "Applicant Name Unavailable";
+                    })()}
+                  </h3>
+                  <p className="text-sm text-[var(--color-text-secondary)] font-mono mt-1">
                     {application.user_email}
                   </p>
-                  {(() => {
-                    // Display special weeks selection
-                    if (questions.length > 0 && application.data) {
-                      const specialWeeksQuestion = questions.find(q => q.id === "bfde0ed9-319a-45e4-8b0d-5c694ca2c850") as QuestionForAnswerRetrieval | undefined;
-                      
-                      if (specialWeeksQuestion) {
-                        const answer = getAnswer(application.data, specialWeeksQuestion);
-                        if (answer && answer !== "No <3") {
-                          // Extract just the program name (before the "|" character)
-                          const programName = answer.split(" | ")[0] || answer;
-                          return (
-                            <p className="text-xs text-[var(--color-accent-primary)] font-mono mt-1 bg-[var(--color-accent-primary)]/10 px-2 py-1 rounded inline-block">
-                              Special Week: {programName}
-                            </p>
-                          );
-                        } else if (answer === "No <3") {
-                          return (
-                            <p className="text-xs text-[var(--color-text-tertiary)] font-mono mt-1">
-                              No special week selected
-                            </p>
-                          );
-                        }
-                      }
-                    }
-                    return null;
-                  })()}
-                  <p className="text-xs text-[var(--color-text-tertiary)] font-mono mt-1">
-                    {application.is_whitelisted ? 'Sign up completed at:' : 'Submitted:'} {new Date(new Date(application.created_at).getTime() + 60 * 60 * 1000).toISOString().slice(0, 16).replace('T', ' ')}
-                  </p>
-                  {(() => {
-                    if (questions.length > 0 && application.data) {
-                      // NOTE: This relies on finding the question for the arrival date.
-                      // The question text might need adjustment if it's different in the database.
-                      const arrivalDateQuestion = questions.find(q => q.id === "ae5cc5b2-e2ec-4126-9e53-7ab7fc495324") as QuestionForAnswerRetrieval | undefined;
-                      if (arrivalDateQuestion) {
-                        const arrivalDate = getAnswer(application.data, arrivalDateQuestion);
-                        if (arrivalDate && typeof arrivalDate === 'string') {
-                          return (
-                            <p className="text-xs text-[var(--color-text-tertiary)] font-mono mt-1">
-                              Desired arrival: {arrivalDate.substring(0, 10)}
-                            </p>
-                          );
-                        }
-                      }
-                    }
-                    return null;
-                  })()}
-                  {application.last_sign_in_at && (
-                    <p className="text-xs text-[var(--color-text-tertiary)] font-mono mt-1">
-                      Last sign in: {new Date(new Date(application.last_sign_in_at).getTime() + 60 * 60 * 1000).toISOString().slice(0, 16).replace('T', ' ')}
-                    </p>
-                  )}
-                  {application.seen_welcome && (
-                    <p className="text-xs text-emerald-600 font-mono mt-1">
-                      Welcome Seen
-                    </p>
-                  )}
-                  <div className="flex gap-2 mt-1">
-                    {application.is_whitelisted ? (
-                      <span className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded font-mono">
-                        ✓ Whitelisted
-                      </span>
-                    ) : (
-                      <span className="text-xs bg-[var(--color-bg-surface)] text-[var(--color-text-tertiary)] border border-[var(--color-border)] px-2 py-0.5 rounded font-mono">
-                        Not Whitelisted
-                      </span>
-                    )}
-                  </div>
-                  {application.linked_name && (
-                    <div className="mt-2 text-sm text-[var(--color-text-secondary)] font-mono">
-                      Linked with: {application.linked_name} ({application.linked_email})
-                      {application.linked_application_id && (
-                        <span className="ml-2 text-emerald-600">• Applied</span>
-                      )}
-                    </div>
-                  )}
                 </div>
-
-                <div className="flex items-center gap-4">
-                  <button
-                    onClick={() => setSelectedApplication(application)}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-primary)] hover:bg-[var(--color-button-secondary-bg-hover)] transition-colors font-mono text-sm"
-                  >
-                    <Eye className="w-4 h-4" />
-                    View
-                  </button>
-
-                  {application.status === 'pending' && (
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => initiateApplicationAction(application, 'approve')}
-                        disabled={loadingStates[application.id]}
-                        className={`p-2 rounded-lg bg-emerald-700 text-white hover:bg-emerald-800 transition-colors ${
-                          loadingStates[application.id] ? 'opacity-50 cursor-not-allowed' : ''
-                        }`}
-                      >
-                        <CheckCircle className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => initiateApplicationAction(application, 'reject')}
-                        disabled={loadingStates[application.id]}
-                        className={`p-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors ${
-                          loadingStates[application.id] ? 'opacity-50 cursor-not-allowed' : ''
-                        }`}
-                      >
-                        <XCircle className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
-
-                  <button
-                    onClick={() => openDeleteConfirmModal(application)}
-                    disabled={loadingStates[application.id]}
-                    className={`p-2 rounded-lg bg-slate-700 text-white hover:bg-slate-800 transition-colors ${
-                      loadingStates[application.id] ? 'opacity-50 cursor-not-allowed' : ''
-                    }`}
-                    title="Delete User & Application"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium font-mono ${
+                <span className={`px-3 py-1.5 rounded-full text-xs font-medium font-mono whitespace-nowrap ml-4 ${
                     application.status === 'pending'
                       ? 'bg-yellow-100 text-yellow-800'
                       : application.status === 'approved'
                       ? 'bg-emerald-100 text-emerald-800'
                       : 'bg-rose-100 text-rose-800'
                   }`}>
-                    {application.status}
-                  </span>
-                </div>
+                    {application.status.toUpperCase()}
+                </span>
               </div>
 
-              {/* Admin Verdict Section */}
-              {isAdmin && (
-                <div className="mt-4 pt-4 border-t border-[var(--color-border)]">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-medium text-[var(--color-text-primary)] font-mono">Admin Verdicts</h4>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => updateAdminVerdict(application.id, 'thumbs_up')}
-                        disabled={loadingStates[`${application.id}_verdict`]}
-                        className={`p-2 rounded-lg transition-colors font-mono text-xs flex items-center gap-1 ${
-                          application.admin_verdicts?.[session?.user?.email || ''] === 'thumbs_up'
-                            ? 'bg-emerald-700 text-white'
-                            : 'bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-emerald-600 hover:text-white'
-                        } ${
-                          loadingStates[`${application.id}_verdict`] ? 'opacity-50 cursor-not-allowed' : ''
-                        }`}
-                        title="Thumbs Up"
-                      >
-                        <ThumbsUp className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => updateAdminVerdict(application.id, 'thumbs_down')}
-                        disabled={loadingStates[`${application.id}_verdict`]}
-                        className={`p-2 rounded-lg transition-colors font-mono text-xs flex items-center gap-1 ${
-                          application.admin_verdicts?.[session?.user?.email || ''] === 'thumbs_down'
-                            ? 'bg-red-600 text-white'
-                            : 'bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-red-500 hover:text-white'
-                        } ${
-                          loadingStates[`${application.id}_verdict`] ? 'opacity-50 cursor-not-allowed' : ''
-                        }`}
-                        title="Thumbs Down"
-                      >
-                        <ThumbsDown className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
+              {/* MAIN CONTENT: 2x2 grid on left, actions on right */}
+              <div className="flex gap-6 mb-4">
+                {/* Left: Details Grid */}
+                <div className="grid grid-cols-2 gap-4 flex-1">
+                {/* Submission Date */}
+                <div>
+                  <p className="text-xs text-[var(--color-text-tertiary)] font-mono mb-1">Submitted</p>
+                  <p className="text-sm text-[var(--color-text-primary)] font-mono">
+                    {new Date(new Date(application.created_at).getTime() + 60 * 60 * 1000).toISOString().slice(0, 10)}
+                  </p>
+                </div>
 
-                  {/* Display all admin verdicts */}
-                  {application.admin_verdicts && Object.keys(application.admin_verdicts).length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {Object.entries(application.admin_verdicts).map(([email, verdict]) => (
-                        <div
-                          key={email}
-                          className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-mono ${
-                            verdict === 'thumbs_up'
-                              ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
-                              : 'bg-red-100 text-red-700 border border-red-200'
-                          }`}
-                        >
-                          {verdict === 'thumbs_up' ? (
-                            <ThumbsUp className="w-3 h-3" />
-                          ) : (
-                            <ThumbsDown className="w-3 h-3" />
-                          )}
-                          <span>{getAdminName(email)}</span>
+                {/* Desired Arrival */}
+                {(() => {
+                  if (questions.length > 0 && application.data) {
+                    const arrivalDateQuestion = questions.find(q => q.id === "ae5cc5b2-e2ec-4126-9e53-7ab7fc495324") as QuestionForAnswerRetrieval | undefined;
+                    const arrivalDate = arrivalDateQuestion ? getAnswer(application.data, arrivalDateQuestion) : null;
+                    if (arrivalDate && typeof arrivalDate === 'string') {
+                      return (
+                        <div>
+                          <p className="text-xs text-[var(--color-text-tertiary)] font-mono mb-1">Wants to arrive</p>
+                          <p className="text-sm text-[var(--color-text-primary)] font-mono">{arrivalDate.substring(0, 10)}</p>
                         </div>
-                      ))}
+                      );
+                    }
+                  }
+                  return (
+                    <div>
+                      <p className="text-xs text-[var(--color-text-tertiary)] font-mono mb-1">Wants to arrive</p>
+                      <p className="text-sm text-[var(--color-text-secondary)] font-mono">Not specified</p>
                     </div>
+                  );
+                })()}
+
+                {/* Last Activity */}
+                <div>
+                  <p className="text-xs text-[var(--color-text-tertiary)] font-mono mb-1">Last active</p>
+                  {application.last_sign_in_at ? (
+                    <p className="text-sm text-[var(--color-text-primary)] font-mono">
+                      {new Date(new Date(application.last_sign_in_at).getTime() + 60 * 60 * 1000).toISOString().slice(0, 10)}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-[var(--color-text-secondary)] font-mono">Never</p>
                   )}
                 </div>
-              )}
+                </div>
+
+                {/* Right: Action Buttons (only for pending) */}
+                {application.status === 'pending' && (
+                  <div className="flex flex-col gap-3 min-w-[120px]">
+                    <button
+                      onClick={() => initiateApplicationAction(application, 'approve')}
+                      disabled={loadingStates[application.id]}
+                      className={`flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/40 hover:text-emerald-300 transition-colors font-mono text-sm border border-emerald-500/30 ${
+                        loadingStates[application.id] ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
+                    >
+                      <CheckCircle className="w-4 h-4" />
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => initiateApplicationAction(application, 'reject')}
+                      disabled={loadingStates[application.id]}
+                      className={`flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/40 hover:text-red-300 transition-colors font-mono text-sm border border-red-400/30 ${
+                        loadingStates[application.id] ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
+                    >
+                      <XCircle className="w-4 h-4" />
+                      Reject
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Comprehensive Status Bar */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                {/* Whitelist Status */}
+                {application.is_whitelisted ? (
+                  <span className="inline-flex items-center px-2 py-1 rounded text-xs bg-emerald-900/30 text-emerald-400 border border-emerald-700/50 font-mono">
+                    ✓ Whitelisted
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center px-2 py-1 rounded text-xs bg-slate-800/50 text-slate-400 border border-slate-600/50 font-mono">
+                    Not whitelisted
+                  </span>
+                )}
+
+                {/* Special Week Badge */}
+                {(() => {
+                  const specialWeeksQuestion = questions.find(q => q.id === "bfde0ed9-319a-45e4-8b0d-5c694ca2c850") as QuestionForAnswerRetrieval | undefined;
+                  if (specialWeeksQuestion) {
+                    const answer = getAnswer(application.data, specialWeeksQuestion);
+                    if (answer && answer !== "No <3") {
+                      const programName = answer.split(" | ")[0] || answer;
+                      return (
+                        <span className="inline-flex items-center px-2 py-1 rounded text-xs bg-amber-900/30 text-amber-400 border border-amber-700/50 font-mono">
+                          🌟 {programName}
+                        </span>
+                      );
+                    }
+                  }
+                  return null;
+                })()}
+
+                {/* Seen Welcome */}
+                {application.seen_welcome && (
+                  <span className="inline-flex items-center px-2 py-1 rounded text-xs bg-emerald-900/30 text-emerald-400 border border-emerald-700/50 font-mono">
+                    ✓ Seen welcome
+                  </span>
+                )}
+
+                {/* Linked Status */}
+                {application.linked_name && (
+                  <span className="inline-flex items-center px-2 py-1 rounded text-xs bg-blue-900/30 text-blue-400 border border-blue-700/50 font-mono">
+                    👥 Linked with {application.linked_name}
+                  </span>
+                )}
+              </div>
+
+              {/* FOOTER: Admin Verdicts (minimized) + Hidden Delete */}
+              <div className="pt-4 border-t border-[var(--color-border)] flex justify-between items-center">
+                {/* Admin Verdicts - Compact */}
+                {isAdmin && (
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1">
+                      {application.admin_verdicts && Object.keys(application.admin_verdicts).length > 0 ? (
+                        Object.entries(application.admin_verdicts).map(([email, verdict]) => (
+                          <div
+                            key={email}
+                                                       className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-mono ${
+                             verdict === 'thumbs_up'
+                               ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-700/50'
+                               : 'bg-red-900/30 text-red-400 border border-red-700/50'
+                           }`}
+                            title={`${getAdminName(email)}: ${verdict === 'thumbs_up' ? 'Thumbs up' : 'Thumbs down'}`}
+                          >
+                            {verdict === 'thumbs_up' ? <ThumbsUp className="w-3 h-3" /> : <ThumbsDown className="w-3 h-3" />}
+                            <span className="hidden sm:inline">{getAdminName(email)}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <span className="text-xs text-[var(--color-text-tertiary)] font-mono">No admin verdicts</span>
+                      )}
+                    </div>
+                    <div className="flex gap-1">
+                                             <button
+                         onClick={() => updateAdminVerdict(application.id, 'thumbs_up')}
+                         disabled={loadingStates[`${application.id}_verdict`]}
+                         className={`p-1.5 rounded transition-colors border ${
+                           application.admin_verdicts?.[session?.user?.email || ''] === 'thumbs_up'
+                             ? 'bg-emerald-600/80 text-white border-emerald-500/50'
+                             : 'bg-slate-700/50 text-slate-400 border-slate-600/50 hover:bg-emerald-600/60 hover:text-white hover:border-emerald-500/50'
+                         } ${loadingStates[`${application.id}_verdict`] ? 'opacity-50 cursor-not-allowed' : ''}`}
+                         title="Thumbs Up"
+                       >
+                         <ThumbsUp className="w-3 h-3" />
+                       </button>
+                       <button
+                         onClick={() => updateAdminVerdict(application.id, 'thumbs_down')}
+                         disabled={loadingStates[`${application.id}_verdict`]}
+                         className={`p-1.5 rounded transition-colors border ${
+                           application.admin_verdicts?.[session?.user?.email || ''] === 'thumbs_down'
+                             ? 'bg-red-500/80 text-white border-red-400/50'
+                             : 'bg-slate-700/50 text-slate-400 border-slate-600/50 hover:bg-red-500/60 hover:text-white hover:border-red-400/50'
+                         } ${loadingStates[`${application.id}_verdict`] ? 'opacity-50 cursor-not-allowed' : ''}`}
+                         title="Thumbs Down"
+                       >
+                         <ThumbsDown className="w-3 h-3" />
+                       </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Delete Button - Hidden until hover */}
+                <button
+                  onClick={() => openDeleteConfirmModal(application)}
+                  disabled={loadingStates[application.id]}
+                  className={`opacity-0 group-hover:opacity-100 p-2 rounded-lg bg-slate-600 text-white hover:bg-red-600 transition-all ${
+                    loadingStates[application.id] ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
+                  title="Delete User & Application"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </motion.div>
           ))}
         </AnimatePresence>
