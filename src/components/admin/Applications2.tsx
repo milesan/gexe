@@ -25,6 +25,7 @@ interface Application {
   seen_welcome?: boolean;
   is_whitelisted?: boolean;
   admin_verdicts?: Record<string, string>;
+  credits?: number;
 }
 
 const ITEMS_PER_PAGE = 15;
@@ -60,6 +61,7 @@ export function Applications2() {
   const [totalApplicationsCount, setTotalApplicationsCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeSearchQuery, setActiveSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState('created_at_desc');
   // Add new state variables for action confirmation
   const [showActionConfirmModal, setShowActionConfirmModal] = useState(false);
   const [applicationToAction, setApplicationToAction] = useState<Application | null>(null);
@@ -114,10 +116,9 @@ export function Applications2() {
           linked_application_id,
           last_sign_in_at,
           raw_user_meta_data,
-          admin_verdicts
-        `, { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .range(from, to);
+          admin_verdicts,
+          credits
+        `, { count: 'exact' });
 
       if (filter !== 'all') {
         query = query.eq('status', filter);
@@ -126,6 +127,22 @@ export function Applications2() {
       if (activeSearchQuery) {
         query = query.ilike('user_email', `%${activeSearchQuery}%`);
       }
+      
+      if (sortBy === 'arrival_date_asc') {
+        // NOTE: This relies on finding the question for the arrival date.
+        // The question text might need adjustment if it's different in the database.
+        const arrivalDateQuestion = questions.find(q => q.id === "ae5cc5b2-e2ec-4126-9e53-7ab7fc495324");
+        if (arrivalDateQuestion) {
+            query = query.order(`data->>${arrivalDateQuestion.id}`, { ascending: true, nullsFirst: false });
+        } else {
+            console.warn("Applications2: Could not find 'Desired Arrival Date' question. Defaulting to sort by submission date.");
+            query = query.order('created_at', { ascending: false });
+        }
+      } else { // 'created_at_desc'
+          query = query.order('created_at', { ascending: false });
+      }
+
+      query = query.range(from, to);
 
       const { data, error: queryError, count } = await query;
 
@@ -135,6 +152,12 @@ export function Applications2() {
 
       const processedApplications = (data || []).map(app => {
         const seenWelcome = !!app.raw_user_meta_data?.has_seen_welcome;
+        console.log('Applications2: Processing app', {
+          id: app.id,
+          email: app.user_email,
+          admin_verdicts: app.admin_verdicts,
+          credits: app.credits
+        });
         return {
           ...app,
           seen_welcome: seenWelcome,
@@ -163,7 +186,7 @@ export function Applications2() {
     } finally {
       setLoading(false);
     }
-  }, [filter, currentPage, activeSearchQuery, supabase]);
+  }, [filter, currentPage, activeSearchQuery, supabase, sortBy, questions]);
 
   const debouncedLoadApplications = useCallback(debounce(loadApplications, 500), [loadApplications]);
 
@@ -240,25 +263,64 @@ export function Applications2() {
     }
   };
 
-  const updateAdminVerdict = async (applicationId: string, verdict: 'thumbs_up' | 'thumbs_down') => {
+  const updateAdminVerdict = async (applicationId: string, clickedVerdict: 'thumbs_up' | 'thumbs_down') => {
+    const adminEmail = session?.user?.email;
+    if (!adminEmail) {
+      setError("User session not found. Cannot update verdict.");
+      console.error("Applications2: Admin email not found in session for verdict update.");
+      return;
+    }
+
+    const application = applications.find(app => app.id === applicationId);
+    if (!application) {
+      setError("Application not found. Cannot update verdict.");
+      console.error("Applications2: Application not found for verdict update:", applicationId);
+      return;
+    }
+
+    const currentAdminSavedVerdict = application.admin_verdicts?.[adminEmail];
+    let newVerdictForRPC: 'thumbs_up' | 'thumbs_down' | 'remove' = clickedVerdict;
+
+    if (currentAdminSavedVerdict === clickedVerdict) {
+      newVerdictForRPC = 'remove'; // This signals to the RPC to remove the admin's verdict
+    }
+
     try {
       setLoadingStates(prev => ({ ...prev, [`${applicationId}_verdict`]: true }));
 
+      console.log('Applications2: Before RPC call', {
+        applicationId,
+        adminEmail,
+        currentVerdict: currentAdminSavedVerdict,
+        clickedVerdict,
+        newVerdictForRPC,
+        currentAdminVerdicts: application.admin_verdicts
+      });
+
+      // The RPC 'update_admin_verdict' needs to handle p_verdict = 'remove'
+      // as an instruction to remove the admin's verdict for this application.
       const { error } = await supabase.rpc('update_admin_verdict', {
         p_application_id: applicationId,
-        p_verdict: verdict
+        p_verdict: newVerdictForRPC // This can now be 'thumbs_up', 'thumbs_down', or 'remove'
       });
 
       if (error) {
-        console.error('Error updating admin verdict:', error);
-        throw error;
+        console.error('Applications2: Error updating admin verdict via RPC:', error);
+        // It might be useful to provide more specific error messages if the RPC returns structured errors
+        throw new Error(`Failed to update verdict: ${error.message}`);
       }
 
-      // Reload applications to show updated verdicts
+      console.log('Applications2: RPC call successful, reloading applications...');
+
+      // Reload applications to reflect the change.
+      // loadApplications() will fetch the fresh state including updated admin_verdicts.
       await loadApplications();
+      
+      console.log('Applications2: Applications reloaded');
     } catch (err) {
-      console.error('Error updating verdict:', err);
-      setError(err instanceof Error ? err.message : 'Failed to update verdict');
+      console.error('Applications2: Error in updateAdminVerdict function:', err);
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred while updating verdict.');
+      // Optionally, revert optimistic UI updates here if any were made, though loadApplications() should correct it.
     } finally {
       setLoadingStates(prev => ({ ...prev, [`${applicationId}_verdict`]: false }));
     }
@@ -341,6 +403,11 @@ export function Applications2() {
   const handleClearSearch = () => {
     setSearchTerm('');
     setActiveSearchQuery('');
+    setCurrentPage(1);
+  };
+
+  const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSortBy(e.target.value);
     setCurrentPage(1);
   };
 
@@ -435,6 +502,19 @@ export function Applications2() {
             <XCircle className="w-4 h-4" />
             Rejected
           </button>
+        </div>
+
+        <div className="flex items-center gap-2">
+            <label htmlFor="sort-order" className="text-sm font-mono text-[var(--color-text-secondary)] whitespace-nowrap">Sort by:</label>
+            <select
+                id="sort-order"
+                value={sortBy}
+                onChange={handleSortChange}
+                className="px-3 py-1.5 rounded-lg transition-colors text-sm bg-[var(--color-button-secondary-bg)] text-[var(--color-text-primary)] hover:bg-[var(--color-button-secondary-bg-hover)] border border-[var(--color-border)] font-mono focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)]"
+            >
+                <option value="created_at_desc">Submission Date (Newest)</option>
+                <option value="arrival_date_asc">Arrival Date (Soonest)</option>
+            </select>
         </div>
 
         <div className="flex gap-2 items-center flex-grow sm:flex-grow-0">
@@ -544,6 +624,24 @@ export function Applications2() {
                   <p className="text-xs text-[var(--color-text-tertiary)] font-mono mt-1">
                     {application.is_whitelisted ? 'Sign up completed at:' : 'Submitted:'} {new Date(new Date(application.created_at).getTime() + 60 * 60 * 1000).toISOString().slice(0, 16).replace('T', ' ')}
                   </p>
+                  {(() => {
+                    if (questions.length > 0 && application.data) {
+                      // NOTE: This relies on finding the question for the arrival date.
+                      // The question text might need adjustment if it's different in the database.
+                      const arrivalDateQuestion = questions.find(q => q.id === "ae5cc5b2-e2ec-4126-9e53-7ab7fc495324") as QuestionForAnswerRetrieval | undefined;
+                      if (arrivalDateQuestion) {
+                        const arrivalDate = getAnswer(application.data, arrivalDateQuestion);
+                        if (arrivalDate && typeof arrivalDate === 'string') {
+                          return (
+                            <p className="text-xs text-[var(--color-text-tertiary)] font-mono mt-1">
+                              Desired arrival: {arrivalDate.substring(0, 10)}
+                            </p>
+                          );
+                        }
+                      }
+                    }
+                    return null;
+                  })()}
                   {application.last_sign_in_at && (
                     <p className="text-xs text-[var(--color-text-tertiary)] font-mono mt-1">
                       Last sign in: {new Date(new Date(application.last_sign_in_at).getTime() + 60 * 60 * 1000).toISOString().slice(0, 16).replace('T', ' ')}
