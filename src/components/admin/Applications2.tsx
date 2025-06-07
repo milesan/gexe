@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Eye, CheckCircle, XCircle, Clock, Trash2, Search, X as ClearSearchIcon, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Eye, CheckCircle, XCircle, Clock, Trash2, Search, X as ClearSearchIcon, ThumbsUp, ThumbsDown, Euro } from 'lucide-react';
 import { ApplicationDetails } from './ApplicationDetails';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getFrontendUrl } from '../../lib/environment';
@@ -9,6 +9,7 @@ import type { QuestionForAnswerRetrieval } from '../../lib/old_question_mapping'
 import { usePagination, DOTS } from '../../hooks/usePagination';
 import { useSession } from '../../hooks/useSession';
 import { useUserPermissions } from '../../hooks/useUserPermissions';
+import { ManageCreditsModal } from './ManageCreditsModal';
 
 interface Application {
   id: string;
@@ -66,6 +67,8 @@ export function Applications2() {
   const [showActionConfirmModal, setShowActionConfirmModal] = useState(false);
   const [applicationToAction, setApplicationToAction] = useState<Application | null>(null);
   const [actionType, setActionType] = useState<ActionType | null>(null);
+  const [showManageCreditsModal, setShowManageCreditsModal] = useState(false);
+  const [selectedApplicationForCredits, setSelectedApplicationForCredits] = useState<Application | null>(null);
 
   const debounce = <F extends (...args: any[]) => any>(func: F, waitFor: number) => {
     let timeout: ReturnType<typeof setTimeout> | null = null;
@@ -440,6 +443,20 @@ export function Applications2() {
     setActionType(null);
   };
 
+  const handleManageCredits = (application: Application) => {
+    setSelectedApplicationForCredits(application);
+    setShowManageCreditsModal(true);
+  };
+
+  const handleCreditsUpdated = (userId: string, newBalance: number) => {
+    // Update the application in the local state
+    setApplications(prev => prev.map(app => 
+      app.user_id === userId 
+        ? { ...app, credits: newBalance }
+        : app
+    ));
+  };
+
   if (loading && applications.length === 0) {
     return (
       <div className="flex justify-center items-center p-12">
@@ -597,11 +614,17 @@ export function Applications2() {
               <div className="flex gap-6 mb-4">
                 {/* Left: Details Grid */}
                 <div className="grid grid-cols-2 gap-4 flex-1">
-                {/* Submission Date */}
+                {/* Submission Date & Time */}
                 <div>
                   <p className="text-xs text-[var(--color-text-tertiary)] font-mono mb-1">Submitted</p>
                   <p className="text-sm text-[var(--color-text-primary)] font-mono">
-                    {new Date(new Date(application.created_at).getTime() + 60 * 60 * 1000).toISOString().slice(0, 10)}
+                    {new Date(new Date(application.created_at).getTime() + 60 * 60 * 1000).toLocaleString('en-GB', {
+                      year: 'numeric',
+                      month: '2-digit', 
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
                   </p>
                 </div>
 
@@ -632,7 +655,13 @@ export function Applications2() {
                   <p className="text-xs text-[var(--color-text-tertiary)] font-mono mb-1">Last active</p>
                   {application.last_sign_in_at ? (
                     <p className="text-sm text-[var(--color-text-primary)] font-mono">
-                      {new Date(new Date(application.last_sign_in_at).getTime() + 60 * 60 * 1000).toISOString().slice(0, 10)}
+                      {new Date(new Date(application.last_sign_in_at).getTime() + 60 * 60 * 1000).toLocaleString('en-GB', {
+                        year: 'numeric',
+                        month: '2-digit', 
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
                     </p>
                   ) : (
                     <p className="text-sm text-[var(--color-text-secondary)] font-mono">Never</p>
@@ -680,6 +709,29 @@ export function Applications2() {
                   </span>
                 )}
 
+                {/* Credits Badge - Clickable for admins if they have credits, or always clickable for admins to add credits */}
+                {isAdmin && application.credits !== undefined ? (
+                  <button
+                    onClick={() => handleManageCredits(application)}
+                    className="inline-flex items-center px-2 py-1 rounded text-xs bg-slate-900/30 text-slate-400 border border-slate-700/50 font-mono hover:bg-slate-800/50 hover:text-slate-300 transition-colors cursor-pointer"
+                    title="Click to manage credits"
+                  >
+                    € {application.credits} credits
+                  </button>
+                ) : application.credits !== undefined && application.credits > 0 ? (
+                  <span className="inline-flex items-center px-2 py-1 rounded text-xs bg-slate-900/30 text-slate-400 border border-slate-700/50 font-mono">
+                    € {application.credits} credits
+                  </span>
+                ) : isAdmin ? (
+                  <button
+                    onClick={() => handleManageCredits(application)}
+                    className="inline-flex items-center px-2 py-1 rounded text-xs bg-slate-900/30 text-slate-400 border border-slate-700/50 font-mono hover:bg-slate-800/50 hover:text-slate-300 transition-colors cursor-pointer"
+                    title="Click to manage credits"
+                  >
+                    € 0 credits
+                  </button>
+                ) : null}
+
                 {/* Special Week Badge */}
                 {(() => {
                   const specialWeeksQuestion = questions.find(q => q.id === "bfde0ed9-319a-45e4-8b0d-5c694ca2c850") as QuestionForAnswerRetrieval | undefined;
@@ -719,20 +771,40 @@ export function Applications2() {
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-1">
                       {application.admin_verdicts && Object.keys(application.admin_verdicts).length > 0 ? (
-                        Object.entries(application.admin_verdicts).map(([email, verdict]) => (
-                          <div
-                            key={email}
-                                                       className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-mono ${
-                             verdict === 'thumbs_up'
-                               ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-700/50'
-                               : 'bg-red-900/30 text-red-400 border border-red-700/50'
-                           }`}
-                            title={`${getAdminName(email)}: ${verdict === 'thumbs_up' ? 'Thumbs up' : 'Thumbs down'}`}
-                          >
-                            {verdict === 'thumbs_up' ? <ThumbsUp className="w-3 h-3" /> : <ThumbsDown className="w-3 h-3" />}
-                            <span className="hidden sm:inline">{getAdminName(email)}</span>
-                          </div>
-                        ))
+                        (() => {
+                          const currentAdminEmail = session?.user?.email || '';
+                          const hasCurrentAdminVoted = application.admin_verdicts[currentAdminEmail];
+                          
+                          if (hasCurrentAdminVoted) {
+                            // Show full verdicts if current admin has voted
+                            return Object.entries(application.admin_verdicts).map(([email, verdict]) => (
+                              <div
+                                key={email}
+                                className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-mono ${
+                                  verdict === 'thumbs_up'
+                                    ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-700/50'
+                                    : 'bg-red-900/30 text-red-400 border border-red-700/50'
+                                }`}
+                                title={`${getAdminName(email)}: ${verdict === 'thumbs_up' ? 'Thumbs up' : 'Thumbs down'}`}
+                              >
+                                {verdict === 'thumbs_up' ? <ThumbsUp className="w-3 h-3" /> : <ThumbsDown className="w-3 h-3" />}
+                                <span className="hidden sm:inline">{getAdminName(email)}</span>
+                              </div>
+                            ));
+                          } else {
+                            // Only show who has voted, not what they voted
+                            return Object.keys(application.admin_verdicts).map((email) => (
+                              <div
+                                key={email}
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-mono bg-slate-700/50 text-slate-400 border border-slate-600/50"
+                                title={`${getAdminName(email)} has voted`}
+                              >
+                                <span className="hidden sm:inline">{getAdminName(email)} voted</span>
+                                <span className="sm:hidden">✓</span>
+                              </div>
+                            ));
+                          }
+                        })()
                       ) : (
                         <span className="text-xs text-[var(--color-text-tertiary)] font-mono">No admin verdicts</span>
                       )}
@@ -766,17 +838,19 @@ export function Applications2() {
                   </div>
                 )}
 
-                {/* Delete Button - Hidden until hover */}
-                <button
-                  onClick={() => openDeleteConfirmModal(application)}
-                  disabled={loadingStates[application.id]}
-                  className={`opacity-0 group-hover:opacity-100 p-2 rounded-lg bg-slate-600 text-white hover:bg-red-600 transition-all ${
-                    loadingStates[application.id] ? 'opacity-50 cursor-not-allowed' : ''
-                  }`}
-                  title="Delete User & Application"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                {/* Delete Button - Hidden until hover, now isolated */}
+                <div>
+                  <button
+                    onClick={() => openDeleteConfirmModal(application)}
+                    disabled={loadingStates[application.id]}
+                    className={`opacity-0 group-hover:opacity-100 p-2 rounded-lg bg-slate-600 text-white hover:bg-red-600 transition-all ${
+                      loadingStates[application.id] ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
+                    title="Delete User & Application"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </motion.div>
           ))}
@@ -981,6 +1055,18 @@ export function Applications2() {
             </div>
           </motion.div>
         </div>
+      )}
+
+      {/* Add Manage Credits Modal */}
+      {showManageCreditsModal && selectedApplicationForCredits && (
+        <ManageCreditsModal
+          application={selectedApplicationForCredits}
+          onClose={() => {
+            setShowManageCreditsModal(false);
+            setSelectedApplicationForCredits(null);
+          }}
+          onCreditsUpdated={handleCreditsUpdated}
+        />
       )}
     </div>
   );
