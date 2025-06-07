@@ -317,8 +317,8 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
                 {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               </button> */}
               
-              {/* Credits Display */}
-              {userCredits > 0 && (
+              {/* Credits Display - DISABLED: Credit system not ready yet */}
+              {/* {userCredits > 0 && (
                 <HoverClickPopover
                   triggerContent={
                     <div className="flex items-center gap-2 px-3 py-1.5 bg-surface-dark border border-shade-1 rounded-sm">
@@ -337,7 +337,7 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
                     </div>
                   }
                 />
-              )}
+              )} */}
               
               <nav className="flex gap-6 items-center">
                 <button
@@ -389,8 +389,8 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
                 }
               </button> */}
               
-              {/* Credits Display */}
-              {userCredits > 0 && (
+              {/* Credits Display - DISABLED: Credit system not ready yet */}
+              {/* {userCredits > 0 && (
                 <HoverClickPopover
                   triggerContent={
                     <div className="flex items-center gap-2 py-3">
@@ -409,7 +409,7 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
                     </div>
                   }
                 />
-              )}
+              )} */}
               
               <button
                 onClick={() => handleHeaderNavigation('/my-bookings')}
