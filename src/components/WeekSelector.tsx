@@ -374,7 +374,7 @@ export function WeekSelector({
     <>
       <div className={clsx(
         'grid gap-1.5 xs:gap-2 sm:gap-3 md:gap-4',
-        'grid-cols-1 xxs:grid-cols-2 xs:grid-cols-3 sm:grid-cols-4'
+        'grid-cols-1 xxs:grid-cols-2 xs:grid-cols-3 sm:grid-cols-5'
       )}>
         {filteredWeeks.map((week, index) => {
           // Determine if content should be visible (selectable or admin view)
