@@ -23,6 +23,7 @@ import { DiscountModal } from './DiscountModal';
 import { CancellationPolicyModal } from './CancellationPolicyModal';
 import { formatInTimeZone } from 'date-fns-tz';
 import { useUserPermissions } from '../hooks/useUserPermissions';
+import { useCredits } from '../hooks/useCredits';
 
 // Define the season breakdown type
 export interface SeasonBreakdown {
@@ -238,6 +239,12 @@ export function BookingSummary({
   const [discountError, setDiscountError] = useState<string | null>(null);
   const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
   // --- End Discount Code State ---
+
+  // --- State for Credits ---
+  const [creditsToUse, setCreditsToUse] = useState<number>(0);
+  const [useCredits, setUseCredits] = useState<boolean>(true); // Default to using credits
+  const { credits: availableCredits, loading: creditsLoading, refresh: refreshCredits } = useCredits();
+  // --- End Credits State ---
 
   // State for internally calculated season breakdown
   const [seasonBreakdownState, setSeasonBreakdownState] = useState<SeasonBreakdown | undefined>(initialSeasonBreakdown);
@@ -526,6 +533,13 @@ export function BookingSummary({
     return false;
   }, [selectedWeeks]);
 
+  // Calculate final amount after credits
+  const finalAmountAfterCredits = useMemo(() => {
+    const afterCredits = Math.max(0, pricing.totalAmount - creditsToUse);
+    console.log('[BookingSummary] Final amount after credits:', afterCredits, '(total:', pricing.totalAmount, ', credits:', creditsToUse, ')');
+    return afterCredits;
+  }, [pricing.totalAmount, creditsToUse]);
+
   // Always update the check-in date when selectedWeeks changes
   useEffect(() => {
     console.log('[BookingSummary] useEffect[selectedWeeks] - Updating check-in date...');
@@ -579,6 +593,19 @@ export function BookingSummary({
       console.log('[BookingSummary] STATE CHANGE: foodContribution updated:', foodContribution);
     }
   }, [foodContribution]);
+
+  // Auto-set credits to use when pricing or available credits change
+  useEffect(() => {
+    if (useCredits && !creditsLoading && pricing.totalAmount > 0) {
+      // Automatically set credits to use (min of available credits or total amount)
+      const maxCreditsToUse = Math.min(availableCredits, Math.floor(pricing.totalAmount));
+      setCreditsToUse(maxCreditsToUse);
+      console.log('[BookingSummary] Auto-setting credits to use:', maxCreditsToUse, 'from available:', availableCredits);
+    } else if (!useCredits) {
+      setCreditsToUse(0);
+      console.log('[BookingSummary] Credits disabled, setting to 0');
+    }
+  }, [pricing.totalAmount, availableCredits, useCredits, creditsLoading]);
 
   // Validate that a check-in date is selected
   const validateCheckInDate = useCallback(() => {
@@ -730,6 +757,12 @@ export function BookingSummary({
             console.log("[Booking Summary] Adding applied discount code to booking payload:", appliedDiscount.code);
         }
 
+        // Add credits used if any
+        if (creditsToUse > 0) {
+            bookingPayload.creditsUsed = creditsToUse;
+            console.log("[Booking Summary] Adding credits used to booking payload:", creditsToUse);
+        }
+
         const booking = await bookingService.createBooking(bookingPayload);
 
         console.log("[Booking Summary] Booking created:", booking);
@@ -757,7 +790,7 @@ export function BookingSummary({
       setError('An error occurred. Please try again.');
       setIsBooking(false);
     }
-  }, [selectedAccommodation, selectedWeeks, selectedCheckInDate, navigate, pricing.totalAmount, appliedDiscount]);
+  }, [selectedAccommodation, selectedWeeks, selectedCheckInDate, navigate, pricing.totalAmount, appliedDiscount, creditsToUse]);
 
   const handleConfirmClick = async () => {
     console.log('[Booking Summary] Confirm button clicked.');
@@ -981,7 +1014,7 @@ export function BookingSummary({
                   ? 0.50 // Force 0.50 if it's the test type (Stripe minimum)
                   : testPaymentAmount !== null && isAdmin 
                     ? testPaymentAmount // Otherwise use admin test amount if set
-                    : pricing.totalAmount // Otherwise use the calculated total
+                    : finalAmountAfterCredits // Use amount after credits
                 }
                 description={`${selectedAccommodation?.title || 'Accommodation'} for ${pricing.totalNights} nights${selectedCheckInDate ? ` from ${selectedCheckInDate.getDate()}. ${selectedCheckInDate.toLocaleDateString('en-US', { month: 'long' })}` : ''}`}
                 onSuccess={handleBookingSuccess}
@@ -1343,6 +1376,73 @@ export function BookingSummary({
                   )}
                 </div>
                 {/* --- END: Discount Code Section --- */} 
+
+                {/* --- START: Credits Section --- */}
+                {!creditsLoading && availableCredits > 0 && (
+                  <>
+                    <hr className="border-t border-border my-2 opacity-30" />
+                    <div className="pt-4 mt-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="uppercase text-primary font-display text-2xl">Credits</h3>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-shade-2 font-lettra">Available: {availableCredits}</span>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input 
+                              type="checkbox" 
+                              checked={useCredits}
+                              onChange={(e) => setUseCredits(e.target.checked)}
+                              className="sr-only peer"
+                            />
+                            <div className="w-11 h-6 bg-border rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent-primary"></div>
+                          </label>
+                        </div>
+                      </div>
+                      
+                      {useCredits && (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="range"
+                              min={0}
+                              max={Math.min(availableCredits, Math.floor(pricing.totalAmount))}
+                              value={creditsToUse}
+                              onChange={(e) => setCreditsToUse(Number(e.target.value))}
+                              className="flex-grow h-2 bg-border rounded-lg appearance-none cursor-pointer accent-accent-primary slider-thumb-accent"
+                            />
+                            <input
+                              type="number"
+                              min={0}
+                              max={Math.min(availableCredits, Math.floor(pricing.totalAmount))}
+                              value={creditsToUse}
+                              onChange={(e) => {
+                                const val = Number(e.target.value);
+                                if (!isNaN(val) && val >= 0) {
+                                  setCreditsToUse(Math.min(val, availableCredits, Math.floor(pricing.totalAmount)));
+                                }
+                              }}
+                              className="w-20 px-2 py-1 bg-[var(--color-input-bg)] border border-border rounded-sm focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent text-primary text-sm text-center"
+                            />
+                          </div>
+                          
+                          <div className="flex justify-between items-baseline">
+                            <span className="text-sm text-shade-2 font-lettra">Credits applied</span>
+                            <span className="text-lg font-display text-primary">-€{creditsToUse}</span>
+                          </div>
+                          
+                          {creditsToUse > 0 && (
+                            <div className="flex justify-between items-baseline pt-2 border-t border-border">
+                              <span className="text-sm font-lettra-bold text-primary">AMOUNT TO PAY</span>
+                              <span className="text-2xl font-display text-primary">
+                                {formatPriceDisplay(finalAmountAfterCredits)}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+                {/* --- END: Credits Section --- */}
 
                 {/* --- START: Cancellation Policy Section --- */}
                 <div className="pt-2 mt-2">
