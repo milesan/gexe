@@ -767,6 +767,12 @@ export function BookingSummary({
 
         console.log("[Booking Summary] Booking created:", booking);
         
+        // Refresh credits after successful booking
+        if (creditsToUse > 0) {
+          console.log("[Booking Summary] Refreshing credits after booking");
+          refreshCredits();
+        }
+        
         // Updated navigation to match the route in AuthenticatedApp.tsx
         navigate('/confirmation', { 
           state: { 
@@ -790,7 +796,7 @@ export function BookingSummary({
       setError('An error occurred. Please try again.');
       setIsBooking(false);
     }
-  }, [selectedAccommodation, selectedWeeks, selectedCheckInDate, navigate, pricing.totalAmount, appliedDiscount, creditsToUse]);
+  }, [selectedAccommodation, selectedWeeks, selectedCheckInDate, navigate, pricing.totalAmount, appliedDiscount, creditsToUse, refreshCredits]);
 
   const handleConfirmClick = async () => {
     console.log('[Booking Summary] Confirm button clicked.');
@@ -814,6 +820,13 @@ export function BookingSummary({
       if (!isAvailable) {
         console.warn('[Booking Summary] Accommodation is no longer available');
         setError('This accommodation is no longer available for the selected dates');
+        return;
+      }
+      
+      // If the final amount is 0 (fully paid with credits), skip payment
+      if (finalAmountAfterCredits === 0 && creditsToUse > 0) {
+        console.log('[Booking Summary] Total is 0 after credits, skipping payment');
+        await handleBookingSuccess();
         return;
       }
       
@@ -1468,7 +1481,7 @@ export function BookingSummary({
                       }`}
                   >
                     <span className="pixel-corners--content 2xl:text-2xl">
-                      {isBooking ? 'PROCESSING...' : 'CONFIRM & DONATE'}
+                      {isBooking ? 'PROCESSING...' : finalAmountAfterCredits === 0 && creditsToUse > 0 ? 'CONFIRM (CREDITS ONLY)' : 'CONFIRM & DONATE'}
                       
                     </span>
                   </button>
