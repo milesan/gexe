@@ -397,6 +397,8 @@ function AppContent({
   const [isWelcomeModalActuallyVisible, setIsWelcomeModalActuallyVisible] = useState<boolean>(false);
   // Renaming for clarity from the previous WhitelistSignupPage.tsx change
   const [triggerWelcomeModalFromNavFlag, setTriggerWelcomeModalFromNavFlag] = useState(false); 
+  // Add a flag to track if this is the initial load
+  const [hasCompletedInitialLoad, setHasCompletedInitialLoad] = useState(false);
   // Removed triggerWelcomeModalFromAcceptance as it's not the current focus, can be added back if needed
 
   // Effect to detect navigation from WhitelistSignupPage
@@ -419,6 +421,11 @@ function AppContent({
       return;
     }
 
+    // Mark initial load as complete once we have user data
+    if (!hasCompletedInitialLoad && !isLoading) {
+      setHasCompletedInitialLoad(true);
+    }
+
     console.log('AppContent Welcome Modal Effect Check:', {
       isLoading,
       isWhitelisted,
@@ -426,6 +433,7 @@ function AppContent({
       needsWelcomeCheckResult, // from get_user_app_entry_status_v2 (metadata)
       triggerWelcomeModalFromNavFlag, // from navigation state
       isWelcomeModalActuallyVisible,
+      hasCompletedInitialLoad,
       userId: user.id
     });
 
@@ -435,17 +443,21 @@ function AppContent({
       console.log('AppContent: Modal decision: YES (triggered by navigation flag from signup page).');
     } else if (
       !isLoading &&
+      hasCompletedInitialLoad && // Only show after initial load to prevent flash
       user.user_metadata?.is_whitelisted === true && // They are generally whitelisted
-      needsWelcomeCheckResult === true &&           // Metadata indicates they haven't seen it (has_seen_welcome is false)
+      user.user_metadata?.has_seen_welcome !== true && // Check metadata directly instead of RPC result
       hasApplicationRecord === true                 // CRUCIAL: They have completed the signup step
     ) {
       shouldShowModal = true;
-      console.log('AppContent: Modal decision: YES (DB conditions met: is_whitelisted, needs_welcome, AND has_application_record).');
+      console.log('AppContent: Modal decision: YES (DB conditions met: is_whitelisted, has NOT seen welcome, AND has_application_record).');
     } else {
       console.log('AppContent: Modal decision: NO.');
       // Add some logging for why it might be no, if relevant conditions were met
-      if (!isLoading && user.user_metadata?.is_whitelisted === true && needsWelcomeCheckResult === true && hasApplicationRecord === false) {
+      if (!isLoading && user.user_metadata?.is_whitelisted === true && user.user_metadata?.has_seen_welcome !== true && hasApplicationRecord === false) {
         console.log('AppContent: Modal deferred because user still needs to complete signup (hasApplicationRecord is false).');
+      }
+      if (!hasCompletedInitialLoad && user.user_metadata?.has_seen_welcome !== true) {
+        console.log('AppContent: Modal deferred because initial load not complete (preventing flash).');
       }
     }
 
@@ -479,6 +491,7 @@ function AppContent({
     needsWelcomeCheckResult, 
     triggerWelcomeModalFromNavFlag, 
     isWelcomeModalActuallyVisible,
+    hasCompletedInitialLoad,
     setNeedsWelcomeCheckResult // Already a dependency
   ]);
 
