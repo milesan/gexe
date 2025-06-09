@@ -716,11 +716,11 @@ export function Applications2() {
                     className="inline-flex items-center px-2 py-1 rounded text-xs bg-slate-900/30 text-slate-400 border border-slate-700/50 font-mono hover:bg-slate-800/50 hover:text-slate-300 transition-colors cursor-pointer"
                     title="Click to manage credits"
                   >
-                    € {application.credits} credits
+                    € {application.credits.toFixed(2)} credits
                   </button>
                 ) : application.credits !== undefined && application.credits > 0 ? (
                   <span className="inline-flex items-center px-2 py-1 rounded text-xs bg-slate-900/30 text-slate-400 border border-slate-700/50 font-mono">
-                    € {application.credits} credits
+                    € {application.credits.toFixed(2)} credits
                   </span>
                 ) : isAdmin ? (
                   <button
@@ -728,7 +728,7 @@ export function Applications2() {
                     className="inline-flex items-center px-2 py-1 rounded text-xs bg-slate-900/30 text-slate-400 border border-slate-700/50 font-mono hover:bg-slate-800/50 hover:text-slate-300 transition-colors cursor-pointer"
                     title="Click to manage credits"
                   >
-                    € 0 credits
+                    € 0.00 credits
                   </button>
                 ) : null}
 

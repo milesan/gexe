@@ -618,8 +618,10 @@ export function BookingSummary({
   useEffect(() => {
     if (creditsEnabled && !creditsLoading && pricing.totalWithVat > 0) {
       // Automatically set credits to use (min of available credits or total amount with VAT)
-      const maxCreditsToUse = Math.min(availableCredits, Math.floor(pricing.totalWithVat));
-      setCreditsToUse(maxCreditsToUse);
+      // Allow decimal credits, don't use Math.floor
+      const maxCreditsToUse = Math.min(availableCredits, pricing.totalWithVat);
+      // Round to 2 decimal places for currency
+      setCreditsToUse(Math.round(maxCreditsToUse * 100) / 100);
       console.log('[BookingSummary] Auto-setting credits to use:', maxCreditsToUse, 'from available:', availableCredits);
     } else if (!creditsEnabled) {
       setCreditsToUse(0);
@@ -1156,7 +1158,7 @@ export function BookingSummary({
                       <span className="sr-only">Clear Selected Accommodation</span>
                     </button>
 
-                    {/* Content Wrapper (maybe add relative z-10 if needed) */} 
+                    {/* Content Wrapper (maybe add relative z-10 if needed) */ 
                     <div className="relative z-10 space-y-2"> 
                         {/* Keep flex justify-between for button placement, remove mb-4 */}
                         {/* Heading remains as is */}
@@ -1375,7 +1377,7 @@ export function BookingSummary({
                 {/* Add HR after Total with VAT */}
                 <hr className="border-t border-border my-2 opacity-30" />
 
-                {/* --- START: Discount Code Section --- */} 
+                {/* --- START: Discount Code Section --- */ 
                 <div className="pt-4 mt-4 font-mono">
                   {!appliedDiscount ? (
                     <div>
@@ -1428,7 +1430,7 @@ export function BookingSummary({
                     </div>
                   )}
                 </div>
-                {/* --- END: Discount Code Section --- */} 
+                {/* --- END: Discount Code Section --- */ 
 
                 {/* --- START: Credits Section --- */}
                 {!creditsLoading && availableCredits > 0 && (
@@ -1459,7 +1461,7 @@ export function BookingSummary({
                     </div>
                     
                     <div className="text-xs text-shade-2 font-lettra mb-4">
-                      Available: <span className="font-display text-accent-primary">{availableCredits} credits</span>
+                      Available: <span className="font-display text-accent-primary">{availableCredits.toFixed(2)} credits</span>
                     </div>
                     
                     {creditsEnabled && (
@@ -1467,19 +1469,20 @@ export function BookingSummary({
                         <div className="space-y-2">
                           <div className="flex justify-between items-center">
                             <span className="text-sm text-shade-2 font-lettra">Credits to use</span>
-                            <span className="text-lg font-display text-accent-primary">{creditsToUse}</span>
+                            <span className="text-lg font-display text-accent-primary">{creditsToUse.toFixed(2)}</span>
                           </div>
                           <input
                             type="range"
                             min={0}
-                            max={Math.min(availableCredits, Math.floor(pricing.totalWithVat))}
+                            max={Math.min(availableCredits, pricing.totalWithVat)}
                             value={creditsToUse}
-                            onChange={(e) => setCreditsToUse(Number(e.target.value))}
+                            step={0.01} // Allow decimal steps for cents
+                            onChange={(e) => setCreditsToUse(Math.round(Number(e.target.value) * 100) / 100)}
                             className="w-full h-2 bg-border rounded-lg appearance-none cursor-pointer accent-accent-primary slider-thumb-accent"
                           />
                           <div className="flex justify-between text-xs text-shade-3 font-lettra">
                             <span>0</span>
-                            <span>{Math.min(availableCredits, Math.floor(pricing.totalWithVat))}</span>
+                            <span>{Math.min(availableCredits, pricing.totalWithVat).toFixed(2)}</span>
                           </div>
                         </div>
                         
@@ -1487,7 +1490,7 @@ export function BookingSummary({
                           {creditsToUse > 0 && (
                             <div className="flex justify-between items-baseline mb-2">
                               <span className="text-sm text-shade-2 font-lettra">Credit savings</span>
-                              <span className="text-lg font-display text-success">-€{creditsToUse}</span>
+                              <span className="text-lg font-display text-success">-€{creditsToUse.toFixed(2)}</span>
                             </div>
                           )}
                           <div className="flex justify-between items-baseline">

@@ -263,7 +263,7 @@ export function ManageCreditsModal({ application, onClose, onCreditsUpdated }: M
             <span className="text-sm font-medium text-[var(--color-text-secondary)] font-mono">Current Balance</span>
           </div>
           <div className="text-2xl font-bold text-[var(--color-text-primary)] font-mono">
-            {currentCredits.toLocaleString()} credits
+            {currentCredits.toFixed(2)} credits
           </div>
         </div>
 
@@ -379,10 +379,10 @@ export function ManageCreditsModal({ application, onClose, onCreditsUpdated }: M
                     <div>
                       <div className="flex items-center gap-2">
                         <span className={`font-medium font-mono ${getTransactionColor(transaction.amount)}`}>
-                          {transaction.amount > 0 ? '+' : ''}{transaction.amount.toLocaleString()}
+                          {transaction.amount > 0 ? '+' : ''}{transaction.amount.toFixed(2)}
                         </span>
                         <span className="text-xs text-[var(--color-text-tertiary)] font-mono">
-                          → {transaction.new_balance.toLocaleString()}
+                          → {transaction.new_balance.toFixed(2)}
                         </span>
                       </div>
                       {transaction.notes && (

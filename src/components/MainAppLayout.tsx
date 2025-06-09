@@ -300,14 +300,14 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
                   triggerContent={
                     <div className="flex items-center gap-2 px-3 py-1.5 bg-surface-dark border border-shade-1 rounded-sm">
                       <Euro className="w-4 h-4 text-primary" />
-                      <span className="text-sm font-lettra text-primary">{credits}</span>
+                      <span className="text-sm font-lettra text-primary">{credits.toFixed(2)}</span>
                     </div>
                   }
                   contentClassName="tooltip-content !font-mono text-sm z-50"
                   arrowClassName="tooltip-arrow"
                   popoverContentNode={
                     <div className="text-center">
-                      <div>{credits} magic tokens ✨</div>
+                      <div>{credits.toFixed(2)} magic tokens ✨</div>
                     </div>
                   }
                 />
@@ -369,14 +369,14 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
                   triggerContent={
                     <div className="flex items-center gap-2 py-3">
                       <Euro className="w-4 h-4 text-primary" />
-                      <span className="text-sm font-lettra text-primary">{credits} credits</span>
+                      <span className="text-sm font-lettra text-primary">{credits.toFixed(2)} credits</span>
                     </div>
                   }
                   contentClassName="tooltip-content !font-mono text-sm z-50"
                   arrowClassName="tooltip-arrow"
                   popoverContentNode={
                     <div className="text-center">
-                      <div>{credits} magic tokens ✨</div>
+                      <div>{credits.toFixed(2)} magic tokens ✨</div>
                     </div>
                   }
                 />
