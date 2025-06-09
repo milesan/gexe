@@ -1,189 +1,37 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Info, Tag, AlertTriangle, Calendar } from 'lucide-react';
+import { X, Calendar } from 'lucide-react';
 import { useSchedulingRules } from '../hooks/useSchedulingRules';
-import { getSeasonalDiscount, getDurationDiscount, getSeasonBreakdown } from '../utils/pricing';
-import type { Week } from '../types/calendar';
-import type { Accommodation } from '../types';
-import { format, addDays, differenceInDays, isSameDay, isBefore } from 'date-fns';
+import { getSeasonBreakdown } from '../utils/pricing';
+import { format, addDays } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { bookingService } from '../services/BookingService';
 import { supabase } from '../lib/supabase';
 import { StripeCheckoutForm } from './StripeCheckoutForm';
 import { useSession } from '../hooks/useSession';
-import { DayPicker } from 'react-day-picker';
-import type { DayPickerSingleProps } from 'react-day-picker';
-import 'react-day-picker/dist/style.css';
-import { formatDateForDisplay } from '../utils/dates';
-import * as Tooltip from '@radix-ui/react-tooltip';
-import * as Popover from '@radix-ui/react-popover';
-import { HoverClickPopover } from './HoverClickPopover';
-import { calculateTotalNights, calculateDurationDiscountWeeks, calculateTotalDays, calculateTotalWeeksDecimal } from '../utils/dates';
+import { formatInTimeZone } from 'date-fns-tz';
 import { DiscountModal } from './DiscountModal';
 import { CancellationPolicyModal } from './CancellationPolicyModal';
-import { formatInTimeZone } from 'date-fns-tz';
 import { useUserPermissions } from '../hooks/useUserPermissions';
 import { useCredits } from '../hooks/useCredits';
+import { calculateTotalNights, calculateTotalDays } from '../utils/dates';
 
-// Define the season breakdown type
-export interface SeasonBreakdown {
-  hasMultipleSeasons: boolean;
-  seasons: Array<{
-    name: string;
-    discount: number;
-    nights: number;
-  }>;
-}
+// Import types
+import type { BookingSummaryProps, SeasonBreakdown, AppliedDiscount } from './BookingSummary/BookingSummary.types';
 
-interface BookingSummaryProps {
-  selectedWeeks: Week[];
-  selectedAccommodation: Accommodation | null;
-  onClearWeeks: () => void;
-  onClearAccommodation: () => void;
-  seasonBreakdown?: SeasonBreakdown; // Optional for backward compatibility
-  calculatedWeeklyAccommodationPrice: number | null;
-}
+// Import hooks
+import { usePricing } from './BookingSummary/BookingSummary.hooks';
 
-// Helper function to format numbers without decimal points when they're integers
-const formatNumber = (num: number, decimals: number = 1): string => {
-  // Check if the number is an integer
-  if (Number.isInteger(num)) {
-    return num.toString();
-  }
-  return num.toFixed(decimals);
-};
+// Import components
+import { StayDetails } from './BookingSummary/components/StayDetails';
+import { AccommodationSection } from './BookingSummary/components/AccommodationSection';
+import { PriceBreakdown } from './BookingSummary/components/PriceBreakdown';
+import { DiscountCodeSection } from './BookingSummary/components/DiscountCodeSection';
+import { CreditsSection } from './BookingSummary/components/CreditsSection';
+import { ConfirmButtons } from './BookingSummary/components/ConfirmButtons';
 
-// Helper function to format price display, showing "Free" for zero
-// UPDATED: Dont round
-const formatPriceDisplay = (price: number): React.ReactNode => {
-  console.log('[formatPriceDisplay] Input price:', price);
-  if (price === 0) {
-    return <span className="text-accent-primary text-xl font-mono">Free</span>;
-  }
-
-  // Check if the price is a whole number
-  if (Number.isInteger(price)) {
-    return `€${price}`;
-  }
-
-  // Return the price with two decimal places
-  return `€${price.toFixed(2)}`;
-};
-
-// Helper function to calculate pricing details
-interface PricingDetails {
-  totalNights: number;
-  nightlyAccommodationRate: number;
-  baseAccommodationRate: number;
-  effectiveBaseRate: number;
-  totalAccommodationCost: number;
-  totalFoodAndFacilitiesCost: number;
-  subtotal: number;
-  durationDiscountAmount: number;
-  durationDiscountPercent: number;
-  weeksStaying: number; // This will now store the DISPLAY (rounded) weeks
-  totalAmount: number;
-  appliedCodeDiscountValue: number;
-  seasonalDiscount: number;
-  vatAmount: number;
-  totalWithVat: number;
-}
-
-// === REVISED HELPER ===
-// Accepts pre-calculated rounded weeks for consistency with display
-const calculateBaseFoodCost = (
-  totalNights: number, // Pass totalNights in
-  displayWeeks: number, // Use the rounded weeks for calculation
-  foodContribution?: number | null
-): { totalBaseFoodCost: number; effectiveWeeklyRate: number } => {
-  console.log('[calculateBaseFoodCost] Inputs:', {
-    totalNights, // Log received nights
-    displayWeeks, // Log received rounded weeks
-    foodContribution,
-  });
-
-  // Determine BASE weekly food & facilities rate
-  let weeklyFoodRate: number;
-  const defaultWeeklyRate = 345; // Default weekly rate
-
-  if (foodContribution !== null && foodContribution !== undefined) {
-    weeklyFoodRate = foodContribution;
-    console.log('[calculateBaseFoodCost] Using food contribution for weekly rate:', { foodContribution, weeklyFoodRate });
-  } else {
-    weeklyFoodRate = defaultWeeklyRate;
-    console.log('[calculateBaseFoodCost] Using default weekly food rate:', weeklyFoodRate);
-  }
-
-  // === Use the provided DISPLAY (rounded) weeks for BASE cost calculation ===
-  const totalBaseFoodCost = weeklyFoodRate * displayWeeks; // Use passed-in rounded weeks
-  console.log('[calculateBaseFoodCost] Results:', { displayWeeks, weeklyFoodRate, totalBaseFoodCost });
-
-  return {
-    // totalNights is calculated outside now
-    totalBaseFoodCost, // Return the undiscounted cost calculated with rounded weeks
-    effectiveWeeklyRate: weeklyFoodRate // Return the base rate used
-  };
-};
-
-// Helper function to format date ranges
-const formatDateRange = (week: Week): string => {
-  return `${format(week.startDate, 'MMM d')} - ${format(week.endDate, 'MMM d')}`;
-};
-
-// Helper function to format overall date range
-// For a date range like "Jul 1 → Jul 14", this represents 13 nights
-// The number of nights is calculated as (end date - start date) in days
-const formatOverallDateRange = (selectedWeeks: Week[]): string => {
-  if (selectedWeeks.length === 0) return '';
-  
-  // Determine the effective start date (could be a selected flex date)
-  const firstWeek = selectedWeeks[0];
-  const effectiveStartDate = firstWeek.selectedFlexDate || firstWeek.startDate;
-
-  const lastDate = selectedWeeks[selectedWeeks.length - 1].endDate;
-  
-  // Use formatInTimeZone for consistent UTC display
-  return `${formatInTimeZone(effectiveStartDate, 'UTC', 'MMM d')} → ${formatInTimeZone(lastDate, 'UTC', 'MMM d')}`;
-};
-
-// Helper function to format date with day of week (Use UTC)
-const formatDateWithDay = (date: Date): string => {
-  return formatInTimeZone(date, 'UTC', 'EEEE, MMMM d');
-};
-
-// NEW Helper function to format as Month Day (Use UTC)
-// const formatMonthDay = (date: Date): string => {
-//   return formatInTimeZone(date, 'UTC', 'MMMM d');
-// };
-
-// Helper function to add ordinal suffix to day of month (Use UTC)
-const formatDateWithOrdinal = (date: Date): string => {
-  // Get UTC date parts
-  const day = date.getUTCDate();
-  const suffix = ['th', 'st', 'nd', 'rd'][day % 10 > 3 ? 0 : (day % 100 - day % 10 !== 10 ? day % 10 : 0)];
-  return formatInTimeZone(date, 'UTC', 'EEEE, MMMM') + ' ' + day + suffix;
-};
-
-// --- Added Applied Discount Type ---
-interface AppliedDiscount {
-  code: string;
-  percentage_discount: number;
-  applies_to: string; // Added new field
-}
-// --- End Added Type ---
-
-// Helper function to determine the text for what the discount applies to
-const getAppliesToText = (appliesToValue: string | undefined): string => {
-  switch (appliesToValue) {
-    case 'accommodation':
-      return 'Accommodation';
-    case 'food_facilities':
-      return 'Food & Facilities';
-    case 'total':
-    default: // Also handles undefined or other unexpected values
-      return 'Total Amount';
-  }
-};
+// Import utils
+import { formatPriceDisplay } from './BookingSummary/BookingSummary.utils';
 
 export function BookingSummary({
   selectedWeeks,
@@ -250,7 +98,7 @@ export function BookingSummary({
 
   // State for internally calculated season breakdown
   const [seasonBreakdownState, setSeasonBreakdownState] = useState<SeasonBreakdown | undefined>(initialSeasonBreakdown);
-  const [accommodations, setAccommodations] = useState<Accommodation[]>([]);
+  const [accommodations, setAccommodations] = useState<any[]>([]);
   console.log('[BookingSummary] Initial State Values:', {
       isBooking, error, showStripeModal, authToken: !!authToken, selectedCheckInDate, showDatePicker, foodContribution, showDiscountDetails, testPaymentAmount, showDiscountModal,
       seasonBreakdownStateExists: !!seasonBreakdownState,
@@ -359,189 +207,14 @@ export function BookingSummary({
   }, [selectedWeeks, selectedAccommodation, getSeasonBreakdown, seasonBreakdownState]);
   // --- END LOGGING ---
 
-  // Calculate pricing details - MEMOIZED (applying duration discount to food)
-  const pricing = useMemo((): PricingDetails => {
-    console.log('[BookingSummary] --- Recalculating Pricing (useMemo) ---');
-    console.log('[BookingSummary] useMemo Inputs:', {
-      selectedWeeksLength: selectedWeeks.length,
-      selectedAccommodationId_Prop: selectedAccommodation?.id,
-      calculatedWeeklyAccommodationPrice_Prop: calculatedWeeklyAccommodationPrice,
-      foodContribution,
-      appliedDiscount,
-    });
-    // --- ADDED LOGGING: Check prop value *inside* memo ---
-    console.log('[BookingSummary] useMemo: Using calculatedWeeklyAccommodationPrice PROP:', calculatedWeeklyAccommodationPrice);
-    // --- END ADDED LOGGING ---
-
-    // === Calculate fundamental values: nights, complete weeks (for discount), exact decimal weeks ===
-    const totalNights = calculateTotalNights(selectedWeeks);
-    const completeWeeks = calculateDurationDiscountWeeks(selectedWeeks); // Uses floor(days/7)
-    const exactWeeksDecimal = calculateTotalWeeksDecimal(selectedWeeks); // Returns full precision days/7
-
-    // === NEW: Calculate weeks rounded for display (WYSIWYG) ===
-    const displayWeeks = selectedWeeks.length > 0 ? Math.round(exactWeeksDecimal * 10) / 10 : 0;
-    console.log('[BookingSummary] useMemo: Calculated Weeks:', { totalNights, completeWeeks, exactWeeksDecimal, displayWeeks });
-
-    // === Calculate Accommodation Cost using DISPLAY (rounded) weeks for WYSIWYG ===
-    const weeklyAccPrice = calculatedWeeklyAccommodationPrice ?? 0;
-
-    // --- ADDED LOGGING: Check inputs before multiplication ---
-    console.log('[BookingSummary] useMemo: Inputs for Accommodation Cost CALCULATION:', {
-      weeklyAccPrice_Used: weeklyAccPrice, // Value used in calculation
-      displayWeeks_Multiplier: displayWeeks, // The multiplier
-    });
-    // --- END ADDED LOGGING ---
-
-    const totalAccommodationCost = parseFloat((weeklyAccPrice * displayWeeks).toFixed(2));
-    console.log('[BookingSummary] useMemo: Calculated Accommodation Cost (using DISPLAY weeks):', { weeklyAccPrice, displayWeeks, totalAccommodationCost });
-    // VERIFICATION LOG (keeping for now, should show integer * rounded_decimal)
-    console.log('[BookingSummary] useMemo: VERIFYING Cost Calc:', {
-        integerWeeklyRate: weeklyAccPrice, // Should be integer
-        decimalWeeks: exactWeeksDecimal, // Should be decimal
-        calculatedTotal: totalAccommodationCost // Result of integer * decimal
-    });
-
-    // === Calculate BASE Food Cost using DISPLAY (rounded) weeks ===
-    const { totalBaseFoodCost, effectiveWeeklyRate } = calculateBaseFoodCost(
-        totalNights, // Pass totalNights
-        displayWeeks, // Pass rounded display weeks
-        foodContribution
-    );
-    console.log('[BookingSummary] useMemo: Calculated Base Food Cost (based on rounded display weeks):', { totalBaseFoodCost, effectiveWeeklyRate });
-
-    // === Determine Duration Discount % using COMPLETE weeks ===
-    const rawDurationDiscountPercent = getDurationDiscount(completeWeeks);
-    // === NEW: Round the discount factor to match display (WYSIWYG) ===
-    console.log('[BookingSummary] useMemo: Determined Duration Discount % (using complete weeks):', { rawDurationDiscountPercent });
-
-    // === Apply ROUNDED Discount % to BASE Food Cost (which was calculated using rounded weeks) ===
-    // 1. Calculate the effective *integer* weekly F&F cost *after* discount (matching slider display)
-    const baseWeeklyRateForCalc = foodContribution ?? (totalNights <= 6 ? 345 : 240); // Get base rate from slider or default
-    const displayedWeeklyFFCost = Math.round(baseWeeklyRateForCalc * (1 - rawDurationDiscountPercent));
-    // 2. Multiply this displayed weekly cost by the displayed number of weeks
-    const finalFoodCost = parseFloat((displayedWeeklyFFCost * displayWeeks).toFixed(2));
-    // 3. Recalculate the discount amount based on the difference (for display/info purposes)
-    const foodDiscountAmount = parseFloat((totalBaseFoodCost - finalFoodCost).toFixed(2)); // Base cost (base rate * display weeks) - final cost
-
-    console.log('[BookingSummary] useMemo: Calculated Final Food Cost (WYSIWYG):', { 
-      baseWeeklyRateForCalc,
-      rawDurationDiscountPercent, 
-      displayedWeeklyFFCost, // Integer weekly cost after discount
-      displayWeeks, // Decimal weeks display
-      finalFoodCost, // displayedWeeklyFFCost * displayWeeks
-      totalBaseFoodCost, // For comparison
-      foodDiscountAmount // Recalculated difference
-    });
-
-    // 4. Combine results
-    const subtotal = parseFloat((+totalAccommodationCost + +finalFoodCost).toFixed(2));
-    console.log('[BookingSummary] useMemo: Calculated Subtotal:', { totalAccommodationCost, finalFoodCost, subtotal });
-
-    // --- START: Apply Discount Code --- 
-    let finalTotalAmount = subtotal;
-    let discountCodeAmount = 0;
-    let subtotalBeforeDiscountCode = subtotal; // Store the subtotal before this specific discount code
-
-    if (appliedDiscount && subtotalBeforeDiscountCode > 0) {
-        const discountPercentage = appliedDiscount.percentage_discount / 100;
-        const appliesTo = appliedDiscount.applies_to || 'total'; // Default to 'total' for safety
-
-        let amountToDiscountFrom = 0;
-
-        if (appliesTo === 'accommodation') {
-            amountToDiscountFrom = totalAccommodationCost;
-        } else if (appliesTo === 'food_facilities') {
-            amountToDiscountFrom = finalFoodCost; // This is F&F cost after duration discount but before code discount
-        } else { // 'total' or any other fallback
-            amountToDiscountFrom = subtotalBeforeDiscountCode;
-        }
-
-        if (amountToDiscountFrom > 0) { // Only calculate discount if the target component has a cost
-            discountCodeAmount = parseFloat((amountToDiscountFrom * discountPercentage).toFixed(2));
-        } else {
-            discountCodeAmount = 0; // No discount if the target component is free or N/A
-        }
-        
-        // The final total amount is the original subtotal (before this code) minus the calculated discount code amount.
-        finalTotalAmount = parseFloat((subtotalBeforeDiscountCode - discountCodeAmount).toFixed(2));
-
-        // Ensure total doesn't go below zero
-        if (finalTotalAmount < 0) finalTotalAmount = 0;
-
-        console.log('[BookingSummary] useMemo: Applied Discount Code:', {
-            code: appliedDiscount.code,
-            percentage: appliedDiscount.percentage_discount,
-            appliesTo: appliesTo,
-            amountComponentTargeted: amountToDiscountFrom, // Log the base amount for discount calculation
-            subtotalBeforeCodeDiscount: subtotalBeforeDiscountCode,
-            discountCodeAmountApplied: discountCodeAmount,
-            finalTotalAmountAfterCodeDiscount: finalTotalAmount
-        });
-    } else {
-         console.log('[BookingSummary] useMemo: No discount code applied or subtotal is zero.');
-    }
-    // --- END: Apply Discount Code ---
-
-    // --- START: Calculate VAT (24%) ---
-    const vatRate = 0.24; // 24% VAT
-    const vatAmount = parseFloat((finalTotalAmount * vatRate).toFixed(2));
-    const totalWithVat = parseFloat((finalTotalAmount + vatAmount).toFixed(2));
-    
-    console.log('[BookingSummary] useMemo: VAT Calculation:', {
-      finalTotalAmount,
-      vatRate,
-      vatAmount,
-      totalWithVat
-    });
-    // --- END: Calculate VAT ---
-
-    // 5. Construct the final object
-    const calculatedPricingDetails: PricingDetails = {
-      totalNights,
-      totalAccommodationCost,
-      totalFoodAndFacilitiesCost: finalFoodCost,
-      subtotal,
-      totalAmount: finalTotalAmount,
-      appliedCodeDiscountValue: discountCodeAmount,
-      weeksStaying: displayWeeks,
-      effectiveBaseRate: effectiveWeeklyRate,
-      nightlyAccommodationRate: totalNights > 0 ? +(totalAccommodationCost / totalNights).toFixed(2) : 0,
-      baseAccommodationRate: selectedAccommodation?.base_price || 0,
-      durationDiscountAmount: foodDiscountAmount,
-      durationDiscountPercent: rawDurationDiscountPercent * 100,
-      seasonalDiscount: 0,
-      vatAmount,
-      totalWithVat,
-    };
-
-    // ADDED LOG BLOCK: Values right before returning details
-    console.log('[BookingSummary] useMemo: Final Calculation Values for Food Cost', {
-      displayWeeks, // The rounded weeks used
-      foodContribution, // The input from the slider
-      totalBaseFoodCost, // displayWeeks * foodContribution
-      completeWeeks, // For discount lookup
-      rawDurationDiscountPercent, // Raw discount %
-      finalFoodCost_unrounded: finalFoodCost, // Base * (1 - Discount) BEFORE final display rounding
-    });
-
-    // --- START TEST ACCOMMODATION OVERRIDE ---
-    if (selectedAccommodation?.type === 'test') {
-      console.log('[BookingSummary] useMemo: OVERRIDING costs for TEST accommodation.');
-      calculatedPricingDetails.totalFoodAndFacilitiesCost = 0;
-      calculatedPricingDetails.subtotal = calculatedPricingDetails.totalAccommodationCost; // Keep accom cost, just zero out food
-      calculatedPricingDetails.totalAmount = calculatedPricingDetails.totalAccommodationCost; // Total is just accom cost
-      calculatedPricingDetails.durationDiscountAmount = 0; // No food discount applicable
-      // Recalculate VAT for test accommodation
-      calculatedPricingDetails.vatAmount = parseFloat((calculatedPricingDetails.totalAmount * vatRate).toFixed(2));
-      calculatedPricingDetails.totalWithVat = parseFloat((calculatedPricingDetails.totalAmount + calculatedPricingDetails.vatAmount).toFixed(2));
-    }
-    // --- END TEST ACCOMMODATION OVERRIDE ---
-
-    console.log('[BookingSummary] useMemo: Pricing calculation COMPLETE. Result:', calculatedPricingDetails);
-    console.log('[BookingSummary] --- Finished Pricing Recalculation (useMemo) ---');
-    return calculatedPricingDetails;
-
-  }, [selectedWeeks, calculatedWeeklyAccommodationPrice, foodContribution, selectedAccommodation, appliedDiscount]);
+  // Calculate pricing details - MEMOIZED using custom hook
+  const pricing = usePricing({
+    selectedWeeks,
+    selectedAccommodation,
+    calculatedWeeklyAccommodationPrice,
+    foodContribution,
+    appliedDiscount
+  });
 
   const isStateOfTheArtist = useMemo(() => {
     if (selectedWeeks.length === 1) {
@@ -995,19 +668,13 @@ export function BookingSummary({
   console.log('[BookingSummary] Show Stripe Modal state:', showStripeModal);
   // --- END LOGGING ---
 
-  // --- Calculate display weeks using utility function ---
-  // --- Use DECIMAL weeks for display --- 
-  const totalWeeksDisplay = calculateTotalWeeksDecimal(selectedWeeks);
-  console.log('[BookingSummary] Calculated display weeks (decimal):', { totalWeeksDecimal: totalWeeksDisplay });
-  // --- END Calculation ---
-
   const fallbackDate = new Date();
   fallbackDate.setUTCHours(0, 0, 0, 0);
 
-  // Determine min/max based on the event
-  const sliderMin = isStateOfTheArtist ? 390 : (pricing.totalNights <= 6 ? 345 : 240);
-  const sliderMax = isStateOfTheArtist ? 3600 : 390; 
-  console.log('[BookingSummary] Slider Range:', { sliderMin, sliderMax, isStateOfTheArtist });
+  // Helper function to format dates consistently (needed for the modal)
+  const formatDateForDisplay = (date: Date): string => {
+    return formatInTimeZone(date, 'UTC', 'MMM d, yyyy');
+  };
 
   // Render the component
   return (
@@ -1082,100 +749,15 @@ export function BookingSummary({
           
           {selectedWeeks.length > 0 && (
             <div className="">
-              {/* Stay Details Section - Outer div handles layout/animation */}
-              {/* REMOVED visuals, ADDED mb-4 */}
-              <motion.div 
-                className="relative mb-4" /* Reduced margin */
-                initial={{ y: 10, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ duration: 0.3 }}
-              >
-                {/* Middle div handles border, padding, visuals - REMOVED PADDING */}
-                <div className="relative shadow-sm overflow-hidden bg-transparent">
-                  {/* Inner Blur Layer */}
-                  <div className="absolute inset-0 -z-10 backdrop-blur-sm bg-surface/50 rounded-sm"></div>
+              {/* Stay Details Section */}
+              <StayDetails selectedWeeks={selectedWeeks} />
 
-                  {/* Content Wrapper (maybe add relative z-10 if needed) */}
-                  <div className="relative z-10 space-y-3 sm:space-y-4">
-                    {/* Arrival Information - REMOVED PADDING */}
-                    <div className="rounded-sm shadow-sm bg-surface p-4"> 
-                      <h4 className="uppercase font-lettra-bold text-shade-2 text-xs mb-2">
-                        Arrive By
-                      </h4>
-                      <div className="space-y-1">
-                        <p className="uppercase text-2xl text-primary font-display">{formatDateWithDay(selectedWeeks[0].startDate)}</p>
-                        <p className="font-lettra text-shade-1 text-sm">2PM-5PM</p> 
-                      </div>
-                    </div>
-                    
-                    {/* Departure Information - REMOVED PADDING */}
-                    <div className="rounded-sm shadow-sm bg-surface p-4">
-                      <h4 className="uppercase font-lettra-bold text-shade-2 text-xs mb-2">
-                        Leave by
-                      </h4>
-                      <div className="space-y-1">
-                        <p className="uppercase text-2xl text-primary font-display">{formatDateWithDay(selectedWeeks[selectedWeeks.length - 1].endDate)}</p>
-                        <p className="font-lettra text-shade-1 text-sm">11AM</p>
-                      </div>
-                    </div>
-                    
-                    {/* Duration - REMOVED PADDING */}
-                    <div className="rounded-sm shadow-sm bg-surface p-4"> 
-                      <div className="flex justify-between items-center">
-                        <div className="w-full">
-                          <span className="text-primary uppercase font-display text-2xl">
-                            {formatNumber(totalWeeksDisplay)} {totalWeeksDisplay === 1 ? 'week' : 'weeks'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-
-              {/* Accommodation Section - Outer div handles layout/animation */}
+              {/* Accommodation Section */}
               {selectedAccommodation && (
-                /* REMOVED visuals, ADDED mt-4 */
-                <motion.div 
-                  className="relative mt-4" /* Reduced margin */
-                  initial={{ y: 10, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  {/* Middle div handles visuals - REMOVED PADDING */}
-                  <div className="relative rounded-sm shadow-sm bg-surface overflow-hidden p-4"> 
-                    {/* Inner Blur Layer */}
-                    <div className="absolute inset-0 -z-10 backdrop-blur-sm bg-surface/50 rounded-sm"></div>
-                    
-                    {/* Clear Button (relative to middle div) */}
-                    <button
-                      onClick={onClearAccommodation}
-                      className="absolute top-2 right-2 p-1.5 text-accent-primary hover:text-accent-secondary hover:bg-accent-muted rounded-full transition-colors z-20" /* Updated styles and position */
-                    >
-                      <X className="w-4 h-4" />
-                      <span className="sr-only">Clear Selected Accommodation</span>
-                    </button>
-
-                    {/* Content Wrapper (maybe add relative z-10 if needed) */} 
-                    <div className="relative z-10 space-y-2"> 
-                        {/* Keep flex justify-between for button placement, remove mb-4 */}
-                        {/* Heading remains as is */}
-                        <h3 className="font-lettra-bold text-shade-2 text-xs">
-                          THY QUARTERS
-                        </h3>
-                        {/* REMOVE intermediate divs and padding/margin */}
-                        {/* Add block to ensure span takes up vertical space */}
-                        <span className="text-primary font-display text-2xl block"> 
-                            {selectedAccommodation.title === 'Van Parking' || 
-                            selectedAccommodation.title === 'Your Own Tent' || 
-                            selectedAccommodation.title === 'Staying with somebody' || 
-                            selectedAccommodation.title === 'The Hearth' 
-                            ? selectedAccommodation.title
-                            : `The ${selectedAccommodation.title}`}
-                        </span>
-                    </div>
-                  </div>
-                </motion.div>
+                <AccommodationSection 
+                  selectedAccommodation={selectedAccommodation}
+                  onClearAccommodation={onClearAccommodation}
+                />
               )}
 
               {/* Add thin horizontal line */}
@@ -1184,142 +766,15 @@ export function BookingSummary({
               {/* NEW Wrapper for Solid Background Sections - Make sure this is TRANSPARENT */}
               <div className="bg-transparent"> {/* Removed mt-6 */}
                 {/* Price Breakdown */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    {/* Restyle heading to match accommodation title */}
-                    <h3 className="text-primary font-display text-2xl block">Price breakdown</h3>
-                    <Tooltip.Provider>
-                      <Tooltip.Root delayDuration={50}>
-                        <Tooltip.Trigger asChild>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation(); // Prevent event bubbling
-                              setShowDiscountModal(true);
-                            }}
-                            className="p-1.5 text-[var(--color-accent-primary)] hover:text-[var(--color-accent-secondary)] rounded-md transition-colors cursor-pointer"
-                          >
-                            <Info className="w-4 h-4" />
-                            <span className="sr-only">View Discount Details</span>
-                          </button>
-                        </Tooltip.Trigger>
-                        <Tooltip.Portal>
-                          <Tooltip.Content
-                            className="tooltip-content !font-mono z-50"
-                            sideOffset={5}
-                          >
-                            Click for detailed breakdown
-                            <Tooltip.Arrow className="tooltip-arrow" />
-                          </Tooltip.Content>
-                        </Tooltip.Portal>
-                      </Tooltip.Root>
-                    </Tooltip.Provider>
-                  </div>
-                  
-                  <div className="bg-surface space-y-4 p-4 rounded-sm"> {/* Increased spacing between items */}
-                    {selectedAccommodation ? (
-                      <>
-                        <div className="flex justify-between items-end"> {/* Outer flex - changed to end */}
-                          <div className="flex flex-col"> {/* Left block */}
-                            <span className="text-xs text-shade-2 font-lettra-bold">ACCOMMODATION</span>
-                            {/* Style duration like main dates, remove uppercase */}
-                            <span className="text-2xl lg:text-xl xl:text-2xl text-primary font-display">
-                              {formatNumber(pricing.weeksStaying)} {pricing.weeksStaying === 1 ? 'week' : 'weeks'}
-                            </span>
-                          </div>
-                          {/* Price: Updated size, font, color */}
-                          <span className="text-xl lg:text-lg xl:text-xl font-display text-shade-1">{formatPriceDisplay(pricing.totalAccommodationCost)}</span> {/* Right block (price) */}
-                        </div>
-                        <hr className="border-t border-border my-2 opacity-30" /> {/* Horizontal line */}
-                      </>
-                    ) : (
-                      <div className="flex items-baseline min-h-[1.25rem]">
-                        <span className="text-sm text-secondary font-mono italic">No accommodation selected</span>
-                      </div>
-                    )}
-                    
-                    <>
-                      {/* --- Wrap the whole row in Popover.Root --- */}
-                      <div className="flex justify-between items-end"> {/* Align to bottom like Accommodation section */}
-                        {/* Left block (label and sub-label) */}
-                        <div className="flex flex-col flex-shrink-0"> {/* ADDED flex-shrink-0 HERE */}
-                          <span className="text-xs text-shade-2 font-lettra-bold flex items-center">
-                            FOOD AND FACILITIES
-                          </span>
-                          <span className="text-2xl lg:text-xl xl:text-2xl text-primary font-display">
-                              {formatNumber(pricing.weeksStaying)} {pricing.weeksStaying === 1 ? 'week' : 'weeks'}
-                          </span>
-                        </div>
-
-                        {/* Right block (Icon Trigger + Price) */}
-                        <div className="flex flex-col items-end"> {/* Column layout, align items to the end (right) */}
-                          {/* Icon Trigger - Now HoverClickPopover */}
-                          <HoverClickPopover
-                            triggerContent={<Info className="w-4 h-4" />}
-                            triggerWrapperClassName="text-accent-primary hover:text-accent-secondary mb-1 cursor-default"
-                            popoverContentNode={<span className="text-primary">Community meals & operations costs</span>}
-                            contentClassName="tooltip-content !font-mono text-sm z-50"
-                            side="top"
-                            align="end"
-                            hoverCloseDelayMs={150}
-                          />
-                          {/* Price */}
-                          <span className="text-xl lg:text-lg xl:text-xl font-display text-shade-1">
-                            {formatPriceDisplay(pricing.totalFoodAndFacilitiesCost)}
-                          </span>
-                        </div>
-                      </div>
-                      <hr className="border-t border-border my-2 opacity-30" /> {/* Horizontal line */}
-                    </>
-
-                    {/* Optional Contribution Slider */}
-                    {foodContribution !== null && selectedWeeks.length > 0 && (
-                      <div className="pt-2"> {/* Reduced top padding */}
-                         {/* --- Label row with space-between --- */}
-                         <div className="flex justify-between items-center mb-2">
-                           <label htmlFor="food-contribution" className="text-xs text-shade-2 font-lettra-bold"> {/* Label */}
-                              SLIDING CONTRIBUTION
-                            </label>
-                            {/* MODIFIED: Replaced with HoverClickPopover */}
-                            <HoverClickPopover
-                              triggerContent={<Info className="w-4 h-4" />}
-                              triggerWrapperClassName="text-accent-primary hover:text-accent-secondary cursor-default"
-                              popoverContentNode="Adjust your contribution based on your means. Minimum varies by stay length."
-                              contentClassName="tooltip-content !font-mono text-sm z-50"
-                              side="top"
-                              align="end"
-                              hoverCloseDelayMs={150}
-                            />
-                          </div>
-
-                         {/* --- Slider remains outside Popover Root --- */}
-                         <input
-                           id="food-contribution"
-                           type="range"
-                           min={sliderMin} // Use variable
-                           max={sliderMax} // Use variable
-                           value={foodContribution ?? sliderMin} // Use sliderMin as fallback default
-                           onChange={(e) => setFoodContribution(Number(e.target.value))}
-                           className="w-full h-2 bg-border rounded-lg appearance-none cursor-pointer accent-accent-primary slider-thumb-accent" /* Added slider-thumb-accent */
-                         />
-                          <div className="flex justify-between text-xs text-secondary mt-1 font-mono">
-                             {/* Apply requested styles to Min */}
-                             <span className="uppercase text-xs font-lettra-bold text-primary">
-                               Min: €{Math.round(sliderMin * (1 - pricing.durationDiscountPercent / 100))} 
-                             </span>
-                             {/* Apply requested styles to Rate */}
-                             <span className="uppercase text-xs font-lettra-bold text-primary"> {/* Removed font-medium text-sm text-shade-1 font-mono */}
-                               {/* Ensure the displayed rate uses the correct base (sliderMin if null) */}
-                               €{Math.round((foodContribution ?? sliderMin) * (1 - pricing.durationDiscountPercent / 100))} / week
-                             </span>
-                             {/* Apply requested styles to Max */}
-                             <span className="uppercase text-xs font-lettra-bold text-primary">
-                               Max: €{sliderMax}
-                             </span>
-                          </div>
-                       </div>
-                    )}
-                  </div>
-                </div>
+                <PriceBreakdown
+                  selectedAccommodation={selectedAccommodation}
+                  pricing={pricing}
+                  foodContribution={foodContribution}
+                  setFoodContribution={setFoodContribution}
+                  isStateOfTheArtist={isStateOfTheArtist}
+                  selectedWeeks={selectedWeeks}
+                  onShowDiscountModal={() => setShowDiscountModal(true)}
+                />
 
                 {/* Add HR before Total */}
                 <hr className="border-t border-border my-2 opacity-30" /> 
@@ -1375,133 +830,28 @@ export function BookingSummary({
                 {/* Add HR after Total with VAT */}
                 <hr className="border-t border-border my-2 opacity-30" />
 
-                {/* --- START: Discount Code Section --- */} 
-                <div className="pt-4 mt-4 font-mono">
-                  {!appliedDiscount ? (
-                    <div>
-                       <label htmlFor="discount-code" className="uppercase text-primary font-display text-2xl">Code</label>
-                       <div className="flex gap-2 mt-2"> {/* Added mt-2 */}
-                          <input 
-                            type="text"
-                            id="discount-code"
-                            value={discountCodeInput}
-                            onChange={(e) => setDiscountCodeInput(e.target.value.toUpperCase())}
-                            className="flex-grow px-3 py-2 bg-[var(--color-input-bg)] border border-border rounded-sm focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent text-primary placeholder:text-shade-1 placeholder:font-display text-sm disabled:bg-transparent disabled:text-shade-3"
-                            placeholder="ENTER CODE"
-                            disabled={isApplyingDiscount}
-                          />
-                          <button
-                            onClick={handleApplyDiscount}
-                            disabled={isApplyingDiscount || !discountCodeInput.trim()}
-                            className="px-3 py-2 bg-[var(--color-input-bg)] border border-border rounded-sm focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent text-primary text-sm font-display whitespace-nowrap disabled:bg-transparent disabled:text-shade-3 disabled:border-transparent"
-                          >
-                            {isApplyingDiscount ? 'APPLYING...' : 'APPLY'}
-                          </button>
-                       </div>
-                       {discountError && (
-                          <div className="mt-2 text-xs text-error flex items-center gap-1">
-                             <AlertTriangle className="w-3 h-3 flex-shrink-0" />
-                             <span>{discountError}</span>
-                          </div>
-                       )}
-                    </div>
-                  ) : (
-                    <div className="p-3 bg-success-muted rounded-md border border-success">
-                        <div className="flex justify-between items-start"> {/* Changed items-center to items-start */}
-                            <div> {/* Wrapper for discount text lines */}
-                                <div className="flex items-center gap-2 text-sm text-success">
-                                    <Tag className="w-4 h-4 flex-shrink-0" />
-                                    <span>Applied: <strong>{appliedDiscount.code}</strong> (-{appliedDiscount.percentage_discount}%)</span>
-                                </div>
-                                <div className="text-xs text-gray-600 dark:text-gray-400 mt-1 ml-[calc(1rem+0.5rem)]"> {/* Indented, smaller, muted text. Adjust ml if icon/gap changes. 1rem for w-4 icon, 0.5rem for gap-2 */}
-                                    Applies to: <span className="font-medium">{getAppliesToText(appliedDiscount.applies_to)}</span>
-                                </div>
-                            </div>
-                            <button 
-                                onClick={handleRemoveDiscount}
-                                className="p-1 text-success hover:text-error hover:bg-error-muted rounded-full text-xs flex-shrink-0" // Added flex-shrink-0
-                                title="Remove code"
-                            >
-                                <X className="w-3 h-3" />
-                            </button>
-                        </div>
-                    </div>
-                  )}
-                </div>
-                {/* --- END: Discount Code Section --- */} 
+                {/* Discount Code Section */}
+                <DiscountCodeSection
+                  appliedDiscount={appliedDiscount}
+                  discountCodeInput={discountCodeInput}
+                  setDiscountCodeInput={setDiscountCodeInput}
+                  discountError={discountError}
+                  isApplyingDiscount={isApplyingDiscount}
+                  onApplyDiscount={handleApplyDiscount}
+                  onRemoveDiscount={handleRemoveDiscount}
+                />
 
-                {/* --- START: Credits Section --- */}
-                {!creditsLoading && availableCredits > 0 && (
-                  <div className="mt-6 p-4 bg-accent-primary/5 border border-accent-primary/20 rounded-md">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 bg-accent-primary rounded-full"></div>
-                        <h3 className="uppercase text-primary font-display text-lg">Use Credits</h3>
-                        <HoverClickPopover
-                          triggerContent={<Info className="w-4 h-4" />}
-                          triggerWrapperClassName="text-accent-primary hover:text-accent-secondary cursor-default"
-                          popoverContentNode="Use instead of money, or save for later ✨"
-                          contentClassName="tooltip-content !font-mono text-sm z-50"
-                          side="top"
-                          align="start"
-                          hoverCloseDelayMs={150}
-                        />
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input 
-                          type="checkbox" 
-                          checked={creditsEnabled}
-                          onChange={(e) => setCreditsEnabled(e.target.checked)}
-                          className="sr-only peer"
-                        />
-                        <div className="w-11 h-6 bg-border rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent-primary"></div>
-                      </label>
-                    </div>
-                    
-                    <div className="text-xs text-shade-2 font-lettra mb-4">
-                      Available: <span className="font-display text-accent-primary">{availableCredits} credits</span>
-                    </div>
-                    
-                    {creditsEnabled && (
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-shade-2 font-lettra">Credits to use</span>
-                            <span className="text-lg font-display text-accent-primary">{creditsToUse}</span>
-                          </div>
-                          <input
-                            type="range"
-                            min={0}
-                            max={Math.min(availableCredits, Math.floor(pricing.totalWithVat))}
-                            value={creditsToUse}
-                            onChange={(e) => setCreditsToUse(Number(e.target.value))}
-                            className="w-full h-2 bg-border rounded-lg appearance-none cursor-pointer accent-accent-primary slider-thumb-accent"
-                          />
-                          <div className="flex justify-between text-xs text-shade-3 font-lettra">
-                            <span>0</span>
-                            <span>{Math.min(availableCredits, Math.floor(pricing.totalWithVat))}</span>
-                          </div>
-                        </div>
-                        
-                        <div className="pt-3 border-t border-accent-primary/20">
-                          {creditsToUse > 0 && (
-                            <div className="flex justify-between items-baseline mb-2">
-                              <span className="text-sm text-shade-2 font-lettra">Credit savings</span>
-                              <span className="text-lg font-display text-success">-€{creditsToUse}</span>
-                            </div>
-                          )}
-                          <div className="flex justify-between items-baseline">
-                            <span className="text-sm font-lettra-bold text-primary">TOTAL TO PAY</span>
-                            <span className="text-xl font-display text-primary">
-                              {formatPriceDisplay(finalAmountAfterCredits)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-                {/* --- END: Credits Section --- */}
+                {/* Credits Section */}
+                <CreditsSection
+                  availableCredits={availableCredits}
+                  creditsLoading={creditsLoading}
+                  creditsEnabled={creditsEnabled}
+                  setCreditsEnabled={setCreditsEnabled}
+                  creditsToUse={creditsToUse}
+                  setCreditsToUse={setCreditsToUse}
+                  pricing={pricing}
+                  finalAmountAfterCredits={finalAmountAfterCredits}
+                />
 
                 {/* --- START: Cancellation Policy Section --- */}
                 <div className="pt-2 mt-2">
@@ -1514,40 +864,18 @@ export function BookingSummary({
                 </div>
                 {/* --- END: Cancellation Policy Section --- */}
 
-                {/* Confirm Button */}
-                <div className="mt-6 font-mono sm:mt-8">
-                  <button
-                    onClick={handleConfirmClick}
-                    disabled={isBooking || !selectedAccommodation || selectedWeeks.length === 0}
-                    className={`w-full flex items-center justify-center pixel-corners--wrapper relative overflow-hidden px-6 py-2.5 sm:py-3 text-lg font-medium rounded-sm transition-colors duration-200
-                      ${
-                        isBooking || !selectedAccommodation || selectedWeeks.length === 0
-                          ? 'bg-transparent text-shade-3 cursor-not-allowed'
-                          : 'bg-accent-primary text-stone-800 hover:bg-accent-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent-primary'
-                      }`}
-                  >
-                    <span className="pixel-corners--content 2xl:text-2xl">
-                      {isBooking ? 'PROCESSING...' : finalAmountAfterCredits === 0 && creditsToUse > 0 ? 'CONFIRM (CREDITS ONLY)' : 'CONFIRM & DONATE'}
-                      
-                    </span>
-                  </button>
-                  
-                  {!permissionsLoading && isAdmin && (
-                    <button
-                      onClick={handleAdminConfirm}
-                      disabled={isBooking || !selectedAccommodation || selectedWeeks.length === 0}
-                      className={`w-full mt-3 flex items-center justify-center pixel-corners--wrapper relative overflow-hidden px-6 py-2.5 sm:py-3 text-lg font-medium rounded-sm transition-colors duration-200
-                        ${isBooking || !selectedAccommodation || selectedWeeks.length === 0
-                            ? 'bg-transparent text-shade-3 cursor-not-allowed'
-                            : 'bg-secondary-muted text-white hover:bg-secondary-muted-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary-muted'
-                        }`}
-                    >
-                      <span className="pixel-corners--content 2xl:text-2xl">
-                         {isBooking ? 'CONFIRMING...' : <span>Admin Confirm<br />(No Payment)</span>}
-                      </span>
-                    </button>
-                  )}
-                </div>
+                {/* Confirm Buttons */}
+                <ConfirmButtons
+                  isBooking={isBooking}
+                  selectedAccommodation={selectedAccommodation}
+                  selectedWeeks={selectedWeeks}
+                  finalAmountAfterCredits={finalAmountAfterCredits}
+                  creditsToUse={creditsToUse}
+                  isAdmin={isAdmin}
+                  permissionsLoading={permissionsLoading}
+                  onConfirm={handleConfirmClick}
+                  onAdminConfirm={handleAdminConfirm}
+                />
               </div> {/* End of Wrapper (now transparent) */}
             </div>
           )}
