@@ -273,7 +273,7 @@ export function AnimatedTerminal({ onComplete }: Props) {
                           name="email"
                           list="email-list"
                           value={email}
-                          onChange={(e) => setEmail(e.target.value)}
+                          onChange={(e) => setEmail(e.target.value.trim())}
                           className="w-full min-w-[200px] bg-black text-retro-accent border-2 border-retro-accent/70 p-3 font-mono focus:outline-none focus:ring-2 focus:ring-retro-accent/50 placeholder-retro-accent/30"
                           style={{
                             clipPath: `polygon(
@@ -300,7 +300,7 @@ export function AnimatedTerminal({ onComplete }: Props) {
                           id="otp-input"
                           name="otp"
                           value={otp}
-                          onChange={(e) => setOtp(e.target.value)}
+                          onChange={(e) => setOtp(e.target.value.trim())}
                           placeholder="Enter code"
                           required
                           disabled={isLoading}

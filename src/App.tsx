@@ -397,6 +397,8 @@ function AppContent({
   const [isWelcomeModalActuallyVisible, setIsWelcomeModalActuallyVisible] = useState<boolean>(false);
   // Renaming for clarity from the previous WhitelistSignupPage.tsx change
   const [triggerWelcomeModalFromNavFlag, setTriggerWelcomeModalFromNavFlag] = useState(false); 
+  // Add a flag to track if this is the initial load
+  const [hasCompletedInitialLoad, setHasCompletedInitialLoad] = useState(false);
   // Removed triggerWelcomeModalFromAcceptance as it's not the current focus, can be added back if needed
 
   // Effect to detect navigation from WhitelistSignupPage
@@ -419,6 +421,11 @@ function AppContent({
       return;
     }
 
+    // Mark initial load as complete once we have user data
+    if (!hasCompletedInitialLoad && !isLoading) {
+      setHasCompletedInitialLoad(true);
+    }
+
     console.log('AppContent Welcome Modal Effect Check:', {
       isLoading,
       isWhitelisted,
@@ -426,6 +433,7 @@ function AppContent({
       needsWelcomeCheckResult, // from get_user_app_entry_status_v2 (metadata)
       triggerWelcomeModalFromNavFlag, // from navigation state
       isWelcomeModalActuallyVisible,
+      hasCompletedInitialLoad,
       userId: user.id
     });
 
@@ -435,8 +443,9 @@ function AppContent({
       console.log('AppContent: Modal decision: YES (triggered by navigation flag from signup page).');
     } else if (
       !isLoading &&
-      user.user_metadata?.is_whitelisted === true && // They are generally whitelisted
-      needsWelcomeCheckResult === true &&           // Metadata indicates they haven't seen it (has_seen_welcome is false)
+      hasCompletedInitialLoad && // Only show after initial load to prevent flash
+      isWhitelisted === true && // Use prop from RPC, not stale metadata
+      needsWelcomeCheckResult === true && // Use prop from RPC
       hasApplicationRecord === true                 // CRUCIAL: They have completed the signup step
     ) {
       shouldShowModal = true;
@@ -444,8 +453,11 @@ function AppContent({
     } else {
       console.log('AppContent: Modal decision: NO.');
       // Add some logging for why it might be no, if relevant conditions were met
-      if (!isLoading && user.user_metadata?.is_whitelisted === true && needsWelcomeCheckResult === true && hasApplicationRecord === false) {
+      if (!isLoading && isWhitelisted === true && needsWelcomeCheckResult === true && hasApplicationRecord === false) {
         console.log('AppContent: Modal deferred because user still needs to complete signup (hasApplicationRecord is false).');
+      }
+      if (!hasCompletedInitialLoad && needsWelcomeCheckResult === true) {
+        console.log('AppContent: Modal deferred because initial load not complete (preventing flash).');
       }
     }
 
@@ -460,8 +472,9 @@ function AppContent({
             console.error('AppContent: Error updating user metadata (has_seen_welcome):', updateError);
           } else {
             console.log('AppContent: Successfully updated user metadata (has_seen_welcome: true).');
-            // Update local state to reflect the change immediately, preventing re-trigger by DB check
-            setNeedsWelcomeCheckResult(false); 
+            // DO NOT update state here, as it causes the modal to flash and hide.
+            // The modal should only close on user action.
+            // setNeedsWelcomeCheckResult(false); 
             if (user && user.user_metadata) { // Refresh local copy of metadata if possible
               user.user_metadata.has_seen_welcome = true;
             }
@@ -479,32 +492,36 @@ function AppContent({
     needsWelcomeCheckResult, 
     triggerWelcomeModalFromNavFlag, 
     isWelcomeModalActuallyVisible,
+    hasCompletedInitialLoad,
     setNeedsWelcomeCheckResult // Already a dependency
   ]);
 
   // --- Welcome Modal Close Handler ---
   const handleWelcomeModalClose = useCallback(async () => {
-    console.log('AppContent: Closing Welcome Modal.');
-    setIsWelcomeModalActuallyVisible(false); 
+    console.log('AppContent: Closing Welcome Modal. Immediately updating state.');
+    // Update UI state synchronously to hide modal and prevent re-appearance.
+    setIsWelcomeModalActuallyVisible(false);
+    setNeedsWelcomeCheckResult(false); 
     setTriggerWelcomeModalFromNavFlag(false); // Reset the nav flag trigger
 
-    // Update metadata (has_seen_welcome: true) if not already set or if call failed previously
-    // The primary update is now done when the modal is shown.
-    // This ensures it's set if the user closes the modal before the async update (on show) completes.
+    // The primary metadata update happens when the modal is first shown.
+    // This is a fallback call to ensure the metadata is set if the user closes the modal
+    // very quickly before the first async update completes. We don't need to await it.
     if (user && user.user_metadata?.has_seen_welcome !== true) {
-      try {
-        console.log(`AppContent: Calling supabase.auth.updateUser({ data: { has_seen_welcome: true } }) for user ${user.id} (on close - as fallback).`);
-        const { error } = await supabase.auth.updateUser({ data: { has_seen_welcome: true } });
-        if (error) {
-          console.error('Error updating has_seen_welcome (on close):', error);
-        } else {
-          console.log('AppContent: Successfully updated has_seen_welcome (on close).');
-          setNeedsWelcomeCheckResult(false); // Reflect change locally
-          if (user.user_metadata) user.user_metadata.has_seen_welcome = true;
-        }
-      } catch (err) {
-        console.error('Exception updating has_seen_welcome (on close):', err);
-      }
+      console.log(`AppContent: Calling supabase.auth.updateUser as a fallback on close for user ${user.id}.`);
+      supabase.auth.updateUser({ data: { has_seen_welcome: true } })
+        .then(({ error }) => {
+          if (error) {
+            console.error('Error updating has_seen_welcome (on close fallback):', error);
+          } else {
+            console.log('AppContent: Successfully updated has_seen_welcome (on close fallback).');
+            // No need to set state again here, just update local user object if needed.
+            if (user.user_metadata) user.user_metadata.has_seen_welcome = true;
+          }
+        })
+        .catch(err => {
+            console.error('Exception updating has_seen_welcome (on close fallback):', err);
+        });
     }
   }, [user, setNeedsWelcomeCheckResult]); 
 

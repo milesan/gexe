@@ -10,6 +10,7 @@ import { usePagination, DOTS } from '../../hooks/usePagination';
 import { useSession } from '../../hooks/useSession';
 import { useUserPermissions } from '../../hooks/useUserPermissions';
 import { ManageCreditsModal } from './ManageCreditsModal';
+import { useCredits } from '../../hooks/useCredits';
 
 interface Application {
   id: string;
@@ -48,6 +49,7 @@ const getAdminName = (email: string): string => {
 export function Applications2() {
   const { session } = useSession();
   const { isAdmin } = useUserPermissions(session);
+  const { refresh: refreshGlobalCredits } = useCredits();
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -448,13 +450,20 @@ export function Applications2() {
     setShowManageCreditsModal(true);
   };
 
-  const handleCreditsUpdated = (userId: string, newBalance: number) => {
+  const handleCreditsUpdated = async (userId: string, newBalance: number) => {
     // Update the application in the local state
     setApplications(prev => prev.map(app => 
       app.user_id === userId 
         ? { ...app, credits: newBalance }
         : app
     ));
+    
+    // If the updated user is the current user, refresh global credits state
+    const currentUserId = session?.user?.id;
+    if (currentUserId === userId) {
+      console.log('[Applications2] Admin updated own credits, refreshing global state');
+      await refreshGlobalCredits();
+    }
   };
 
   if (loading && applications.length === 0) {

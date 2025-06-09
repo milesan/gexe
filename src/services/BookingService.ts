@@ -260,6 +260,8 @@ class BookingService {
       
       console.log('[BookingService] Successfully created booking:', newBooking);
 
+      // Credits are automatically handled by database trigger
+
       const { data: accommodation, error: accError } = await supabase
         .from('accommodations')
         .select('title, type, image_url, inventory')

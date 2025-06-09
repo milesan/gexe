@@ -85,8 +85,6 @@ interface PricingDetails {
   totalAmount: number;
   appliedCodeDiscountValue: number;
   seasonalDiscount: number;
-  vatAmount: number;
-  totalWithVat: number;
 }
 
 // === REVISED HELPER ===
@@ -437,7 +435,7 @@ export function BookingSummary({
     const subtotal = parseFloat((+totalAccommodationCost + +finalFoodCost).toFixed(2));
     console.log('[BookingSummary] useMemo: Calculated Subtotal:', { totalAccommodationCost, finalFoodCost, subtotal });
 
-    // --- START: Apply Discount Code --- 
+        // --- START: Apply Discount Code --- 
     let finalTotalAmount = subtotal;
     let discountCodeAmount = 0;
     let subtotalBeforeDiscountCode = subtotal; // Store the subtotal before this specific discount code
@@ -482,19 +480,6 @@ export function BookingSummary({
     }
     // --- END: Apply Discount Code ---
 
-    // --- START: Calculate VAT (24%) ---
-    const vatRate = 0.24; // 24% VAT
-    const vatAmount = parseFloat((finalTotalAmount * vatRate).toFixed(2));
-    const totalWithVat = parseFloat((finalTotalAmount + vatAmount).toFixed(2));
-    
-    console.log('[BookingSummary] useMemo: VAT Calculation:', {
-      finalTotalAmount,
-      vatRate,
-      vatAmount,
-      totalWithVat
-    });
-    // --- END: Calculate VAT ---
-
     // 5. Construct the final object
     const calculatedPricingDetails: PricingDetails = {
       totalNights,
@@ -510,8 +495,6 @@ export function BookingSummary({
       durationDiscountAmount: foodDiscountAmount,
       durationDiscountPercent: rawDurationDiscountPercent * 100,
       seasonalDiscount: 0,
-      vatAmount,
-      totalWithVat,
     };
 
     // ADDED LOG BLOCK: Values right before returning details
@@ -531,9 +514,6 @@ export function BookingSummary({
       calculatedPricingDetails.subtotal = calculatedPricingDetails.totalAccommodationCost; // Keep accom cost, just zero out food
       calculatedPricingDetails.totalAmount = calculatedPricingDetails.totalAccommodationCost; // Total is just accom cost
       calculatedPricingDetails.durationDiscountAmount = 0; // No food discount applicable
-      // Recalculate VAT for test accommodation
-      calculatedPricingDetails.vatAmount = parseFloat((calculatedPricingDetails.totalAmount * vatRate).toFixed(2));
-      calculatedPricingDetails.totalWithVat = parseFloat((calculatedPricingDetails.totalAmount + calculatedPricingDetails.vatAmount).toFixed(2));
     }
     // --- END TEST ACCOMMODATION OVERRIDE ---
 
@@ -553,12 +533,12 @@ export function BookingSummary({
     return false;
   }, [selectedWeeks]);
 
-  // Calculate final amount after credits (using total with VAT)
+  // Calculate final amount after credits
   const finalAmountAfterCredits = useMemo(() => {
-    const afterCredits = Math.max(0, pricing.totalWithVat - creditsToUse);
-    console.log('[BookingSummary] Final amount after credits:', afterCredits, '(totalWithVat:', pricing.totalWithVat, ', credits:', creditsToUse, ')');
+    const afterCredits = Math.max(0, pricing.totalAmount - creditsToUse);
+    console.log('[BookingSummary] Final amount after credits:', afterCredits, '(totalAmount:', pricing.totalAmount, ', credits:', creditsToUse, ')');
     return afterCredits;
-  }, [pricing.totalWithVat, creditsToUse]);
+  }, [pricing.totalAmount, creditsToUse]);
 
   // Always update the check-in date when selectedWeeks changes
   useEffect(() => {
@@ -616,16 +596,16 @@ export function BookingSummary({
 
   // Auto-set credits to use when pricing or available credits change
   useEffect(() => {
-    if (creditsEnabled && !creditsLoading && pricing.totalWithVat > 0) {
-      // Automatically set credits to use (min of available credits or total amount with VAT)
-      const maxCreditsToUse = Math.min(availableCredits, Math.floor(pricing.totalWithVat));
+    if (creditsEnabled && !creditsLoading && pricing.totalAmount > 0) {
+      // Automatically set credits to use (min of available credits or total amount)
+      const maxCreditsToUse = Math.min(availableCredits, Math.floor(pricing.totalAmount));
       setCreditsToUse(maxCreditsToUse);
       console.log('[BookingSummary] Auto-setting credits to use:', maxCreditsToUse, 'from available:', availableCredits);
     } else if (!creditsEnabled) {
       setCreditsToUse(0);
       console.log('[BookingSummary] Credits disabled, setting to 0');
     }
-  }, [pricing.totalWithVat, availableCredits, creditsEnabled, creditsLoading]);
+  }, [pricing.totalAmount, availableCredits, creditsEnabled, creditsLoading]);
 
   // Validate that a check-in date is selected
   const validateCheckInDate = useCallback(() => {
@@ -787,10 +767,26 @@ export function BookingSummary({
 
         console.log("[Booking Summary] Booking created:", booking);
         
-        // Refresh credits after successful booking
+        // Refresh credits manually to ensure UI updates immediately
         if (creditsToUse > 0) {
-          console.log("[Booking Summary] Refreshing credits after booking");
-          refreshCredits();
+          console.log("[Booking Summary] Credits used, manually refreshing credits");
+          try {
+            await refreshCredits();
+            console.log("[Booking Summary] Credits refreshed successfully");
+            
+            // Add a fallback refresh with delay in case the first one was too fast
+            setTimeout(async () => {
+              console.log("[Booking Summary] Fallback credits refresh after 1 second");
+              try {
+                await refreshCredits();
+                console.log("[Booking Summary] Fallback credits refresh completed");
+              } catch (err) {
+                console.error("[Booking Summary] Fallback credits refresh failed:", err);
+              }
+            }, 1000);
+          } catch (err) {
+            console.error("[Booking Summary] Error refreshing credits:", err);
+          }
         }
         
         // Updated navigation to match the route in AuthenticatedApp.tsx
@@ -1352,28 +1348,7 @@ export function BookingSummary({
                    <p className="text-sm text-shade-1 mt-1 font-display">Includes accommodation, food, facilities, and discounts.</p>
                 </div>
 
-                {/* VAT Section */}
-                <div className="pt-4 mt-4">
-                  <div className="flex font-mono justify-between items-baseline">
-                    <span className="uppercase text-shade-2 font-display text-lg">VAT (24%)</span>
-                    <span className="text-lg font-display text-shade-1">
-                      {formatPriceDisplay(pricing.vatAmount)}
-                    </span>
-                  </div>
-                </div>
 
-                {/* Total Including VAT */}
-                <div className="pt-2">
-                  <div className="flex font-mono justify-between items-baseline">
-                    <span className="uppercase text-primary font-display text-2xl">Total incl. VAT</span>
-                    <span className="text-2xl font-display text-primary">
-                      {formatPriceDisplay(pricing.totalWithVat)}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Add HR after Total with VAT */}
-                <hr className="border-t border-border my-2 opacity-30" />
 
                 {/* --- START: Discount Code Section --- */} 
                 <div className="pt-4 mt-4 font-mono">
@@ -1472,14 +1447,14 @@ export function BookingSummary({
                           <input
                             type="range"
                             min={0}
-                            max={Math.min(availableCredits, Math.floor(pricing.totalWithVat))}
+                            max={Math.min(availableCredits, Math.floor(pricing.totalAmount))}
                             value={creditsToUse}
                             onChange={(e) => setCreditsToUse(Number(e.target.value))}
                             className="w-full h-2 bg-border rounded-lg appearance-none cursor-pointer accent-accent-primary slider-thumb-accent"
                           />
                           <div className="flex justify-between text-xs text-shade-3 font-lettra">
                             <span>0</span>
-                            <span>{Math.min(availableCredits, Math.floor(pricing.totalWithVat))}</span>
+                            <span>{Math.min(availableCredits, Math.floor(pricing.totalAmount))}</span>
                           </div>
                         </div>
                         

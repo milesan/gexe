@@ -6,7 +6,6 @@ import { useSession } from '../hooks/useSession';
 // Assuming a ThemeContext exists and provides a useTheme hook
 // import { useTheme } from '../contexts/ThemeContext'; 
 import { Footer } from './Footer';
-import { WhitelistWelcomeModal } from './WhitelistWelcomeModal'; // Import the modal
 import { BugReportFAB } from './BugReportFAB';
 import { useUserPermissions } from '../hooks/useUserPermissions'; // <-- Import the new hook
 import { HoverClickPopover } from './HoverClickPopover';
@@ -31,7 +30,6 @@ interface MainAppLayoutProps {
 
 export function MainAppLayout({ children }: MainAppLayoutProps) {
   console.log('MainAppLayout: Initializing');
-  const [showWelcomeModal, setShowWelcomeModal] = useState(false); // Add state for modal
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showHeader, setShowHeader] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
@@ -69,46 +67,6 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
       return () => clearTimeout(timeoutId);
     }
   }, [location.pathname]);
-
-  useEffect(() => {
-    if (sessionLoading) {
-      console.log('MainAppLayout: Session loading, deferring welcome modal check.');
-      return;
-    }
-
-    if (!session) {
-      console.log('MainAppLayout: No session, ensuring welcome modal is hidden.');
-      setShowWelcomeModal(false);
-      return;
-    }
-
-    const userMetadata = session.user?.user_metadata;
-    const appStatus = userMetadata?.application_status;
-
-    console.log('MainAppLayout: Checking welcome modal conditions.', { 
-      appStatus, 
-      hasSeenWelcome: userMetadata?.has_seen_welcome,
-      fromAcceptanceFlow: location.state?.fromAcceptanceFlow 
-    });
-
-    if (appStatus === 'approved') {
-      if (location.state?.fromAcceptanceFlow) {
-        console.log('MainAppLayout: Coming from acceptance flow, showing welcome modal.');
-        setShowWelcomeModal(true);
-        // Clear the state to prevent re-triggering
-        navigate(location.pathname, { replace: true, state: {} }); 
-      } else if (userMetadata?.has_seen_welcome === false || typeof userMetadata?.has_seen_welcome === 'undefined') {
-        console.log('MainAppLayout: User has not seen welcome (or flag undefined), showing welcome modal.');
-        setShowWelcomeModal(true);
-      } else {
-        console.log('MainAppLayout: User has seen welcome or conditions not met, hiding modal.');
-        setShowWelcomeModal(false);
-      }
-    } else {
-      console.log('MainAppLayout: Application status not approved, hiding modal.');
-      setShowWelcomeModal(false);
-    }
-  }, [session, sessionLoading, location, navigate]);
 
   // Scroll handler logic
   const handleScroll = useCallback(() => {
@@ -169,7 +127,6 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
 
   const handleSignOut = async () => {
     console.log('MainAppLayout: Signing out...');
-    setShowWelcomeModal(false); // Ensure modal is hidden on sign out
 
     try {
       // Attempt to sign out globally (invalidate server session)
@@ -205,27 +162,6 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
     // After all sign-out attempts, navigate.
     console.log('MainAppLayout: Navigating to / after sign out process.');
     navigate('/');
-  };
-
-  const handleWelcomeModalClose = async () => {
-    console.log('MainAppLayout: Closing welcome modal and updating metadata.');
-    setShowWelcomeModal(false);
-    if (session?.user) {
-      try {
-        const { error } = await supabase.auth.updateUser({ 
-          data: { has_seen_welcome: true } 
-        });
-        if (error) {
-          console.error('MainAppLayout: Error updating user metadata for has_seen_welcome:', error);
-        } else {
-          console.log('MainAppLayout: User metadata updated: has_seen_welcome = true');
-        }
-      } catch (err) {
-        console.error('MainAppLayout: Exception updating user metadata:', err);
-      }
-    } else {
-      console.warn('MainAppLayout: No user session found when trying to update has_seen_welcome.');
-    }
   };
 
   // Navigation helper for header links (avoids prop drilling from AuthenticatedApp)
@@ -434,11 +370,6 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
       {/* === Footer End === */}
 
       {/* === Modals and FABs Start === */}
-      <WhitelistWelcomeModal 
-        isOpen={showWelcomeModal} 
-        onClose={handleWelcomeModalClose} 
-      />
-
       <BugReportFAB />
       {/* === Modals and FABs End === */}
 
