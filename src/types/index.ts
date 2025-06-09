@@ -40,6 +40,7 @@ export interface Booking {
   status: string;
   payment_intent_id: string | null;
   applied_discount_code: string | null;
+  credits_used?: number;
   created_at: string;
   updated_at: string;
   accommodation?: {

@@ -23,6 +23,7 @@ import { DiscountModal } from './DiscountModal';
 import { CancellationPolicyModal } from './CancellationPolicyModal';
 import { formatInTimeZone } from 'date-fns-tz';
 import { useUserPermissions } from '../hooks/useUserPermissions';
+import { useCredits } from '../hooks/useCredits';
 
 // Define the season breakdown type
 export interface SeasonBreakdown {
@@ -84,6 +85,8 @@ interface PricingDetails {
   totalAmount: number;
   appliedCodeDiscountValue: number;
   seasonalDiscount: number;
+  vatAmount: number;
+  totalWithVat: number;
 }
 
 // === REVISED HELPER ===
@@ -238,6 +241,12 @@ export function BookingSummary({
   const [discountError, setDiscountError] = useState<string | null>(null);
   const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
   // --- End Discount Code State ---
+
+  // --- State for Credits ---
+  const [creditsToUse, setCreditsToUse] = useState<number>(0);
+  const [creditsEnabled, setCreditsEnabled] = useState<boolean>(true); // Default to using credits
+  const { credits: availableCredits, loading: creditsLoading, refresh: refreshCredits } = useCredits();
+  // --- End Credits State ---
 
   // State for internally calculated season breakdown
   const [seasonBreakdownState, setSeasonBreakdownState] = useState<SeasonBreakdown | undefined>(initialSeasonBreakdown);
@@ -473,6 +482,19 @@ export function BookingSummary({
     }
     // --- END: Apply Discount Code ---
 
+    // --- START: Calculate VAT (24%) ---
+    const vatRate = 0.24; // 24% VAT
+    const vatAmount = parseFloat((finalTotalAmount * vatRate).toFixed(2));
+    const totalWithVat = parseFloat((finalTotalAmount + vatAmount).toFixed(2));
+    
+    console.log('[BookingSummary] useMemo: VAT Calculation:', {
+      finalTotalAmount,
+      vatRate,
+      vatAmount,
+      totalWithVat
+    });
+    // --- END: Calculate VAT ---
+
     // 5. Construct the final object
     const calculatedPricingDetails: PricingDetails = {
       totalNights,
@@ -488,6 +510,8 @@ export function BookingSummary({
       durationDiscountAmount: foodDiscountAmount,
       durationDiscountPercent: rawDurationDiscountPercent * 100,
       seasonalDiscount: 0,
+      vatAmount,
+      totalWithVat,
     };
 
     // ADDED LOG BLOCK: Values right before returning details
@@ -507,6 +531,9 @@ export function BookingSummary({
       calculatedPricingDetails.subtotal = calculatedPricingDetails.totalAccommodationCost; // Keep accom cost, just zero out food
       calculatedPricingDetails.totalAmount = calculatedPricingDetails.totalAccommodationCost; // Total is just accom cost
       calculatedPricingDetails.durationDiscountAmount = 0; // No food discount applicable
+      // Recalculate VAT for test accommodation
+      calculatedPricingDetails.vatAmount = parseFloat((calculatedPricingDetails.totalAmount * vatRate).toFixed(2));
+      calculatedPricingDetails.totalWithVat = parseFloat((calculatedPricingDetails.totalAmount + calculatedPricingDetails.vatAmount).toFixed(2));
     }
     // --- END TEST ACCOMMODATION OVERRIDE ---
 
@@ -525,6 +552,13 @@ export function BookingSummary({
     }
     return false;
   }, [selectedWeeks]);
+
+  // Calculate final amount after credits (using total with VAT)
+  const finalAmountAfterCredits = useMemo(() => {
+    const afterCredits = Math.max(0, pricing.totalWithVat - creditsToUse);
+    console.log('[BookingSummary] Final amount after credits:', afterCredits, '(totalWithVat:', pricing.totalWithVat, ', credits:', creditsToUse, ')');
+    return afterCredits;
+  }, [pricing.totalWithVat, creditsToUse]);
 
   // Always update the check-in date when selectedWeeks changes
   useEffect(() => {
@@ -579,6 +613,19 @@ export function BookingSummary({
       console.log('[BookingSummary] STATE CHANGE: foodContribution updated:', foodContribution);
     }
   }, [foodContribution]);
+
+  // Auto-set credits to use when pricing or available credits change
+  useEffect(() => {
+    if (creditsEnabled && !creditsLoading && pricing.totalWithVat > 0) {
+      // Automatically set credits to use (min of available credits or total amount with VAT)
+      const maxCreditsToUse = Math.min(availableCredits, Math.floor(pricing.totalWithVat));
+      setCreditsToUse(maxCreditsToUse);
+      console.log('[BookingSummary] Auto-setting credits to use:', maxCreditsToUse, 'from available:', availableCredits);
+    } else if (!creditsEnabled) {
+      setCreditsToUse(0);
+      console.log('[BookingSummary] Credits disabled, setting to 0');
+    }
+  }, [pricing.totalWithVat, availableCredits, creditsEnabled, creditsLoading]);
 
   // Validate that a check-in date is selected
   const validateCheckInDate = useCallback(() => {
@@ -730,9 +777,21 @@ export function BookingSummary({
             console.log("[Booking Summary] Adding applied discount code to booking payload:", appliedDiscount.code);
         }
 
+        // Add credits used if any
+        if (creditsToUse > 0) {
+            bookingPayload.creditsUsed = creditsToUse;
+            console.log("[Booking Summary] Adding credits used to booking payload:", creditsToUse);
+        }
+
         const booking = await bookingService.createBooking(bookingPayload);
 
         console.log("[Booking Summary] Booking created:", booking);
+        
+        // Refresh credits after successful booking
+        if (creditsToUse > 0) {
+          console.log("[Booking Summary] Refreshing credits after booking");
+          refreshCredits();
+        }
         
         // Updated navigation to match the route in AuthenticatedApp.tsx
         navigate('/confirmation', { 
@@ -757,7 +816,7 @@ export function BookingSummary({
       setError('An error occurred. Please try again.');
       setIsBooking(false);
     }
-  }, [selectedAccommodation, selectedWeeks, selectedCheckInDate, navigate, pricing.totalAmount, appliedDiscount]);
+  }, [selectedAccommodation, selectedWeeks, selectedCheckInDate, navigate, pricing.totalAmount, appliedDiscount, creditsToUse, refreshCredits]);
 
   const handleConfirmClick = async () => {
     console.log('[Booking Summary] Confirm button clicked.');
@@ -781,6 +840,13 @@ export function BookingSummary({
       if (!isAvailable) {
         console.warn('[Booking Summary] Accommodation is no longer available');
         setError('This accommodation is no longer available for the selected dates');
+        return;
+      }
+      
+      // If the final amount is 0 (fully paid with credits), skip payment
+      if (finalAmountAfterCredits === 0 && creditsToUse > 0) {
+        console.log('[Booking Summary] Total is 0 after credits, skipping payment');
+        await handleBookingSuccess();
         return;
       }
       
@@ -981,7 +1047,7 @@ export function BookingSummary({
                   ? 0.50 // Force 0.50 if it's the test type (Stripe minimum)
                   : testPaymentAmount !== null && isAdmin 
                     ? testPaymentAmount // Otherwise use admin test amount if set
-                    : pricing.totalAmount // Otherwise use the calculated total
+                    : finalAmountAfterCredits // Use amount after credits
                 }
                 description={`${selectedAccommodation?.title || 'Accommodation'} for ${pricing.totalNights} nights${selectedCheckInDate ? ` from ${selectedCheckInDate.getDate()}. ${selectedCheckInDate.toLocaleDateString('en-US', { month: 'long' })}` : ''}`}
                 onSuccess={handleBookingSuccess}
@@ -1286,7 +1352,27 @@ export function BookingSummary({
                    <p className="text-sm text-shade-1 mt-1 font-display">Includes accommodation, food, facilities, and discounts.</p>
                 </div>
 
-                {/* Add HR after Total description */}
+                {/* VAT Section */}
+                <div className="pt-4 mt-4">
+                  <div className="flex font-mono justify-between items-baseline">
+                    <span className="uppercase text-shade-2 font-display text-lg">VAT (24%)</span>
+                    <span className="text-lg font-display text-shade-1">
+                      {formatPriceDisplay(pricing.vatAmount)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Total Including VAT */}
+                <div className="pt-2">
+                  <div className="flex font-mono justify-between items-baseline">
+                    <span className="uppercase text-primary font-display text-2xl">Total incl. VAT</span>
+                    <span className="text-2xl font-display text-primary">
+                      {formatPriceDisplay(pricing.totalWithVat)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Add HR after Total with VAT */}
                 <hr className="border-t border-border my-2 opacity-30" />
 
                 {/* --- START: Discount Code Section --- */} 
@@ -1344,6 +1430,79 @@ export function BookingSummary({
                 </div>
                 {/* --- END: Discount Code Section --- */} 
 
+                {/* --- START: Credits Section --- */}
+                {!creditsLoading && availableCredits > 0 && (
+                  <div className="mt-6 p-4 bg-accent-primary/5 border border-accent-primary/20 rounded-md">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-accent-primary rounded-full"></div>
+                        <h3 className="uppercase text-primary font-display text-lg">Use Credits</h3>
+                        <HoverClickPopover
+                          triggerContent={<Info className="w-4 h-4" />}
+                          triggerWrapperClassName="text-accent-primary hover:text-accent-secondary cursor-default"
+                          popoverContentNode="Use instead of money, or save for later ✨"
+                          contentClassName="tooltip-content !font-mono text-sm z-50"
+                          side="top"
+                          align="start"
+                          hoverCloseDelayMs={150}
+                        />
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={creditsEnabled}
+                          onChange={(e) => setCreditsEnabled(e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-border rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent-primary"></div>
+                      </label>
+                    </div>
+                    
+                    <div className="text-xs text-shade-2 font-lettra mb-4">
+                      Available: <span className="font-display text-accent-primary">{availableCredits} credits</span>
+                    </div>
+                    
+                    {creditsEnabled && (
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-shade-2 font-lettra">Credits to use</span>
+                            <span className="text-lg font-display text-accent-primary">{creditsToUse}</span>
+                          </div>
+                          <input
+                            type="range"
+                            min={0}
+                            max={Math.min(availableCredits, Math.floor(pricing.totalWithVat))}
+                            value={creditsToUse}
+                            onChange={(e) => setCreditsToUse(Number(e.target.value))}
+                            className="w-full h-2 bg-border rounded-lg appearance-none cursor-pointer accent-accent-primary slider-thumb-accent"
+                          />
+                          <div className="flex justify-between text-xs text-shade-3 font-lettra">
+                            <span>0</span>
+                            <span>{Math.min(availableCredits, Math.floor(pricing.totalWithVat))}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="pt-3 border-t border-accent-primary/20">
+                          {creditsToUse > 0 && (
+                            <div className="flex justify-between items-baseline mb-2">
+                              <span className="text-sm text-shade-2 font-lettra">Credit savings</span>
+                              <span className="text-lg font-display text-success">-€{creditsToUse}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between items-baseline">
+                            <span className="text-sm font-lettra-bold text-primary">TOTAL TO PAY</span>
+                            <span className="text-xl font-display text-primary">
+                              {formatPriceDisplay(finalAmountAfterCredits)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {/* --- END: Credits Section --- */}
+
                 {/* --- START: Cancellation Policy Section --- */}
                 <div className="pt-2 mt-2">
                   <button
@@ -1368,7 +1527,7 @@ export function BookingSummary({
                       }`}
                   >
                     <span className="pixel-corners--content 2xl:text-2xl">
-                      {isBooking ? 'PROCESSING...' : 'CONFIRM & DONATE'}
+                      {isBooking ? 'PROCESSING...' : finalAmountAfterCredits === 0 && creditsToUse > 0 ? 'CONFIRM (CREDITS ONLY)' : 'CONFIRM & DONATE'}
                       
                     </span>
                   </button>

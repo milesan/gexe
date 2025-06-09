@@ -175,6 +175,7 @@ class BookingService {
     totalPrice: number;
     isAdmin?: boolean;
     appliedDiscountCode?: string;
+    creditsUsed?: number;
   }): Promise<Booking> {
     console.log('[BookingService] Creating booking with data:', {
       ...booking,
@@ -194,6 +195,12 @@ class BookingService {
     if (booking.totalPrice < 0) {
       console.error('[BookingService] Invalid total price:', booking.totalPrice);
       throw new Error('Total price must be non-negative');
+    }
+
+    // Validate credits_used is non-negative
+    if (booking.creditsUsed !== undefined && booking.creditsUsed < 0) {
+      console.error('[BookingService] Invalid credits used:', booking.creditsUsed);
+      throw new Error('Credits used must be non-negative');
     }
 
     try {
@@ -220,7 +227,8 @@ class BookingService {
         accommodationId: booking.accommodationId,
         userId: user?.id || 'admin',
         totalPrice: booking.totalPrice,
-        appliedDiscountCode: booking.appliedDiscountCode
+        appliedDiscountCode: booking.appliedDiscountCode,
+        creditsUsed: booking.creditsUsed || 0
       });
 
       const { data: newBooking, error } = await supabase
@@ -234,6 +242,7 @@ class BookingService {
           status: 'confirmed',
           payment_intent_id: null,
           applied_discount_code: booking.appliedDiscountCode || null,
+          credits_used: booking.creditsUsed || 0,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })

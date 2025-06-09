@@ -10,6 +10,7 @@ import { WhitelistWelcomeModal } from './WhitelistWelcomeModal'; // Import the m
 import { BugReportFAB } from './BugReportFAB';
 import { useUserPermissions } from '../hooks/useUserPermissions'; // <-- Import the new hook
 import { HoverClickPopover } from './HoverClickPopover';
+import { useCredits } from '../hooks/useCredits';
 
 // Basic debounce function (Consider moving to a utils file if not already there)
 function debounce<T extends (...args: any[]) => void>(func: T, wait: number) {
@@ -34,11 +35,11 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showHeader, setShowHeader] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
-  const [userCredits, setUserCredits] = useState<number>(0);
   // THEME FUNCTIONALITY - Placeholder, replace with your actual theme hook/context
   const [theme, setTheme] = useState<'dark' | 'light'>('dark'); // Default or load from context/localStorage
   const { session, isLoading: sessionLoading } = useSession(); // <-- Destructure session and loading state
   const { isAdmin, hasHousekeeping, isLoading: permissionsLoading } = useUserPermissions(session); // <-- Use the new hook
+  const { credits } = useCredits(); // <-- Use the credits hook
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -54,27 +55,7 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
   // Routes that should trigger scroll-to-top when navigated to
   const scrollToTopRoutes = ['/confirmation', '/my-bookings'];
 
-  // Function to fetch user credits
-  const fetchUserCredits = useCallback(async () => {
-    if (!session?.user?.id) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('credits')
-        .eq('id', session.user.id)
-        .single();
-      
-      if (error) {
-        console.error('MainAppLayout: Error fetching user credits:', error);
-        return;
-      }
-      
-      setUserCredits(data?.credits || 0);
-    } catch (err) {
-      console.error('MainAppLayout: Exception fetching user credits:', err);
-    }
-  }, [session?.user?.id]);
+
 
   // Scroll to top effect for specific routes
   useEffect(() => {
@@ -98,12 +79,8 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
     if (!session) {
       console.log('MainAppLayout: No session, ensuring welcome modal is hidden.');
       setShowWelcomeModal(false);
-      setUserCredits(0); // Reset credits when no session
       return;
     }
-
-    // Fetch user credits when session is available
-    fetchUserCredits();
 
     const userMetadata = session.user?.user_metadata;
     const appStatus = userMetadata?.application_status;
@@ -131,7 +108,7 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
       console.log('MainAppLayout: Application status not approved, hiding modal.');
       setShowWelcomeModal(false);
     }
-  }, [session, sessionLoading, location, navigate, fetchUserCredits]);
+  }, [session, sessionLoading, location, navigate]);
 
   // Scroll handler logic
   const handleScroll = useCallback(() => {
@@ -317,27 +294,24 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
                 {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               </button> */}
               
-              {/* Credits Display - DISABLED: Credit system not ready yet */}
-              {/* {userCredits > 0 && (
+              {/* Credits Display */}
+              {credits > 0 && (
                 <HoverClickPopover
                   triggerContent={
                     <div className="flex items-center gap-2 px-3 py-1.5 bg-surface-dark border border-shade-1 rounded-sm">
                       <Euro className="w-4 h-4 text-primary" />
-                      <span className="text-sm font-lettra text-primary">{userCredits}</span>
+                      <span className="text-sm font-lettra text-primary">{credits}</span>
                     </div>
                   }
-                  contentClassName="tooltip-content !font-mono z-50"
+                  contentClassName="tooltip-content !font-mono text-sm z-50"
                   arrowClassName="tooltip-arrow"
                   popoverContentNode={
-                    <div className="text-sm space-y-1">
-                      <div className="font-medium">Credits: {userCredits}</div>
-                      <div className="text-xs color-shade-2">
-                        Can be used for bookings.
-                      </div>
+                    <div className="text-center">
+                      <div>{credits} magic tokens ✨</div>
                     </div>
                   }
                 />
-              )} */}
+              )}
               
               <nav className="flex gap-6 items-center">
                 <button
@@ -389,27 +363,24 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
                 }
               </button> */}
               
-              {/* Credits Display - DISABLED: Credit system not ready yet */}
-              {/* {userCredits > 0 && (
+              {/* Credits Display */}
+              {credits > 0 && (
                 <HoverClickPopover
                   triggerContent={
                     <div className="flex items-center gap-2 py-3">
                       <Euro className="w-4 h-4 text-primary" />
-                      <span className="text-sm font-lettra text-primary">{userCredits} credits</span>
+                      <span className="text-sm font-lettra text-primary">{credits} credits</span>
                     </div>
                   }
-                  contentClassName="tooltip-content !font-mono z-50"
+                  contentClassName="tooltip-content !font-mono text-sm z-50"
                   arrowClassName="tooltip-arrow"
                   popoverContentNode={
-                    <div className="text-sm space-y-1">
-                      <div className="font-medium">Credits: {userCredits}</div>
-                      <div className="text-xs color-shade-2">
-                        Can be used for bookings.
-                      </div>
+                    <div className="text-center">
+                      <div>{credits} magic tokens ✨</div>
                     </div>
                   }
                 />
-              )} */}
+              )}
               
               <button
                 onClick={() => handleHeaderNavigation('/my-bookings')}

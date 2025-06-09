@@ -17,7 +17,7 @@ FROM profiles
 WHERE credits > 0;
 
 -- Step 3: The nuclear option - reset everyone to 0 credits
--- UPDATE profiles SET credits = 0 WHERE credits > 0;
+-- is 
 
 -- Step 4: Verify the damage
 -- SELECT COUNT(*) as users_with_credits FROM profiles WHERE credits > 0;
