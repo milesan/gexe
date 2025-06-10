@@ -79,8 +79,7 @@ CREATE TRIGGER on_auth_user_created_set_metadata
 GRANT EXECUTE ON FUNCTION set_user_metadata TO authenticated;
 
 
-/*PROBLEM: ERROR:  42601: unterminated dollar-quoted string at or near "$$
-*/ 
+-- PROBLEM: ERROR:  42601: unterminated dollar-quoted string at or near "$$"
 -- Also fix the check_whitelist_status function to preserve user-set values
 -- Fix the check_whitelist_status function to preserve user-set values
 CREATE OR REPLACE FUNCTION check_whitelist_status(p_email text)
