@@ -244,7 +244,7 @@ serve(async (req) => {
     })
 
   } catch (error) {
-    console.error('Error in create-whitelisted-auth-user:', error)
+    console.error('Error in create-whitelisted-user-2:', error)
     return new Response(JSON.stringify({ 
       error: error.message,
       isWhitelisted: false 

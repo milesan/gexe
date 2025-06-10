@@ -142,6 +142,7 @@ export function AnimatedTerminal({ onComplete }: Props) {
     try {
       console.log('[AnimatedTerminal] Requesting code for:', normalizedEmail);
       
+<<<<<<< Updated upstream
       // STEP 1: Check if this email is whitelisted and create auth user if needed
       console.log('[AnimatedTerminal] Checking whitelist status...');
       try {/*
@@ -163,17 +164,42 @@ export function AnimatedTerminal({ onComplete }: Props) {
       } catch (whitelistCheckError) {
         console.warn('[AnimatedTerminal] Whitelist check failed, continuing with normal flow:', whitelistCheckError);
         // Continue with normal flow - this handles cases where the function doesn't exist or other issues
+=======
+      // Use Edge Function for ALL user creation and magic link generation
+      // This bypasses the auth trigger conflict by using admin.createUser
+      console.log('[AnimatedTerminal] Creating user and sending magic link via Edge Function...');
+      const { data: result, error: functionError } = await supabase.functions.invoke('create-whitelisted-user-2', {
+        body: { email: normalizedEmail }
+      });
+
+      if (functionError) {
+        throw new Error(`Function error: ${functionError.message}`);
+>>>>>>> Stashed changes
       }
 
-      // STEP 2: Send magic link (works for both whitelisted and normal users now)
-      const { error } = await supabase.auth.signInWithOtp({ email: normalizedEmail });
-      if (error) throw error;
-      setSuccess('Code sent! Check your email (and spam/junk folder).');
-      setOtpSent(true);
-      console.log('[AnimatedTerminal] OTP request successful for:', normalizedEmail);
+      if (result?.success) {
+        console.log(`[AnimatedTerminal] User ${result.operation}, magic link sent for: ${normalizedEmail}`);
+        console.log(`[AnimatedTerminal] Whitelist status: ${result.isWhitelisted}`);
+        setSuccess(result.message || 'Code sent! Check your email (and spam/junk folder).');
+        setOtpSent(true);
+      } else {
+        throw new Error(result?.error || 'Unknown error occurred');
+      }
     } catch (err) {
       console.error('[AnimatedTerminal] Error requesting code:', err);
+<<<<<<< Updated upstream
       setError(err instanceof Error ? err.message : 'Failed to send code');
+=======
+      
+      // Check if this looks like a server/database error
+      const errorMessage = err instanceof Error ? err.message : 'Failed to send code';
+      if (errorMessage.includes('Database error') || errorMessage.includes('AuthApiError') || errorMessage.includes('Server configuration error')) {
+        console.log('[AnimatedTerminal] Detected server issues, switching to fallback mode');
+        setServerDown(true);
+      } else {
+        setError(errorMessage);
+      }
+>>>>>>> Stashed changes
       setOtpSent(false);
     } finally {
       setIsLoading(false);
