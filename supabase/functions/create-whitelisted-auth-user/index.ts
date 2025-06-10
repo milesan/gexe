@@ -48,8 +48,16 @@ serve(async (req) => {
       .eq('email', normalizedEmail)
       .single()
 
-    const isWhitelisted = !whitelistError && whitelistData
-    console.log(`Email ${normalizedEmail} whitelist status: ${isWhitelisted}`)
+    if (whitelistError || !whitelistData) {
+      console.log(`Email ${normalizedEmail} is not whitelisted`)
+      return new Response(JSON.stringify({ 
+        error: 'Email not whitelisted',
+        isWhitelisted: false 
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 403,
+      })
+    }
 
     // 2. Check if auth user already exists
     console.log(`Checking for existing auth user: ${normalizedEmail}`)
@@ -65,11 +73,11 @@ serve(async (req) => {
     if (existingUser) {
       console.log(`Auth user already exists for ${normalizedEmail}: ${existingUser.id}`)
       
-      // Update user metadata based on whitelist status
+      // Update user metadata to mark as whitelisted if not already
       const userMetadata = {
         ...existingUser.user_metadata,
-        is_whitelisted: isWhitelisted,
-        // PRESERVE existing values
+        is_whitelisted: true,
+        // PRESERVE existing has_seen_welcome value, don't reset to false
         has_seen_welcome: existingUser.user_metadata?.has_seen_welcome ?? false,
         has_completed_whitelist_signup: existingUser.user_metadata?.has_completed_whitelist_signup ?? false,
       }
@@ -84,64 +92,41 @@ serve(async (req) => {
         throw new Error(`Failed to update user metadata: ${updateUserError.message}`)
       }
 
-      // Update whitelist table if user is whitelisted
-      if (isWhitelisted && whitelistData) {
-        await supabaseAdmin
-          .from('whitelist')
-          .update({
-            has_created_account: true,
-            account_created_at: new Date().toISOString(),
-            user_id: existingUser.id,
-          })
-          .eq('id', whitelistData.id)
-      }
-
-      // Generate magic link for existing user
-      const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-        type: 'magiclink',
-        email: normalizedEmail,
-      })
-
-      if (linkError) {
-        console.error('Error generating magic link:', linkError)
-        throw new Error(`Failed to generate magic link: ${linkError.message}`)
-      }
-
-      console.log(`Magic link generated for existing user: ${normalizedEmail}`)
+      // Update whitelist table to link the existing auth user
+      await supabaseAdmin
+        .from('whitelist')
+        .update({
+          has_created_account: true,
+          account_created_at: new Date().toISOString(),
+          user_id: existingUser.id,
+        })
+        .eq('id', whitelistData.id)
 
       return new Response(JSON.stringify({ 
         success: true, 
         userId: existingUser.id, 
         operation: 'linked',
-        isWhitelisted: isWhitelisted,
-        message: 'Code sent! Check your email (and spam/junk folder).'
+        isWhitelisted: true 
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       })
     }
 
-    // 3. Create new auth user (for both whitelisted and non-whitelisted)
-    console.log(`Creating new auth user for email: ${normalizedEmail} (whitelisted: ${isWhitelisted})`)
+    // 3. Create new auth user
+    console.log(`Creating new auth user for whitelisted email: ${normalizedEmail}`)
     const tempPassword = `temp-${crypto.randomUUID()}`
     
-    const userMetadata = isWhitelisted ? {
-      is_whitelisted: true,
-      has_seen_welcome: false,
-      has_completed_whitelist_signup: false,
-      application_status: 'approved',
-      has_applied: true
-    } : {
-      is_whitelisted: false,
-      has_applied: false,
-      application_status: null
-    }
-
     const { data: newUserData, error: createUserError } = await supabaseAdmin.auth.admin.createUser({
       email: normalizedEmail,
       password: tempPassword,
       email_confirm: false,
-      user_metadata: userMetadata,
+      user_metadata: {
+        is_whitelisted: true,
+        // For new users, default to false (they haven't seen welcome yet)
+        has_seen_welcome: false,
+        has_completed_whitelist_signup: false,
+      },
     })
 
     if (createUserError) {
@@ -161,35 +146,21 @@ serve(async (req) => {
         if (userByEmail?.user) {
           console.log(`Found existing user via getUserByEmail: ${userByEmail.user.id}`)
           
-          // Update whitelist table if user is whitelisted
-          if (isWhitelisted && whitelistData) {
-            await supabaseAdmin
-              .from('whitelist')
-              .update({
-                has_created_account: true,
-                account_created_at: new Date().toISOString(),
-                user_id: userByEmail.user.id,
-              })
-              .eq('id', whitelistData.id)
-          }
-
-          // Generate magic link
-          const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-            type: 'magiclink',
-            email: normalizedEmail,
-          })
-
-          if (linkError) {
-            console.error('Error generating magic link:', linkError)
-            throw new Error(`Failed to generate magic link: ${linkError.message}`)
-          }
+          // Update whitelist table to link this user
+          await supabaseAdmin
+            .from('whitelist')
+            .update({
+              has_created_account: true,
+              account_created_at: new Date().toISOString(),
+              user_id: userByEmail.user.id,
+            })
+            .eq('id', whitelistData.id)
 
           return new Response(JSON.stringify({ 
             success: true, 
             userId: userByEmail.user.id, 
             operation: 'linked_existing',
-            isWhitelisted: isWhitelisted,
-            message: 'Code sent! Check your email (and spam/junk folder).'
+            isWhitelisted: true 
           }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 200,
@@ -207,37 +178,21 @@ serve(async (req) => {
     const authUserId = newUserData.user.id
     console.log(`Successfully created new auth user: ${authUserId}`)
 
-    // 4. Update whitelist table if user is whitelisted
-    if (isWhitelisted && whitelistData) {
-      await supabaseAdmin
-        .from('whitelist')
-        .update({
-          has_created_account: true,
-          account_created_at: new Date().toISOString(),
-          user_id: authUserId,
-        })
-        .eq('id', whitelistData.id)
-    }
-
-    // 5. Generate magic link for the new user
-    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'magiclink',
-      email: normalizedEmail,
-    })
-
-    if (linkError) {
-      console.error('Error generating magic link:', linkError)
-      throw new Error(`Failed to generate magic link: ${linkError.message}`)
-    }
-
-    console.log(`Magic link generated for new user: ${normalizedEmail}`)
+    // 4. Update whitelist table
+    await supabaseAdmin
+      .from('whitelist')
+      .update({
+        has_created_account: true,
+        account_created_at: new Date().toISOString(),
+        user_id: authUserId,
+      })
+      .eq('id', whitelistData.id)
 
     return new Response(JSON.stringify({ 
       success: true, 
       userId: authUserId, 
       operation: 'created',
-      isWhitelisted: isWhitelisted,
-      message: 'Code sent! Check your email (and spam/junk folder).'
+      isWhitelisted: true 
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
