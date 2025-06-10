@@ -77,8 +77,9 @@ serve(async (req) => {
       const userMetadata = {
         ...existingUser.user_metadata,
         is_whitelisted: true,
-        has_seen_welcome: false,
-        has_completed_whitelist_signup: false,
+        // PRESERVE existing has_seen_welcome value, don't reset to false
+        has_seen_welcome: existingUser.user_metadata?.has_seen_welcome ?? false,
+        has_completed_whitelist_signup: existingUser.user_metadata?.has_completed_whitelist_signup ?? false,
       }
 
       const { error: updateUserError } = await supabaseAdmin.auth.admin.updateUserById(
@@ -122,6 +123,7 @@ serve(async (req) => {
       email_confirm: false,
       user_metadata: {
         is_whitelisted: true,
+        // For new users, default to false (they haven't seen welcome yet)
         has_seen_welcome: false,
         has_completed_whitelist_signup: false,
       },

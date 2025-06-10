@@ -144,7 +144,7 @@ export function AnimatedTerminal({ onComplete }: Props) {
       
       // STEP 1: Check if this email is whitelisted and create auth user if needed
       console.log('[AnimatedTerminal] Checking whitelist status...');
-      try {
+      try {/*
         const { data: whitelistResult, error: whitelistError } = await supabase.functions.invoke('create-whitelisted-auth-user', {
           body: { email: normalizedEmail }
         });
@@ -159,7 +159,7 @@ export function AnimatedTerminal({ onComplete }: Props) {
           }
         } else if (whitelistResult?.success) {
           console.log(`[AnimatedTerminal] Whitelisted user auth account ${whitelistResult.operation}: ${whitelistResult.userId}`);
-        }
+        }*/
       } catch (whitelistCheckError) {
         console.warn('[AnimatedTerminal] Whitelist check failed, continuing with normal flow:', whitelistCheckError);
         // Continue with normal flow - this handles cases where the function doesn't exist or other issues
