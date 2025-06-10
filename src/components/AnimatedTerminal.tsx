@@ -48,8 +48,6 @@ export function AnimatedTerminal({ onComplete }: Props) {
   const navigate = useNavigate();
   const isMobile = window.innerWidth < 768;
   const [serverDown, setServerDown] = useState(false);
-  const [notifyEmail, setNotifyEmail] = useState('');
-  const [notifySuccess, setNotifySuccess] = useState(false);
 
   useEffect(() => {
     const updateDimensions = () => {
@@ -227,54 +225,7 @@ export function AnimatedTerminal({ onComplete }: Props) {
     }
   };
 
-  const handleNotifySignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setIsLoading(true);
 
-    const normalizedEmail = notifyEmail.toLowerCase().trim();
-
-    try {
-      // Simple insert into a notifications table (bypassing auth)
-      const { error } = await supabase
-        .from('server_down_notifications')
-        .insert([
-          { 
-            email: normalizedEmail,
-            created_at: new Date().toISOString()
-          }
-        ]);
-
-      if (error) {
-        // If table doesn't exist, try creating it and inserting
-        if (error.code === '42P01') {
-          console.log('[AnimatedTerminal] Creating notifications table...');
-          // Fallback: just store in localStorage for now
-          const existing = JSON.parse(localStorage.getItem('pendingNotifications') || '[]');
-          existing.push({ email: normalizedEmail, timestamp: Date.now() });
-          localStorage.setItem('pendingNotifications', JSON.stringify(existing));
-          setNotifySuccess(true);
-        } else {
-          throw error;
-        }
-      } else {
-        setNotifySuccess(true);
-      }
-    } catch (err) {
-      console.error('[AnimatedTerminal] Error saving notification email:', err);
-      // Fallback to localStorage
-      try {
-        const existing = JSON.parse(localStorage.getItem('pendingNotifications') || '[]');
-        existing.push({ email: normalizedEmail, timestamp: Date.now() });
-        localStorage.setItem('pendingNotifications', JSON.stringify(existing));
-        setNotifySuccess(true);
-      } catch (localError) {
-        setError('Failed to save email. Please try again.');
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   return (
     <div 
@@ -328,91 +279,23 @@ export function AnimatedTerminal({ onComplete }: Props) {
                       </div>
                       
                       <div className="mb-6 text-center">
-                        <p className="font-mono text-retro-accent/80 text-sm mb-2">
+                        <p className="font-mono text-retro-accent/80 text-sm mb-4">
                           We're having technical difficulties.
                         </p>
                         <p className="font-mono text-retro-accent/60 text-xs">
-                          Leave your email to get notified when we're back.
+                          Come back later.
                         </p>
                       </div>
 
-                      {notifySuccess ? (
-                        <div className="text-center">
-                          <div className="font-mono text-retro-accent text-sm mb-4">
-                            Thanks! We'll notify you when the garden reopens.
-                          </div>
-                          <button
-                            onClick={() => {
-                              setServerDown(false);
-                              setNotifySuccess(false);
-                              setNotifyEmail('');
-                              setError(null);
-                            }}
-                            className="font-mono text-retro-accent/60 text-xs hover:text-retro-accent underline"
-                          >
-                            ← back to login
-                          </button>
-                        </div>
-                      ) : (
-                        <form onSubmit={handleNotifySignup} className="space-y-4">
-                          <div className="w-full">
-                            <div className={`relative w-full ${error ? 'mb-3' : ''}`}>
-                              <input
-                                type="email"
-                                value={notifyEmail}
-                                onChange={(e) => setNotifyEmail(e.target.value.trim())}
-                                className="w-full min-w-[200px] bg-black text-retro-accent border-2 border-retro-accent/70 p-3 font-mono focus:outline-none focus:ring-2 focus:ring-retro-accent/50 placeholder-retro-accent/30"
-                                style={{
-                                  clipPath: `polygon(
-                                    0 4px, 4px 4px, 4px 0,
-                                    calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
-                                    100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
-                                    calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
-                                    0 calc(100% - 4px)
-                                  )`
-                                }}
-                                placeholder="your email"
-                                required
-                                disabled={isLoading}
-                              />
-                            </div>
-                          </div>
-
-                          {error && (
-                            <div className="font-mono text-red-500 text-sm">
-                              {error}
-                            </div>
-                          )}
-
-                          <button
-                            type="submit"
-                            disabled={isLoading}
-                            className="w-full bg-retro-accent text-black p-3 font-mono hover:bg-accent-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            style={{
-                              clipPath: `polygon(
-                                0 4px, 4px 4px, 4px 0,
-                                calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
-                                100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
-                                calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
-                                0 calc(100% - 4px)
-                              )`
-                            }}
-                          >
-                            {isLoading ? 'saving...' : 'notify me'}
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setServerDown(false);
-                              setError(null);
-                            }}
-                            className="w-full font-mono text-retro-accent/60 text-xs hover:text-retro-accent underline mt-4"
-                          >
-                            ← try login again
-                          </button>
-                        </form>
-                      )}
+                      <button
+                        onClick={() => {
+                          setServerDown(false);
+                          setError(null);
+                        }}
+                        className="w-full font-mono text-retro-accent/60 text-sm hover:text-retro-accent underline"
+                      >
+                        ← try login again
+                      </button>
                     </>
                   ) : (
                     // Original login UI
