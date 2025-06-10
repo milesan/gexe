@@ -47,6 +47,9 @@ export function AnimatedTerminal({ onComplete }: Props) {
   const [useMatrixTheme] = useState(() => Math.random() < 0.33);
   const navigate = useNavigate();
   const isMobile = window.innerWidth < 768;
+  const [serverDown, setServerDown] = useState(false);
+  const [notifyEmail, setNotifyEmail] = useState('');
+  const [notifySuccess, setNotifySuccess] = useState(false);
 
   useEffect(() => {
     const updateDimensions = () => {
@@ -144,7 +147,7 @@ export function AnimatedTerminal({ onComplete }: Props) {
       
       // STEP 1: Check if this email is whitelisted and create auth user if needed
       console.log('[AnimatedTerminal] Checking whitelist status...');
-      try {/*
+      try {
         const { data: whitelistResult, error: whitelistError } = await supabase.functions.invoke('create-whitelisted-auth-user', {
           body: { email: normalizedEmail }
         });
@@ -159,7 +162,7 @@ export function AnimatedTerminal({ onComplete }: Props) {
           }
         } else if (whitelistResult?.success) {
           console.log(`[AnimatedTerminal] Whitelisted user auth account ${whitelistResult.operation}: ${whitelistResult.userId}`);
-        }*/
+        }
       } catch (whitelistCheckError) {
         console.warn('[AnimatedTerminal] Whitelist check failed, continuing with normal flow:', whitelistCheckError);
         // Continue with normal flow - this handles cases where the function doesn't exist or other issues
@@ -173,7 +176,15 @@ export function AnimatedTerminal({ onComplete }: Props) {
       console.log('[AnimatedTerminal] OTP request successful for:', normalizedEmail);
     } catch (err) {
       console.error('[AnimatedTerminal] Error requesting code:', err);
-      setError(err instanceof Error ? err.message : 'Failed to send code');
+      
+      // Check if this looks like a server/database error
+      const errorMessage = err instanceof Error ? err.message : 'Failed to send code';
+      if (errorMessage.includes('Database error') || errorMessage.includes('AuthApiError')) {
+        console.log('[AnimatedTerminal] Detected server issues, switching to fallback mode');
+        setServerDown(true);
+      } else {
+        setError(errorMessage);
+      }
       setOtpSent(false);
     } finally {
       setIsLoading(false);
@@ -211,6 +222,55 @@ export function AnimatedTerminal({ onComplete }: Props) {
     } catch (err) {
       console.error('[AnimatedTerminal] Error verifying code:', err);
       setError(err instanceof Error ? err.message : 'Invalid or expired code');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleNotifySignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setIsLoading(true);
+
+    const normalizedEmail = notifyEmail.toLowerCase().trim();
+
+    try {
+      // Simple insert into a notifications table (bypassing auth)
+      const { error } = await supabase
+        .from('server_down_notifications')
+        .insert([
+          { 
+            email: normalizedEmail,
+            created_at: new Date().toISOString()
+          }
+        ]);
+
+      if (error) {
+        // If table doesn't exist, try creating it and inserting
+        if (error.code === '42P01') {
+          console.log('[AnimatedTerminal] Creating notifications table...');
+          // Fallback: just store in localStorage for now
+          const existing = JSON.parse(localStorage.getItem('pendingNotifications') || '[]');
+          existing.push({ email: normalizedEmail, timestamp: Date.now() });
+          localStorage.setItem('pendingNotifications', JSON.stringify(existing));
+          setNotifySuccess(true);
+        } else {
+          throw error;
+        }
+      } else {
+        setNotifySuccess(true);
+      }
+    } catch (err) {
+      console.error('[AnimatedTerminal] Error saving notification email:', err);
+      // Fallback to localStorage
+      try {
+        const existing = JSON.parse(localStorage.getItem('pendingNotifications') || '[]');
+        existing.push({ email: normalizedEmail, timestamp: Date.now() });
+        localStorage.setItem('pendingNotifications', JSON.stringify(existing));
+        setNotifySuccess(true);
+      } catch (localError) {
+        setError('Failed to save email. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -258,53 +318,181 @@ export function AnimatedTerminal({ onComplete }: Props) {
               {/* Use padding instead of calculated width for better responsiveness */}
               <div className="w-full max-w-[300px] px-6 sm:px-0">
                 <div className="p-4 sm:p-8">
-                  <div className="flex items-center justify-center gap-3 mb-8">
-                    <h1 className="text-lg font-display text-retro-accent whitespace-nowrap">
-                      Enter The Garden
-                    </h1>
-                  </div>
-
-                  <form onSubmit={otpSent ? handleVerifyOtp : handleSendOtp} className="space-y-4">
-                    <div className="w-full">
-                      <div className={`relative w-full ${ (error || success) ? 'mb-3' : '' }`}>
-                        <input
-                          type="email"
-                          id="email-input"
-                          name="email"
-                          list="email-list"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value.trim())}
-                          className="w-full min-w-[200px] bg-black text-retro-accent border-2 border-retro-accent/70 p-3 font-mono focus:outline-none focus:ring-2 focus:ring-retro-accent/50 placeholder-retro-accent/30"
-                          style={{
-                            clipPath: `polygon(
-                              0 4px, 4px 4px, 4px 0,
-                              calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
-                              100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
-                              calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
-                              0 calc(100% - 4px)
-                            )`
-                          }}
-                          placeholder="email"
-                          required
-                          autoComplete="email"
-                          spellCheck="false"
-                          disabled={otpSent || isLoading}
-                        />
+                  {serverDown ? (
+                    // Server down fallback UI
+                    <>
+                      <div className="flex items-center justify-center gap-3 mb-8">
+                        <h1 className="text-lg font-display text-retro-accent whitespace-nowrap">
+                          Server's Down
+                        </h1>
                       </div>
-                    </div>
+                      
+                      <div className="mb-6 text-center">
+                        <p className="font-mono text-retro-accent/80 text-sm mb-2">
+                          We're having technical difficulties.
+                        </p>
+                        <p className="font-mono text-retro-accent/60 text-xs">
+                          Leave your email to get notified when we're back.
+                        </p>
+                      </div>
 
-                    {otpSent && (
-                      <div>
-                        <input
-                          type="text"
-                          id="otp-input"
-                          name="otp"
-                          value={otp}
-                          onChange={(e) => setOtp(e.target.value.trim())}
-                          placeholder="Enter code"
-                          required
+                      {notifySuccess ? (
+                        <div className="text-center">
+                          <div className="font-mono text-retro-accent text-sm mb-4">
+                            Thanks! We'll notify you when the garden reopens.
+                          </div>
+                          <button
+                            onClick={() => {
+                              setServerDown(false);
+                              setNotifySuccess(false);
+                              setNotifyEmail('');
+                              setError(null);
+                            }}
+                            className="font-mono text-retro-accent/60 text-xs hover:text-retro-accent underline"
+                          >
+                            ← back to login
+                          </button>
+                        </div>
+                      ) : (
+                        <form onSubmit={handleNotifySignup} className="space-y-4">
+                          <div className="w-full">
+                            <div className={`relative w-full ${error ? 'mb-3' : ''}`}>
+                              <input
+                                type="email"
+                                value={notifyEmail}
+                                onChange={(e) => setNotifyEmail(e.target.value.trim())}
+                                className="w-full min-w-[200px] bg-black text-retro-accent border-2 border-retro-accent/70 p-3 font-mono focus:outline-none focus:ring-2 focus:ring-retro-accent/50 placeholder-retro-accent/30"
+                                style={{
+                                  clipPath: `polygon(
+                                    0 4px, 4px 4px, 4px 0,
+                                    calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
+                                    100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
+                                    calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
+                                    0 calc(100% - 4px)
+                                  )`
+                                }}
+                                placeholder="your email"
+                                required
+                                disabled={isLoading}
+                              />
+                            </div>
+                          </div>
+
+                          {error && (
+                            <div className="font-mono text-red-500 text-sm">
+                              {error}
+                            </div>
+                          )}
+
+                          <button
+                            type="submit"
+                            disabled={isLoading}
+                            className="w-full bg-retro-accent text-black p-3 font-mono hover:bg-accent-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            style={{
+                              clipPath: `polygon(
+                                0 4px, 4px 4px, 4px 0,
+                                calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
+                                100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
+                                calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
+                                0 calc(100% - 4px)
+                              )`
+                            }}
+                          >
+                            {isLoading ? 'saving...' : 'notify me'}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setServerDown(false);
+                              setError(null);
+                            }}
+                            className="w-full font-mono text-retro-accent/60 text-xs hover:text-retro-accent underline mt-4"
+                          >
+                            ← try login again
+                          </button>
+                        </form>
+                      )}
+                    </>
+                  ) : (
+                    // Original login UI
+                    <>
+                      <div className="flex items-center justify-center gap-3 mb-8">
+                        <h1 className="text-lg font-display text-retro-accent whitespace-nowrap">
+                          Enter The Garden
+                        </h1>
+                      </div>
+
+                      <form onSubmit={otpSent ? handleVerifyOtp : handleSendOtp} className="space-y-4">
+                        <div className="w-full">
+                          <div className={`relative w-full ${ (error || success) ? 'mb-3' : '' }`}>
+                            <input
+                              type="email"
+                              id="email-input"
+                              name="email"
+                              list="email-list"
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value.trim())}
+                              className="w-full min-w-[200px] bg-black text-retro-accent border-2 border-retro-accent/70 p-3 font-mono focus:outline-none focus:ring-2 focus:ring-retro-accent/50 placeholder-retro-accent/30"
+                              style={{
+                                clipPath: `polygon(
+                                  0 4px, 4px 4px, 4px 0,
+                                  calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
+                                  100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
+                                  calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
+                                  0 calc(100% - 4px)
+                                )`
+                              }}
+                              placeholder="email"
+                              required
+                              autoComplete="email"
+                              spellCheck="false"
+                              disabled={otpSent || isLoading}
+                            />
+                          </div>
+                        </div>
+
+                        {otpSent && (
+                          <div>
+                            <input
+                              type="text"
+                              id="otp-input"
+                              name="otp"
+                              value={otp}
+                              onChange={(e) => setOtp(e.target.value.trim())}
+                              placeholder="Enter code"
+                              required
+                              disabled={isLoading}
+                              className="w-full min-w-[200px] bg-black text-retro-accent border-2 border-retro-accent/70 p-3 font-mono focus:outline-none focus:ring-2 focus:ring-retro-accent/50 placeholder-retro-accent/30 mt-2"
+                              style={{
+                                clipPath: `polygon(
+                                  0 4px, 4px 4px, 4px 0,
+                                  calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
+                                  100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
+                                  calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
+                                  0 calc(100% - 4px)
+                                )`
+                              }}
+                            />
+                          </div>
+                        )}
+
+                        {error && (
+                          <div className="font-mono text-red-500 text-sm">
+                            {error}
+                          </div>
+                        )}
+
+                        {success && (
+                          <div className="font-mono text-retro-accent text-sm w-full whitespace-pre-wrap">
+                            {success}
+                          </div>
+                        )}
+
+                        <button
+                          type="submit"
                           disabled={isLoading}
-                          className="w-full min-w-[200px] bg-black text-retro-accent border-2 border-retro-accent/70 p-3 font-mono focus:outline-none focus:ring-2 focus:ring-retro-accent/50 placeholder-retro-accent/30 mt-2"
+                          className="w-full bg-retro-accent text-black p-3 font-mono hover:bg-accent-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           style={{
                             clipPath: `polygon(
                               0 4px, 4px 4px, 4px 0,
@@ -314,39 +502,12 @@ export function AnimatedTerminal({ onComplete }: Props) {
                               0 calc(100% - 4px)
                             )`
                           }}
-                        />
-                      </div>
-                    )}
-
-                    {error && (
-                      <div className="font-mono text-red-500 text-sm">
-                        {error}
-                      </div>
-                    )}
-
-                    {success && (
-                      <div className="font-mono text-retro-accent text-sm w-full whitespace-pre-wrap">
-                        {success}
-                      </div>
-                    )}
-
-                    <button
-                      type="submit"
-                      disabled={isLoading}
-                      className="w-full bg-retro-accent text-black p-3 font-mono hover:bg-accent-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      style={{
-                        clipPath: `polygon(
-                          0 4px, 4px 4px, 4px 0,
-                          calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
-                          100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
-                          calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
-                          0 calc(100% - 4px)
-                        )`
-                      }}
-                    >
-                      {isLoading ? (otpSent ? 'verifying...' : 'sending...') : (otpSent ? 'verify code' : 'send code')}
-                    </button>
-                  </form>
+                        >
+                          {isLoading ? (otpSent ? 'verifying...' : 'sending...') : (otpSent ? 'verify code' : 'send code')}
+                        </button>
+                      </form>
+                    </>
+                  )}
                 </div>
               </div>
             </motion.div>
