@@ -282,8 +282,18 @@ export function AnimatedTerminal({ onComplete }: Props) {
                         <p className="font-mono text-retro-accent/80 text-sm mb-4">
                           We're having technical difficulties.
                         </p>
-                        <p className="font-mono text-retro-accent/60 text-xs">
+                        <p className="font-mono text-retro-accent/60 text-xs mb-3">
                           Come back later.
+                        </p>
+                        <p className="font-mono text-retro-accent/60 text-xs">
+                          Message{' '}
+                          <a 
+                            href="mailto:living@thegarden.pt" 
+                            className="text-retro-accent hover:text-accent-secondary underline"
+                          >
+                            living@thegarden.pt
+                          </a>
+                          {' '}for the time being.
                         </p>
                       </div>
 
