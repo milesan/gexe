@@ -20,7 +20,7 @@ type LogLevels = Record<LogLevel, LogFunction>;
 // Create logger functions
 export const createLogger = (): LogLevels => {
   // In production, silence all logs except error by default
-  if (isProduction) {
+  /*if (isProduction) {
     return {
       log: () => {},
       info: () => {},
@@ -29,7 +29,7 @@ export const createLogger = (): LogLevels => {
       // Keep error logs for critical issues
       error: (...args: any[]) => originalConsole.error(...args),
     };
-  }
+  }*/
   
   // In development, use enhanced logging
   return {
