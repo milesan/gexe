@@ -1,4 +1,4 @@
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY_PROD);
+const stripe = require('stripe')(process.env.VITE_STRIPE_SECRET_KEY);
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -30,7 +30,7 @@ exports.handler = async (event) => {
       };
     }
 
-    const { total, description } = JSON.parse(event.body);
+    const { total, description, email, bookingDetails } = JSON.parse(event.body);
 
     if (!total || !description) {
       return {
@@ -44,15 +44,31 @@ exports.handler = async (event) => {
 
     const transactionDescription = "netlify_Donation to the Garden Associação, " + description;
 
+    // Create metadata object for the webhook
+    const metadata = {
+      email: email || 'unknown',
+      description: description
+    };
+
+    // If booking details are provided, add them to metadata
+    if (bookingDetails) {
+      metadata.accommodationId = bookingDetails.accommodationId;
+      metadata.accommodationTitle = bookingDetails.accommodationTitle;
+      metadata.checkIn = bookingDetails.checkIn;
+      metadata.checkOut = bookingDetails.checkOut;
+      metadata.userId = bookingDetails.userId;
+      metadata.appliedDiscountCode = bookingDetails.appliedDiscountCode || '';
+      metadata.creditsUsed = bookingDetails.creditsUsed || '0';
+    }
     
-    // Create Stripe checkout session
+    // Create Stripe checkout session with metadata
     const session = await stripe.checkout.sessions.create({
       ui_mode: 'embedded',
       line_items: [{
         price_data: {
           currency: "eur",
           tax_behavior: "inclusive",
-          unit_amount: total * 100,
+          unit_amount: Math.round(total * 100),
           product_data: {
             name: transactionDescription,
           },
@@ -62,7 +78,11 @@ exports.handler = async (event) => {
       mode: 'payment',
       automatic_tax: {enabled: true},
       redirect_on_completion: 'never',
-      description: transactionDescription
+      description: transactionDescription,
+      metadata: metadata, // Add metadata for webhook processing
+      payment_intent_data: {
+        metadata: metadata // Also add to payment intent for redundancy
+      }
     });
 
     return {
