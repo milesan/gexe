@@ -733,6 +733,15 @@ export function BookingSummary({
                     : finalAmountAfterCredits // Use amount after credits
                 }
                 description={`${selectedAccommodation?.title || 'Accommodation'} for ${pricing.totalNights} nights${selectedCheckInDate ? ` from ${selectedCheckInDate.getDate()}. ${selectedCheckInDate.toLocaleDateString('en-US', { month: 'long' })}` : ''}`}
+                bookingDetails={selectedAccommodation && selectedCheckInDate ? {
+                  accommodationId: selectedAccommodation.id,
+                  accommodationTitle: selectedAccommodation.title,
+                  checkIn: formatInTimeZone(selectedCheckInDate, 'UTC', 'yyyy-MM-dd'),
+                  checkOut: formatInTimeZone(addDays(selectedCheckInDate, calculateTotalDays(selectedWeeks) - 1), 'UTC', 'yyyy-MM-dd'),
+                  userId: session?.session?.user?.id,
+                  appliedDiscountCode: appliedDiscount?.code,
+                  creditsUsed: creditsToUse
+                } : undefined}
                 onSuccess={handleBookingSuccess}
                 onClose={() => setShowStripeModal(false)}
               />

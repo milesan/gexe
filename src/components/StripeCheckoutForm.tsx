@@ -14,11 +14,20 @@ interface Props {
   total: number;
   authToken: string;
   userEmail: string;
+  bookingDetails?: {
+    accommodationId: string;
+    accommodationTitle: string;
+    checkIn: string;
+    checkOut: string;
+    userId?: string;
+    appliedDiscountCode?: string;
+    creditsUsed?: number;
+  };
   onSuccess: () => Promise<void>;
   onClose: () => void;
 }
 
-export function StripeCheckoutForm({ total, authToken, description, userEmail, onSuccess, onClose }: Props) {
+export function StripeCheckoutForm({ total, authToken, description, userEmail, bookingDetails, onSuccess, onClose }: Props) {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
 
   // When component mounts, add a class to body to prevent scrolling and hide the header
@@ -52,42 +61,38 @@ export function StripeCheckoutForm({ total, authToken, description, userEmail, o
       const environment = import.meta.env.MODE;
       console.log('[StripeCheckout] Sending request with environment and email:', environment, userEmail);
       
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-webhook`, {
+      // Use Netlify function instead of Supabase edge function
+      const response = await fetch(`/.netlify/functions/stripe-webhook`, {
         method: "POST",
-        mode: 'cors',
         headers: {
-          Authorization: `Bearer ${authToken}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY, // Add API key header
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
           total, 
           description,
           environment,
-          email: userEmail
+          email: userEmail,
+          bookingDetails
         }),
       });
       const data = await response.json();
       setClientSecret(data.clientSecret);
     };
     fetchSecret();
-  }, [authToken, total, description, userEmail]);
+  }, [authToken, total, description, userEmail, bookingDetails]);
 
   const handleCheckoutComplete = useCallback(async () => {
     console.log('[StripeCheckout] Payment completed, checking status...');
     
-    // Also pass environment to the status endpoint
-    const environment = import.meta.env.MODE;
-    
-    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-webhook-status`, {
+    // Use Netlify function for status check
+    const response = await fetch(`/.netlify/functions/stripe-webhook-status`, {
       method: "POST",
-      mode: 'cors',
       headers: {
-        Authorization: `Bearer ${authToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ 
-        clientSecret,
-        environment // Pass the environment to the status edge function
+        clientSecret
       }),
     });
     const { status } = await response.json();
