@@ -209,11 +209,60 @@ serve(async (req: Request) => {
         }
         console.log("[CreateBookingSecurely] Booking created successfully:", newBooking.id);
 
-        // 5. TODO: Trigger Confirmation Email (using Admin client)
+        // 5. Trigger Confirmation Email
         if (userEmail) {
-             console.log(`[CreateBookingSecurely] TODO: Trigger confirmation email for ${userEmail}`);
-            // Invoke 'send-booking-confirmation' here using supabaseAdminForInvoke
-            // Pass necessary details: userEmail, newBooking.id, checkInISO, checkOutISO, finalTotalPrice etc.
+            console.log(`[CreateBookingSecurely] Triggering confirmation email for ${userEmail}`);
+            try {
+                // Get accommodation title for email
+                const { data: accommodation } = await supabaseAdminForInvoke
+                    .from('accommodations')
+                    .select('title')
+                    .eq('id', bookingPayload.accommodationId)
+                    .single();
+
+                const accommodationTitle = accommodation?.title || 'Accommodation';
+                
+                // Determine frontend URL based on environment
+                const frontendUrl = Deno.env.get('FRONTEND_URL') || 
+                                  Deno.env.get('DEPLOY_URL') || 
+                                  Deno.env.get('APP_URL') || 
+                                  'https://in.thegarden.pt';
+                
+                console.log(`[CreateBookingSecurely] Sending email with details:`, {
+                    email: userEmail,
+                    bookingId: newBooking.id,
+                    checkIn: checkInISO,
+                    checkOut: checkOutISO,
+                    accommodation: accommodationTitle,
+                    totalPrice: finalTotalPrice,
+                    frontendUrl
+                });
+
+                const { error: emailError } = await supabaseAdminForInvoke.functions.invoke(
+                    'send-booking-confirmation',
+                    {
+                        body: {
+                            email: userEmail,
+                            bookingId: newBooking.id,
+                            checkIn: checkInISO,
+                            checkOut: checkOutISO,
+                            accommodation: accommodationTitle,
+                            totalPrice: finalTotalPrice,
+                            frontendUrl
+                        }
+                    }
+                );
+
+                if (emailError) {
+                    console.error(`[CreateBookingSecurely] Error sending confirmation email:`, emailError);
+                    // Don't throw - booking was created successfully, just log the email error
+                } else {
+                    console.log(`[CreateBookingSecurely] Confirmation email sent successfully`);
+                }
+            } catch (emailErr) {
+                console.error(`[CreateBookingSecurely] Exception sending confirmation email:`, emailErr);
+                // Don't throw - booking was created successfully, just log the email error
+            }
         }
 
         // 6. Return Success Response (only return necessary fields)
