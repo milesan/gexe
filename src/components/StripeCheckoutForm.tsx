@@ -20,6 +20,9 @@ interface Props {
 
 export function StripeCheckoutForm({ total, authToken, description, userEmail, onSuccess, onClose }: Props) {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+  
+  // Add fallback for SUPABASE_URL when not defined
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://guquxpxxycfmmlqajdyw.supabase.co';
 
   // When component mounts, add a class to body to prevent scrolling and hide the header
   useEffect(() => {
@@ -48,11 +51,55 @@ export function StripeCheckoutForm({ total, authToken, description, userEmail, o
 
   useEffect(() => {
     const fetchSecret = async () => {
-      // Pass the current environment to the edge function
+      try {
+        // Pass the current environment to the edge function
+        const environment = import.meta.env.MODE;
+        console.log('[StripeCheckout] Sending request with environment and email:', environment, userEmail);
+        
+        const response = await fetch(`${supabaseUrl}/functions/v1/stripe-webhook`, {
+          method: "POST",
+          mode: 'cors',
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            total, 
+            description,
+            environment,
+            email: userEmail
+          }),
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        if (!data.clientSecret) {
+          throw new Error('No client secret received from server');
+        }
+        
+        setClientSecret(data.clientSecret);
+      } catch (error) {
+        console.error('[StripeCheckout] Error fetching payment secret:', error);
+        // You might want to show this error to the user
+        // For now, we'll just close the modal
+        onClose();
+      }
+    };
+    fetchSecret();
+  }, [authToken, total, description, userEmail, supabaseUrl, onClose]);
+
+  const handleCheckoutComplete = useCallback(async () => {
+    console.log('[StripeCheckout] Payment completed, checking status...');
+    
+    try {
+      // Also pass environment to the status endpoint
       const environment = import.meta.env.MODE;
-      console.log('[StripeCheckout] Sending request with environment and email:', environment, userEmail);
       
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-webhook`, {
+      const response = await fetch(`${supabaseUrl}/functions/v1/stripe-webhook-status`, {
         method: "POST",
         mode: 'cors',
         headers: {
@@ -60,45 +107,29 @@ export function StripeCheckoutForm({ total, authToken, description, userEmail, o
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          total, 
-          description,
-          environment,
-          email: userEmail
+          clientSecret,
+          environment // Pass the environment to the status edge function
         }),
       });
-      const data = await response.json();
-      setClientSecret(data.clientSecret);
-    };
-    fetchSecret();
-  }, [authToken, total, description, userEmail]);
-
-  const handleCheckoutComplete = useCallback(async () => {
-    console.log('[StripeCheckout] Payment completed, checking status...');
-    
-    // Also pass environment to the status endpoint
-    const environment = import.meta.env.MODE;
-    
-    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-webhook-status`, {
-      method: "POST",
-      mode: 'cors',
-      headers: {
-        Authorization: `Bearer ${authToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ 
-        clientSecret,
-        environment // Pass the environment to the status edge function
-      }),
-    });
-    const { status } = await response.json();
-    
-    if (status === 'paid') {
-      console.log('[StripeCheckout] Payment confirmed, proceeding with booking...');
-      await onSuccess();
-    } else {
-      console.error('[StripeCheckout] Payment status not paid:', status);
+      
+      if (!response.ok) {
+        throw new Error(`Status check failed with ${response.status}: ${response.statusText}`);
+      }
+      
+      const { status } = await response.json();
+      
+      if (status === 'paid') {
+        console.log('[StripeCheckout] Payment confirmed, proceeding with booking...');
+        await onSuccess();
+      } else {
+        console.error('[StripeCheckout] Payment status not paid:', status);
+        // You might want to show an error to the user here
+      }
+    } catch (error) {
+      console.error('[StripeCheckout] Error checking payment status:', error);
+      // You might want to show this error to the user
     }
-  }, [authToken, clientSecret, onSuccess]);
+  }, [authToken, clientSecret, onSuccess, supabaseUrl]);
 
   if (!clientSecret) {
     return <div>Loading checkout...</div>;
