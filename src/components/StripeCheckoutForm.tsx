@@ -14,11 +14,12 @@ interface Props {
   total: number;
   authToken: string;
   userEmail: string;
+  pendingBookingId: string;
   onSuccess: () => Promise<void>;
   onClose: () => void;
 }
 
-export function StripeCheckoutForm({ total, authToken, description, userEmail, onSuccess, onClose }: Props) {
+export function StripeCheckoutForm({ total, authToken, description, userEmail, pendingBookingId, onSuccess, onClose }: Props) {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
 
   // When component mounts, add a class to body to prevent scrolling and hide the header
@@ -50,7 +51,7 @@ export function StripeCheckoutForm({ total, authToken, description, userEmail, o
     const fetchSecret = async () => {
       // Pass the current environment to the edge function
       const environment = import.meta.env.MODE;
-      console.log('[StripeCheckout] Sending request with environment and email:', environment, userEmail);
+      console.log('[StripeCheckout] Sending request with environment, email, and pendingBookingId:', environment, userEmail, pendingBookingId);
       
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-webhook`, {
         method: "POST",
@@ -63,14 +64,15 @@ export function StripeCheckoutForm({ total, authToken, description, userEmail, o
           total, 
           description,
           environment,
-          email: userEmail
+          email: userEmail,
+          pendingBookingId
         }),
       });
       const data = await response.json();
       setClientSecret(data.clientSecret);
     };
     fetchSecret();
-  }, [authToken, total, description, userEmail]);
+  }, [authToken, total, description, userEmail, pendingBookingId]);
 
   const handleCheckoutComplete = useCallback(async () => {
     console.log('[StripeCheckout] Payment completed, checking status...');

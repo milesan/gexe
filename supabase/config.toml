@@ -2,6 +2,15 @@
 [functions.stripe-webhook]
 verify_jwt = false
 
+[functions.stripe-webhook-status]
+verify_jwt = false
+
+[functions.stripe-webhook-handler]
+verify_jwt = false
+
+[functions.create-pending-booking]
+verify_jwt = true
+
 [api]
 port = 54321
 schemas = ["public", "storage", "graphql_public"]

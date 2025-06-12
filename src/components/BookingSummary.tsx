@@ -82,6 +82,7 @@ export function BookingSummary({
   const [testPaymentAmount, setTestPaymentAmount] = useState<number | null>(null);
   const [showDiscountModal, setShowDiscountModal] = useState(false);
   const [showCancellationModal, setShowCancellationModal] = useState(false);
+  const [pendingBookingId, setPendingBookingId] = useState<string | null>(null);
 
   // --- State for Discount Code ---
   const [discountCodeInput, setDiscountCodeInput] = useState('');
@@ -403,109 +404,95 @@ export function BookingSummary({
   const handleBookingSuccess = useCallback(async (paymentIntentId?: string) => {
     // Added optional paymentIntentId
     console.log('[BookingSummary] handleBookingSuccess called. Payment Intent ID:', paymentIntentId || 'N/A');
+    console.log('[BookingSummary] Pending booking ID:', pendingBookingId);
+    
     try {
-      if (!selectedAccommodation || selectedWeeks.length === 0 || !selectedCheckInDate) {
-        console.error('[Booking Summary] Missing required info for booking success:', { selectedAccommodation: !!selectedAccommodation, selectedWeeks: selectedWeeks.length > 0, selectedCheckInDate: !!selectedCheckInDate });
-        throw new Error('Missing required booking information');
+      if (!pendingBookingId) {
+        console.error('[Booking Summary] No pending booking ID found');
+        throw new Error('No pending booking ID found');
       }
 
-      // Calculate check-out date based on the selected check-in date
-      const totalDays = calculateTotalDays(selectedWeeks);
-      const checkOut = addDays(selectedCheckInDate, totalDays-1);
-
-      console.log('[Booking Summary] Starting booking process...');
-      console.log('[Booking Summary] handleBookingSuccess: Raw Dates:', { // ADDED LOG BLOCK
-        selectedCheckInDate_ISO: selectedCheckInDate.toISOString(),
-        selectedCheckInDate_Raw: selectedCheckInDate,
-        checkOut_ISO: checkOut.toISOString(),
-        checkOut_Raw: checkOut
-      });
+      console.log('[Booking Summary] Payment successful, waiting for booking confirmation...');
       setIsBooking(true);
       setError(null);
       
-      try {
-        // (Pricing should already be rounded to 2 decimal places)
-        const roundedTotal = pricing.totalAmount;
-        console.log('[Booking Summary] Calculated rounded total for booking/confirmation:', roundedTotal);
-
-        const formattedCheckIn = formatInTimeZone(selectedCheckInDate, 'UTC', 'yyyy-MM-dd');
-        const formattedCheckOut = formatInTimeZone(checkOut, 'UTC', 'yyyy-MM-dd');
-        console.log('[Booking Summary] Creating booking with FORMATTED (UTC) dates and ROUNDED total:', { 
-          formattedCheckIn,
-          formattedCheckOut,
-          accommodationId: selectedAccommodation.id,
-          totalPrice: roundedTotal // Use rounded total
-        });
-
-        // Add applied discount code if present
-        const bookingPayload: any = {
-          accommodationId: selectedAccommodation.id,
-          checkIn: formattedCheckIn,
-          checkOut: formattedCheckOut,
-          totalPrice: roundedTotal // Send the final price calculated by the frontend
-        };
-
-        if (appliedDiscount?.code) {
-            bookingPayload.appliedDiscountCode = appliedDiscount.code;
-            console.log("[Booking Summary] Adding applied discount code to booking payload:", appliedDiscount.code);
-        }
-
-        // Add credits used if any
-        if (creditsToUse > 0) {
-            bookingPayload.creditsUsed = creditsToUse;
-            console.log("[Booking Summary] Adding credits used to booking payload:", creditsToUse);
-        }
-
-        const booking = await bookingService.createBooking(bookingPayload);
-
-        console.log("[Booking Summary] Booking created:", booking);
+      // Poll for booking confirmation (webhook may take a moment)
+      let attempts = 0;
+      const maxAttempts = 30; // 30 seconds max
+      let confirmedBooking = null;
+      
+      while (attempts < maxAttempts) {
+        console.log(`[Booking Summary] Checking booking status (attempt ${attempts + 1}/${maxAttempts})...`);
         
-        // Refresh credits manually to ensure UI updates immediately
-        if (creditsToUse > 0) {
-          console.log("[Booking Summary] Credits used, manually refreshing credits");
-          try {
-            await refreshCredits();
-            console.log("[Booking Summary] Credits refreshed successfully");
+        try {
+          // Check booking status
+          const { data: booking, error: fetchError } = await supabase
+            .from('bookings')
+            .select('*')
+            .eq('id', pendingBookingId)
+            .single();
             
-            // Add a fallback refresh with delay in case the first one was too fast
-            setTimeout(async () => {
-              console.log("[Booking Summary] Fallback credits refresh after 1 second");
-              try {
-                await refreshCredits();
-                console.log("[Booking Summary] Fallback credits refresh completed");
-              } catch (err) {
-                console.error("[Booking Summary] Fallback credits refresh failed:", err);
-              }
-            }, 1000);
-          } catch (err) {
-            console.error("[Booking Summary] Error refreshing credits:", err);
+          if (fetchError) {
+            console.error('[Booking Summary] Error fetching booking:', fetchError);
+          } else if (booking && booking.status === 'confirmed') {
+            console.log('[Booking Summary] Booking confirmed!', booking);
+            confirmedBooking = booking;
+            break;
+          } else if (booking && booking.status === 'cancelled') {
+            throw new Error('Booking was cancelled');
           }
+        } catch (err) {
+          console.error('[Booking Summary] Error checking booking status:', err);
         }
         
-        // Updated navigation to match the route in AuthenticatedApp.tsx
-        navigate('/confirmation', { 
-          state: { 
-            booking: {
-              ...booking,
-              accommodation: selectedAccommodation.title,
-              guests: selectedAccommodation.inventory,
-              totalPrice: roundedTotal, // Use rounded total
-              checkIn: selectedCheckInDate,
-              checkOut: checkOut
-            }
-          } 
-        });
-      } catch (err) {
-        console.error('[Booking Summary] Error creating booking:', err);
-        setError('Failed to create booking. Please try again.');
-        setIsBooking(false);
+        // Wait 1 second before next attempt
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        attempts++;
+      }
+      
+      if (!confirmedBooking) {
+        throw new Error('Booking confirmation timed out. Please check your email for confirmation.');
+      }
+      
+      // Get accommodation details for navigation
+      const { data: accommodation } = await supabase
+        .from('accommodations')
+        .select('title, inventory')
+        .eq('id', confirmedBooking.accommodation_id)
+        .single();
+      
+      // Navigate to confirmation page
+      navigate('/confirmation', { 
+        state: { 
+          booking: {
+            ...confirmedBooking,
+            accommodation: accommodation?.title || 'Accommodation',
+            guests: accommodation?.inventory || 1,
+            totalPrice: confirmedBooking.total_price,
+            checkIn: new Date(confirmedBooking.check_in),
+            checkOut: new Date(confirmedBooking.check_out)
+          }
+        } 
+      });
+      
+      // Clear pending booking ID
+      setPendingBookingId(null);
+      
+      // Refresh credits if any were used
+      if (confirmedBooking.credits_used > 0) {
+        console.log("[Booking Summary] Credits used, refreshing credits");
+        try {
+          await refreshCredits();
+        } catch (err) {
+          console.error("[Booking Summary] Error refreshing credits:", err);
+        }
       }
     } catch (err) {
       console.error('[Booking Summary] Error in booking success handler:', err);
-      setError('An error occurred. Please try again.');
+      setError(err instanceof Error ? err.message : 'Failed to confirm booking. Please check your email.');
       setIsBooking(false);
     }
-  }, [selectedAccommodation, selectedWeeks, selectedCheckInDate, navigate, pricing.totalAmount, appliedDiscount, creditsToUse, refreshCredits]);
+  }, [pendingBookingId, navigate, refreshCredits, supabase]);
 
   const handleConfirmClick = async () => {
     console.log('[Booking Summary] Confirm button clicked.');
@@ -539,10 +526,63 @@ export function BookingSummary({
         return;
       }
       
-      // If we have a valid auth token, show the Stripe modal
+      // If we have a valid auth token, create pending booking first
       if (authToken) {
-        console.log('[Booking Summary] Showing Stripe modal');
-        setShowStripeModal(true);
+        console.log('[Booking Summary] Creating pending booking before payment...');
+        setIsBooking(true);
+        
+        try {
+          // Calculate check-out date
+          const totalDays = calculateTotalDays(selectedWeeks);
+          const checkOut = addDays(selectedCheckInDate, totalDays - 1);
+          
+          const formattedCheckIn = formatInTimeZone(selectedCheckInDate, 'UTC', 'yyyy-MM-dd');
+          const formattedCheckOut = formatInTimeZone(checkOut, 'UTC', 'yyyy-MM-dd');
+          
+          // Create pending booking payload
+          const pendingBookingPayload = {
+            accommodationId: selectedAccommodation.id,
+            checkIn: formattedCheckIn,
+            checkOut: formattedCheckOut,
+            totalPrice: finalAmountAfterCredits,
+            appliedDiscountCode: appliedDiscount?.code || null,
+            discountAmount: appliedDiscount && pricing.appliedCodeDiscountValue > 0 ? pricing.appliedCodeDiscountValue : null,
+            creditsUsed: creditsToUse,
+            foodContribution: foodContribution
+          };
+          
+          console.log('[Booking Summary] Creating pending booking with payload:', pendingBookingPayload);
+          
+          // Call the new pending booking function
+          const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-pending-booking`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': authToken
+            },
+            body: JSON.stringify(pendingBookingPayload)
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to create pending booking');
+          }
+          
+          const { pendingBookingId, bookingDetails } = await response.json();
+          console.log('[Booking Summary] Pending booking created with ID:', pendingBookingId);
+          
+          // Store the pending booking ID to pass to Stripe
+          setPendingBookingId(pendingBookingId);
+          setIsBooking(false);
+          
+          // Now show the Stripe modal with the pending booking ID
+          console.log('[Booking Summary] Showing Stripe modal with pending booking ID');
+          setShowStripeModal(true);
+        } catch (err) {
+          console.error('[Booking Summary] Error creating pending booking:', err);
+          setError(err instanceof Error ? err.message : 'Failed to initialize payment. Please try again.');
+          setIsBooking(false);
+        }
       } else {
         console.warn('[Booking Summary] No auth token, redirecting to login');
         setError('Please sign in to continue with your booking');
@@ -724,6 +764,7 @@ export function BookingSummary({
               <StripeCheckoutForm
                 authToken={authToken}
                 userEmail={userEmail || ''} // Pass email as prop, default to empty string if undefined
+                pendingBookingId={pendingBookingId || ''} // Pass the pending booking ID
                 // --- TEST ACCOMMODATION OVERRIDE FOR PAYMENT --- 
                 total={
                   selectedAccommodation?.type === 'test' 

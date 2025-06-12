@@ -63,8 +63,8 @@ serve(async (req) => {
     const body = await req.json();
     log(`Request ${requestId} body parsed`, body);
     
-    // Extract environment and email from request body
-    const { total, description, environment, email } = body;
+    // Extract environment, email, and pending booking ID from request body
+    const { total, description, environment, email, pendingBookingId } = body;
     
     // Get the appropriate Stripe key based on environment
     const stripeKey = getStripeKey(environment);
@@ -78,6 +78,15 @@ serve(async (req) => {
     if (total === undefined) {
       log(`ERROR: Request ${requestId} missing 'total' parameter`, body);
       return new Response(JSON.stringify({ error: "'total' is required" }), {
+        headers: corsHeaders,
+        status: 400,
+      });
+    }
+
+    // Validate pending booking ID
+    if (!pendingBookingId) {
+      log(`ERROR: Request ${requestId} missing 'pendingBookingId' parameter`, body);
+      return new Response(JSON.stringify({ error: "'pendingBookingId' is required" }), {
         headers: corsHeaders,
         status: 400,
       });
@@ -97,6 +106,7 @@ serve(async (req) => {
       total,
       description,
       email,
+      pendingBookingId,
       amountInCents: total * 100
     });
 
@@ -118,17 +128,29 @@ serve(async (req) => {
       automatic_tax: { enabled: true },
       redirect_on_completion: 'never', // Keep embedded flow
       payment_intent_data: {
-        description: intentDescription
+        description: intentDescription,
+        metadata: {
+          pending_booking_id: pendingBookingId,
+          user_email: email || ''
+        }
+      },
+      metadata: {
+        pending_booking_id: pendingBookingId,
+        user_email: email || ''
       }
     });
 
     log(`Successfully created Stripe session for request ${requestId}`, {
       sessionId: session.id,
       hasClientSecret: !!session.client_secret,
-      customerEmailPassed: email || 'Not Provided'
+      customerEmailPassed: email || 'Not Provided',
+      pendingBookingId: pendingBookingId
     });
 
-    return new Response(JSON.stringify({ clientSecret: session.client_secret }), {
+    return new Response(JSON.stringify({ 
+      clientSecret: session.client_secret,
+      sessionId: session.id 
+    }), {
       headers: corsHeaders,
       status: 200,
     });
