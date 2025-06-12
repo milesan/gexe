@@ -42,8 +42,8 @@ export const createLogger = (): LogLevels => {
 };
 
 // Override console methods based on environment
-export const configureLogging = (silenceAll = false): void => {
-  if (isProduction || silenceAll) {
+export const configureLogging = (silenceAll = false, forceEnableLogging = false): void => {
+  if ((isProduction || silenceAll) && !forceEnableLogging) {
     // In production or when explicitly silenced, disable most logs
     console.log = () => {};
     console.info = () => {};
@@ -55,7 +55,7 @@ export const configureLogging = (silenceAll = false): void => {
       console.error = () => {};
     }
   } else {
-    // In development, use enhanced logging with prefixes
+    // In development or when force enabled, use enhanced logging with prefixes
     console.log = (...args: any[]) => originalConsole.log('[LOG]', ...args);
     console.info = (...args: any[]) => originalConsole.info('[INFO]', ...args);
     console.warn = (...args: any[]) => originalConsole.warn('[WARN]', ...args);

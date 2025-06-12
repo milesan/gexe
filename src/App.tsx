@@ -21,7 +21,7 @@ import { BugReportFAB } from './components/BugReportFAB';
 import { useUserPermissions } from './hooks/useUserPermissions';
 
 // Configure logging early to silence logs in production
-configureLogging();
+configureLogging(false, true);  // Enable logging in production temporarily
 
 // --- AppRouterLogic Component (Handles routing logic) ---
 interface AppRouterLogicProps {
