@@ -150,20 +150,19 @@ export function AnimatedTerminal({ onComplete }: Props) {
           body: { email: normalizedEmail }
         });
 
-        if (whitelistError) {
-          // If it's a 403 (not whitelisted), continue with normal flow
-          if (whitelistError.status === 403) {
-            console.log('[AnimatedTerminal] Email not whitelisted, proceeding with normal signup flow');
-          } else {
-            // Other errors are actual problems
-            throw new Error(`Whitelist check failed: ${whitelistError.message}`);
-          }
+        if (whitelistError?.status === 403) {
+          console.log('[AnimatedTerminal] Email not whitelisted, proceeding with normal signup flow');
+        } else if (whitelistError) {
+          throw new Error(`Unexpected whitelist error: ${whitelistError.message}`);
         } else if (whitelistResult?.success) {
           console.log(`[AnimatedTerminal] Whitelisted user auth account ${whitelistResult.operation}: ${whitelistResult.userId}`);
         }
       } catch (whitelistCheckError) {
-        console.warn('[AnimatedTerminal] Whitelist check failed, continuing with normal flow:', whitelistCheckError);
-        // Continue with normal flow - this handles cases where the function doesn't exist or other issues
+        // Only log actual unexpected errors, not the normal 403 case
+        const errorMessage = whitelistCheckError instanceof Error ? whitelistCheckError.message : '';
+        if (!errorMessage.includes('403')) {
+          console.warn('[AnimatedTerminal] Whitelist function unavailable, continuing with normal flow:', whitelistCheckError);
+        }
       }
 
       // STEP 2: Send magic link (works for both whitelisted and normal users now)
