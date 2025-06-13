@@ -27,8 +27,6 @@ import * as Tooltip from '@radix-ui/react-tooltip';
 import { InfoBox } from '../components/InfoBox';
 import { useUserPermissions } from '../hooks/useUserPermissions';
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
-
 // Season legend component (Moved from WeekSelector)
 const SeasonLegend = () => {
   return (
