@@ -51,11 +51,11 @@ serve(async (req) => {
     if (whitelistError || !whitelistData) {
       console.log(`Email ${normalizedEmail} is not whitelisted`)
       return new Response(JSON.stringify({ 
-        error: 'Email not whitelisted',
+        message: 'Email not whitelisted',
         isWhitelisted: false 
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 403,
+        status: 200,
       })
     }
 
