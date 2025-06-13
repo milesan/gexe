@@ -151,18 +151,15 @@ export function AnimatedTerminal({ onComplete }: Props) {
         });
 
         if (whitelistError) {
-          // If it's a 403 (not whitelisted), continue with normal flow
-          if (whitelistError.status === 403) {
-            console.log('[AnimatedTerminal] Email not whitelisted, proceeding with normal signup flow');
-          } else {
-            // Other errors are actual problems
-            throw new Error(`Whitelist check failed: ${whitelistError.message}`);
-          }
+          // Actual function invocation error
+          throw new Error(`Whitelist check failed: ${whitelistError.message}`);
+        } else if (whitelistResult?.isWhitelisted === false) {
+          console.log('[AnimatedTerminal] Email not whitelisted, proceeding with normal signup flow');
         } else if (whitelistResult?.success) {
           console.log(`[AnimatedTerminal] Whitelisted user auth account ${whitelistResult.operation}: ${whitelistResult.userId}`);
         }
       } catch (whitelistCheckError) {
-        console.warn('[AnimatedTerminal] Whitelist check failed, continuing with normal flow:', whitelistCheckError);
+        console.warn('[AnimatedTerminal] Whitelist check failed unexpectedly, continuing with normal signup flow:', whitelistCheckError);
         // Continue with normal flow - this handles cases where the function doesn't exist or other issues
       }
 
