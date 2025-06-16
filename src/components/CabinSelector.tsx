@@ -13,6 +13,7 @@ import { calculateTotalNights, calculateDurationDiscountWeeks, normalizeToUTCDat
 import { useSession } from '../hooks/useSession';
 import { HoverClickPopover } from './HoverClickPopover';
 import { useUserPermissions } from '../hooks/useUserPermissions';
+import { triggerFireflies } from './FireflyPortal';
 
 // Local interface for accommodation images
 interface AccommodationImage {
@@ -92,7 +93,7 @@ export function CabinSelector({
 
   // State to track current image index for each accommodation
   const [currentImageIndices, setCurrentImageIndices] = useState<Record<string, number>>({});
-
+  
   // Helper function to get current image for an accommodation
   const getCurrentImage = (accommodation: ExtendedAccommodation): string | null => {
     const allImages = getAllImages(accommodation);
@@ -415,7 +416,7 @@ export function CabinSelector({
   })();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" style={{ position: 'relative' }}>
       {/* Filter options could be added here in the future */}
       
       {isLoading ? (
@@ -491,9 +492,23 @@ export function CabinSelector({
                     finalCanSelect && !isDisabled && 'cursor-pointer'
                   )}
                   onClick={(e) => {
+                    console.log('[CabinSelector] Accommodation card clicked:', acc.title);
                     // Prevent event bubbling to parent elements
                     e.stopPropagation();
-                    finalCanSelect && !isDisabled && handleSelectAccommodation(acc.id);
+                    
+                    if (finalCanSelect && !isDisabled) {
+                      // Only trigger fireflies if selecting a different accommodation
+                      if (acc.id !== selectedAccommodationId) {
+                        // Get click position relative to viewport
+                        const x = e.clientX;
+                        const y = e.clientY;
+                        
+                        console.log('[CabinSelector] Triggering fireflies at position:', { x, y });
+                        triggerFireflies(x, y);
+                      }
+                      
+                      handleSelectAccommodation(acc.id);
+                    }
                   }}
                   style={{ minHeight: '300px' }} 
                 >

@@ -4,7 +4,7 @@ import { isSameWeek, addWeeks, isAfter, isBefore, startOfMonth, format, addMonth
 import { WeekSelector } from '../components/WeekSelector';
 import { formatDateForDisplay, normalizeToUTCDate, doDateRangesOverlap, calculateDurationDiscountWeeks, calculateTotalWeeksDecimal } from '../utils/dates';
 import CabinSelector from '../components/CabinSelector';
-import { BookingSummary, SeasonBreakdown } from '../components/BookingSummary';
+import { BookingSummary } from '../components/BookingSummary';
 import { MaxWeeksModal } from '../components/MaxWeeksModal';
 import { WeekCustomizationModal } from '../components/admin/WeekCustomizationModal';
 import { DiscountModal } from '../components/DiscountModal';
@@ -26,7 +26,23 @@ import { loadStripe } from '@stripe/stripe-js';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { InfoBox } from '../components/InfoBox';
 import { useUserPermissions } from '../hooks/useUserPermissions';
+import { Fireflies } from '../components/Fireflies';
 
+<<<<<<< Updated upstream
+=======
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+
+// Define SeasonBreakdown type locally
+interface SeasonBreakdown {
+  hasMultipleSeasons: boolean;
+  seasons: Array<{
+    name: string;
+    discount: number;
+    nights: number;
+  }>;
+}
+
+>>>>>>> Stashed changes
 // Season legend component (Moved from WeekSelector)
 const SeasonLegend = () => {
   return (
@@ -78,6 +94,9 @@ export function Book2Page() {
   const [showDiscountModal, setShowDiscountModal] = useState(false);
   const [seasonBreakdown, setSeasonBreakdown] = useState<SeasonBreakdown | undefined>(undefined);
   const [weeklyAccommodationInfo, setWeeklyAccommodationInfo] = useState<Record<string, { price: number | null; avgSeasonalDiscount: number | null }>>({});
+  
+  // State for firefly effect
+  const [showAccommodationFireflies, setShowAccommodationFireflies] = useState(false);
 
   // Calculate combined discount
   const calculateCombinedDiscount = useCallback((weeks: Week[]): number => {
@@ -820,6 +839,16 @@ export function Book2Page() {
   // ---> ADD LOG HERE INSTEAD <--- 
   console.log('[Book2Page] Rendering - isAdmin check result:', isAdmin);
 
+  // Handle accommodation selection with firefly effect
+  const handleAccommodationSelect = useCallback((accommodationId: string) => {
+    // Only trigger fireflies if actually selecting (not deselecting)
+    if (accommodationId && accommodationId !== selectedAccommodation) {
+      setShowAccommodationFireflies(true);
+      setTimeout(() => setShowAccommodationFireflies(false), 2000);
+    }
+    setSelectedAccommodation(accommodationId);
+  }, [selectedAccommodation]);
+
   // ---> ADDING LOADING CHECK HERE <--- 
   if (sessionLoading || permissionsLoading) {
       // Render loading state or null while session/permissions are loading
@@ -832,6 +861,22 @@ export function Book2Page() {
 
   return (
     <div className="min-h-screen">
+      {/* Accommodation selection fireflies */}
+      {showAccommodationFireflies && (
+        <Fireflies 
+          count={40}
+          color="#ffd700"
+          minSize={1}
+          maxSize={3}
+          fadeIn={true}
+          fadeOut={true}
+          duration={2000}
+          clickTrigger={false}
+          ambient={false}
+          className="pointer-events-none z-50"
+        />
+      )}
+      
       <div className="container mx-auto py-4 xs:py-6 sm:py-8 px-4">
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 xs:gap-5 sm:gap-6">
@@ -1051,7 +1096,7 @@ export function Book2Page() {
                 <CabinSelector 
                   accommodations={accommodations || []}
                   selectedAccommodationId={selectedAccommodation}
-                  onSelectAccommodation={setSelectedAccommodation}
+                  onSelectAccommodation={handleAccommodationSelect}
                   selectedWeeks={selectedWeeks}
                   currentMonth={currentMonth}
                   isLoading={accommodationsLoading}

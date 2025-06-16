@@ -15,6 +15,7 @@ import { CancellationPolicyModal } from './CancellationPolicyModal';
 import { useUserPermissions } from '../hooks/useUserPermissions';
 import { useCredits } from '../hooks/useCredits';
 import { calculateTotalNights, calculateTotalDays } from '../utils/dates';
+import { Fireflies } from './Fireflies';
 
 // Import types
 import type { BookingSummaryProps, SeasonBreakdown, AppliedDiscount } from './BookingSummary/BookingSummary.types';
@@ -82,6 +83,9 @@ export function BookingSummary({
   const [testPaymentAmount, setTestPaymentAmount] = useState<number | null>(null);
   const [showDiscountModal, setShowDiscountModal] = useState(false);
   const [showCancellationModal, setShowCancellationModal] = useState(false);
+  
+  // State for celebration fireflies
+  const [showCelebrationFireflies, setShowCelebrationFireflies] = useState(false);
 
   // --- State for Discount Code ---
   const [discountCodeInput, setDiscountCodeInput] = useState('');
@@ -460,6 +464,9 @@ export function BookingSummary({
 
         console.log("[Booking Summary] Booking created:", booking);
         
+        // Trigger celebration fireflies
+        setShowCelebrationFireflies(true);
+        
         // Refresh credits manually to ensure UI updates immediately
         if (creditsToUse > 0) {
           console.log("[Booking Summary] Credits used, manually refreshing credits");
@@ -482,19 +489,22 @@ export function BookingSummary({
           }
         }
         
-        // Updated navigation to match the route in AuthenticatedApp.tsx
-        navigate('/confirmation', { 
-          state: { 
-            booking: {
-              ...booking,
-              accommodation: selectedAccommodation.title,
-              guests: selectedAccommodation.inventory,
-              totalPrice: roundedTotal, // Use rounded total
-              checkIn: selectedCheckInDate,
-              checkOut: checkOut
-            }
-          } 
-        });
+        // Delay navigation slightly to show fireflies
+        setTimeout(() => {
+          // Updated navigation to match the route in AuthenticatedApp.tsx
+          navigate('/confirmation', { 
+            state: { 
+              booking: {
+                ...booking,
+                accommodation: selectedAccommodation.title,
+                guests: selectedAccommodation.inventory,
+                totalPrice: roundedTotal, // Use rounded total
+                checkIn: selectedCheckInDate,
+                checkOut: checkOut
+              }
+            } 
+          });
+        }, 1500);
       } catch (err) {
         console.error('[Booking Summary] Error creating booking:', err);
         setError('Failed to create booking. Please try again.');
@@ -695,6 +705,22 @@ export function BookingSummary({
   // Render the component
   return (
     <>
+      {/* Celebration fireflies */}
+      {showCelebrationFireflies && (
+        <Fireflies 
+          count={100}
+          color="#10b981"
+          minSize={1}
+          maxSize={4}
+          fadeIn={true}
+          fadeOut={true}
+          duration={3000}
+          clickTrigger={false}
+          ambient={false}
+          className="pointer-events-none z-[70]"
+        />
+      )}
+      
       <AnimatePresence>
         {showStripeModal && (
           <motion.div
