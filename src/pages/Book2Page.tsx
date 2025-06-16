@@ -27,9 +27,8 @@ import * as Tooltip from '@radix-ui/react-tooltip';
 import { InfoBox } from '../components/InfoBox';
 import { useUserPermissions } from '../hooks/useUserPermissions';
 import { Fireflies } from '../components/Fireflies';
+import { triggerFireflies } from '../components/FireflyPortal';
 
-<<<<<<< Updated upstream
-=======
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 // Define SeasonBreakdown type locally
@@ -42,7 +41,6 @@ interface SeasonBreakdown {
   }>;
 }
 
->>>>>>> Stashed changes
 // Season legend component (Moved from WeekSelector)
 const SeasonLegend = () => {
   return (

@@ -495,9 +495,9 @@ export function CabinSelector({
                     if (finalCanSelect && !isDisabled) {
                       // Only trigger fireflies if selecting a different accommodation
                       if (acc.id !== selectedAccommodationId) {
-                        // Get click position relative to viewport
-                        const x = e.clientX;
-                        const y = e.clientY;
+                        // Get click position relative to the page (not viewport)
+                        const x = e.pageX;
+                        const y = e.pageY;
                         
                         console.log('[CabinSelector] Triggering fireflies at position:', { x, y });
                         triggerFireflies(x, y);
