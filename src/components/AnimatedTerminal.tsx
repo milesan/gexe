@@ -145,25 +145,21 @@ export function AnimatedTerminal({ onComplete }: Props) {
       
       // STEP 1: Check if this email is whitelisted and create auth user if needed
       console.log('[AnimatedTerminal] Checking whitelist status...');
-      try {
-        const { data: whitelistResult, error: whitelistError } = await supabase.functions.invoke('create-whitelisted-auth-user', {
-          body: { email: normalizedEmail }
-        });
+      const { data: whitelistResult, error: whitelistError } = await supabase.functions.invoke('create-whitelisted-auth-user', {
+        body: { email: normalizedEmail }
+      });
 
-        if (whitelistError) {
-          // If it's a 403 (not whitelisted), continue with normal flow
-          if (whitelistError.status === 403) {
-            console.log('[AnimatedTerminal] Email not whitelisted, proceeding with normal signup flow');
-          } else {
-            // Other errors are actual problems
-            throw new Error(`Whitelist check failed: ${whitelistError.message}`);
-          }
-        } else if (whitelistResult?.success) {
+      if (whitelistError) {
+        // This is now only for unexpected errors (e.g., function down, network issues).
+        console.warn('[AnimatedTerminal] Whitelist check failed unexpectedly, continuing with normal signup flow:', whitelistError);
+      } else if (whitelistResult) {
+        // We got a 200 response, now check the payload.
+        if (whitelistResult.isWhitelisted && whitelistResult.success) {
           console.log(`[AnimatedTerminal] Whitelisted user auth account ${whitelistResult.operation}: ${whitelistResult.userId}`);
+        } else {
+          // This covers the isWhitelisted: false case, which is an expected flow.
+          console.log('[AnimatedTerminal] Email not whitelisted, proceeding with normal signup flow.');
         }
-      } catch (whitelistCheckError) {
-        console.warn('[AnimatedTerminal] Whitelist check failed, continuing with normal flow:', whitelistCheckError);
-        // Continue with normal flow - this handles cases where the function doesn't exist or other issues
       }
 
       // STEP 2: Send magic link (works for both whitelisted and normal users now)
