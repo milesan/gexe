@@ -236,9 +236,11 @@ export function BookingsList() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--color-text-primary)]">
                   <div className="flex items-center gap-2">
-                    <span>€{booking.total_price}</span>
-                    {/* Show a compact discount indicator if discount exists */}
-                    {booking.discount_amount && booking.discount_amount > 0 && (
+                    <span>
+                      €{Number(booking.total_price) % 1 === 0 ? Number(booking.total_price).toFixed(0) : Number(booking.total_price).toFixed(2)}
+                    </span>
+                                        {/* Show a compact discount indicator if discount exists */}
+                    {booking.discount_amount !== null && booking.discount_amount !== undefined && booking.discount_amount > 0 && (
                       <span className="text-xs text-emerald-600 font-mono">
                         (-€{booking.discount_amount.toFixed(0)})
                       </span>
