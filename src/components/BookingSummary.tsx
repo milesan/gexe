@@ -442,16 +442,35 @@ export function BookingSummary({
         });
 
         // Add applied discount code if present
+        // Calculate seasonal discount amount for accommodation
+        let seasonalDiscountAmount = 0;
+        if (seasonBreakdownState && selectedAccommodation && !selectedAccommodation.title.toLowerCase().includes('dorm')) {
+          const avgSeasonalDiscountPercent = seasonBreakdownState.seasons.reduce((sum, season) => 
+            sum + (season.discount * season.nights), 0) / 
+            seasonBreakdownState.seasons.reduce((sum, season) => sum + season.nights, 0);
+          
+          // Calculate the actual discount amount: base price * weeks * seasonal discount %
+          seasonalDiscountAmount = selectedAccommodation.base_price * pricing.weeksStaying * avgSeasonalDiscountPercent;
+        }
+
         const bookingPayload: any = {
           accommodationId: selectedAccommodation.id,
           checkIn: formattedCheckIn,
           checkOut: formattedCheckOut,
-          totalPrice: roundedTotal // Send the final price calculated by the frontend
+          totalPrice: roundedTotal, // Send the final price calculated by the frontend
+          // Add price breakdown for future bookings
+          accommodationPrice: pricing.totalAccommodationCost,
+          foodContribution: pricing.totalFoodAndFacilitiesCost,
+          seasonalAdjustment: parseFloat(seasonalDiscountAmount.toFixed(2)),
+          durationDiscountPercent: pricing.durationDiscountPercent,
+          // Calculate total discount amount (duration + code + seasonal discounts)
+          discountAmount: pricing.durationDiscountAmount + pricing.appliedCodeDiscountValue + parseFloat(seasonalDiscountAmount.toFixed(2))
         };
 
         if (appliedDiscount?.code) {
             bookingPayload.appliedDiscountCode = appliedDiscount.code;
-            console.log("[Booking Summary] Adding applied discount code to booking payload:", appliedDiscount.code);
+            bookingPayload.discountCodePercent = appliedDiscount.percentage_discount;
+            console.log("[Booking Summary] Adding applied discount code to booking payload:", appliedDiscount.code, "with", appliedDiscount.percentage_discount, "% discount");
         }
 
         // Add credits used if any

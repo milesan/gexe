@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { format } from 'date-fns-tz';
 import { supabase } from '../lib/supabase';
 import { parseISO } from 'date-fns';
-import { Edit, Trash2, PlusCircle } from 'lucide-react';
+import { Edit, Trash2, PlusCircle, Receipt } from 'lucide-react';
 import { EditBookingModal } from './EditBookingModal';
 import { AddBookingModal } from './AddBookingModal';
+import { PriceBreakdownModal } from './PriceBreakdownModal';
 
 interface Booking {
   id: string;
@@ -20,6 +21,13 @@ interface Booking {
   guest_email?: string | null;
   applied_discount_code: string | null;
   accommodations?: { title: string } | null;
+  accommodation_price?: number | null;
+  food_contribution?: number | null;
+  seasonal_adjustment?: number | null;
+  duration_discount_percent?: number | null;
+  discount_amount?: number | null;
+  credits_used?: number | null;
+  discount_code_percent?: number | null;
 }
 
 export function BookingsList() {
@@ -28,6 +36,7 @@ export function BookingsList() {
   const [error, setError] = React.useState<string | null>(null);
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [breakdownModalBooking, setBreakdownModalBooking] = useState<Booking | null>(null);
 
   React.useEffect(() => {
     loadBookings();
@@ -59,6 +68,13 @@ export function BookingsList() {
         .select(`
           *,
           applied_discount_code,
+          accommodation_price,
+          food_contribution,
+          seasonal_adjustment,
+          duration_discount_percent,
+          discount_amount,
+          credits_used,
+          discount_code_percent,
           accommodations ( title )
         `, { count: 'exact' })
         .neq('status', 'cancelled')
@@ -219,7 +235,25 @@ export function BookingsList() {
                   {format(parseISO(booking.check_out), 'PP')}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--color-text-primary)]">
-                  €{booking.total_price}
+                  <div className="flex items-center gap-2">
+                    <span>€{booking.total_price}</span>
+                    {/* Show a compact discount indicator if discount exists */}
+                    {booking.discount_amount && booking.discount_amount > 0 && (
+                      <span className="text-xs text-emerald-600 font-mono">
+                        (-€{booking.discount_amount.toFixed(0)})
+                      </span>
+                    )}
+                    {/* Show breakdown button if data exists */}
+                    {booking.accommodation_price !== null && booking.accommodation_price !== undefined && (
+                      <button
+                        onClick={() => setBreakdownModalBooking(booking)}
+                        className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+                        title="View price breakdown"
+                      >
+                        <Receipt className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--color-text-primary)]">
                   {booking.applied_discount_code ? (
@@ -282,6 +316,15 @@ export function BookingsList() {
         <AddBookingModal 
           onClose={handleCloseAddModal} 
           onSave={handleSaveChanges} // Reuse save handler for refresh logic
+        />
+      )}
+
+      {/* Render the price breakdown modal */}
+      {breakdownModalBooking && (
+        <PriceBreakdownModal
+          isOpen={!!breakdownModalBooking}
+          onClose={() => setBreakdownModalBooking(null)}
+          booking={breakdownModalBooking}
         />
       )}
     </div>
