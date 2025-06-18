@@ -1,0 +1,7 @@
+{
+  "name": "stripe-webhook-status",
+  "version": "1.0.0",
+  "dependencies": {
+    "stripe": "^13.10.0"
+  }
+}

@@ -28,6 +28,11 @@ interface Application {
   is_whitelisted?: boolean;
   admin_verdicts?: Record<string, string>;
   credits?: number;
+  final_action?: {
+    admin: string;
+    action: string;
+    timestamp: string;
+  };
 }
 
 const ITEMS_PER_PAGE = 15;
@@ -41,7 +46,7 @@ const getAdminName = (email: string): string => {
     'dawn@thegarden.pt': 'Dawn',
     'andre@thegarden.pt': 'Andre',
     'simone@thegarden.pt': 'Simone',
-    'redis213@gmail.com': 'Test Admin'
+    'redis213@gmail.com': 'Richard'
   };
   return names[email] || email.split('@')[0];
 };
@@ -122,7 +127,8 @@ export function Applications2() {
           last_sign_in_at,
           raw_user_meta_data,
           admin_verdicts,
-          credits
+          credits,
+          final_action
         `, { count: 'exact' });
 
       if (filter !== 'all') {
@@ -608,15 +614,22 @@ export function Applications2() {
                     {application.user_email}
                   </p>
                 </div>
-                <span className={`px-3 py-1.5 rounded-full text-xs font-medium font-mono whitespace-nowrap ml-4 ${
-                    application.status === 'pending'
-                      ? 'bg-yellow-100 text-yellow-800'
-                      : application.status === 'approved'
-                      ? 'bg-emerald-100 text-emerald-800'
-                      : 'bg-rose-100 text-rose-800'
-                  }`}>
-                    {application.status.toUpperCase()}
-                </span>
+                <div className="flex items-center gap-2 ml-4">
+                  <span className={`px-3 py-1.5 rounded-full text-xs font-medium font-mono whitespace-nowrap ${
+                      application.status === 'pending'
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : application.status === 'approved'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-rose-100 text-rose-800'
+                    }`}>
+                      {application.status.toUpperCase()}
+                  </span>
+                  {application.final_action && (
+                    <span className="text-xs text-[var(--color-text-secondary)] font-mono">
+                      by {getAdminName(application.final_action.admin)}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* MAIN CONTENT: 2x2 grid on left, actions on right */}

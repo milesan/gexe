@@ -15,6 +15,7 @@ import { CancellationPolicyModal } from './CancellationPolicyModal';
 import { useUserPermissions } from '../hooks/useUserPermissions';
 import { useCredits } from '../hooks/useCredits';
 import { calculateTotalNights, calculateTotalDays } from '../utils/dates';
+import { Fireflies } from './Fireflies';
 
 // Import types
 import type { BookingSummaryProps, SeasonBreakdown, AppliedDiscount } from './BookingSummary/BookingSummary.types';
@@ -82,6 +83,9 @@ export function BookingSummary({
   const [testPaymentAmount, setTestPaymentAmount] = useState<number | null>(null);
   const [showDiscountModal, setShowDiscountModal] = useState(false);
   const [showCancellationModal, setShowCancellationModal] = useState(false);
+  
+  // State for celebration fireflies
+  const [showCelebrationFireflies, setShowCelebrationFireflies] = useState(false);
 
   // --- State for Discount Code ---
   const [discountCodeInput, setDiscountCodeInput] = useState('');
@@ -438,16 +442,35 @@ export function BookingSummary({
         });
 
         // Add applied discount code if present
+        // Calculate seasonal discount amount for accommodation
+        let seasonalDiscountAmount = 0;
+        if (seasonBreakdownState && selectedAccommodation && !selectedAccommodation.title.toLowerCase().includes('dorm')) {
+          const avgSeasonalDiscountPercent = seasonBreakdownState.seasons.reduce((sum, season) => 
+            sum + (season.discount * season.nights), 0) / 
+            seasonBreakdownState.seasons.reduce((sum, season) => sum + season.nights, 0);
+          
+          // Calculate the actual discount amount: base price * weeks * seasonal discount %
+          seasonalDiscountAmount = selectedAccommodation.base_price * pricing.weeksStaying * avgSeasonalDiscountPercent;
+        }
+
         const bookingPayload: any = {
           accommodationId: selectedAccommodation.id,
           checkIn: formattedCheckIn,
           checkOut: formattedCheckOut,
-          totalPrice: roundedTotal // Send the final price calculated by the frontend
+          totalPrice: roundedTotal, // Send the final price calculated by the frontend
+          // Add price breakdown for future bookings
+          accommodationPrice: pricing.totalAccommodationCost,
+          foodContribution: pricing.totalFoodAndFacilitiesCost,
+          seasonalAdjustment: parseFloat(seasonalDiscountAmount.toFixed(2)),
+          durationDiscountPercent: pricing.durationDiscountPercent,
+          // Calculate total discount amount (duration + code + seasonal discounts)
+          discountAmount: pricing.durationDiscountAmount + pricing.appliedCodeDiscountValue + parseFloat(seasonalDiscountAmount.toFixed(2))
         };
 
         if (appliedDiscount?.code) {
             bookingPayload.appliedDiscountCode = appliedDiscount.code;
-            console.log("[Booking Summary] Adding applied discount code to booking payload:", appliedDiscount.code);
+            bookingPayload.discountCodePercent = appliedDiscount.percentage_discount;
+            console.log("[Booking Summary] Adding applied discount code to booking payload:", appliedDiscount.code, "with", appliedDiscount.percentage_discount, "% discount");
         }
 
         // Add credits used if any
@@ -459,6 +482,9 @@ export function BookingSummary({
         const booking = await bookingService.createBooking(bookingPayload);
 
         console.log("[Booking Summary] Booking created:", booking);
+        
+        // Trigger celebration fireflies
+        setShowCelebrationFireflies(true);
         
         // Refresh credits manually to ensure UI updates immediately
         if (creditsToUse > 0) {
@@ -482,19 +508,22 @@ export function BookingSummary({
           }
         }
         
-        // Updated navigation to match the route in AuthenticatedApp.tsx
-        navigate('/confirmation', { 
-          state: { 
-            booking: {
-              ...booking,
-              accommodation: selectedAccommodation.title,
-              guests: selectedAccommodation.inventory,
-              totalPrice: roundedTotal, // Use rounded total
-              checkIn: selectedCheckInDate,
-              checkOut: checkOut
-            }
-          } 
-        });
+        // Delay navigation slightly to show fireflies
+        setTimeout(() => {
+          // Updated navigation to match the route in AuthenticatedApp.tsx
+          navigate('/confirmation', { 
+            state: { 
+              booking: {
+                ...booking,
+                accommodation: selectedAccommodation.title,
+                guests: selectedAccommodation.inventory,
+                totalPrice: roundedTotal, // Use rounded total
+                checkIn: selectedCheckInDate,
+                checkOut: checkOut
+              }
+            } 
+          });
+        }, 1500);
       } catch (err) {
         console.error('[Booking Summary] Error creating booking:', err);
         setError('Failed to create booking. Please try again.');
@@ -695,6 +724,22 @@ export function BookingSummary({
   // Render the component
   return (
     <>
+      {/* Celebration fireflies */}
+      {showCelebrationFireflies && (
+        <Fireflies 
+          count={100}
+          color="#10b981"
+          minSize={1}
+          maxSize={4}
+          fadeIn={true}
+          fadeOut={true}
+          duration={3000}
+          clickTrigger={false}
+          ambient={false}
+          className="pointer-events-none z-[70]"
+        />
+      )}
+      
       <AnimatePresence>
         {showStripeModal && (
           <motion.div
@@ -733,6 +778,15 @@ export function BookingSummary({
                     : finalAmountAfterCredits // Use amount after credits
                 }
                 description={`${selectedAccommodation?.title || 'Accommodation'} for ${pricing.totalNights} nights${selectedCheckInDate ? ` from ${selectedCheckInDate.getDate()}. ${selectedCheckInDate.toLocaleDateString('en-US', { month: 'long' })}` : ''}`}
+                bookingDetails={selectedAccommodation && selectedCheckInDate ? {
+                  accommodationId: selectedAccommodation.id,
+                  accommodationTitle: selectedAccommodation.title,
+                  checkIn: formatInTimeZone(selectedCheckInDate, 'UTC', 'yyyy-MM-dd'),
+                  checkOut: formatInTimeZone(addDays(selectedCheckInDate, calculateTotalDays(selectedWeeks) - 1), 'UTC', 'yyyy-MM-dd'),
+                  userId: session?.session?.user?.id,
+                  appliedDiscountCode: appliedDiscount?.code,
+                  creditsUsed: creditsToUse
+                } : undefined}
                 onSuccess={handleBookingSuccess}
                 onClose={() => setShowStripeModal(false)}
               />

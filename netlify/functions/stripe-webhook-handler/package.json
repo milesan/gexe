@@ -1,0 +1,8 @@
+{
+  "name": "stripe-webhook-handler",
+  "version": "1.0.0",
+  "dependencies": {
+    "stripe": "^13.10.0",
+    "@supabase/supabase-js": "^2.39.3"
+  }
+}

@@ -14,11 +14,20 @@ interface Props {
   total: number;
   authToken: string;
   userEmail: string;
-  onSuccess: () => Promise<void>;
+  bookingDetails?: {
+    accommodationId: string;
+    accommodationTitle: string;
+    checkIn: string;
+    checkOut: string;
+    userId?: string;
+    appliedDiscountCode?: string;
+    creditsUsed?: number;
+  };
+  onSuccess: (paymentIntentId?: string) => Promise<void>;
   onClose: () => void;
 }
 
-export function StripeCheckoutForm({ total, authToken, description, userEmail, onSuccess, onClose }: Props) {
+export function StripeCheckoutForm({ total, authToken, description, userEmail, bookingDetails, onSuccess, onClose }: Props) {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
 
   // When component mounts, add a class to body to prevent scrolling and hide the header
@@ -63,14 +72,15 @@ export function StripeCheckoutForm({ total, authToken, description, userEmail, o
           total, 
           description,
           environment,
-          email: userEmail
+          email: userEmail,
+          bookingDetails // Include booking details if available
         }),
       });
       const data = await response.json();
       setClientSecret(data.clientSecret);
     };
     fetchSecret();
-  }, [authToken, total, description, userEmail]);
+  }, [authToken, total, description, userEmail, bookingDetails]);
 
   const handleCheckoutComplete = useCallback(async () => {
     console.log('[StripeCheckout] Payment completed, checking status...');
@@ -181,3 +191,6 @@ export function StripeCheckoutForm({ total, authToken, description, userEmail, o
   // Render our component at the document root, outside of any other stacking contexts
   return createPortal(checkoutContent, document.body);
 }
+
+// For backwards compatibility, export with the previous name too
+export { StripeCheckoutForm as default };

@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { CheckCircle, Calendar, MapPin, Users, ArrowLeft, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
 import { formatInTimeZone } from 'date-fns-tz';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Fireflies, FireflyPresets } from '../components/Fireflies';
 
 export function ConfirmationPage() {
   const location = useLocation();
@@ -33,6 +34,13 @@ export function ConfirmationPage() {
 
   return (
     <div className="flex items-center justify-center p-4">
+      {/* Add subtle fireflies in the background */}
+      <Fireflies 
+        {...FireflyPresets.subtle}
+        count={20}
+        className="opacity-60"
+      />
+      
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

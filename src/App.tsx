@@ -19,6 +19,7 @@ import { MainAppLayout } from './components/MainAppLayout';
 import { WhitelistWelcomeModal } from './components/WhitelistWelcomeModal';
 import { BugReportFAB } from './components/BugReportFAB';
 import { useUserPermissions } from './hooks/useUserPermissions';
+import { FireflyPortal } from './components/FireflyPortal';
 
 // Configure logging early to silence logs in production
 configureLogging(false, true);  // Enable logging in production temporarily
@@ -354,6 +355,8 @@ export default function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider>
+        {/* Add FireflyPortal here - it renders outside the React tree */}
+        <FireflyPortal />
         {/* Router needs to be here for hooks in App */} 
         <Router> 
            {/* Content that uses hooks needs to be inside Router */}
