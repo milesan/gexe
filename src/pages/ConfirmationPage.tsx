@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { CheckCircle, Calendar, MapPin, Users, ArrowLeft, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
 import { formatInTimeZone } from 'date-fns-tz';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Fireflies, FireflyPresets } from '../components/Fireflies';
 
 export function ConfirmationPage() {
   const location = useLocation();
@@ -33,6 +34,13 @@ export function ConfirmationPage() {
 
   return (
     <div className="flex items-center justify-center p-4">
+      {/* Add subtle fireflies in the background */}
+      <Fireflies 
+        {...FireflyPresets.subtle}
+        count={20}
+        className="opacity-60"
+      />
+      
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -60,6 +68,15 @@ export function ConfirmationPage() {
         </div>
 
         <div className="p-8 space-y-6">
+          {/* Show manual creation message if present */}
+          {booking.isPendingManualCreation && booking.manualCreationMessage && (
+            <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg border border-amber-100 dark:border-amber-900/30 mb-6">
+              <p className="text-amber-800 dark:text-amber-300 font-mono text-sm">
+                {booking.manualCreationMessage}
+              </p>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-text-secondary">

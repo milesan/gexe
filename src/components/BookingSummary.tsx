@@ -15,6 +15,7 @@ import { CancellationPolicyModal } from './CancellationPolicyModal';
 import { useUserPermissions } from '../hooks/useUserPermissions';
 import { useCredits } from '../hooks/useCredits';
 import { calculateTotalNights, calculateTotalDays } from '../utils/dates';
+import { Fireflies } from './Fireflies';
 
 // Import types
 import type { BookingSummaryProps, SeasonBreakdown, AppliedDiscount } from './BookingSummary/BookingSummary.types';
@@ -82,6 +83,9 @@ export function BookingSummary({
   const [testPaymentAmount, setTestPaymentAmount] = useState<number | null>(null);
   const [showDiscountModal, setShowDiscountModal] = useState(false);
   const [showCancellationModal, setShowCancellationModal] = useState(false);
+  
+  // State for celebration fireflies
+  const [showCelebrationFireflies, setShowCelebrationFireflies] = useState(false);
 
   // --- State for Discount Code ---
   const [discountCodeInput, setDiscountCodeInput] = useState('');
@@ -287,6 +291,11 @@ export function BookingSummary({
     }
   }, [foodContribution]);
 
+  // Monitor error state changes
+  useEffect(() => {
+    console.log('[BookingSummary] ERROR STATE CHANGED:', error);
+  }, [error]);
+
   // Auto-set credits to use when pricing or available credits change
   useEffect(() => {
     if (creditsEnabled && !creditsLoading && pricing.totalAmount > 0) {
@@ -438,16 +447,35 @@ export function BookingSummary({
         });
 
         // Add applied discount code if present
+        // Calculate seasonal discount amount for accommodation
+        let seasonalDiscountAmount = 0;
+        if (seasonBreakdownState && selectedAccommodation && !selectedAccommodation.title.toLowerCase().includes('dorm')) {
+          const avgSeasonalDiscountPercent = seasonBreakdownState.seasons.reduce((sum, season) => 
+            sum + (season.discount * season.nights), 0) / 
+            seasonBreakdownState.seasons.reduce((sum, season) => sum + season.nights, 0);
+          
+          // Calculate the actual discount amount: base price * weeks * seasonal discount %
+          seasonalDiscountAmount = selectedAccommodation.base_price * pricing.weeksStaying * avgSeasonalDiscountPercent;
+        }
+
         const bookingPayload: any = {
           accommodationId: selectedAccommodation.id,
           checkIn: formattedCheckIn,
           checkOut: formattedCheckOut,
-          totalPrice: roundedTotal // Send the final price calculated by the frontend
+          totalPrice: roundedTotal, // Send the final price calculated by the frontend
+          // Add price breakdown for future bookings
+          accommodationPrice: pricing.totalAccommodationCost,
+          foodContribution: pricing.totalFoodAndFacilitiesCost,
+          seasonalAdjustment: parseFloat(seasonalDiscountAmount.toFixed(2)),
+          durationDiscountPercent: pricing.durationDiscountPercent,
+          // Calculate total discount amount (duration + code + seasonal discounts)
+          discountAmount: pricing.durationDiscountAmount + pricing.appliedCodeDiscountValue + parseFloat(seasonalDiscountAmount.toFixed(2))
         };
 
         if (appliedDiscount?.code) {
             bookingPayload.appliedDiscountCode = appliedDiscount.code;
-            console.log("[Booking Summary] Adding applied discount code to booking payload:", appliedDiscount.code);
+            bookingPayload.discountCodePercent = appliedDiscount.percentage_discount;
+            console.log("[Booking Summary] Adding applied discount code to booking payload:", appliedDiscount.code, "with", appliedDiscount.percentage_discount, "% discount");
         }
 
         // Add credits used if any
@@ -456,9 +484,27 @@ export function BookingSummary({
             console.log("[Booking Summary] Adding credits used to booking payload:", creditsToUse);
         }
 
+        // Add payment intent ID if available (for webhook coordination)
+        if (paymentIntentId) {
+            bookingPayload.paymentIntentId = paymentIntentId;
+            console.log("[Booking Summary] Adding payment intent ID to booking payload:", paymentIntentId);
+        }
+
+        // TEST CONDITION: Simulate booking failure for payments under €1
+        // Check the actual payment amount (after credits are applied)
+        const paymentAmount = Math.max(0, roundedTotal - (creditsToUse || 0));
+        const isTestPayment = paymentAmount < 1 && paymentAmount > 0; // Don't trigger for €0 payments (fully covered by credits)
+        if (isTestPayment) {
+          console.log("[TEST MODE] Simulating booking failure for payment under €1. Payment amount:", paymentAmount);
+          throw new Error("TEST: Simulated booking failure for small payment amount");
+        }
+
         const booking = await bookingService.createBooking(bookingPayload);
 
         console.log("[Booking Summary] Booking created:", booking);
+        
+        // Trigger celebration fireflies
+        setShowCelebrationFireflies(true);
         
         // Refresh credits manually to ensure UI updates immediately
         if (creditsToUse > 0) {
@@ -482,30 +528,233 @@ export function BookingSummary({
           }
         }
         
-        // Updated navigation to match the route in AuthenticatedApp.tsx
-        navigate('/confirmation', { 
-          state: { 
-            booking: {
-              ...booking,
-              accommodation: selectedAccommodation.title,
-              guests: selectedAccommodation.inventory,
-              totalPrice: roundedTotal, // Use rounded total
-              checkIn: selectedCheckInDate,
-              checkOut: checkOut
-            }
-          } 
-        });
+        // Delay navigation slightly to show fireflies
+        setTimeout(() => {
+          navigate('/confirmation', { 
+            state: { 
+              booking: {
+                ...booking,
+                accommodation: selectedAccommodation.title,
+                guests: selectedAccommodation.inventory,
+                totalPrice: booking.total_price,
+                checkIn: selectedCheckInDate,
+                checkOut: checkOut
+              }
+            } 
+          });
+        }, 1500);
       } catch (err) {
         console.error('[Booking Summary] Error creating booking:', err);
-        setError('Failed to create booking. Please try again.');
-        setIsBooking(false);
+        
+        // CRITICAL: Log detailed error for payment without booking
+        const errorDetails = {
+          paymentIntentId: paymentIntentId || undefined,
+          userEmail: userEmail || 'Unknown',
+          error: err instanceof Error ? err.message : 'Unknown error',
+          errorStack: err instanceof Error ? err.stack : undefined,
+          bookingDetails: {
+            accommodation: selectedAccommodation.title,
+            checkIn: formatInTimeZone(selectedCheckInDate, 'UTC', 'yyyy-MM-dd'),
+            checkOut: formatInTimeZone(addDays(selectedCheckInDate, calculateTotalDays(selectedWeeks)-1), 'UTC', 'yyyy-MM-dd'),
+            totalPaid: Math.max(0, pricing.totalAmount - (creditsToUse || 0)), // Actual payment amount after credits
+            originalTotal: pricing.totalAmount, // Include original total for admin reference
+            creditsUsed: creditsToUse > 0 ? creditsToUse : undefined,
+            discountCode: appliedDiscount?.code || undefined
+          },
+          // CRITICAL STATUS TRACKING
+          systemStatus: {
+            confirmationEmailSent: false, // Will be updated after email attempt
+            creditsWereDeducted: false, // Credits only deducted on successful booking insert
+            userWillSeeConfirmationPage: true // We navigate to confirmation page anyway
+          },
+          timestamp: new Date().toISOString()
+        };
+        
+        console.error('[CRITICAL] PAYMENT WITHOUT BOOKING:', errorDetails);
+        
+
+        
+        // ALWAYS navigate to confirmation page when payment succeeded but booking failed
+        console.log('[BookingSummary] Payment succeeded but booking failed - navigating to confirmation page anyway');
+        
+        // Track status for admin alert
+        let confirmationEmailSent = false;
+        let creditsWereDeducted = false;
+        
+        // Try to send confirmation email even though booking failed
+        if (userEmail && paymentIntentId) {
+          console.log('[BookingSummary] Attempting to send confirmation email despite booking failure');
+          try {
+            const formattedCheckIn = formatInTimeZone(selectedCheckInDate, 'UTC', 'yyyy-MM-dd');
+            const formattedCheckOut = formatInTimeZone(checkOut, 'UTC', 'yyyy-MM-dd');
+            
+            // Calculate actual payment amount (after credits)
+            const actualPaymentAmount = Math.max(0, pricing.totalAmount - (creditsToUse || 0));
+            
+            // Generate a temporary booking ID for email purposes
+            const tempBookingId = `temp-${Date.now()}-${paymentIntentId}`;
+            
+            const { error: emailError } = await supabase.functions.invoke('send-booking-confirmation', {
+              body: { 
+                email: userEmail,
+                bookingId: tempBookingId,
+                checkIn: formattedCheckIn,
+                checkOut: formattedCheckOut,
+                accommodation: selectedAccommodation.title,
+                totalPrice: actualPaymentAmount, // Use actual payment amount after credits
+                frontendUrl: window.location.origin
+              }
+            });
+            
+            if (emailError) {
+              console.error('[BookingSummary] Failed to send confirmation email:', emailError);
+              confirmationEmailSent = false;
+            } else {
+              console.log('[BookingSummary] Confirmation email sent successfully despite booking failure');
+              confirmationEmailSent = true;
+            }
+          } catch (emailErr) {
+            console.error('[BookingSummary] Exception while sending confirmation email:', emailErr);
+            confirmationEmailSent = false;
+          }
+        }
+        
+        // Since booking creation failed, credits were NOT deducted (they're only deducted on successful booking insert)
+        creditsWereDeducted = false;
+        
+        // Update the original errorDetails with actual status
+        const updatedErrorDetails = {
+          ...errorDetails,
+          systemStatus: {
+            confirmationEmailSent,
+            creditsWereDeducted,
+            userWillSeeConfirmationPage: true
+          }
+        };
+        
+        // Check if webhook has already created the booking before sending alert
+        let bookingExistsFromWebhook = false;
+        if (paymentIntentId) {
+          console.log('[BookingSummary] Checking if webhook already created booking...');
+          
+          // Wait a bit to give webhook time to process
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          try {
+            bookingExistsFromWebhook = await bookingService.checkBookingByPaymentIntent(paymentIntentId);
+            console.log('[BookingSummary] Webhook booking check result:', bookingExistsFromWebhook);
+          } catch (checkError) {
+            console.error('[BookingSummary] Error checking for webhook booking:', checkError);
+            // Continue with alert even if check fails
+          }
+        }
+        
+        // Only send admin alert if booking truly doesn't exist
+        if (!bookingExistsFromWebhook) {
+          console.log('[BookingSummary] Booking does not exist after webhook check, sending admin alert');
+          
+          // NOW send admin alert with updated status
+          try {
+            const { data, error } = await supabase.functions.invoke('alert-booking-failure', {
+              body: updatedErrorDetails
+            });
+            
+            if (error) {
+              throw error;
+            }
+            
+            console.log('[Booking Summary] Admin alert email sent successfully');
+          } catch (alertErr) {
+            console.error('[Booking Summary] Failed to send admin alert:', alertErr);
+            // Still try the old bug report method as fallback
+            try {
+              const bugReportDescription = `CRITICAL: Payment received but booking creation failed!
+          
+Payment Intent: ${paymentIntentId || 'N/A'}
+User Email: ${userEmail || 'Unknown'}
+Accommodation: ${selectedAccommodation.title}
+Check-in: ${updatedErrorDetails.bookingDetails.checkIn}
+Check-out: ${updatedErrorDetails.bookingDetails.checkOut}
+Amount Paid: €${Math.max(0, pricing.totalAmount - (creditsToUse || 0))}
+Credits Used: ${creditsToUse}
+Discount Code: ${appliedDiscount?.code || 'None'}
+
+SYSTEM STATUS:
+- Confirmation Email Sent: ${confirmationEmailSent ? 'YES' : 'NO'}
+- Credits Deducted: ${creditsWereDeducted ? 'YES' : 'NO'}
+- User Sees Confirmation Page: YES
+
+Error: ${err instanceof Error ? err.message : 'Unknown error'}
+
+Please manually create the booking for this user or process a refund.`;
+
+              await supabase.functions.invoke('submit-bug-report', {
+                body: {
+                  description: bugReportDescription,
+                  stepsToReproduce: `Automatic report: Booking creation failed after successful payment.`,
+                  pageUrl: window.location.href,
+                  image_urls: null
+                }
+              });
+              console.log('[Booking Summary] Fallback bug report submitted');
+            } catch (fallbackErr) {
+              console.error('[Booking Summary] Failed to submit fallback bug report:', fallbackErr);
+            }
+          }
+        } else {
+          console.log('[BookingSummary] Booking was successfully created by webhook! No alert needed.');
+          // Refresh credits since the webhook booking would have used them
+          if (creditsToUse > 0) {
+            console.log('[BookingSummary] Refreshing credits after webhook booking creation');
+            try {
+              await refreshCredits();
+            } catch (err) {
+              console.error('[BookingSummary] Error refreshing credits:', err);
+            }
+          }
+        }
+        
+        // Create a booking object for the confirmation page
+        const actualPaymentAmount = Math.max(0, pricing.totalAmount - (creditsToUse || 0));
+        const bookingForConfirmation = {
+          id: bookingExistsFromWebhook ? `webhook-booking-${paymentIntentId}` : `pending-booking-${Date.now()}`,
+          accommodation: selectedAccommodation.title,
+          guests: selectedAccommodation.inventory,
+          totalPrice: actualPaymentAmount, // Show actual payment amount after credits
+          checkIn: selectedCheckInDate,
+          checkOut: checkOut,
+          status: 'confirmed',
+          created_at: new Date().toISOString(),
+          // Add flags to indicate status
+          isPendingManualCreation: !bookingExistsFromWebhook,
+          manualCreationMessage: bookingExistsFromWebhook 
+            ? undefined // No message needed if webhook succeeded
+            : 'Your payment was successful and confirmation email has been sent! Our team is finalizing your booking in our system. Note: This booking may not appear in your bookings list immediately but will be processed manually.'
+        };
+        
+        // Navigate to confirmation page with the booking data
+        navigate('/confirmation', { 
+          state: { 
+            booking: bookingForConfirmation
+          }
+        });
+        
+        // Clear selections after navigation
+        setTimeout(() => {
+          onClearWeeks();
+          onClearAccommodation();
+        }, 1000);
+        
+        // Exit without throwing error since we handled it gracefully
+        return;
       }
     } catch (err) {
       console.error('[Booking Summary] Error in booking success handler:', err);
+      // Don't re-throw any errors - we've handled them gracefully above
       setError('An error occurred. Please try again.');
       setIsBooking(false);
     }
-  }, [selectedAccommodation, selectedWeeks, selectedCheckInDate, navigate, pricing.totalAmount, appliedDiscount, creditsToUse, refreshCredits]);
+  }, [selectedAccommodation, selectedWeeks, selectedCheckInDate, navigate, pricing.totalAmount, appliedDiscount, creditsToUse, refreshCredits, userEmail, onClearWeeks, onClearAccommodation, bookingService]);
 
   const handleConfirmClick = async () => {
     console.log('[Booking Summary] Confirm button clicked.');
@@ -695,6 +944,22 @@ export function BookingSummary({
   // Render the component
   return (
     <>
+      {/* Celebration fireflies */}
+      {showCelebrationFireflies && (
+        <Fireflies 
+          count={100}
+          color="#10b981"
+          minSize={1}
+          maxSize={4}
+          fadeIn={true}
+          fadeOut={true}
+          duration={3000}
+          clickTrigger={false}
+          ambient={false}
+          className="pointer-events-none z-[70]"
+        />
+      )}
+      
       <AnimatePresence>
         {showStripeModal && (
           <motion.div
@@ -733,8 +998,19 @@ export function BookingSummary({
                     : finalAmountAfterCredits // Use amount after credits
                 }
                 description={`${selectedAccommodation?.title || 'Accommodation'} for ${pricing.totalNights} nights${selectedCheckInDate ? ` from ${selectedCheckInDate.getDate()}. ${selectedCheckInDate.toLocaleDateString('en-US', { month: 'long' })}` : ''}`}
+                bookingMetadata={selectedAccommodation && selectedCheckInDate ? {
+                  accommodationId: selectedAccommodation.id,
+                  checkIn: selectedCheckInDate ? formatInTimeZone(selectedCheckInDate, 'UTC', 'yyyy-MM-dd') : undefined,
+                  checkOut: selectedCheckInDate ? formatInTimeZone(addDays(selectedCheckInDate, calculateTotalDays(selectedWeeks)-1), 'UTC', 'yyyy-MM-dd') : undefined,
+                  originalTotal: pricing.totalAmount,
+                  creditsUsed: creditsToUse > 0 ? creditsToUse : 0,
+                  discountCode: appliedDiscount?.code
+                } : undefined}
                 onSuccess={handleBookingSuccess}
-                onClose={() => setShowStripeModal(false)}
+                onClose={() => {
+                  console.log('[BookingSummary] StripeCheckoutForm onClose called');
+                  setShowStripeModal(false);
+                }}
               />
             </motion.div>
           </motion.div>
@@ -755,9 +1031,18 @@ export function BookingSummary({
           </div>
 
           {error && (
-            <div className="mb-6 p-4 bg-error-muted text-error rounded-lg flex justify-between items-center font-mono text-xs sm:text-sm">
-              <span>{error}</span>
-              <button onClick={() => setError(null)}>
+            <div className={`mb-6 p-4 rounded-lg flex justify-between items-center font-mono text-xs sm:text-sm ${
+              error.includes('payment was successful') 
+                ? 'bg-amber-100 text-amber-900 border-2 border-amber-400' 
+                : 'bg-error-muted text-error'
+            }`}>
+              <div>
+                {error.includes('payment was successful') && (
+                  <div className="font-bold mb-2 text-base">⚠️ Payment Processed - Action Required</div>
+                )}
+                <span>{error}</span>
+              </div>
+              <button onClick={() => setError(null)} className="ml-4 flex-shrink-0">
                 <X className="w-4 h-4" />
               </button>
             </div>

@@ -92,7 +92,7 @@ export function CabinSelector({
 
   // State to track current image index for each accommodation
   const [currentImageIndices, setCurrentImageIndices] = useState<Record<string, number>>({});
-
+  
   // Helper function to get current image for an accommodation
   const getCurrentImage = (accommodation: ExtendedAccommodation): string | null => {
     const allImages = getAllImages(accommodation);
@@ -173,17 +173,17 @@ export function CabinSelector({
           <>
             <button
               onClick={handlePrevious}
-              className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/70 hover:bg-black/90 text-white rounded-full p-2 transition-all duration-200 hover:scale-110 shadow-lg z-20"
+              className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/80 hover:bg-black/90 text-white rounded-md p-1 transition-all duration-200 hover:scale-110 shadow-lg z-20"
               aria-label="Previous image"
             >
-              <ChevronLeft size={18} />
+              <ChevronLeft size={16} />
             </button>
             <button
               onClick={handleNext}
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/70 hover:bg-black/90 text-white rounded-full p-2 transition-all duration-200 hover:scale-110 shadow-lg z-20"
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/80 hover:bg-black/90 text-white rounded-md p-1 transition-all duration-200 hover:scale-110 shadow-lg z-20"
               aria-label="Next image"
             >
-              <ChevronRight size={18} />
+              <ChevronRight size={16} />
             </button>
           </>
         )}
@@ -204,13 +204,6 @@ export function CabinSelector({
                 aria-label={`Go to image ${index + 1}`}
               />
             ))}
-          </div>
-        )}
-
-        {/* Image counter - only show if more than 1 image */}
-        {allImages.length > 1 && (
-          <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded shadow-lg z-10">
-            {currentIndex + 1} / {allImages.length}
           </div>
         )}
       </div>
@@ -415,7 +408,7 @@ export function CabinSelector({
   })();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" style={{ position: 'relative' }}>
       {/* Filter options could be added here in the future */}
       
       {isLoading ? (
@@ -450,6 +443,9 @@ export function CabinSelector({
               const isTent = acc.type === 'tent';
               const isOutOfSeason = isTent && !isTentSeason && selectedWeeks.length > 0;
               const finalCanSelect = canSelect && !isOutOfSeason;
+
+              // Get all images for the current accommodation to use for the counter
+              const allImagesForAcc = getAllImages(acc);
 
               // Get the whole info object
               const weeklyInfo = displayWeeklyAccommodationPrice(acc.id);
@@ -491,9 +487,13 @@ export function CabinSelector({
                     finalCanSelect && !isDisabled && 'cursor-pointer'
                   )}
                   onClick={(e) => {
+                    console.log('[CabinSelector] Accommodation card clicked:', acc.title);
                     // Prevent event bubbling to parent elements
                     e.stopPropagation();
-                    finalCanSelect && !isDisabled && handleSelectAccommodation(acc.id);
+                    
+                    if (finalCanSelect && !isDisabled) {
+                      handleSelectAccommodation(acc.id);
+                    }
                   }}
                   style={{ minHeight: '300px' }} 
                 >
@@ -520,14 +520,15 @@ export function CabinSelector({
                     )}
                   </div>
 
-                  {/* Capacity Badge - top right corner */}
-                  {acc.capacity && !isFullyBooked && (!['parking', 'tent'].includes(acc.type) || acc.title.toLowerCase().includes('tipi') || acc.title.toLowerCase().includes('bell tent')) && !acc.title.toLowerCase().includes('van parking') && !acc.title.toLowerCase().includes('own tent') && !acc.title.toLowerCase().includes('staying with somebody') && !acc.title.toLowerCase().includes('dorm') && (
-                    <div className="absolute top-2 right-2 z-[5]">
+                  {/* Top-right badges container */}
+                  <div className="absolute top-2 right-2 z-10 flex flex-col items-end gap-2">
+                    {/* Capacity Badge */}
+                    {acc.capacity && !isFullyBooked && (!['parking', 'tent'].includes(acc.type) || acc.title.toLowerCase().includes('tipi') || acc.title.toLowerCase().includes('bell tent')) && !acc.title.toLowerCase().includes('van parking') && !acc.title.toLowerCase().includes('own tent') && !acc.title.toLowerCase().includes('staying with somebody') && !acc.title.toLowerCase().includes('dorm') && (
                       <div className="text-xs font-medium px-3 py-1 rounded-full shadow-lg bg-gray-600/90 text-white border border-white/30 font-mono">
                         Fits {acc.capacity} {acc.capacity === 1 ? 'person' : 'people'}
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
 
                   {/* Image */}
                   <div className={clsx(

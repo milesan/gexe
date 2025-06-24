@@ -176,6 +176,7 @@ class BookingService {
     isAdmin?: boolean;
     appliedDiscountCode?: string;
     creditsUsed?: number;
+    paymentIntentId?: string;
   }): Promise<Booking> {
     console.log('[BookingService] Creating booking with data:', {
       ...booking,
@@ -240,9 +241,15 @@ class BookingService {
           check_out: checkOutISO,
           total_price: booking.totalPrice,
           status: 'confirmed',
-          payment_intent_id: null,
+          payment_intent_id: booking.paymentIntentId || null,
           applied_discount_code: booking.appliedDiscountCode || null,
           credits_used: booking.creditsUsed || 0,
+          accommodation_price: booking.accommodationPrice || null,
+          food_contribution: booking.foodContribution || null,
+          seasonal_adjustment: booking.seasonalAdjustment || null,
+          duration_discount_percent: booking.durationDiscountPercent || null,
+          discount_amount: booking.discountAmount || null,
+          discount_code_percent: booking.discountCodePercent || null,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
@@ -324,6 +331,35 @@ class BookingService {
     } catch (error) {
       console.error('Error fetching user bookings:', error);
       throw error;
+    }
+  }
+
+  async checkBookingByPaymentIntent(paymentIntentId: string): Promise<boolean> {
+    try {
+      console.log('[BookingService] Checking if booking exists for payment intent:', paymentIntentId);
+      
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('id')
+        .eq('payment_intent_id', paymentIntentId)
+        .single();
+
+      if (error) {
+        // If error is "no rows returned", that's fine - it means no booking exists
+        if (error.code === 'PGRST116') {
+          console.log('[BookingService] No booking found for payment intent:', paymentIntentId);
+          return false;
+        }
+        console.error('[BookingService] Error checking booking by payment intent:', error);
+        throw error;
+      }
+
+      console.log('[BookingService] Booking found for payment intent:', paymentIntentId, 'with ID:', data?.id);
+      return !!data;
+    } catch (error) {
+      console.error('[BookingService] Error in checkBookingByPaymentIntent:', error);
+      // In case of error, return false to avoid false positives
+      return false;
     }
   }
 }
