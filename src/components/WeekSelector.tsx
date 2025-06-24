@@ -12,6 +12,7 @@ import * as Popover from '@radix-ui/react-popover';
 import { FlexibleCheckInModal } from './FlexibleCheckInModal';
 import { getSeasonalDiscount, getSeasonName } from '../utils/pricing';
 import { FitText } from './FitText';
+import { Fireflies } from './Fireflies';
 
 // Helper function to log week dates consistently without timezone confusion
 const getSimplifiedWeekInfo = (week: Week, isAdmin: boolean = false, selectedWeeks: Week[] = []) => {
@@ -40,11 +41,6 @@ interface WeekSelectorProps {
   onDateSelect: (date: Date, week: Week) => void;
   accommodationTitle: string;
   onMaxWeeksReached?: () => void;
-}
-
-// Helper function to generate a squiggle path
-function generateSquigglePath() {
-  return "M 0 15 Q 25 5, 50 15 T 100 15";
 }
 
 // Helper function to check if a week is between selected weeks
@@ -116,11 +112,7 @@ export function WeekSelector({
   });
   // --- END: Add log for filtered weeks ---
 
-  // Generate squiggle paths for visible weeks only
-  const squigglePaths = useMemo(() => {
-    const visibleWeeksCount = filteredWeeks.length;
-    return Array.from({ length: visibleWeeksCount }, () => generateSquigglePath());
-  }, [filteredWeeks.length]);
+
   
   const [selectedFlexDate, setSelectedFlexDate] = useState<Date | null>(null);
   const [flexModalWeek, setFlexModalWeek] = useState<Week | null>(null);
@@ -840,22 +832,18 @@ export function WeekSelector({
                       </div>
                     )}
 
-                    {/* Add squiggly line for selected weeks - only for those between start/end */}
-                    {isWeekSelected(week) && isWeekBetweenSelection(week, selectedWeeks) && (
-                      <svg
-                        className="absolute inset-0 w-full h-full pointer-events-none"
-                        preserveAspectRatio="none"
-                        viewBox="0 0 100 30"
-                      >
-                        <path
-                          d="M 0 15 Q 25 5, 50 15 T 100 15"
-                          className="squiggle-path"
-                          stroke="var(--color-accent-primary)"
-                          strokeWidth="2"
-                          fill="none"
-                          vectorEffect="non-scaling-stroke"
+                    {/* Add fireflies for all selected weeks */}
+                    {isWeekSelected(week) && (
+                      <div className="absolute inset-0 overflow-hidden pointer-events-none z-[1]">
+                        <Fireflies 
+                          count={3}
+                          color="#fddba3"
+                          minSize={3}
+                          maxSize={5}
+                          ambient={true}
+                          className="!relative !w-full !h-full"
                         />
-                      </svg>
+                      </div>
                     )}
 
                     {/* Bottom border for season indication - Using clsx object syntax */}

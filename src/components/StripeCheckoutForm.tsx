@@ -80,7 +80,7 @@ export function StripeCheckoutForm({ total, authToken, description, userEmail, o
       setClientSecret(data.clientSecret);
     };
     fetchSecret();
-  }, [authToken, total, description, userEmail, bookingDetails]);
+  }, [authToken, total, description, userEmail, bookingMetadata]);
 
   const handleCheckoutComplete = useCallback(async () => {
     console.log('[StripeCheckout] Payment completed, checking status...');

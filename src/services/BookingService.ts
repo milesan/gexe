@@ -333,6 +333,35 @@ class BookingService {
       throw error;
     }
   }
+
+  async checkBookingByPaymentIntent(paymentIntentId: string): Promise<boolean> {
+    try {
+      console.log('[BookingService] Checking if booking exists for payment intent:', paymentIntentId);
+      
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('id')
+        .eq('payment_intent_id', paymentIntentId)
+        .single();
+
+      if (error) {
+        // If error is "no rows returned", that's fine - it means no booking exists
+        if (error.code === 'PGRST116') {
+          console.log('[BookingService] No booking found for payment intent:', paymentIntentId);
+          return false;
+        }
+        console.error('[BookingService] Error checking booking by payment intent:', error);
+        throw error;
+      }
+
+      console.log('[BookingService] Booking found for payment intent:', paymentIntentId, 'with ID:', data?.id);
+      return !!data;
+    } catch (error) {
+      console.error('[BookingService] Error in checkBookingByPaymentIntent:', error);
+      // In case of error, return false to avoid false positives
+      return false;
+    }
+  }
 }
 
 export const bookingService = BookingService.getInstance();

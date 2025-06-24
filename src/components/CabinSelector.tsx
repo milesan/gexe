@@ -13,7 +13,6 @@ import { calculateTotalNights, calculateDurationDiscountWeeks, normalizeToUTCDat
 import { useSession } from '../hooks/useSession';
 import { HoverClickPopover } from './HoverClickPopover';
 import { useUserPermissions } from '../hooks/useUserPermissions';
-import { triggerFireflies } from './FireflyPortal';
 
 // Local interface for accommodation images
 interface AccommodationImage {
@@ -493,16 +492,6 @@ export function CabinSelector({
                     e.stopPropagation();
                     
                     if (finalCanSelect && !isDisabled) {
-                      // Only trigger fireflies if selecting a different accommodation
-                      if (acc.id !== selectedAccommodationId) {
-                        // Get click position relative to the page (not viewport)
-                        const x = e.pageX;
-                        const y = e.pageY;
-                        
-                        console.log('[CabinSelector] Triggering fireflies at position:', { x, y });
-                        triggerFireflies(x, y);
-                      }
-                      
                       handleSelectAccommodation(acc.id);
                     }
                   }}
