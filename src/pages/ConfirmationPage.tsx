@@ -68,6 +68,15 @@ export function ConfirmationPage() {
         </div>
 
         <div className="p-8 space-y-6">
+          {/* Show manual creation message if present */}
+          {booking.isPendingManualCreation && booking.manualCreationMessage && (
+            <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg border border-amber-100 dark:border-amber-900/30 mb-6">
+              <p className="text-amber-800 dark:text-amber-300 font-mono text-sm">
+                {booking.manualCreationMessage}
+              </p>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-text-secondary">

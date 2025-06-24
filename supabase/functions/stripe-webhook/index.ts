@@ -63,8 +63,14 @@ serve(async (req) => {
     const body = await req.json();
     log(`Request ${requestId} body parsed`, body);
     
-    // Extract environment and email from request body
-    const { total, description, environment, email } = body;
+    // Extract all booking data from request body
+    const { 
+      total, 
+      description, 
+      environment, 
+      email, 
+      bookingMetadata 
+    } = body;
     
     // Get the appropriate Stripe key based on environment
     const stripeKey = getStripeKey(environment);
@@ -97,11 +103,30 @@ serve(async (req) => {
       total,
       description,
       email,
-      amountInCents: total * 100
+      amountInCents: total * 100,
+      hasBookingMetadata: !!bookingMetadata
     });
 
     const productName = description ? "Donation to the Garden Associação, " + description : "Donation to the Garden Associação";
     const intentDescription = email ? email + ", " + description : description;
+    
+    // Prepare payment intent metadata
+    const paymentIntentMetadata: Record<string, string> = {
+      user_email: email || 'unknown',
+      source: 'frontend_booking'
+    };
+    
+    // Add booking metadata if provided
+    if (bookingMetadata) {
+      if (bookingMetadata.accommodationId) paymentIntentMetadata.accommodation_id = bookingMetadata.accommodationId;
+      if (bookingMetadata.checkIn) paymentIntentMetadata.check_in = bookingMetadata.checkIn;
+      if (bookingMetadata.checkOut) paymentIntentMetadata.check_out = bookingMetadata.checkOut;
+      if (bookingMetadata.originalTotal !== undefined) paymentIntentMetadata.original_total = bookingMetadata.originalTotal.toString();
+      if (bookingMetadata.creditsUsed !== undefined) paymentIntentMetadata.credits_used = bookingMetadata.creditsUsed.toString();
+      if (bookingMetadata.discountCode) paymentIntentMetadata.discount_code = bookingMetadata.discountCode;
+      
+      log(`Added booking metadata to payment intent`, paymentIntentMetadata);
+    }
     
     const session = await stripe.checkout.sessions.create({
       ui_mode: 'embedded',
@@ -118,14 +143,16 @@ serve(async (req) => {
       automatic_tax: { enabled: true },
       redirect_on_completion: 'never', // Keep embedded flow
       payment_intent_data: {
-        description: intentDescription
+        description: intentDescription,
+        metadata: paymentIntentMetadata
       }
     });
 
     log(`Successfully created Stripe session for request ${requestId}`, {
       sessionId: session.id,
       hasClientSecret: !!session.client_secret,
-      customerEmailPassed: email || 'Not Provided'
+      customerEmailPassed: email || 'Not Provided',
+      metadataKeys: Object.keys(paymentIntentMetadata)
     });
 
     return new Response(JSON.stringify({ clientSecret: session.client_secret }), {
