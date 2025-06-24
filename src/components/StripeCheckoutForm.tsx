@@ -14,11 +14,20 @@ interface Props {
   total: number;
   authToken: string;
   userEmail: string;
-  onSuccess: () => Promise<void>;
+  onSuccess: (paymentIntentId?: string) => Promise<void>;
   onClose: () => void;
+  // Add booking metadata for enhanced error recovery
+  bookingMetadata?: {
+    accommodationId?: string;
+    checkIn?: string;
+    checkOut?: string;
+    originalTotal?: number;
+    creditsUsed?: number;
+    discountCode?: string;
+  };
 }
 
-export function StripeCheckoutForm({ total, authToken, description, userEmail, onSuccess, onClose }: Props) {
+export function StripeCheckoutForm({ total, authToken, description, userEmail, onSuccess, onClose, bookingMetadata }: Props) {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
 
   // When component mounts, add a class to body to prevent scrolling and hide the header
@@ -63,7 +72,8 @@ export function StripeCheckoutForm({ total, authToken, description, userEmail, o
           total, 
           description,
           environment,
-          email: userEmail
+          email: userEmail,
+          bookingMetadata
         }),
       });
       const data = await response.json();
@@ -90,15 +100,27 @@ export function StripeCheckoutForm({ total, authToken, description, userEmail, o
         environment // Pass the environment to the status edge function
       }),
     });
-    const { status } = await response.json();
+    const { status, paymentIntentId } = await response.json();
     
     if (status === 'paid') {
       console.log('[StripeCheckout] Payment confirmed, proceeding with booking...');
-      await onSuccess();
+      console.log('[StripeCheckout] Payment Intent ID:', paymentIntentId);
+      
+      try {
+        // Pass the payment intent ID to the success handler
+        await onSuccess(paymentIntentId);
+        // If successful, the parent component will handle navigation
+      } catch (error) {
+        console.error('[StripeCheckout] Booking creation failed after payment:', error);
+        // Close the modal so the parent component can show the error
+        onClose();
+      }
     } else {
       console.error('[StripeCheckout] Payment status not paid:', status);
+      // Close modal on payment failure too
+      onClose();
     }
-  }, [authToken, clientSecret, onSuccess]);
+  }, [authToken, clientSecret, onSuccess, onClose]);
 
   if (!clientSecret) {
     return <div>Loading checkout...</div>;

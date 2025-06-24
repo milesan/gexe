@@ -128,49 +128,143 @@ serve(async (req) => {
           paymentIntent = await stripe.paymentIntents.retrieve(session.payment_intent as string);
           log('Retrieved payment intent', {
             paymentIntentId: paymentIntent.id,
-            description: paymentIntent.description
+            description: paymentIntent.description,
+            metadata: paymentIntent.metadata
           });
         }
 
-        // Extract booking details from payment intent description
-        // Format: "email@example.com, Title for X nights from DD. Month"
-        const description = paymentIntent?.description || '';
-        const emailMatch = description.match(/^([^,]+),/);
-        const userEmail = emailMatch ? emailMatch[1].trim() : session.customer_email || session.customer_details?.email;
-        
-        if (!userEmail) {
-          log('ERROR: No user email found in session or payment intent');
+        // Check if this payment was created by the frontend booking system
+        const isFromFrontend = paymentIntent?.metadata?.source === 'frontend_booking';
+        if (isFromFrontend) {
+          log('Payment from frontend booking system detected - checking for existing booking first', {
+            paymentIntentId: paymentIntent.id,
+            metadata: paymentIntent.metadata
+          });
+          
+          // Give frontend time to create the booking (wait a bit before processing)
+          // If frontend booking succeeds, webhook will be skipped due to existing booking check
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+
+        // Check if booking already exists (idempotency and frontend coordination)
+        const { data: existingBooking } = await supabaseAdmin
+          .from('bookings')
+          .select('id, user_id, created_at')
+          .eq('payment_intent_id', paymentIntent?.id || session.id)
+          .single();
+
+        if (existingBooking) {
+          log('Booking already exists for this payment, skipping webhook creation', {
+            bookingId: existingBooking.id,
+            paymentIntentId: paymentIntent?.id || session.id,
+            existingBookingAge: new Date().getTime() - new Date(existingBooking.created_at).getTime()
+          });
           break;
         }
 
-        // Parse accommodation and dates from description
-        const accommodationMatch = description.match(/,\s*(.+?)\s+for\s+(\d+)\s+nights?\s+from\s+(\d+)\.\s+(\w+)/);
-        if (!accommodationMatch) {
-          log('ERROR: Could not parse booking details from description', { description });
-          break;
-        }
+        // Try to use metadata first, fallback to description parsing
+        let userEmail: string;
+        let accommodationId: string;
+        let checkInFormatted: string;
+        let checkOutFormatted: string;
+        let creditsUsed = 0;
+        let discountCode: string | null = null;
+        let originalTotal: number | null = null;
 
-        const [, accommodationTitle, nights, dayStr, monthName] = accommodationMatch;
-        
-        // Get the current year
-        const currentYear = new Date().getFullYear();
-        const monthNumber = new Date(`${monthName} 1, ${currentYear}`).getMonth();
-        const checkInDate = new Date(currentYear, monthNumber, parseInt(dayStr));
-        
-        // If the date is in the past, it might be next year
-        if (checkInDate < new Date()) {
-          checkInDate.setFullYear(currentYear + 1);
+        if (isFromFrontend && paymentIntent?.metadata) {
+          // Use structured metadata from frontend
+          log('Using structured metadata from frontend booking', paymentIntent.metadata);
+          
+          userEmail = paymentIntent.metadata.user_email;
+          accommodationId = paymentIntent.metadata.accommodation_id;
+          checkInFormatted = paymentIntent.metadata.check_in;
+          checkOutFormatted = paymentIntent.metadata.check_out;
+          creditsUsed = paymentIntent.metadata.credits_used ? parseInt(paymentIntent.metadata.credits_used) : 0;
+          discountCode = paymentIntent.metadata.discount_code || null;
+          originalTotal = paymentIntent.metadata.original_total ? parseFloat(paymentIntent.metadata.original_total) : null;
+
+          if (!userEmail || !accommodationId || !checkInFormatted || !checkOutFormatted) {
+            log('ERROR: Missing required fields in payment intent metadata', {
+              hasEmail: !!userEmail,
+              hasAccommodationId: !!accommodationId,
+              hasCheckIn: !!checkInFormatted,
+              hasCheckOut: !!checkOutFormatted,
+              metadata: paymentIntent.metadata
+            });
+            break;
+          }
+        } else {
+          // Fallback to legacy description parsing
+          log('Using legacy description parsing for booking details');
+          
+          const description = paymentIntent?.description || '';
+          const emailMatch = description.match(/^([^,]+),/);
+          userEmail = emailMatch ? emailMatch[1].trim() : session.customer_email || session.customer_details?.email;
+          
+          if (!userEmail) {
+            log('ERROR: No user email found in session or payment intent');
+            break;
+          }
+
+          // Parse accommodation and dates from description
+          const accommodationMatch = description.match(/,\s*(.+?)\s+for\s+(\d+)\s+nights?\s+from\s+(\d+)\.\s+(\w+)/);
+          if (!accommodationMatch) {
+            log('ERROR: Could not parse booking details from description', { description });
+            break;
+          }
+
+          const [, accommodationTitle, nights, dayStr, monthName] = accommodationMatch;
+          
+          // Get the current year
+          const currentYear = new Date().getFullYear();
+          const monthNumber = new Date(`${monthName} 1, ${currentYear}`).getMonth();
+          const checkInDate = new Date(currentYear, monthNumber, parseInt(dayStr));
+          
+          // If the date is in the past, it might be next year
+          if (checkInDate < new Date()) {
+            checkInDate.setFullYear(currentYear + 1);
+          }
+          
+          const checkOutDate = new Date(checkInDate);
+          checkOutDate.setDate(checkOutDate.getDate() + parseInt(nights));
+
+          // Format dates for database
+          const formatDate = (date: Date) => {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+          };
+
+          checkInFormatted = formatDate(checkInDate);
+          checkOutFormatted = formatDate(checkOutDate);
+
+          // Find the accommodation by title
+          const { data: accommodationData, error: accommodationError } = await supabaseAdmin
+            .from('accommodations')
+            .select('id, title')
+            .eq('title', accommodationTitle)
+            .single();
+
+          if (accommodationError || !accommodationData) {
+            log('ERROR: Could not find accommodation by title', { 
+              accommodationTitle, 
+              error: accommodationError 
+            });
+            break;
+          }
+
+          accommodationId = accommodationData.id;
         }
-        
-        const checkOutDate = new Date(checkInDate);
-        checkOutDate.setDate(checkOutDate.getDate() + parseInt(nights));
 
         log('Parsed booking details', {
           userEmail,
-          accommodationTitle,
-          nights: parseInt(nights),
-          checkIn: checkInDate.toISOString(),
-          checkOut: checkOutDate.toISOString()
+          accommodationId,
+          checkIn: checkInFormatted,
+          checkOut: checkOutFormatted,
+          creditsUsed,
+          discountCode,
+          originalTotal
         });
 
         // Find the user by email
@@ -185,58 +279,22 @@ serve(async (req) => {
           break;
         }
 
-        // Find the accommodation by title
-        const { data: accommodationData, error: accommodationError } = await supabaseAdmin
-          .from('accommodations')
-          .select('id, title')
-          .eq('title', accommodationTitle)
-          .single();
-
-        if (accommodationError || !accommodationData) {
-          log('ERROR: Could not find accommodation by title', { 
-            accommodationTitle, 
-            error: accommodationError 
-          });
-          break;
-        }
-
-        // Check if booking already exists (idempotency)
-        const { data: existingBooking } = await supabaseAdmin
-          .from('bookings')
-          .select('id')
-          .eq('payment_intent_id', paymentIntent?.id || session.id)
-          .single();
-
-        if (existingBooking) {
-          log('Booking already exists for this payment, skipping', {
-            bookingId: existingBooking.id,
-            paymentIntentId: paymentIntent?.id || session.id
-          });
-          break;
-        }
-
-        // Format dates for database
-        const formatDate = (date: Date) => {
-          const year = date.getFullYear();
-          const month = String(date.getMonth() + 1).padStart(2, '0');
-          const day = String(date.getDate()).padStart(2, '0');
-          return `${year}-${month}-${day}`;
-        };
-
-        // Create the booking
+        // Create the booking with credit information
         const bookingData = {
           user_id: userData.id,
-          accommodation_id: accommodationData.id,
-          check_in: formatDate(checkInDate),
-          check_out: formatDate(checkOutDate),
+          accommodation_id: accommodationId,
+          check_in: checkInFormatted,
+          check_out: checkOutFormatted,
           total_price: (session.amount_total || 0) / 100, // Convert from cents
           status: 'confirmed',
           payment_intent_id: paymentIntent?.id || session.id,
+          applied_discount_code: discountCode,
+          credits_used: creditsUsed,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
 
-        log('Creating booking', bookingData);
+        log('Creating booking with credit information', bookingData);
 
         const { data: newBooking, error: bookingError } = await supabaseAdmin
           .from('bookings')
@@ -264,17 +322,24 @@ serve(async (req) => {
             frontendUrl
           });
 
-          const { error: emailError } = await supabaseAdmin.functions.invoke('send-booking-confirmation', {
-            body: {
-              email: userEmail,
-              bookingId: newBooking.id,
-              checkIn: formatDate(checkInDate),
-              checkOut: formatDate(checkOutDate),
-              accommodation: accommodationTitle,
-              totalPrice: (session.amount_total || 0) / 100,
-              frontendUrl
-            }
-          });
+                      // Get accommodation title for email
+            const { data: accommodationInfo } = await supabaseAdmin
+              .from('accommodations')
+              .select('title')
+              .eq('id', accommodationId)
+              .single();
+
+            const { error: emailError } = await supabaseAdmin.functions.invoke('send-booking-confirmation', {
+              body: {
+                email: userEmail,
+                bookingId: newBooking.id,
+                checkIn: checkInFormatted,
+                checkOut: checkOutFormatted,
+                accommodation: accommodationInfo?.title || 'Accommodation',
+                totalPrice: (session.amount_total || 0) / 100,
+                frontendUrl
+              }
+            });
 
           if (emailError) {
             log('ERROR: Failed to send confirmation email', { error: emailError });

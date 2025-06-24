@@ -87,10 +87,14 @@ serve(async (req) => {
     
     log(`Session retrieved for request ${requestId}`, { 
       sessionId: sessionId,
-      paymentStatus: session.payment_status
+      paymentStatus: session.payment_status,
+      paymentIntentId: session.payment_intent
     });
     
-    return new Response(JSON.stringify({ status: session.payment_status }), {
+    return new Response(JSON.stringify({ 
+      status: session.payment_status,
+      paymentIntentId: session.payment_intent 
+    }), {
       headers: corsHeaders,
       status: 200,
     });
