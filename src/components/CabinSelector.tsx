@@ -444,9 +444,6 @@ export function CabinSelector({
               const isOutOfSeason = isTent && !isTentSeason && selectedWeeks.length > 0;
               const finalCanSelect = canSelect && !isOutOfSeason;
 
-              // Get all images for the current accommodation to use for the counter
-              const allImagesForAcc = getAllImages(acc);
-
               // Get the whole info object
               const weeklyInfo = displayWeeklyAccommodationPrice(acc.id);
               // Ensure weeklyInfo and its properties are defined before accessing
