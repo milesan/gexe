@@ -237,24 +237,32 @@ export function BookingsList() {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--color-text-primary)]">
                   <div className="flex items-center gap-2">
                     <span>
-                      €{Number(booking.total_price) % 1 === 0 ? Number(booking.total_price).toFixed(0) : Number(booking.total_price).toFixed(2)}
+                      €{(() => {
+                        const creditsUsed = booking.credits_used || 0;
+                        const finalAmount = creditsUsed > 0 ? Number(booking.total_price) - creditsUsed : Number(booking.total_price);
+                        return finalAmount % 1 === 0 ? finalAmount.toFixed(0) : finalAmount.toFixed(2);
+                      })()}
                     </span>
-                                        {/* Show a compact discount indicator if discount exists */}
+                    {/* Show credits used indicator if credits were used */}
+                    {booking.credits_used !== null && booking.credits_used !== undefined && booking.credits_used > 0 && (
+                      <span className="text-xs text-blue-600 font-mono">
+                        (-{booking.credits_used} credits)
+                      </span>
+                    )}
+                    {/* Show a compact discount indicator if discount exists */}
                     {booking.discount_amount !== null && booking.discount_amount !== undefined && booking.discount_amount > 0 && (
                       <span className="text-xs text-emerald-600 font-mono">
                         (-€{booking.discount_amount.toFixed(0)})
                       </span>
                     )}
-                    {/* Show breakdown button if data exists */}
-                    {booking.accommodation_price !== null && booking.accommodation_price !== undefined && (
-                      <button
-                        onClick={() => setBreakdownModalBooking(booking)}
-                        className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
-                        title="View price breakdown"
-                      >
-                        <Receipt className="w-4 h-4" />
-                      </button>
-                    )}
+                    {/* Show breakdown button - always available for admin */}
+                    <button
+                      onClick={() => setBreakdownModalBooking(booking)}
+                      className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors p-1 rounded hover:bg-[var(--color-bg-surface)]"
+                      title="View price breakdown"
+                    >
+                      <Receipt className="w-4 h-4" />
+                    </button>
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--color-text-primary)]">

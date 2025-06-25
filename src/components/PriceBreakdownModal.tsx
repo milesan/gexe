@@ -22,7 +22,16 @@ interface PriceBreakdownModalProps {
 export function PriceBreakdownModal({ isOpen, onClose, booking }: PriceBreakdownModalProps) {
   if (!isOpen) return null;
 
-  const hasBreakdown = booking.accommodation_price !== null && booking.accommodation_price !== undefined;
+  // Show breakdown if ANY price breakdown field exists (not just accommodation_price)
+  const hasBreakdown = (
+    booking.accommodation_price !== null || 
+    booking.food_contribution !== null || 
+    booking.seasonal_adjustment !== null ||
+    booking.duration_discount_percent !== null ||
+    booking.discount_amount !== null ||
+    booking.credits_used !== null ||
+    booking.applied_discount_code !== null
+  );
 
   // Calculate base totals and discounts
   const baseAccommodation = booking.accommodation_price || 0;
@@ -204,14 +213,23 @@ export function PriceBreakdownModal({ isOpen, onClose, booking }: PriceBreakdown
                     </div>
                   )}
 
-                  {/* Final Total */}
+                  {/* Final Total - Shows actual amount donated after credits */}
                   <div className="bg-[var(--color-bg-shade)] rounded-lg p-4">
                     <div className="flex justify-between items-center font-semibold text-lg">
-                      <span className="text-[var(--color-text-primary)]">Total Paid</span>
+                      <span className="text-[var(--color-text-primary)]">Total Donated</span>
                       <span className="font-mono text-[var(--color-text-primary)]">
-                        €{booking.total_price.toFixed(2)}
+                        €{(() => {
+                          const creditsUsed = booking.credits_used || 0;
+                          const finalAmount = creditsUsed > 0 ? booking.total_price - creditsUsed : booking.total_price;
+                          return finalAmount.toFixed(2);
+                        })()}
                       </span>
                     </div>
+                    {booking.credits_used !== null && booking.credits_used !== undefined && booking.credits_used > 0 && (
+                      <div className="text-xs text-[var(--color-text-secondary)] mt-1">
+                        Original total: €{booking.total_price.toFixed(2)} - Credits: €{booking.credits_used.toFixed(2)}
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (

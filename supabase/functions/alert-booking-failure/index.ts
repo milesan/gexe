@@ -69,7 +69,7 @@ Timestamp: ${body.timestamp || new Date().toISOString()}
 
 SYSTEM STATUS:
 - Confirmation Email: ${body.systemStatus?.confirmationEmailSent ? 'SENT' : 'FAILED'}
-- Credits Deducted: ${body.systemStatus?.creditsWereDeducted ? 'YES (PROBLEM!)' : 'NO (SAFE)'}
+- Credits Deducted: ${body.systemStatus?.creditsWereDeducted ? 'YES (CORRECT - User paid reduced amount)' : 'NO (Credits still available)'}
 - User Experience: ${body.systemStatus?.userWillSeeConfirmationPage ? 'SEES CONFIRMATION' : 'SEES ERROR'}
 
 Error: ${body.error}
@@ -141,7 +141,7 @@ Please manually create the booking for this user or process a refund.`;
           <h3 style="margin: 0 0 10px 0; color: #1f2937; font-size: 16px;">🔧 System Status</h3>
           <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
             <tr><td style="padding: 5px 0; color: #4b5563;">Confirmation Email:</td><td style="color: ${body.systemStatus.confirmationEmailSent ? '#16a34a' : '#dc2626'}; font-weight: bold;">${body.systemStatus.confirmationEmailSent ? '✅ SENT' : '❌ FAILED'}</td></tr>
-            <tr><td style="padding: 5px 0; color: #4b5563;">Credits Deducted:</td><td style="color: ${body.systemStatus.creditsWereDeducted ? '#dc2626' : '#16a34a'}; font-weight: bold;">${body.systemStatus.creditsWereDeducted ? '⚠️ YES (PROBLEM!)' : '✅ NO (SAFE)'}</td></tr>
+            <tr><td style="padding: 5px 0; color: #4b5563;">Credits Deducted:</td><td style="color: ${body.systemStatus.creditsWereDeducted ? '#16a34a' : '#f59e0b'}; font-weight: bold;">${body.systemStatus.creditsWereDeducted ? '✅ YES (CORRECT)' : '⚠️ NO (Still Available)'}</td></tr>
             <tr><td style="padding: 5px 0; color: #4b5563;">User Experience:</td><td style="color: ${body.systemStatus.userWillSeeConfirmationPage ? '#16a34a' : '#dc2626'}; font-weight: bold;">${body.systemStatus.userWillSeeConfirmationPage ? '✅ SEES CONFIRMATION' : '❌ SEES ERROR'}</td></tr>
           </table>
         </div>

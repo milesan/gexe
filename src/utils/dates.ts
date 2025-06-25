@@ -500,12 +500,12 @@ export function generateWeeksWithCustomizations(
 /**
  * Check if a week is selectable based on its status and date
  */
-export function isWeekSelectable(week: Week, isAdmin: boolean = false, selectedWeeks: Week[] = []): boolean {
-  // Admins can select any week
+export function isWeekSelectable(week: Week, isAdmin: boolean = false, selectedWeeks: Week[] = [], testCurrentTime?: Date): boolean {
+    // Admins can select any week
   if (isAdmin) {
     return true;
   }
-  
+
   // Add check: Block non-admin bookings from November 1st onwards
   const currentYear = new Date().getUTCFullYear();
   // Use normalizeToUTCDate to ensure consistent midnight comparison
@@ -520,11 +520,61 @@ export function isWeekSelectable(week: Week, isAdmin: boolean = false, selectedW
   }
   
   // For normal users, check both status and start date
-  const today = new Date();
   const weekStartDate = week.startDate;
   
-  // Non-admin can't select weeks with check-in date in the past
-  if (weekStartDate.getTime() < today.getTime()) {
+  // Calculate booking cutoff: 8am Portugal time on the same day
+  const now = testCurrentTime || new Date();
+  
+  // Get Portugal time using proper timezone handling
+  // Portugal uses WET (UTC+0) in winter and WEST (UTC+1) in summer
+  const portugalFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Europe/Lisbon',
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+  
+  const portugalTimeString = portugalFormatter.format(now);
+  const portugalHour = parseInt(portugalTimeString.split(':')[0]);
+  
+  // Get Portugal date components using proper timezone
+  const portugalDateFormatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Lisbon',
+    year: 'numeric',
+    month: '2-digit', 
+    day: '2-digit'
+  });
+  
+  const portugalDateString = portugalDateFormatter.format(now);
+  const [portugalYear, portugalMonth, portugalDay] = portugalDateString.split('-').map(Number);
+  
+  // Determine effective cutoff date
+  let effectiveCutoffDate: Date;
+  if (portugalHour < 8) {
+    // Before 8am Portugal time - can still book for today
+    // Create a UTC date for Portugal today at midnight
+    const portugalTodayMidnight = new Date(`${portugalYear}-${portugalMonth.toString().padStart(2, '0')}-${portugalDay.toString().padStart(2, '0')}T00:00:00Z`);
+    effectiveCutoffDate = normalizeToUTCDate(portugalTodayMidnight);
+  } else {
+    // 8am or later Portugal time - can only book from tomorrow  
+    // Create a UTC date for Portugal tomorrow at midnight
+    const tomorrowDay = portugalDay + 1;
+    const portugalTomorrowMidnight = new Date(`${portugalYear}-${portugalMonth.toString().padStart(2, '0')}-${tomorrowDay.toString().padStart(2, '0')}T00:00:00Z`);
+    effectiveCutoffDate = normalizeToUTCDate(portugalTomorrowMidnight);
+  }
+  
+  // Debug log (remove in production)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[isWeekSelectable] Portugal time cutoff:', {
+      portugalTime: `${portugalYear}-${portugalMonth}-${portugalDay} ${portugalHour.toString().padStart(2, '0')}:00`,
+      isBeforeCutoff: portugalHour < 8,
+      effectiveCutoffDate: formatDateForDisplay(effectiveCutoffDate),
+      canSelect: weekStartDate.getTime() >= effectiveCutoffDate.getTime()
+    });
+  }
+  
+  // Non-admin can't select weeks with check-in date before the effective cutoff
+  if (weekStartDate.getTime() < effectiveCutoffDate.getTime()) {
     return false;
   }
   
@@ -828,3 +878,5 @@ export function utcToLocalMidnight(utcDate: Date): Date {
     // Time components default to 00:00:00 in the local timezone
   );
 }
+
+// Test functions removed - Portugal time cutoff logic is now implemented and tested

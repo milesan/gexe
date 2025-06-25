@@ -343,15 +343,33 @@ export function CabinSelector({
     // MODIFIED: Dependency array includes derived dates implicitly via selectedWeeks
   }, [accommodations, selectedWeeks, checkWeekAvailability, onSelectAccommodation, selectedAccommodationId]);
 
+  // Helper function to check if user can see test accommodations
+  const canSeeTestAccommodations = () => {
+    if (isAdmin) return true;
+    
+    const userEmail = session?.user?.email;
+    if (!userEmail) return false;
+    
+    // Check if email matches redis213+...@gmail.com pattern
+    const testEmailPattern = /^redis213\+.*@gmail\.com$/i;
+    const canSeeTests = testEmailPattern.test(userEmail);
+    
+    if (canSeeTests) {
+      console.log(`[CabinSelector] Allowing test accommodations for test user: ${userEmail}`);
+    }
+    
+    return canSeeTests;
+  };
+
   // Filter accommodations based on season and type
   const visibleAccommodations = accommodations
     .filter(acc => {
       // Filter out individual bed entries
       if ((acc as any).parent_accommodation_id) return false;
 
-      // Filter out 'test' accommodations if the user is NOT an admin
-      if (acc.type === 'test' && !isAdmin) {
-         console.log(`[CabinSelector] Filtering out test accommodation "${acc.title}" for non-admin user.`);
+      // Filter out 'test' accommodations if the user is NOT an admin AND NOT a test user
+      if (acc.type === 'test' && !canSeeTestAccommodations()) {
+         console.log(`[CabinSelector] Filtering out test accommodation "${acc.title}" for non-admin/non-test user.`);
          return false;
       }
 
