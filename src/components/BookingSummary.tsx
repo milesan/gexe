@@ -530,13 +530,16 @@ export function BookingSummary({
         
         // Delay navigation slightly to show fireflies
         setTimeout(() => {
+          // Calculate actual amount donated (after credits)
+          const actualDonationAmount = Math.max(0, booking.total_price - (creditsToUse || 0));
+          
           navigate('/confirmation', { 
             state: { 
               booking: {
                 ...booking,
                 accommodation: selectedAccommodation.title,
                 guests: selectedAccommodation.inventory,
-                totalPrice: booking.total_price,
+                totalPrice: actualDonationAmount, // Show actual amount donated after credits
                 checkIn: selectedCheckInDate,
                 checkOut: checkOut
               }
@@ -619,8 +622,46 @@ export function BookingSummary({
           }
         }
         
-        // Since booking creation failed, credits were NOT deducted (they're only deducted on successful booking insert)
-        creditsWereDeducted = false;
+        // Try to manually deduct credits since payment succeeded but booking failed
+        if (creditsToUse > 0) {
+          console.log('[BookingSummary] Payment succeeded but booking failed - attempting to manually deduct credits:', creditsToUse);
+          try {
+            // Get current user for the credit deduction
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+              const { data: newBalance, error: creditError } = await supabase.rpc('admin_remove_credits', {
+                p_user_id: user.id,
+                p_amount: creditsToUse,
+                p_admin_note: `Credits deducted for successful payment (Payment Intent: ${paymentIntentId}) - booking creation failed and requires manual resolution`
+              });
+              
+              if (creditError) {
+                console.error('[BookingSummary] Failed to deduct credits manually:', creditError);
+                creditsWereDeducted = false;
+              } else {
+                console.log('[BookingSummary] Successfully deducted credits manually. New balance:', newBalance);
+                creditsWereDeducted = true;
+                
+                // Refresh credits in the UI to reflect the deduction
+                try {
+                  await refreshCredits();
+                  console.log('[BookingSummary] Credits UI refreshed after manual deduction');
+                } catch (refreshErr) {
+                  console.error('[BookingSummary] Failed to refresh credits UI:', refreshErr);
+                }
+              }
+            } else {
+              console.error('[BookingSummary] No user found for manual credit deduction');
+              creditsWereDeducted = false;
+            }
+          } catch (creditDeductionErr) {
+            console.error('[BookingSummary] Exception during manual credit deduction:', creditDeductionErr);
+            creditsWereDeducted = false;
+          }
+        } else {
+          // No credits to deduct
+          creditsWereDeducted = false;
+        }
         
         // Update the original errorDetails with actual status
         const updatedErrorDetails = {
@@ -1080,32 +1121,29 @@ Please manually create the booking for this user or process a refund.`;
                 {/* Add HR before Total */}
                 <hr className="border-t border-border my-2 opacity-30" /> 
 
-                {/* Final Total */}
+                {/* Total Donated - Shows value being donated to the garden */}
                 <div className="pt-4 mt-4">
                   <div className="flex font-mono justify-between items-baseline">
-                    {/* Changed styling for "Total" label */}
                     <span className="uppercase text-primary font-display text-2xl">Total</span>
-                    {/* --- UPDATED: Show original price if discount applied --- */}
+                    {/* Show original price if discount applied */}
                     {(appliedDiscount && pricing.appliedCodeDiscountValue > 0) ? (
                         <div className="text-right">
                             <span className="text-sm line-through text-secondary mr-2">
                                 {formatPriceDisplay(pricing.subtotal)}
                             </span>
-                            {/* Updated style */}
                             <span className="text-2xl font-display text-primary">
                                 {formatPriceDisplay(pricing.totalAmount)}
                             </span>
                         </div>
                     ) : (
-                        // Updated style
                         <span className="text-2xl font-display text-primary">
                             {formatPriceDisplay(pricing.totalAmount)}
                         </span>
                     )}
-                    {/* --- End Update --- */}
                   </div>
-                   {/* Updated style */}
-                   <p className="text-sm text-shade-1 mt-1 font-display">Includes accommodation, food, facilities, and discounts.</p>
+                   <p className="text-sm text-shade-1 mt-1 font-display">
+                     Includes accommodation, food, facilities, and discounts.
+                   </p>
                 </div>
 
 

@@ -58,7 +58,7 @@ export function MyBookings() {
             <div>
               <h1 className="text-4xl font-display font-light text-primary mb-2">My Account</h1>
               <div className="text-primary">
-                <p className="font-mono">{session?.user?.email}</p>
+                <p className="font-mono">{session?.session?.user?.email}</p>
               </div>
             </div>
           </div>
@@ -91,8 +91,22 @@ export function MyBookings() {
                           <span className="text-primary">{format(parseISO(booking.check_out), 'PPP')}</span>
                         </p>
                         <p>
-                          <span className="text-primary">Total Price:</span>{' '}
-                          <span className="text-primary">€{booking.total_price}</span>
+                          <span className="text-primary">Total Donated:</span>{' '}
+                          <span className="text-primary">
+                            €{(() => {
+                              const creditsUsed = (booking as any).credits_used || 0;
+                              const finalAmount = creditsUsed > 0 ? booking.total_price - creditsUsed : booking.total_price;
+                              return finalAmount % 1 === 0 ? finalAmount.toFixed(0) : finalAmount.toFixed(2);
+                            })()}
+                          </span>
+                          {(() => {
+                            const creditsUsed = (booking as any).credits_used || 0;
+                            return creditsUsed > 0 && (
+                              <span className="text-xs text-shade-2 ml-1">
+                                (used {creditsUsed} credits)
+                              </span>
+                            );
+                          })()}
                         </p>
                         <a 
                           href="https://gardening.notion.site/Welcome-to-The-Garden-2684f446b48e4b43b3f003d7fca33664?pvs=4"

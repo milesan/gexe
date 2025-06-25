@@ -177,6 +177,12 @@ class BookingService {
     appliedDiscountCode?: string;
     creditsUsed?: number;
     paymentIntentId?: string;
+    accommodationPrice?: number;
+    foodContribution?: number;
+    seasonalAdjustment?: number;
+    durationDiscountPercent?: number;
+    discountAmount?: number;
+    discountCodePercent?: number;
   }): Promise<Booking> {
     console.log('[BookingService] Creating booking with data:', {
       ...booking,
@@ -244,12 +250,12 @@ class BookingService {
           payment_intent_id: booking.paymentIntentId || null,
           applied_discount_code: booking.appliedDiscountCode || null,
           credits_used: booking.creditsUsed || 0,
-          accommodation_price: booking.accommodationPrice || null,
-          food_contribution: booking.foodContribution || null,
-          seasonal_adjustment: booking.seasonalAdjustment || null,
-          duration_discount_percent: booking.durationDiscountPercent || null,
-          discount_amount: booking.discountAmount || null,
-          discount_code_percent: booking.discountCodePercent || null,
+          accommodation_price: booking.accommodationPrice ?? null,
+          food_contribution: booking.foodContribution ?? null,
+          seasonal_adjustment: booking.seasonalAdjustment ?? null,
+          duration_discount_percent: booking.durationDiscountPercent ?? null,
+          discount_amount: booking.discountAmount ?? null,
+          discount_code_percent: booking.discountCodePercent ?? null,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
