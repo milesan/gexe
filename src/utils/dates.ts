@@ -501,11 +501,11 @@ export function generateWeeksWithCustomizations(
  * Check if a week is selectable based on its status and date
  */
 export function isWeekSelectable(week: Week, isAdmin: boolean = false, selectedWeeks: Week[] = []): boolean {
-  // Admins can select any week
+    // Admins can select any week
   if (isAdmin) {
     return true;
   }
-  
+
   // Add check: Block non-admin bookings from November 1st onwards
   const currentYear = new Date().getUTCFullYear();
   // Use normalizeToUTCDate to ensure consistent midnight comparison

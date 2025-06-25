@@ -712,123 +712,90 @@ export function WeekSelector({
                         </div>
                         {/* --- END: Unified Date Display Logic --- */}
 
-                        {/* --- START: Render Week Name (if exists) Below Date --- */}
-                        {/* Only render the name/secondary date if the week is NOT an intermediate selected week */}
-                        {!isIntermediateSelected && week.name && (
-                          <div className="mt-0.5"> {/* Add some spacing */}
-                            {(() => {
-                              const formattedStartDate = formatInTimeZone(week.startDate, 'UTC', 'MMM d');
-                              const formattedEndDate = formatInTimeZone(week.endDate, 'UTC', 'MMM d');
-                              const fullText = `${week.name}, ${formattedStartDate} - ${formattedEndDate}`;
-                              const isLong = fullText.length > 20; // Use a threshold relevant to the combined text
-                              const hasLink = !!week.link; // Check if link exists
-
-                              // If there is a link render it as a link
-                              if (hasLink) {
-                                // Ensure the link starts with http://, https://, or //
-                                const safeHref = week.link?.startsWith('http') || week.link?.startsWith('//')
-                                  ? week.link
-                                  : `//${week.link}`;
-
-                                return (
-                                  <a
-                                    href={safeHref}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={(e) => e.stopPropagation()} // Prevent button click
-                                    className="font-display text-secondary text-[10px] xxs:text-xs w-full px-1 underline hover:text-accent-primary transition-colors duration-200 block truncate"
-                                    title={`${fullText} (opens external link)`}
-                                  >
-                                    {fullText}
-                                  </a>
-                                );
-                              }
-
-                              // Otherwise, render the original logic (mobile/desktop display without link)
-                              return isMobile ? (
-                                // Mobile: Show full text, allow wrapping
-                                <div className="font-display text-secondary text-[10px] xxs:text-xs w-full px-1">
-                                  {fullText}
-                                </div>
-                              ) : (
-                                // Desktop: Use tooltip only if combined text is long
-                                <div className="relative w-full">
-                                  <div 
-                                    className="font-display text-secondary text-[10px] xxs:text-xs w-full px-1 truncate"
-                                    title={isLong ? fullText : undefined}
-                                  >
-                                    {fullText}
-                                  </div>
-                                  {isLong && (
-                                    <Popover.Root>
-                                      <Popover.Trigger asChild>
-                                        <button 
-                                          type="button"
-                                          className="absolute inset-0 cursor-help w-full h-full" // Use cursor-help
-                                          onClick={(e) => e.stopPropagation()}
-                                          aria-label={`More info about ${week.name}`} // Accessibility
-                                        />
-                                      </Popover.Trigger>
-                                      <Popover.Portal>
-                                        <Popover.Content 
-                                          sideOffset={5} 
-                                          className="tooltip-content !font-mono z-50 max-w-xs"
-                                          onOpenAutoFocus={(e: Event) => e.preventDefault()}
-                                        >
-                                          {fullText} {/* Show full text in tooltip */}
-                                          <Popover.Arrow className="tooltip-arrow" />
-                                        </Popover.Content>
-                                      </Popover.Portal>
-                                    </Popover.Root>
-                                  )}
-                                </div>
-                              );
-                            })()}
-                          </div>
-                        )}
-                        {/* --- END: Render Week Name --- */}
-
-                        {/* --- START: Existing additional info (Flex Dates, Duration, Status) --- */}
-                        {/* Show flex dates indicator only if no weeks are selected yet */}
-                        {week.flexibleDates && week.flexibleDates.length > 0 && !selectedWeeks.length && (
-                          <div className="text-sm text-indigo-500 mt-1 font-mono flex items-center justify-center gap-1">
-                            <Calendar className="w-3 h-3 xxs:w-3.5 xxs:h-3.5 xs:w-4 xs:h-4" />
-                            <span>{week.flexibleDates.length} check-in {week.flexibleDates.length === 1 ? 'date' : 'dates'}</span>
-                          </div>
-                        )}
-                        
+                        {/* --- START: Single Row Combined Info --- */}
+                        {/* Combine all supplementary info into one overflow-controlled row */}
                         {(() => {
                           const diffTime = week.endDate.getTime() - week.startDate.getTime();
                           const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-
-                          // Determine if the week is an "in-between" selected week
                           const isMultiWeekSelection = selectedWeeks.length > 2;
                           const isFirstSelected = selectedWeeks.length > 0 && areSameWeeks(week, selectedWeeks[0]);
                           const isLastSelected = selectedWeeks.length > 0 && areSameWeeks(week, selectedWeeks[selectedWeeks.length - 1]);
                           const isInBetween = isMultiWeekSelection && !isFirstSelected && !isLastSelected;
 
-                          // Show duration only if it's not 7 days AND it's not an in-between week
+                          // Collect all info parts
+                          const infoParts = [];
+
+                          // Week name
+                          if (!isIntermediateSelected && week.name) {
+                            const formattedStartDate = formatInTimeZone(week.startDate, 'UTC', 'MMM d');
+                            const formattedEndDate = formatInTimeZone(week.endDate, 'UTC', 'MMM d');
+                            infoParts.push(`${week.name}, ${formattedStartDate} - ${formattedEndDate}`);
+                          }
+
+                          // Flexible dates
+                          if (week.flexibleDates && week.flexibleDates.length > 0 && !selectedWeeks.length) {
+                            infoParts.push(`${week.flexibleDates.length} ${week.flexibleDates.length === 1 ? 'date' : 'dates'}`);
+                          }
+
+                          // Duration
                           if (diffDays !== 7 && !week.isEdgeWeek && !isInBetween) {
+                            infoParts.push(`${diffDays} ${diffDays === 1 ? 'day' : 'days'}`);
+                          }
+
+                          // Admin status
+                          if (isAdmin && (week.status === 'hidden' || week.status === 'deleted')) {
+                            infoParts.push(week.status);
+                          }
+
+                          // Only render if there are info parts to show
+                          if (infoParts.length === 0) return null;
+
+                          const combinedText = infoParts.join(' • ');
+                          const hasLink = !!week.link;
+
+                          if (hasLink && week.name) {
+                            const safeHref = week.link?.startsWith('http') || week.link?.startsWith('//')
+                              ? week.link
+                              : `//${week.link}`;
+
                             return (
-                              <div className="text-sm text-indigo-500 mt-1 font-mono">
-                                {diffDays} {diffDays === 1 ? 'day' : 'days'}
+                              <div className="mt-0.5 w-full px-1 overflow-hidden">
+                                <a
+                                  href={safeHref}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className={clsx(
+                                    'font-display text-[10px] xxs:text-xs underline hover:text-accent-primary transition-colors duration-200 block truncate whitespace-nowrap',
+                                    isAdmin && (week.status === 'hidden' || week.status === 'deleted') ? (
+                                      week.status === 'hidden' ? 'text-yellow-500' : 'text-red-500'
+                                    ) : 'text-secondary'
+                                  )}
+                                  title={`${combinedText} (opens external link)`}
+                                >
+                                  {combinedText}
+                                </a>
                               </div>
                             );
                           }
-                          return null;
-                        })()}
 
-                        {/* Refined: Only show status text if admin AND status is 'hidden' or 'deleted' */}
-                        {isAdmin && (week.status === 'hidden' || week.status === 'deleted') && (
-                          <div className={clsx(
-                            'text-sm text-indigo-500 mt-1',
-                            week.status === 'hidden' && 'text-yellow-500',
-                            week.status === 'deleted' && 'text-red-500',
-                          )}>
-                            {week.status} 
-                          </div>
-                        )}
-                        {/* --- END: Existing additional info --- */}
+                          return (
+                            <div className="mt-0.5 w-full px-1 overflow-hidden">
+                              <div 
+                                className={clsx(
+                                  'font-display text-[10px] xxs:text-xs truncate whitespace-nowrap',
+                                  isAdmin && (week.status === 'hidden' || week.status === 'deleted') ? (
+                                    week.status === 'hidden' ? 'text-yellow-500' : 'text-red-500'
+                                  ) : week.flexibleDates && week.flexibleDates.length > 0 && !selectedWeeks.length ? 'text-indigo-500' : 'text-secondary'
+                                )}
+                                title={combinedText}
+                              >
+                                {combinedText}
+                              </div>
+                            </div>
+                          );
+                        })()}
+                        {/* --- END: Single Row Combined Info --- */}
                       </div>
                     )}
 
