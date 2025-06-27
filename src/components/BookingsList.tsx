@@ -22,6 +22,7 @@ interface Booking {
   applied_discount_code: string | null;
   accommodations?: { title: string } | null;
   accommodation_price?: number | null;
+  accommodation_price_paid?: number | null; // NEW: Actual accommodation amount paid
   food_contribution?: number | null;
   seasonal_adjustment?: number | null;
   duration_discount_percent?: number | null;
@@ -69,6 +70,7 @@ export function BookingsList() {
           *,
           applied_discount_code,
           accommodation_price,
+          accommodation_price_paid,
           food_contribution,
           seasonal_adjustment,
           duration_discount_percent,

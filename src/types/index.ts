@@ -48,6 +48,15 @@ export interface Booking {
     type: string;
     image_url: string | null;
   };
+  // Price breakdown fields (added later, may be null for old bookings)
+  accommodation_price?: number | null;
+  food_contribution?: number | null;
+  seasonal_adjustment?: number | null;
+  duration_discount_percent?: number | null;
+  discount_amount?: number | null;
+  discount_code_percent?: number | null;
+  discount_code_applies_to?: string | null;
+  accommodation_price_paid?: number | null; // NEW: Actual accommodation amount paid after discounts
 }
 
 export interface AvailabilityResult {

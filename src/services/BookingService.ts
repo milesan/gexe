@@ -183,6 +183,7 @@ class BookingService {
     durationDiscountPercent?: number;
     discountAmount?: number;
     discountCodePercent?: number;
+    accommodationPricePaid?: number; // NEW: Actual accommodation amount paid
   }): Promise<Booking> {
     console.log('[BookingService] Creating booking with data:', {
       ...booking,
@@ -256,6 +257,7 @@ class BookingService {
           duration_discount_percent: booking.durationDiscountPercent ?? null,
           discount_amount: booking.discountAmount ?? null,
           discount_code_percent: booking.discountCodePercent ?? null,
+          accommodation_price_paid: booking.accommodationPricePaid ?? null, // NEW field
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })

@@ -412,25 +412,35 @@ export function BookingSummary({
   const handleBookingSuccess = useCallback(async (paymentIntentId?: string) => {
     // Added optional paymentIntentId
     console.log('[BookingSummary] handleBookingSuccess called. Payment Intent ID:', paymentIntentId || 'N/A');
+    console.log('[BookingSummary] ENTRY - Checking required info:', {
+      selectedAccommodation: !!selectedAccommodation,
+      selectedAccommodationTitle: selectedAccommodation?.title,
+      selectedWeeksLength: selectedWeeks.length,
+      selectedCheckInDate: !!selectedCheckInDate,
+      selectedCheckInDateISO: selectedCheckInDate?.toISOString()
+    });
     try {
       if (!selectedAccommodation || selectedWeeks.length === 0 || !selectedCheckInDate) {
         console.error('[Booking Summary] Missing required info for booking success:', { selectedAccommodation: !!selectedAccommodation, selectedWeeks: selectedWeeks.length > 0, selectedCheckInDate: !!selectedCheckInDate });
         throw new Error('Missing required booking information');
       }
+      
+      console.log('[BookingSummary] VALIDATION PASSED - Proceeding with booking');
 
       // Calculate check-out date based on the selected check-in date
       const totalDays = calculateTotalDays(selectedWeeks);
       const checkOut = addDays(selectedCheckInDate, totalDays-1);
 
-      console.log('[Booking Summary] Starting booking process...');
-      console.log('[Booking Summary] handleBookingSuccess: Raw Dates:', { // ADDED LOG BLOCK
-        selectedCheckInDate_ISO: selectedCheckInDate.toISOString(),
-        selectedCheckInDate_Raw: selectedCheckInDate,
-        checkOut_ISO: checkOut.toISOString(),
-        checkOut_Raw: checkOut
-      });
-      setIsBooking(true);
-      setError(null);
+              console.log('[BookingSummary] Starting booking process...');
+        console.log('[BookingSummary] handleBookingSuccess: Raw Dates:', { // ADDED LOG BLOCK
+          selectedCheckInDate_ISO: selectedCheckInDate.toISOString(),
+          selectedCheckInDate_Raw: selectedCheckInDate,
+          checkOut_ISO: checkOut.toISOString(),
+          checkOut_Raw: checkOut
+        });
+        console.log('[BookingSummary] Setting isBooking to true and clearing errors');
+        setIsBooking(true);
+        setError(null);
       
       try {
         // (Pricing should already be rounded to 2 decimal places)
@@ -447,6 +457,20 @@ export function BookingSummary({
         });
 
         // Add applied discount code if present
+        console.log('[BookingSummary] REACHED PRICING BREAKDOWN SECTION');
+        
+        // Calculate the base accommodation price BEFORE any discounts
+        // Use pricing.baseAccommodationRate which is the actual base rate, not selectedAccommodation.base_price
+        const baseAccommodationPrice = pricing.baseAccommodationRate * pricing.weeksStaying;
+        
+        console.log('[Booking Summary] DEBUG VALUES:', {
+          'selectedAccommodation.base_price': selectedAccommodation.base_price,
+          'pricing.baseAccommodationRate': pricing.baseAccommodationRate,
+          'pricing.weeksStaying': pricing.weeksStaying,
+          'pricing.totalAccommodationCost': pricing.totalAccommodationCost,
+          'baseAccommodationPrice (calculated)': baseAccommodationPrice
+        });
+        
         // Calculate seasonal discount amount for accommodation
         let seasonalDiscountAmount = 0;
         if (seasonBreakdownState && selectedAccommodation && !selectedAccommodation.title.toLowerCase().includes('dorm')) {
@@ -455,21 +479,44 @@ export function BookingSummary({
             seasonBreakdownState.seasons.reduce((sum, season) => sum + season.nights, 0);
           
           // Calculate the actual discount amount: base price * weeks * seasonal discount %
-          seasonalDiscountAmount = selectedAccommodation.base_price * pricing.weeksStaying * avgSeasonalDiscountPercent;
+          seasonalDiscountAmount = baseAccommodationPrice * avgSeasonalDiscountPercent;
         }
-
+        
+        // Calculate duration discount amount for accommodation
+        const accommodationDurationDiscountAmount = baseAccommodationPrice * (pricing.durationDiscountPercent / 100);
+        
+        // Log the breakdown for debugging
+        console.log('[Booking Summary] Accommodation pricing breakdown:', {
+          baseWeeklyRate: selectedAccommodation.base_price,
+          weeksStaying: pricing.weeksStaying,
+          baseAccommodationPrice: baseAccommodationPrice,
+          seasonalDiscountAmount: seasonalDiscountAmount,
+          durationDiscountPercent: pricing.durationDiscountPercent,
+          accommodationDurationDiscountAmount: accommodationDurationDiscountAmount,
+          finalAccommodationPrice: pricing.totalAccommodationCost,
+          // Verify the math
+          calculatedFinal: baseAccommodationPrice - seasonalDiscountAmount - accommodationDurationDiscountAmount
+        });
+        
+        console.log('[Booking Summary] CRITICAL: Accommodation price values being sent:', {
+          accommodationPrice: parseFloat(baseAccommodationPrice.toFixed(2)), // Should be base price BEFORE discounts
+          accommodationPricePaid: pricing.totalAccommodationCost // Should be actual price AFTER discounts
+        });
+        
         const bookingPayload: any = {
           accommodationId: selectedAccommodation.id,
           checkIn: formattedCheckIn,
           checkOut: formattedCheckOut,
           totalPrice: roundedTotal, // Send the final price calculated by the frontend
           // Add price breakdown for future bookings
-          accommodationPrice: pricing.totalAccommodationCost,
+          accommodationPrice: parseFloat(baseAccommodationPrice.toFixed(2)), // Base price BEFORE discounts
           foodContribution: pricing.totalFoodAndFacilitiesCost,
           seasonalAdjustment: parseFloat(seasonalDiscountAmount.toFixed(2)),
           durationDiscountPercent: pricing.durationDiscountPercent,
-          // Calculate total discount amount (duration + code + seasonal discounts)
-          discountAmount: pricing.durationDiscountAmount + pricing.appliedCodeDiscountValue + parseFloat(seasonalDiscountAmount.toFixed(2))
+          // Calculate total discount amount (accommodation duration + food duration + code + seasonal discounts)
+          discountAmount: accommodationDurationDiscountAmount + pricing.durationDiscountAmount + pricing.appliedCodeDiscountValue + parseFloat(seasonalDiscountAmount.toFixed(2)),
+          // NEW: Store the actual accommodation amount paid (after all discounts)
+          accommodationPricePaid: pricing.totalAccommodationCost
         };
 
         if (appliedDiscount?.code) {
@@ -499,6 +546,8 @@ export function BookingSummary({
           throw new Error("TEST: Simulated booking failure for small payment amount");
         }
 
+        console.log("[Booking Summary] SENDING BOOKING PAYLOAD:", JSON.stringify(bookingPayload, null, 2));
+        
         const booking = await bookingService.createBooking(bookingPayload);
 
         console.log("[Booking Summary] Booking created:", booking);
@@ -790,7 +839,13 @@ Please manually create the booking for this user or process a refund.`;
         return;
       }
     } catch (err) {
-      console.error('[Booking Summary] Error in booking success handler:', err);
+      console.error('[BookingSummary] CRITICAL ERROR in booking success handler:', err);
+      console.error('[BookingSummary] Error details:', {
+        message: err instanceof Error ? err.message : 'Unknown error',
+        stack: err instanceof Error ? err.stack : undefined,
+        type: typeof err,
+        err
+      });
       // Don't re-throw any errors - we've handled them gracefully above
       setError('An error occurred. Please try again.');
       setIsBooking(false);

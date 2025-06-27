@@ -500,7 +500,12 @@ export function generateWeeksWithCustomizations(
 /**
  * Check if a week is selectable based on its status and date
  */
-export function isWeekSelectable(week: Week, isAdmin: boolean = false, selectedWeeks: Week[] = [], testCurrentTime?: Date): boolean {
+export function isWeekSelectable(week: Week, isAdmin: boolean = false, selectedWeeks: Week[] = [], testCurrentTime?: Date, testMode: boolean = false): boolean {
+    // Test mode bypasses all restrictions
+  if (testMode) {
+    return true;
+  }
+
     // Admins can select any week
   if (isAdmin) {
     return true;
