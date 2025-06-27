@@ -1,20 +1,18 @@
 {
   "name": "gexe-scripts",
   "version": "1.0.0",
-  "description": "Utility scripts for GEXE booking system",
+  "description": "Scripts for GEXE project",
   "main": "index.js",
   "scripts": {
-    "reverse-engineer": "tsx reverse-engineer-booking-breakdowns.ts",
-    "test-breakdown": "tsx test-single-booking.ts"
+    "reverse-engineer": "node enhanced-reverse-engineer-v2.js",
+    "reverse-engineer-fixed": "node fixed-reverse-engineer.js",
+    "cleanup-fake-codes": "node cleanup-fake-discount-codes.js",
+    "dead-simple": "node dead-simple-reverse-engineer.js",
+    "smart": "node smart-reverse-engineer.js",
+    "fix-discounts": "node fix-discount-amounts.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.39.0",
-    "date-fns": "^3.3.1",
-    "dotenv": "^16.4.1"
-  },
-  "devDependencies": {
-    "@types/node": "^20.11.0",
-    "tsx": "^4.7.0",
-    "typescript": "^5.3.3"
+    "@supabase/supabase-js": "^2.39.7"
   }
 } 

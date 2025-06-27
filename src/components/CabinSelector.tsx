@@ -38,6 +38,7 @@ interface Props {
   currentMonth?: Date;
   isDisabled?: boolean;
   displayWeeklyAccommodationPrice: (accommodationId: string) => { price: number | null; avgSeasonalDiscount: number | null } | null;
+  testMode?: boolean;
 }
 
 // Helper function to get primary image (NEW IMAGES TABLE ONLY)
@@ -85,7 +86,8 @@ export function CabinSelector({
   selectedWeeks = [],
   currentMonth = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate())),
   isDisabled = false,
-  displayWeeklyAccommodationPrice
+  displayWeeklyAccommodationPrice,
+  testMode = false
 }: Props) {
   const { session } = useSession();
   const { isAdmin, isLoading: permissionsLoading } = useUserPermissions(session);
@@ -263,9 +265,14 @@ export function CabinSelector({
     return Number.isInteger(price) ? price.toString() : price.toFixed(2);
   };
 
-  // Clear selection if selected accommodation becomes unavailable
+  // Clear selection if selected accommodation becomes unavailable (unless in test mode)
   useEffect(() => {
     if (selectedAccommodationId && selectedWeeks.length > 0) {
+      if (testMode) {
+        console.log('[CabinSelector] Test mode enabled - skipping availability check for accommodation:', selectedAccommodationId);
+        return;
+      }
+      
       const isAvailable = availabilityMap[selectedAccommodationId]?.isAvailable;
       if (!isAvailable) {
         console.log('[CabinSelector] Clearing selection - accommodation became unavailable:', {
@@ -275,7 +282,7 @@ export function CabinSelector({
         onSelectAccommodation('');
       }
     }
-  }, [selectedAccommodationId, selectedWeeks, availabilityMap, onSelectAccommodation]);
+  }, [selectedAccommodationId, selectedWeeks, availabilityMap, onSelectAccommodation, testMode]);
 
   // NEW: Clear accommodation selection when dates are cleared
   useEffect(() => {
@@ -456,11 +463,11 @@ export function CabinSelector({
               const isAvailable = availability?.isAvailable ?? true;
               const isFullyBooked = !isAvailable;
               const spotsAvailable = availability?.availableCapacity;
-              const canSelect = !isDisabled && !isFullyBooked;
+              const canSelect = testMode || (!isDisabled && !isFullyBooked);
 
               const isTent = acc.type === 'tent';
               const isOutOfSeason = isTent && !isTentSeason && selectedWeeks.length > 0;
-              const finalCanSelect = canSelect && !isOutOfSeason;
+              const finalCanSelect = testMode || (canSelect && !isOutOfSeason);
 
               // Get all images for the current accommodation to use for the counter
               const allImagesForAcc = getAllImages(acc);
@@ -502,28 +509,34 @@ export function CabinSelector({
                       ? "shadow-lg bg-[color-mix(in_srgb,_var(--color-bg-surface)_95%,_var(--color-accent-primary)_5%)]" 
                       : "bg-surface", // Use the renamed class
                     // Pointer state:
-                    finalCanSelect && !isDisabled && 'cursor-pointer'
+                    (testMode || (finalCanSelect && !isDisabled)) && 'cursor-pointer'
                   )}
-                  onClick={(e) => {
+                                      onClick={(e) => {
                     console.log('[CabinSelector] Accommodation card clicked:', acc.title);
+                    console.log('[CabinSelector] Click conditions:', {
+                      testMode,
+                      finalCanSelect,
+                      isDisabled,
+                      canSelect: testMode || (finalCanSelect && !isDisabled)
+                    });
                     // Prevent event bubbling to parent elements
                     e.stopPropagation();
                     
-                    if (finalCanSelect && !isDisabled) {
+                    if (testMode || (finalCanSelect && !isDisabled)) {
                       handleSelectAccommodation(acc.id);
                     }
                   }}
                   style={{ minHeight: '300px' }} 
                 >
                   {/* Use the StatusOverlay helper component */}
-                  <StatusOverlay isVisible={isDisabled} zIndex={4}>
+                  <StatusOverlay isVisible={!testMode && isDisabled} zIndex={4}>
                     Select dates first
                   </StatusOverlay>
-                  <StatusOverlay isVisible={!isDisabled && isFullyBooked} zIndex={3}>
+                  <StatusOverlay isVisible={!testMode && !isDisabled && isFullyBooked} zIndex={3}>
                     Booked out
                   </StatusOverlay>
                   <StatusOverlay 
-                    isVisible={!isDisabled && isOutOfSeason && !isFullyBooked} 
+                    isVisible={!testMode && !isDisabled && isOutOfSeason && !isFullyBooked} 
                     zIndex={2}
                     className="border-amber-500 dark:border-amber-600" // Pass specific class for amber border
                   >
@@ -552,9 +565,9 @@ export function CabinSelector({
                   <div className={clsx(
                     "relative h-56 overflow-hidden", // REMOVED bg-surface
                     // Apply blur and corresponding opacity/grayscale conditionally
-                    isDisabled && "blur-sm opacity-20 grayscale-[0.5]",
-                    (!isDisabled && isFullyBooked) && "blur-sm opacity-20 grayscale-[0.7]",
-                    (!isDisabled && isOutOfSeason && !isFullyBooked) && "blur-sm opacity-40 grayscale-[0.3]"
+                    !testMode && isDisabled && "blur-sm opacity-20 grayscale-[0.5]",
+                    !testMode && (!isDisabled && isFullyBooked) && "blur-sm opacity-20 grayscale-[0.7]",
+                    !testMode && (!isDisabled && isOutOfSeason && !isFullyBooked) && "blur-sm opacity-40 grayscale-[0.3]"
                   )}>
                     <ImageGallery accommodation={acc} />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div> {/* Increased gradient opacity from 40% to 60% */}
@@ -565,9 +578,9 @@ export function CabinSelector({
                     "p-3 flex-grow flex flex-col justify-between", // Base classes
                     // REMOVED background logic here - relies on parent motion.div now
                     // Apply blur and corresponding opacity/grayscale conditionally
-                    isDisabled && "blur-sm opacity-20 grayscale-[0.5]",
-                    (!isDisabled && isFullyBooked) && "blur-sm opacity-20 grayscale-[0.7]",
-                    (!isDisabled && isOutOfSeason && !isFullyBooked) && "blur-sm opacity-40 grayscale-[0.3]"
+                    !testMode && isDisabled && "blur-sm opacity-20 grayscale-[0.5]",
+                    !testMode && (!isDisabled && isFullyBooked) && "blur-sm opacity-20 grayscale-[0.7]",
+                    !testMode && (!isDisabled && isOutOfSeason && !isFullyBooked) && "blur-sm opacity-40 grayscale-[0.3]"
                   )}>
                     <div>
                       <h3 className="text-lg font-medium mb-1 text-primary font-lettra-bold uppercase">{acc.title}</h3>

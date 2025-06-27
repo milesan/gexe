@@ -95,6 +95,12 @@ export function Book2Page() {
   
   // State for firefly effect
   const [showAccommodationFireflies, setShowAccommodationFireflies] = useState(false);
+  const [testMode, setTestMode] = useState(false);
+
+  // Log test mode changes for debugging
+  useEffect(() => {
+    console.log('[Book2Page] Test mode changed:', testMode ? 'ENABLED' : 'DISABLED');
+  }, [testMode]);
 
   // Calculate combined discount
   const calculateCombinedDiscount = useCallback((weeks: Week[]): number => {
@@ -914,38 +920,17 @@ export function Book2Page() {
               {/* Add the admin controls block here */}
               {isAdmin && (
                 <div className="flex justify-end mb-3 xs:mb-4">
-                  {isAdminMode ? (
-                    <div className="flex items-center gap-2 xs:gap-3">
-                      <button
-                        onClick={() => setIsAdminMode(false)}
-                        className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-lg text-sm font-medium font-mono transition-colors duration-200 bg-[var(--color-button-secondary-bg)] text-primary hover:bg-[var(--color-button-secondary-bg-hover)] border border-border"
-                      >
-                        <svg 
-                          className="h-4 w-4 xs:h-5 xs:w-5" 
-                          xmlns="http://www.w3.org/2000/svg" 
-                          viewBox="0 0 24 24" 
-                          fill="none" 
-                          stroke="currentColor" 
-                          strokeWidth="2" 
-                          strokeLinecap="round" 
-                          strokeLinejoin="round"
-                        >
-                          <path d="M18 6L6 18M6 6l12 12"></path>
-                        </svg>
-                        <span>Exit Edit Mode</span>
-                      </button>
-                      
-                      <CalendarConfigButton 
-                        onConfigChanged={() => {
-                          // Refresh data when config changes
-                          setLastRefresh(Date.now());
-                        }} 
-                      />
-                    </div>
-                  ) : (
+                  <div className="flex items-center gap-2 xs:gap-3">
+                    {/* Test Mode Toggle - Always visible for admins */}
                     <button
-                      onClick={() => setIsAdminMode(true)}
-                      className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-lg text-sm bg-accent-primary text-stone-800 hover:bg-accent-secondary transition-all duration-200 font-medium font-mono"
+                      onClick={() => setTestMode(!testMode)}
+                      className={clsx(
+                        "flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-lg text-sm font-medium font-mono transition-all duration-200 border",
+                        testMode 
+                          ? "bg-orange-500 text-white hover:bg-orange-600 border-orange-600" 
+                          : "bg-[var(--color-button-secondary-bg)] text-primary hover:bg-[var(--color-button-secondary-bg-hover)] border-border"
+                      )}
+                      title={testMode ? "Disable test mode (allows selecting past weeks & unavailable accommodations)" : "Enable test mode (allows selecting past weeks & unavailable accommodations)"}
                     >
                       <svg 
                         className="h-4 w-4 xs:h-5 xs:w-5" 
@@ -957,12 +942,65 @@ export function Book2Page() {
                         strokeLinecap="round" 
                         strokeLinejoin="round"
                       >
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        <path d="M9 12l2 2 4-4"></path>
+                        <path d="M21 12c-1 0-3-1-3-3s2-3 3-3 3 1 3 3-2 3-3 3"></path>
+                        <path d="M3 12c1 0 3-1 3-3s-2-3-3-3-3 1-3 3 2 3 3 3"></path>
+                        <path d="M12 3c0 1-1 3-3 3s-3-2-3-3 1-3 3-3 3 2 3 3"></path>
+                        <path d="M12 21c0-1 1-3 3-3s3 2 3 3-1 3-3 3-3-2-3-3"></path>
                       </svg>
-                      <span>Edit Mode</span>
+                      <span>{testMode ? 'Test Mode ON' : 'Test Mode'}</span>
                     </button>
-                  )}
+
+                    {isAdminMode ? (
+                      <>
+                        <button
+                          onClick={() => setIsAdminMode(false)}
+                          className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-lg text-sm font-medium font-mono transition-colors duration-200 bg-[var(--color-button-secondary-bg)] text-primary hover:bg-[var(--color-button-secondary-bg-hover)] border border-border"
+                        >
+                          <svg 
+                            className="h-4 w-4 xs:h-5 xs:w-5" 
+                            xmlns="http://www.w3.org/2000/svg" 
+                            viewBox="0 0 24 24" 
+                            fill="none" 
+                            stroke="currentColor" 
+                            strokeWidth="2" 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round"
+                          >
+                            <path d="M18 6L6 18M6 6l12 12"></path>
+                          </svg>
+                          <span>Exit Edit Mode</span>
+                        </button>
+                        
+                        <CalendarConfigButton 
+                          onConfigChanged={() => {
+                            // Refresh data when config changes
+                            setLastRefresh(Date.now());
+                          }} 
+                        />
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => setIsAdminMode(true)}
+                        className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-lg text-sm bg-accent-primary text-stone-800 hover:bg-accent-secondary transition-all duration-200 font-medium font-mono"
+                      >
+                        <svg 
+                          className="h-4 w-4 xs:h-5 xs:w-5" 
+                          xmlns="http://www.w3.org/2000/svg" 
+                          viewBox="0 0 24 24" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          strokeWidth="2" 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round"
+                        >
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                        <span>Edit Mode</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -1083,6 +1121,7 @@ export function Book2Page() {
                     onMonthChange={handleMonthChange}
                     accommodationTitle={accommodationTitle}
                     onMaxWeeksReached={() => setShowMaxWeeksModal(true)}
+                    testMode={testMode}
                   />
                 )}
               </div> {/* Closing Calendar card div */}
@@ -1100,6 +1139,7 @@ export function Book2Page() {
                   isLoading={accommodationsLoading}
                   isDisabled={selectedWeeks.length === 0}
                   displayWeeklyAccommodationPrice={getDisplayInfo}
+                  testMode={testMode}
                 />
               </div> {/* Closing Cabin Selector div */}
             </div> {/* == END: New wrapper div == */}

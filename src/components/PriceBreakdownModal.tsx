@@ -16,6 +16,7 @@ interface PriceBreakdownModalProps {
     applied_discount_code?: string | null;
     credits_used?: number | null;
     discount_code_percent?: number | null;
+    discount_code_applies_to?: string | null;
   };
 }
 
@@ -25,6 +26,37 @@ interface BreakdownItem {
   creditsAmount: number;
   finalAmount: number;
 }
+
+// Discount codes with application scope
+const knownDiscountCodes: Record<string, { percentage: number; applies_to: 'total' | 'food_facilities' }> = {
+  'LUCIEWK2': { percentage: 60, applies_to: 'total' },
+  'LEONAISABAMF': { percentage: 60, applies_to: 'food_facilities' },
+  'GRETA44': { percentage: 44, applies_to: 'food_facilities' },
+  'SPLITBOOK': { percentage: 30, applies_to: 'food_facilities' },
+  'ECHONITZSCHE': { percentage: 10, applies_to: 'food_facilities' },
+  'BOOKITOUT77': { percentage: 100, applies_to: 'total' },
+  'PHILLIPSMUSINGS': { percentage: 38, applies_to: 'total' },
+  'LEILALALA': { percentage: 51, applies_to: 'food_facilities' },
+  'GRETATERG': { percentage: 50, applies_to: 'total' },
+  'ALASKA444': { percentage: 28, applies_to: 'food_facilities' },
+  'EUGENIOYO': { percentage: 51, applies_to: 'food_facilities' },
+  'ANDREISGAY': { percentage: 99, applies_to: 'total' },
+  'FEVERISHMACABRE': { percentage: 100, applies_to: 'food_facilities' },
+  'ECHOOFCODY': { percentage: 51, applies_to: 'food_facilities' },
+  'HUWRU': { percentage: 41, applies_to: 'food_facilities' },
+  'GIBSONSMUSINGS05': { percentage: 50, applies_to: 'total' },
+  'SUMMER21': { percentage: 50, applies_to: 'total' },
+  'WHYISTHECARDNOTAUTH?': { percentage: 99, applies_to: 'total' },
+  'ALICEINGARDENLAND': { percentage: 21, applies_to: 'food_facilities' },
+  'META4NETA': { percentage: 9, applies_to: 'food_facilities' },
+  'UMEBOSHIILOVEYOU': { percentage: 100, applies_to: 'total' },
+  'LLELASBOOKING': { percentage: 100, applies_to: 'total' },
+  'GUSTO': { percentage: 30, applies_to: 'total' },
+  'RIAIR': { percentage: 25, applies_to: 'food_facilities' },
+  'LOVERISES': { percentage: 37, applies_to: 'food_facilities' },
+  'MAR-GOT-GOODS': { percentage: 5, applies_to: 'total' },
+  'TANAYAYAY': { percentage: 56, applies_to: 'food_facilities' }
+};
 
 export function PriceBreakdownModal({ isOpen, onClose, booking }: PriceBreakdownModalProps) {
   if (!isOpen) return null;
@@ -96,26 +128,49 @@ export function PriceBreakdownModal({ isOpen, onClose, booking }: PriceBreakdown
   const durationDiscountPercent = booking.duration_discount_percent || 0;
   const discountCodePercent = booking.discount_code_percent || 0;
   
+  // Determine discount code application scope
+  // First check database field, then fall back to known codes list
+  const discountCodeInfo = booking.applied_discount_code 
+    ? knownDiscountCodes[booking.applied_discount_code] 
+    : null;
+  const discountCodeAppliesTo = booking.discount_code_applies_to || discountCodeInfo?.applies_to || 'total'; // default to total for unknown codes
+  
   // Step-by-step accommodation discount calculation
   const accommodationAfterSeasonal = accommodationBase - seasonalDiscount;
   const accommodationDurationDiscount = accommodationAfterSeasonal * (durationDiscountPercent / 100);
   const accommodationAfterDuration = accommodationAfterSeasonal - accommodationDurationDiscount;
   
-  // For food, only duration discount applies before discount code
-  const foodDurationDiscount = foodBase * (durationDiscountPercent / 100);
-  const foodAfterDuration = foodBase - foodDurationDiscount;
+  // For food, duration discount is already included in the chosen amount (slider was pre-adjusted)
+  const foodDurationDiscount = 0; // Don't double-apply since it's baked into the slider range
+  const foodAfterDuration = foodBase; // Use the amount they actually chose
   
-  // Discount code applies to combined subtotal after other discounts
-  const subtotalAfterSpecificDiscounts = accommodationAfterDuration + foodAfterDuration;
-  const discountCodeAmount = subtotalAfterSpecificDiscounts * (discountCodePercent / 100);
+  // Calculate discount code application based on scope
+  let accommodationDiscountCodeAmount = 0;
+  let foodDiscountCodeAmount = 0;
   
-  // Proportionally allocate discount code amount
-  const accommodationDiscountCodeAmount = accommodationAfterDuration > 0 
-    ? discountCodeAmount * (accommodationAfterDuration / subtotalAfterSpecificDiscounts)
-    : 0;
-  const foodDiscountCodeAmount = foodAfterDuration > 0
-    ? discountCodeAmount * (foodAfterDuration / subtotalAfterSpecificDiscounts) 
-    : 0;
+  if (discountCodePercent > 0 && booking.applied_discount_code) {
+    if (discountCodeAppliesTo === 'food_facilities') {
+      // Apply only to food portion
+      foodDiscountCodeAmount = foodAfterDuration * (discountCodePercent / 100);
+      accommodationDiscountCodeAmount = 0;
+    } else if (discountCodeAppliesTo === 'accommodation') {
+      // Apply only to accommodation portion
+      accommodationDiscountCodeAmount = accommodationAfterDuration * (discountCodePercent / 100);
+      foodDiscountCodeAmount = 0;
+    } else {
+      // Apply to combined subtotal after other discounts (total)
+      const subtotalAfterSpecificDiscounts = accommodationAfterDuration + foodAfterDuration;
+      const discountCodeAmount = subtotalAfterSpecificDiscounts * (discountCodePercent / 100);
+      
+      // Proportionally allocate discount code amount
+      accommodationDiscountCodeAmount = accommodationAfterDuration > 0 
+        ? discountCodeAmount * (accommodationAfterDuration / subtotalAfterSpecificDiscounts)
+        : 0;
+      foodDiscountCodeAmount = foodAfterDuration > 0
+        ? discountCodeAmount * (foodAfterDuration / subtotalAfterSpecificDiscounts) 
+        : 0;
+    }
+  }
   
   // Calculate final amounts for each component
   const accommodationBreakdown: BreakdownItem = {
@@ -269,10 +324,14 @@ export function PriceBreakdownModal({ isOpen, onClose, booking }: PriceBreakdown
                       <p>• Seasonal discount: €{seasonalDiscount.toFixed(2)} (accommodation only)</p>
                     )}
                     {durationDiscountPercent > 0 && (
-                      <p>• Duration discount: {durationDiscountPercent.toFixed(1)}% (accommodation + food)</p>
+                      <p>• Duration discount: {durationDiscountPercent.toFixed(1)}% (applied to accommodation; F&F range was pre-adjusted)</p>
                     )}
                     {booking.applied_discount_code && (
-                      <p>• Code "{booking.applied_discount_code}": {discountCodePercent.toFixed(1)}% (applied to subtotal)</p>
+                      <p>• Code "{booking.applied_discount_code}": {discountCodePercent.toFixed(1)}% 
+                        ({discountCodeAppliesTo === 'food_facilities' ? 'food & facilities only' : 
+                          discountCodeAppliesTo === 'accommodation' ? 'accommodation only' : 
+                          'applied to subtotal'})
+                      </p>
                     )}
                     {creditsUsed > 0 && (
                       <p>• Credits allocated: €{creditsPerComponent.accommodation.toFixed(2)} accommodation, €{creditsPerComponent.food.toFixed(2)} food</p>
