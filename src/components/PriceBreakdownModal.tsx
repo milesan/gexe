@@ -17,6 +17,7 @@ interface PriceBreakdownModalProps {
     credits_used?: number | null;
     discount_code_percent?: number | null;
     discount_code_applies_to?: string | null;
+    accommodation_price_paid?: number | null; // NEW: Actual accommodation amount paid
   };
 }
 
@@ -116,6 +117,9 @@ export function PriceBreakdownModal({ isOpen, onClose, booking }: PriceBreakdown
   const creditsUsed = booking.credits_used || 0;
   const totalDiscounts = booking.discount_amount || 0;
   
+  // NEW: Use actual paid amount if available (for new bookings)
+  const accommodationPaidActual = booking.accommodation_price_paid;
+  
   // Credits allocation: 50/50 split if both components exist, otherwise all to the existing component
   const creditsPerComponent = accommodationBase === 0 && foodBase > 0 
     ? { accommodation: 0, food: creditsUsed }
@@ -173,11 +177,20 @@ export function PriceBreakdownModal({ isOpen, onClose, booking }: PriceBreakdown
   }
   
   // Calculate final amounts for each component
+  // If we have the actual paid amount (new bookings), use it to calculate the exact discount
+  const accommodationDiscountTotal = accommodationPaidActual !== null && accommodationPaidActual !== undefined
+    ? accommodationBase - accommodationPaidActual  // Exact discount = base - actual paid
+    : seasonalDiscount + accommodationDurationDiscount + accommodationDiscountCodeAmount; // Fallback to calculated
+  
+  const accommodationFinalAmount = accommodationPaidActual !== null && accommodationPaidActual !== undefined
+    ? accommodationPaidActual - creditsPerComponent.accommodation  // Use actual paid amount
+    : accommodationBase - (seasonalDiscount + accommodationDurationDiscount + accommodationDiscountCodeAmount) - creditsPerComponent.accommodation; // Fallback
+  
   const accommodationBreakdown: BreakdownItem = {
     originalAmount: accommodationBase,
-    discountAmount: seasonalDiscount + accommodationDurationDiscount + accommodationDiscountCodeAmount,
+    discountAmount: accommodationDiscountTotal,
     creditsAmount: creditsPerComponent.accommodation,
-    finalAmount: accommodationBase - (seasonalDiscount + accommodationDurationDiscount + accommodationDiscountCodeAmount) - creditsPerComponent.accommodation
+    finalAmount: accommodationFinalAmount
   };
   
   const foodBreakdown: BreakdownItem = {
@@ -189,7 +202,7 @@ export function PriceBreakdownModal({ isOpen, onClose, booking }: PriceBreakdown
   
   const totalBreakdown: BreakdownItem = {
     originalAmount: totalBase,
-    discountAmount: totalDiscounts,
+    discountAmount: accommodationBreakdown.discountAmount + foodBreakdown.discountAmount, // Sum of individual discounts
     creditsAmount: creditsUsed,
     finalAmount: booking.total_price - creditsUsed
   };
