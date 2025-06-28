@@ -244,8 +244,8 @@ export function WeekSelector({
       ) < 1000 * 60 * 60 * 24,
       // Add variable duration information
       variableDuration: true,
-      durationDays: differenceInDays(flexModalWeek.endDate, date) + 1,
-      originalDurationDays: differenceInDays(flexModalWeek.endDate, flexModalWeek.startDate) + 1,
+      durationDays: Math.floor((flexModalWeek.endDate.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)) + 1,
+      originalDurationDays: Math.floor((flexModalWeek.endDate.getTime() - flexModalWeek.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1,
       // Add explicit flag to help with debugging
       isFlexibleSelection: true,
       // Also mark the selected flex date

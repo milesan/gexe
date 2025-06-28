@@ -21,8 +21,9 @@ function calculateTotalNights(checkIn: Date, checkOut: Date): number {
   const normCheckIn = normalizeToUTCDate(checkIn);
   const normCheckOut = normalizeToUTCDate(checkOut);
   if (normCheckOut <= normCheckIn) return 0;
-  // differenceInDays handles DST correctly by comparing dates, not just timestamps
-  return differenceInDays(normCheckOut, normCheckIn);
+  // FIXED: Use millisecond-based calculation to avoid DST issues
+  const timeDiff = normCheckOut.getTime() - normCheckIn.getTime();
+  return Math.floor(timeDiff / (1000 * 60 * 60 * 24));
 }
 
 // Calculates the number of *complete* weeks for duration discount

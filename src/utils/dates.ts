@@ -756,8 +756,9 @@ export function calculateDaysBetween(startDate: Date, endDate: Date, includeEndD
   const startUTC = normalizeToUTCDate(startDate);
   const endUTC = normalizeToUTCDate(endDate);
   
-  // differenceInDays calculates the number of full 24-hour periods
-  const diff = differenceInDays(endUTC, startUTC);
+  // FIXED: Use millisecond-based calculation to avoid DST issues
+  const timeDiff = endUTC.getTime() - startUTC.getTime();
+  const diff = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
   
   // If including the end date, add 1 (e.g., Mon to Tue = 1 day diff, 2 days inclusive)
   return diff + (includeEndDate ? 1 : 0);
@@ -776,8 +777,10 @@ export function calculateTotalNights(selectedWeeks: Week[]): number {
   const startUTC = normalizeToUTCDate(effectiveStartDate);
   const endUTC = normalizeToUTCDate(lastDate);
   
-  // Total nights = difference in days (number of full 24h periods)
-  return differenceInDays(endUTC, startUTC);
+  // FIXED: Use millisecond-based calculation to avoid DST issues
+  // Total nights = millisecond difference / ms per day (no +1 since nights != days)
+  const timeDiff = endUTC.getTime() - startUTC.getTime();
+  return Math.floor(timeDiff / (1000 * 60 * 60 * 24));
 }
 
 export function calculateTotalDays(selectedWeeks: Week[]): number {
@@ -803,8 +806,10 @@ export function calculateTotalDays(selectedWeeks: Week[]): number {
   console.log('[calculateTotalDays] firstDate (UTC):', startUTC.toISOString());
   console.log('[calculateTotalDays] lastDate (UTC):', endUTC.toISOString());
   
-  // Total days (inclusive) = difference in days + 1
-  const days = differenceInDays(endUTC, startUTC) + 1;
+  // FIXED: Use millisecond-based calculation to avoid DST issues
+  // Total days (inclusive) = millisecond difference / ms per day + 1
+  const timeDiff = endUTC.getTime() - startUTC.getTime();
+  const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24)) + 1;
   console.log('[calculateTotalDays] total days:', days);
   return days;
 }
