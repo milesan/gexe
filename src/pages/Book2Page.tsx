@@ -138,9 +138,11 @@ export function Book2Page() {
     if (showSeasonalSection) {
        const totalNightsInSeasons = seasonBreakdown.seasons.reduce((sum, season) => sum + season.nights, 0);
        if (totalNightsInSeasons > 0) {
-           averageSeasonalDiscount = seasonBreakdown.seasons.reduce((sum, season) => 
+           const preciseDiscount = seasonBreakdown.seasons.reduce((sum, season) => 
               sum + (season.discount * season.nights), 0) / totalNightsInSeasons;
-           console.log('[Book2Page] Combined Discount - Seasonal (Calculated):', { totalNightsInSeasons, averageSeasonalDiscount, breakdown: seasonBreakdown.seasons });
+           // CRITICAL FIX: Round to match what's displayed in modal and used in calculations
+           averageSeasonalDiscount = Math.round(preciseDiscount * 100) / 100;
+           console.log('[Book2Page] Combined Discount - Seasonal (Rounded for consistency):', { totalNightsInSeasons, preciseDiscount, averageSeasonalDiscount, breakdown: seasonBreakdown.seasons });
        } else {
           averageSeasonalDiscount = 0; 
           console.warn("[Book2Page] Combined Discount - Calculated zero nights in seasons for seasonal discount.");
@@ -795,8 +797,10 @@ export function Book2Page() {
             const totalNightsInSeasons = breakdown.seasons.reduce((sum, season) => sum + season.nights, 0);
             if (totalNightsInSeasons > 0) {
               // Weighted average based on nights in each season
-              avgSeasonalDiscount = Math.round(breakdown.seasons.reduce((sum, season) => 
-                sum + (season.discount * season.nights), 0) / totalNightsInSeasons * 100) / 100;
+              const preciseDiscount = breakdown.seasons.reduce((sum, season) => 
+                sum + (season.discount * season.nights), 0) / totalNightsInSeasons;
+              // CRITICAL FIX: Round to match what's displayed in modal (consistent rounding)
+              avgSeasonalDiscount = Math.round(preciseDiscount * 100) / 100;
             } else {
                avgSeasonalDiscount = 0; // Or handle as needed if no nights found
             }

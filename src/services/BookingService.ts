@@ -180,10 +180,14 @@ class BookingService {
     accommodationPrice?: number;
     foodContribution?: number;
     seasonalAdjustment?: number;
+    seasonalDiscountPercent?: number; // NEW: Seasonal discount percentage
     durationDiscountPercent?: number;
     discountAmount?: number;
     discountCodePercent?: number;
+    discountCodeAppliesTo?: string; // NEW: What the discount code applies to (total, food_facilities, etc.)
     accommodationPricePaid?: number; // NEW: Actual accommodation amount paid
+    accommodationPriceAfterSeasonalDuration?: number; // NEW: After seasonal/duration but before codes
+    subtotalAfterDiscountCode?: number; // NEW: After discount code but before credits
   }): Promise<Booking> {
     console.log('[BookingService] Creating booking with data:', {
       ...booking,
@@ -254,10 +258,14 @@ class BookingService {
           accommodation_price: booking.accommodationPrice ?? null,
           food_contribution: booking.foodContribution ?? null,
           seasonal_adjustment: booking.seasonalAdjustment ?? null,
+          seasonal_discount_percent: booking.seasonalDiscountPercent ?? null, // NEW field
           duration_discount_percent: booking.durationDiscountPercent ?? null,
           discount_amount: booking.discountAmount ?? null,
           discount_code_percent: booking.discountCodePercent ?? null,
+          discount_code_applies_to: booking.discountCodeAppliesTo ?? null, // NEW field
           accommodation_price_paid: booking.accommodationPricePaid ?? null, // NEW field
+          accommodation_price_after_seasonal_duration: booking.accommodationPriceAfterSeasonalDuration ?? null, // NEW field
+          subtotal_after_discount_code: booking.subtotalAfterDiscountCode ?? null, // NEW field
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })

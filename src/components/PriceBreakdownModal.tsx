@@ -11,6 +11,7 @@ interface PriceBreakdownModalProps {
     accommodation_price?: number | null;
     food_contribution?: number | null;
     seasonal_adjustment?: number | null;
+    seasonal_discount_percent?: number | null; // NEW: Seasonal discount as percentage
     duration_discount_percent?: number | null;
     discount_amount?: number | null;
     applied_discount_code?: string | null;
@@ -18,6 +19,8 @@ interface PriceBreakdownModalProps {
     discount_code_percent?: number | null;
     discount_code_applies_to?: string | null;
     accommodation_price_paid?: number | null; // NEW: Actual accommodation amount paid
+    accommodation_price_after_seasonal_duration?: number | null; // NEW: After seasonal/duration discounts
+    subtotal_after_discount_code?: number | null; // NEW: After discount code but before credits
   };
 }
 
@@ -61,6 +64,8 @@ const knownDiscountCodes: Record<string, { percentage: number; applies_to: 'tota
 
 export function PriceBreakdownModal({ isOpen, onClose, booking }: PriceBreakdownModalProps) {
   if (!isOpen) return null;
+
+
 
   // Check if we have breakdown data - only check the core pricing fields
   const hasBreakdown = (
@@ -116,6 +121,8 @@ export function PriceBreakdownModal({ isOpen, onClose, booking }: PriceBreakdown
   
   const creditsUsed = booking.credits_used || 0;
   const totalDiscounts = booking.discount_amount || 0;
+
+
   
   // NEW: Use actual paid amount if available (for new bookings)
   const accommodationPaidActual = booking.accommodation_price_paid;
@@ -138,74 +145,72 @@ export function PriceBreakdownModal({ isOpen, onClose, booking }: PriceBreakdown
     ? knownDiscountCodes[booking.applied_discount_code] 
     : null;
   const discountCodeAppliesTo = booking.discount_code_applies_to || discountCodeInfo?.applies_to || 'total'; // default to total for unknown codes
+
+
   
-  // Step-by-step accommodation discount calculation
+  // Step-by-step calculation
+  // 1. Accommodation discounts (seasonal + duration)
   const accommodationAfterSeasonal = accommodationBase - seasonalDiscount;
   const accommodationDurationDiscount = accommodationAfterSeasonal * (durationDiscountPercent / 100);
   const accommodationAfterDuration = accommodationAfterSeasonal - accommodationDurationDiscount;
   
-  // For food, duration discount is already included in the chosen amount (slider was pre-adjusted)
-  const foodDurationDiscount = 0; // Don't double-apply since it's baked into the slider range
+  // 2. Food (duration discount already included in the chosen amount)
   const foodAfterDuration = foodBase; // Use the amount they actually chose
+
+
   
-  // Calculate discount code application based on scope
-  let accommodationDiscountCodeAmount = 0;
-  let foodDiscountCodeAmount = 0;
-  
-  if (discountCodePercent > 0 && booking.applied_discount_code) {
-    if (discountCodeAppliesTo === 'food_facilities') {
-      // Apply only to food portion
-      foodDiscountCodeAmount = foodAfterDuration * (discountCodePercent / 100);
-      accommodationDiscountCodeAmount = 0;
-    } else if (discountCodeAppliesTo === 'accommodation') {
-      // Apply only to accommodation portion
-      accommodationDiscountCodeAmount = accommodationAfterDuration * (discountCodePercent / 100);
-      foodDiscountCodeAmount = 0;
-    } else {
-      // Apply to combined subtotal after other discounts (total)
-      const subtotalAfterSpecificDiscounts = accommodationAfterDuration + foodAfterDuration;
-      const discountCodeAmount = subtotalAfterSpecificDiscounts * (discountCodePercent / 100);
-      
-      // Proportionally allocate discount code amount
-      accommodationDiscountCodeAmount = accommodationAfterDuration > 0 
-        ? discountCodeAmount * (accommodationAfterDuration / subtotalAfterSpecificDiscounts)
-        : 0;
-      foodDiscountCodeAmount = foodAfterDuration > 0
-        ? discountCodeAmount * (foodAfterDuration / subtotalAfterSpecificDiscounts) 
-        : 0;
-    }
-  }
-  
-  // Calculate final amounts for each component
-  // If we have the actual paid amount (new bookings), use it to calculate the exact discount
-  const accommodationDiscountTotal = accommodationPaidActual !== null && accommodationPaidActual !== undefined
-    ? accommodationBase - accommodationPaidActual  // Exact discount = base - actual paid
-    : seasonalDiscount + accommodationDurationDiscount + accommodationDiscountCodeAmount; // Fallback to calculated
-  
-  const accommodationFinalAmount = accommodationPaidActual !== null && accommodationPaidActual !== undefined
-    ? accommodationPaidActual - creditsPerComponent.accommodation  // Use actual paid amount
-    : accommodationBase - (seasonalDiscount + accommodationDurationDiscount + accommodationDiscountCodeAmount) - creditsPerComponent.accommodation; // Fallback
+  // Calculate individual component breakdowns for display
+  // Use database values when available (for new bookings), fall back to calculation for old bookings
+  const accommodationFinalAmount = booking.accommodation_price_after_seasonal_duration ?? (accommodationBase - seasonalDiscount - accommodationDurationDiscount);
+  const accommodationDiscountAmount = accommodationBase - accommodationFinalAmount;
   
   const accommodationBreakdown: BreakdownItem = {
     originalAmount: accommodationBase,
-    discountAmount: accommodationDiscountTotal,
-    creditsAmount: creditsPerComponent.accommodation,
-    finalAmount: accommodationFinalAmount
+    discountAmount: accommodationDiscountAmount, // Use calculated difference to ensure accuracy
+    creditsAmount: 0, // Don't show credits at component level
+    finalAmount: accommodationFinalAmount // Use database value when available
   };
   
+  // For food: NO discounts shown here (discount codes only apply to total)
   const foodBreakdown: BreakdownItem = {
     originalAmount: foodBase,
-    discountAmount: foodDurationDiscount + foodDiscountCodeAmount,
-    creditsAmount: creditsPerComponent.food,
-    finalAmount: foodBase - (foodDurationDiscount + foodDiscountCodeAmount) - creditsPerComponent.food
+    discountAmount: 0, // No discounts shown in food section
+    creditsAmount: 0, // Don't show credits at component level
+    finalAmount: foodBase // Before credits
   };
+  
+  // Calculate total after seasonal/duration discounts
+  // Now that accommodationBreakdown.finalAmount uses database values when available, we can always use the breakdown
+  const totalAfterSeasonalDuration = accommodationBreakdown.finalAmount + foodBreakdown.finalAmount;
+  
+  // Calculate discount code amount based on what it applies to
+  let discountCodeAmount = 0;
+  if (discountCodePercent > 0 && booking.applied_discount_code) {
+    if (discountCodeAppliesTo === 'food_facilities') {
+      // Apply only to food & facilities portion
+      discountCodeAmount = foodBreakdown.finalAmount * (discountCodePercent / 100);
+    } else if (discountCodeAppliesTo === 'accommodation') {
+      // Apply only to accommodation portion AFTER seasonal/duration discounts
+      discountCodeAmount = accommodationBreakdown.finalAmount * (discountCodePercent / 100);
+    } else {
+      // Apply to total (default behavior)
+      discountCodeAmount = totalAfterSeasonalDuration * (discountCodePercent / 100);
+    }
+  }
+  
+  const totalAfterDiscountCode = totalAfterSeasonalDuration - discountCodeAmount;
+  
+  // Total shows the complete discount including discount codes
+  const totalDiscountAmount = accommodationBreakdown.discountAmount + discountCodeAmount;
   
   const totalBreakdown: BreakdownItem = {
     originalAmount: totalBase,
-    discountAmount: accommodationBreakdown.discountAmount + foodBreakdown.discountAmount, // Sum of individual discounts
+    discountAmount: totalDiscountAmount,
     creditsAmount: creditsUsed,
     finalAmount: booking.total_price - creditsUsed
   };
+
+
 
   const BreakdownSection = ({ 
     title, 
@@ -255,7 +260,7 @@ export function PriceBreakdownModal({ isOpen, onClose, booking }: PriceBreakdown
           
           <div className="border-t border-[var(--color-border)] pt-2">
             <div className="flex justify-between items-center font-semibold">
-              <span className="text-[var(--color-text-primary)]">Amount Donated</span>
+              <span className="text-[var(--color-text-primary)]">Subtotal</span>
               <span className="font-mono text-[var(--color-text-primary)]">
                 €{Math.max(0, breakdown.finalAmount).toFixed(2)}
               </span>
@@ -320,13 +325,67 @@ export function PriceBreakdownModal({ isOpen, onClose, booking }: PriceBreakdown
                 <ArrowDown className="w-5 h-5 text-[var(--color-text-secondary)]" />
               </div>
 
-              {/* Total Breakdown */}
-              <BreakdownSection
-                title="Total"
-                icon={<DollarSign className="w-4 h-4" />}
-                breakdown={totalBreakdown}
-                showIfZero={true}
-              />
+              {/* Step-by-step Total Calculation */}
+              <div className="bg-[var(--color-bg-shade)] rounded-lg p-4 space-y-3">
+                <h4 className="text-sm font-semibold text-[var(--color-text-primary)] flex items-center gap-2 border-b border-[var(--color-border)] pb-2">
+                  <DollarSign className="w-4 h-4" />
+                  Total Calculation
+                </h4>
+                
+                <div className="space-y-2 text-sm">
+                  {/* Step 1: Sum of individual component amounts */}
+                  <div className="flex justify-between items-center">
+                    <span className="text-[var(--color-text-secondary)]">After Seasonal + Duration Discounts</span>
+                    <span className="font-mono text-[var(--color-text-primary)]">€{(accommodationBreakdown.finalAmount + foodBreakdown.finalAmount).toFixed(2)}</span>
+                  </div>
+                  
+                  {/* Step 2: Discount code applied */}
+                  {discountCodeAmount > 0 && (
+                    <div className="flex justify-between items-start text-emerald-600">
+                      <span className="flex items-center gap-1 flex-1 mr-2">
+                        <Percent className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                        <span className="break-words">
+                          Code "{booking.applied_discount_code}" ({discountCodePercent.toFixed(1)}%{
+                            discountCodeAppliesTo === 'food_facilities' ? ' on F&F' : 
+                            discountCodeAppliesTo === 'accommodation' ? ' on accommodation' :
+                            ' on total'
+                          })
+                        </span>
+                      </span>
+                      <span className="font-mono flex-shrink-0">-€{discountCodeAmount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  
+                  {/* Step 3: Show "After Discount Code" only if credits are also used */}
+                  {discountCodeAmount > 0 && creditsUsed > 0 && (
+                    <div className="flex justify-between items-center font-semibold border-t border-[var(--color-border)] pt-2">
+                      <span className="text-[var(--color-text-primary)]">After Discount Code</span>
+                      <span className="font-mono text-[var(--color-text-primary)]">€{totalAfterDiscountCode.toFixed(2)}</span>
+                    </div>
+                  )}
+                  
+                  {/* Step 4: Credits applied */}
+                  {creditsUsed > 0 && (
+                    <div className="flex justify-between items-center text-blue-600">
+                      <span className="flex items-center gap-1">
+                        <CreditCard className="w-3 h-3" />
+                        Credits Applied
+                      </span>
+                      <span className="font-mono">-€{creditsUsed.toFixed(2)}</span>
+                    </div>
+                  )}
+                  
+                  {/* Final amount */}
+                  <div className="border-t border-[var(--color-border)] pt-2">
+                    <div className="flex justify-between items-center font-bold text-lg">
+                      <span className="text-[var(--color-text-primary)]">Final Amount Donated</span>
+                      <span className="font-mono text-[var(--color-text-primary)]">
+                        €{Math.max(0, totalBreakdown.finalAmount).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               {/* Applied Discounts Details */}
               {(booking.applied_discount_code || seasonalDiscount > 0 || durationDiscountPercent > 0) && (
@@ -334,16 +393,16 @@ export function PriceBreakdownModal({ isOpen, onClose, booking }: PriceBreakdown
                   <h4 className="text-sm font-semibold text-[var(--color-text-primary)] mb-3">Discount Details</h4>
                   <div className="space-y-2 text-xs text-[var(--color-text-secondary)]">
                     {seasonalDiscount > 0 && (
-                      <p>• Seasonal discount: €{seasonalDiscount.toFixed(2)} (accommodation only)</p>
+                      <p>• Seasonal discount: {booking.seasonal_discount_percent ? `${booking.seasonal_discount_percent.toFixed(1)}%` : 'Applied'} (accommodation only)</p>
                     )}
                     {durationDiscountPercent > 0 && (
                       <p>• Duration discount: {durationDiscountPercent.toFixed(1)}% (applied to accommodation; F&F range was pre-adjusted)</p>
                     )}
                     {booking.applied_discount_code && (
                       <p>• Code "{booking.applied_discount_code}": {discountCodePercent.toFixed(1)}% 
-                        ({discountCodeAppliesTo === 'food_facilities' ? 'food & facilities only' : 
-                          discountCodeAppliesTo === 'accommodation' ? 'accommodation only' : 
-                          'applied to subtotal'})
+                        ({discountCodeAppliesTo === 'food_facilities' ? 'applied to food & facilities only' : 
+                          discountCodeAppliesTo === 'accommodation' ? 'applied to accommodation only' : 
+                          'applied to total after seasonal/duration discounts'})
                       </p>
                     )}
                     {creditsUsed > 0 && (

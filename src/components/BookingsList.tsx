@@ -25,10 +25,14 @@ interface Booking {
   accommodation_price_paid?: number | null; // NEW: Actual accommodation amount paid
   food_contribution?: number | null;
   seasonal_adjustment?: number | null;
+  seasonal_discount_percent?: number | null; // NEW: Seasonal discount percentage
   duration_discount_percent?: number | null;
   discount_amount?: number | null;
   credits_used?: number | null;
   discount_code_percent?: number | null;
+  discount_code_applies_to?: string | null; // NEW: What the discount code applies to
+  accommodation_price_after_seasonal_duration?: number | null; // NEW: After seasonal/duration discounts
+  subtotal_after_discount_code?: number | null; // NEW: After discount code but before credits
 }
 
 export function BookingsList() {
@@ -73,10 +77,14 @@ export function BookingsList() {
           accommodation_price_paid,
           food_contribution,
           seasonal_adjustment,
+          seasonal_discount_percent,
           duration_discount_percent,
           discount_amount,
           credits_used,
           discount_code_percent,
+          discount_code_applies_to,
+          accommodation_price_after_seasonal_duration,
+          subtotal_after_discount_code,
           accommodations ( title )
         `, { count: 'exact' })
         .neq('status', 'cancelled')

@@ -52,11 +52,14 @@ export interface Booking {
   accommodation_price?: number | null;
   food_contribution?: number | null;
   seasonal_adjustment?: number | null;
+  seasonal_discount_percent?: number | null; // NEW: Seasonal discount as percentage
   duration_discount_percent?: number | null;
   discount_amount?: number | null;
   discount_code_percent?: number | null;
   discount_code_applies_to?: string | null;
   accommodation_price_paid?: number | null; // NEW: Actual accommodation amount paid after discounts
+  accommodation_price_after_seasonal_duration?: number | null; // NEW: After seasonal/duration but before codes
+  subtotal_after_discount_code?: number | null; // NEW: After discount code but before credits
 }
 
 export interface AvailabilityResult {

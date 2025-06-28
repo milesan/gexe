@@ -28,6 +28,20 @@ export interface Booking {
   created_at: string;
   updated_at: string;
   accommodation?: Accommodation;
+  // Price breakdown fields (added later, may be null for old bookings)
+  accommodation_price?: number | null;
+  food_contribution?: number | null;
+  seasonal_adjustment?: number | null;
+  seasonal_discount_percent?: number | null;
+  duration_discount_percent?: number | null;
+  discount_amount?: number | null;
+  applied_discount_code?: string | null;
+  discount_code_percent?: number | null;
+  discount_code_applies_to?: string | null;
+  credits_used?: number | null;
+  accommodation_price_paid?: number | null;
+  accommodation_price_after_seasonal_duration?: number | null;
+  subtotal_after_discount_code?: number | null;
 }
 
 export interface AccommodationAvailability {
