@@ -473,17 +473,28 @@ export function BookingSummary({
         
         // Calculate seasonal discount amount for accommodation
         let seasonalDiscountAmount = 0;
+        let avgSeasonalDiscountPercent = 0; // Store percentage for saving to DB
         if (seasonBreakdownState && selectedAccommodation && !selectedAccommodation.title.toLowerCase().includes('dorm')) {
-          const avgSeasonalDiscountPercent = seasonBreakdownState.seasons.reduce((sum, season) => 
+          const preciseDiscount = seasonBreakdownState.seasons.reduce((sum, season) => 
             sum + (season.discount * season.nights), 0) / 
             seasonBreakdownState.seasons.reduce((sum, season) => sum + season.nights, 0);
           
-          // Calculate the actual discount amount: base price * weeks * seasonal discount %
+          // CRITICAL FIX: Round to match what's displayed in modal (Math.round(value * 100))
+          // This ensures calculations use the same value users see (e.g., 10% not 9.51%)
+          avgSeasonalDiscountPercent = Math.round(preciseDiscount * 100) / 100;
+          
+          // Calculate the actual discount amount: base price * weeks * ROUNDED seasonal discount %
           seasonalDiscountAmount = baseAccommodationPrice * avgSeasonalDiscountPercent;
         }
         
         // Calculate duration discount amount for accommodation
         const accommodationDurationDiscountAmount = baseAccommodationPrice * (pricing.durationDiscountPercent / 100);
+        
+        // Use the already-calculated accommodation price from pricing hook (avoids rounding discrepancies)
+        const accommodationAfterSeasonalDuration = pricing.totalAccommodationCost;
+        
+        // Calculate subtotal after discount code (but before credits)
+        const subtotalAfterDiscountCode = pricing.totalAmount; // This is already calculated in usePricing hook
         
         // Log the breakdown for debugging
         console.log('[Booking Summary] Accommodation pricing breakdown:', {
@@ -491,11 +502,13 @@ export function BookingSummary({
           weeksStaying: pricing.weeksStaying,
           baseAccommodationPrice: baseAccommodationPrice,
           seasonalDiscountAmount: seasonalDiscountAmount,
+          seasonalDiscountPercent: avgSeasonalDiscountPercent * 100, // Convert to percentage
           durationDiscountPercent: pricing.durationDiscountPercent,
           accommodationDurationDiscountAmount: accommodationDurationDiscountAmount,
+          accommodationAfterSeasonalDuration: accommodationAfterSeasonalDuration,
           finalAccommodationPrice: pricing.totalAccommodationCost,
-          // Verify the math
-          calculatedFinal: baseAccommodationPrice - seasonalDiscountAmount - accommodationDurationDiscountAmount
+          // Note: Now using pricing.totalAccommodationCost directly to avoid rounding discrepancies
+          usingPricingHookValue: true
         });
         
         console.log('[Booking Summary] CRITICAL: Accommodation price values being sent:', {
@@ -512,17 +525,23 @@ export function BookingSummary({
           accommodationPrice: parseFloat(baseAccommodationPrice.toFixed(2)), // Base price BEFORE discounts
           foodContribution: pricing.totalFoodAndFacilitiesCost,
           seasonalAdjustment: parseFloat(seasonalDiscountAmount.toFixed(2)),
+          seasonalDiscountPercent: Math.round(avgSeasonalDiscountPercent * 100), // Store as rounded integer percentage (matches display)
           durationDiscountPercent: pricing.durationDiscountPercent,
           // Calculate total discount amount (accommodation duration + food duration + code + seasonal discounts)
           discountAmount: accommodationDurationDiscountAmount + pricing.durationDiscountAmount + pricing.appliedCodeDiscountValue + parseFloat(seasonalDiscountAmount.toFixed(2)),
           // NEW: Store the actual accommodation amount paid (after all discounts)
-          accommodationPricePaid: pricing.totalAccommodationCost
+          accommodationPricePaid: pricing.totalAccommodationCost,
+          // NEW: Store accommodation price after seasonal/duration but before discount codes
+          accommodationPriceAfterSeasonalDuration: parseFloat(accommodationAfterSeasonalDuration.toFixed(2)),
+          // NEW: Store subtotal after discount code but before credits
+          subtotalAfterDiscountCode: parseFloat(subtotalAfterDiscountCode.toFixed(2))
         };
 
         if (appliedDiscount?.code) {
             bookingPayload.appliedDiscountCode = appliedDiscount.code;
             bookingPayload.discountCodePercent = appliedDiscount.percentage_discount;
-            console.log("[Booking Summary] Adding applied discount code to booking payload:", appliedDiscount.code, "with", appliedDiscount.percentage_discount, "% discount");
+            bookingPayload.discountCodeAppliesTo = appliedDiscount.applies_to; // NEW: Save what the discount applies to
+            console.log("[Booking Summary] Adding applied discount code to booking payload:", appliedDiscount.code, "with", appliedDiscount.percentage_discount, "% discount, applies to:", appliedDiscount.applies_to);
         }
 
         // Add credits used if any
@@ -1278,8 +1297,8 @@ Please manually create the booking for this user or process a refund.`;
         basePrice={selectedAccommodation?.base_price || 0}
         calculatedWeeklyPrice={calculatedWeeklyAccommodationPrice}
         averageSeasonalDiscount={seasonBreakdownState && seasonBreakdownState.seasons.length > 0 
-          ? seasonBreakdownState.seasons.reduce((sum, season) => sum + (season.discount * season.nights), 0) / 
-            seasonBreakdownState.seasons.reduce((sum, season) => sum + season.nights, 0)
+          ? Math.round(seasonBreakdownState.seasons.reduce((sum, season) => sum + (season.discount * season.nights), 0) / 
+            seasonBreakdownState.seasons.reduce((sum, season) => sum + season.nights, 0) * 100) / 100
           : null}
       />
     </>

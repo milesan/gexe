@@ -167,19 +167,23 @@ export function calculateWeeklyAccommodationPrice(
     return 0;
   }
 
+  // CRITICAL FIX: Ensure we use rounded seasonal discount (consistent with display)
+  const roundedSeasonalDiscount = Math.round(averageSeasonalDiscount * 100) / 100;
+
   // 2. Calculate Duration Discount Percentage (using COMPLETE weeks)
   const completeWeeks = calculateDurationDiscountWeeks(selectedWeeks);
   const durationDiscountPercent = getDurationDiscount(completeWeeks); // Uses Math.floor internally
   console.log('[calculateWeeklyAccommodationPrice] Calculated duration discount:', { completeWeeks, durationDiscountPercent });
 
-  // 3. Apply discounts multiplicatively
-  const finalPrice = basePrice * (1 - averageSeasonalDiscount) * (1 - durationDiscountPercent);
+  // 3. Apply discounts multiplicatively using ROUNDED seasonal discount
+  const finalPrice = basePrice * (1 - roundedSeasonalDiscount) * (1 - durationDiscountPercent);
   const roundedFinalPrice = Math.round(finalPrice);
 
   // ADDED: Detailed log before returning
   console.log('[calculateWeeklyAccommodationPrice] FINAL RETURN VALUES:', { 
     basePrice, 
-    averageSeasonalDiscount_Used: averageSeasonalDiscount, 
+    averageSeasonalDiscount_Received: averageSeasonalDiscount,
+    roundedSeasonalDiscount_Used: roundedSeasonalDiscount, 
     durationDiscountPercent_Used: durationDiscountPercent, 
     finalPrice_BeforeRounding: finalPrice, 
     finalPrice_Returned: roundedFinalPrice 
