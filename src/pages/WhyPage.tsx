@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Footer } from '../components/Footer';
 
-// Basic logging for component mount
-console.log('WhyPage: Component rendering');
-
 export function WhyPage() {
+  useEffect(() => {
+    console.log('WhyPage: Component rendering');
+  }, []);
   const [enlargedImageUrl, setEnlargedImageUrl] = useState<string | null>(null);
   
   return (

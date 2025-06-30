@@ -1,13 +1,20 @@
 import { useState, useEffect, useCallback } from "react";
-import { loadStripe } from '@stripe/stripe-js';
+import { loadStripe, Stripe } from '@stripe/stripe-js';
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js';
 import { createPortal } from 'react-dom';
 
-// The public key stays the same, always loaded from Netlify environment variables
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
-
-// Log the current environment for debugging purposes
-console.log('[StripeCheckout] Current environment:', import.meta.env.MODE);
+// Lazy-load Stripe and check for public key at runtime
+let stripePromise: Promise<Stripe | null> | null = null;
+function getStripePromise() {
+  const key = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
+  if (!key || typeof key !== 'string') {
+    throw new Error('Missing or invalid Stripe public key!');
+  }
+  if (!stripePromise) {
+    stripePromise = loadStripe(key);
+  }
+  return stripePromise;
+}
 
 interface Props {
   description: string;
@@ -28,6 +35,9 @@ interface Props {
 }
 
 export function StripeCheckoutForm({ total, authToken, description, userEmail, onSuccess, onClose, bookingMetadata }: Props) {
+  useEffect(() => {
+    console.log('[StripeCheckout] Current environment:', import.meta.env.MODE);
+  }, []);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
 
   // When component mounts, add a class to body to prevent scrolling and hide the header
@@ -187,7 +197,7 @@ export function StripeCheckoutForm({ total, authToken, description, userEmail, o
         </button>
         <div style={{ position: 'relative', zIndex: 999999 }}>
           <EmbeddedCheckoutProvider
-            stripe={stripePromise}
+            stripe={getStripePromise()}
             options={{
               clientSecret,
               onComplete: handleCheckoutComplete,

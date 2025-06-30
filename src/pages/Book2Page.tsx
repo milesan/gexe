@@ -22,14 +22,11 @@ import { areSameWeeks } from '../utils/dates';
 import { clsx } from 'clsx';
 import { calculateDaysBetween } from '../utils/dates';
 import { bookingService } from '../services/BookingService';
-import { loadStripe } from '@stripe/stripe-js';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { InfoBox } from '../components/InfoBox';
 import { useUserPermissions } from '../hooks/useUserPermissions';
 import { Fireflies } from '../components/Fireflies';
-import { triggerFireflies } from '../components/FireflyPortal';
-
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+import { FireflyPortal } from '../components/FireflyPortal';
 
 // Define SeasonBreakdown type locally
 interface SeasonBreakdown {
@@ -869,6 +866,7 @@ export function Book2Page() {
 
   return (
     <div className="min-h-screen">
+      <FireflyPortal />
       {/* Accommodation selection fireflies */}
       {showAccommodationFireflies && (
         <Fireflies 

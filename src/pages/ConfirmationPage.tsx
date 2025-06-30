@@ -4,6 +4,7 @@ import { CheckCircle, Calendar, MapPin, Users, ArrowLeft, ExternalLink, ChevronD
 import { formatInTimeZone } from 'date-fns-tz';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Fireflies, FireflyPresets } from '../components/Fireflies';
+import { FireflyPortal } from '../components/FireflyPortal';
 
 export function ConfirmationPage() {
   const location = useLocation();
@@ -34,6 +35,7 @@ export function ConfirmationPage() {
 
   return (
     <div className="flex items-center justify-center p-4">
+      <FireflyPortal />
       {/* Add subtle fireflies in the background */}
       <Fireflies 
         {...FireflyPresets.subtle}

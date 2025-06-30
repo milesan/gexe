@@ -98,13 +98,22 @@ class FireflyManager {
   }
 }
 
-// Create singleton instance
-const fireflyManager = new FireflyManager();
+// Remove top-level instantiation
+// const fireflyManager = new FireflyManager();
+
+let fireflyManager: FireflyManager | null = null;
+
+export function getFireflyManager() {
+  if (!fireflyManager) {
+    fireflyManager = new FireflyManager();
+  }
+  return fireflyManager;
+}
 
 // Export the trigger function for use in other components
 export const triggerFireflies = (x: number, y: number) => {
   console.log('[triggerFireflies] Function called with:', { x, y });
-  fireflyManager.trigger(x, y);
+  getFireflyManager().trigger(x, y);
 };
 
 // Memoized Firefly component to prevent re-renders
@@ -143,7 +152,7 @@ export function FireflyPortal() {
   useEffect(() => {
     console.log('[FireflyPortal] Component mounted');
     // Subscribe to updates
-    const unsubscribe = fireflyManager.subscribe(() => {
+    const unsubscribe = getFireflyManager().subscribe(() => {
       console.log('[FireflyPortal] Update callback triggered');
       forceUpdate();
     });
@@ -151,13 +160,13 @@ export function FireflyPortal() {
     return unsubscribe;
   }, []);
 
-  const container = fireflyManager.getContainer();
+  const container = getFireflyManager().getContainer();
   if (!container) {
     console.log('[FireflyPortal] No container found');
     return null;
   }
 
-  const triggers = fireflyManager.getTriggers();
+  const triggers = getFireflyManager().getTriggers();
   console.log('[FireflyPortal] Rendering with triggers:', triggers.length);
 
   return ReactDOM.createPortal(
