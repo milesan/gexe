@@ -8,7 +8,7 @@
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'self';
       connect-src 'self' https://*.stripe.com https://api.stripe.com https://js.stripe.com https://*.supabase.co wss://*.supabase.co;
-      script-src 'self' https://js.stripe.com https://m.stripe.network https://hcaptcha.com https://*.hcaptcha.com 'unsafe-inline';
+      script-src 'self' https://js.stripe.com https://m.stripe.network https://hcaptcha.com https://*.hcaptcha.com 'unsafe-inline' 'unsafe-eval';
       worker-src 'self' blob:;
       frame-src 'self' https://js.stripe.com https://payments.stripe.com https://hcaptcha.com https://*.hcaptcha.com;
       img-src 'self' data: https: https://*.stripe.com;
@@ -21,6 +21,8 @@
     <meta name="description" content="The Garden" />
     <meta name="theme-color" content="#121212">
     <title>The Garden</title>
+    <!-- Stripe CSP build: only load in production -->
+    <script src="https://js.stripe.com/v3/"></script>
   </head>
   <body style="background-color: var(--color-bg-main);">
     <div id="root"></div>
