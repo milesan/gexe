@@ -42,6 +42,10 @@ interface WeekSelectorProps {
   accommodationTitle: string;
   onMaxWeeksReached?: () => void;
   testMode?: boolean;
+  columns?: number;
+  disableFireflies?: boolean;
+  disabledWeeks?: Week[];
+  extensionWeeks?: Week[];
 }
 
 // Helper function to check if a week is between selected weeks
@@ -67,6 +71,10 @@ export function WeekSelector({
   accommodationTitle,
   onMaxWeeksReached,
   testMode = false,
+  columns,
+  disableFireflies = false,
+  disabledWeeks = [],
+  extensionWeeks = [],
 }: WeekSelectorProps) {
   console.log('[WeekSelector] Rendering weeks:', weeks?.map(w => getSimplifiedWeekInfo(w, isAdmin, selectedWeeks, testMode)));
   // --- START: Add log for incoming props ---
@@ -386,6 +394,19 @@ export function WeekSelector({
       }));
   }, [filteredWeeks]);
 
+  // Helper to check if a week is disabled (always selected, not clickable)
+  const isWeekDisabled = useCallback((week: Week) => {
+    const isDisabled = disabledWeeks.some(dw => areSameWeeks(dw, week));
+    console.log('[DEBUG] isWeekDisabled check:', {
+      weekId: week.id,
+      weekStartDate: formatDateForDisplay(week.startDate),
+      weekEndDate: formatDateForDisplay(week.endDate),
+      disabledWeeksIds: disabledWeeks.map(dw => dw.id),
+      isDisabled
+    });
+    return isDisabled;
+  }, [disabledWeeks]);
+
   return (
     <>
       <div className="space-y-6">
@@ -395,8 +416,7 @@ export function WeekSelector({
             {/* Week grid for this month */}
             <div className={clsx(
               'grid gap-1.5 xs:gap-2 sm:gap-3 md:gap-4',
-              // Always use 5 columns on desktop to accommodate months with 5 weeks
-              'grid-cols-1 xxs:grid-cols-2 xs:grid-cols-3 sm:grid-cols-5'
+              columns ? `grid-cols-${columns}` : 'grid-cols-1 xxs:grid-cols-2 xs:grid-cols-3 sm:grid-cols-5'
             )}>
               {monthWeeks.map((week, index) => {
                 // All the existing week rendering logic stays the same
@@ -458,49 +478,40 @@ export function WeekSelector({
                 // Determine if the week is an intermediate selected week
                 const isIntermediateSelected = isWeekSelected(week) && isWeekBetweenSelection(week, selectedWeeks);
 
+                const disabled = isWeekDisabled(week);
+
                 return (
                   <button
                     key={week.id || `week-${index}`}
-                    onClick={() => handleWeekClick(week)}
+                    onClick={() => !disabled && handleWeekClick(week)}
                     className={clsx(
                       'relative border-2 transition-all duration-300',
-                      paddingClass, // Use dynamic padding
-                      // Use fixed height instead of min-height
+                      paddingClass,
                       fixedHeightClass,
                       'shadow-sm hover:shadow-md',
-                      // Unconditionally add highlight class (CSS rule scopes it to light mode)
                       'bg-card-highlight',
-                      // Default background - CHANGED to surface-dark, REMOVED backdrop-blur
                       !isWeekSelected(week) && !(selectedWeeks.length > 1 && isWeekBetweenSelection(week, selectedWeeks)) && !(isAdmin && (week.status === 'hidden' || week.status === 'deleted' || (week.status === 'visible' && week.isCustom))) && 'bg-surface-dark',
-                      // Selection states (These should override the default bg) - CHANGED background to surface-dark
-                      isWeekSelected(week) && 'border-accent-primary shadow-lg bg-surface-dark', 
-                      !isWeekSelected(week) && selectedWeeks.length > 1 && isWeekBetweenSelection(week, selectedWeeks) && 'border-accent-primary/20 bg-surface/50', 
-                      // Opacity/cursor for non-selectable (content hiding handled below)
-                      !isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode) && !isAdmin && !testMode && 'opacity-50 cursor-not-allowed',
-                      // Hover/cursor for selectable admin view
+                      isWeekSelected(week) && 'border-accent-primary shadow-lg bg-surface-dark',
+                      !isWeekSelected(week) && selectedWeeks.length > 1 && isWeekBetweenSelection(week, selectedWeeks) && 'border-accent-primary/20 bg-surface/50',
+                      (!isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode) || disabled) && !isAdmin && !testMode && 'opacity-50 cursor-not-allowed',
                       isAdmin && isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode) && 'cursor-pointer hover:border-blue-400',
-                      // Status colors - only for admin (These might override bg too)
                       isAdmin && week.status === 'hidden' && 'border-yellow-400 bg-yellow-500/10',
                       isAdmin && week.status === 'deleted' && 'border-red-400 bg-red-500/10 border-dashed',
                       isAdmin && week.status === 'visible' && week.isCustom && 'border-blue-400',
-                      // --- START: Seasonal/Default Border Logic ---
                       (() => {
                         const season = getSeasonName(week.startDate);
-                        if (!isWeekSelected(week) && !isAdmin) { // Apply seasonal border for non-admin, non-selected
-                          // Use the custom season colors defined in Tailwind config
+                        if (!isWeekSelected(week) && !isAdmin) {
                           if (season === 'Low Season') return 'border-season-low';
                           if (season === 'Medium Season') return 'border-season-medium';
                           if (season === 'Summer Season') return 'border-season-summer';
                         }
-                        // Fallback default border for other non-selected cases (e.g., admin view without specific status)
                         if (!isWeekSelected(week) && !(selectedWeeks.length > 1 && isWeekBetweenSelection(week, selectedWeeks)) && !(isAdmin && (week.status === 'hidden' || week.status === 'deleted' || (week.status === 'visible' && week.isCustom)))) {
                           return 'border-border';
                         }
-                        return null; // No border class needed if selected or already handled by admin status
+                        return null;
                       })()
-                      // --- END: Seasonal/Default Border Logic ---
                     )}
-                    disabled={!isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode)}
+                    disabled={!isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode) || disabled}
                   >
                     {/* Conditionally render the content */}
                     {isContentVisible && (
@@ -561,14 +572,10 @@ export function WeekSelector({
                                 const sortedFlexDates = [...week.flexibleDates].sort((a, b) => a.getTime() - b.getTime());
                                 displayDate = sortedFlexDates[0];
                               }
-                              console.log('[WeekSelector] Displaying date (no selection):', {
-                                dateObj: displayDate, // Keep for comparison
-                                isoString: displayDate.toISOString(), // Explicit UTC representation
-                                formattedForDisplay: formatInTimeZone(displayDate, 'UTC', 'MMM d') // How it should look in UI
-                              });
+                              const dateText = formatInTimeZone(displayDate, 'UTC', 'MMM d');
                               return (
-                                <div className="flex items-center justify-center">
-                                  <span>{formatInTimeZone(displayDate, 'UTC', 'MMM d')}</span>
+                                <div className="flex items-center justify-center w-full max-w-full">
+                                  <FitText text={dateText} minFontSizePx={12} maxFontSizePx={22} className="w-full" />
                                 </div>
                               );
                             }
@@ -581,61 +588,71 @@ export function WeekSelector({
                               const isLastSelected = areSameWeeks(week, lastSelected);
                               // Check if the current week is ANY of the selected weeks (first, last, or intermediate)
                               const isAnySelectedWeek = selectedWeeks.some(sw => areSameWeeks(week, sw));
+                              // Check if this week is an extension week
+                              const isExtensionWeek = extensionWeeks?.some(ew => areSameWeeks(week, ew));
+
+                              // Special case: Show checkout date for extension weeks
+                              if (isExtensionWeek && isAnySelectedWeek) {
+                                const checkoutText = formatInTimeZone(week.endDate, 'UTC', 'MMM d');
+                                const isActualCheckout = extensionWeeks && extensionWeeks.length > 0 && 
+                                  areSameWeeks(week, extensionWeeks[extensionWeeks.length - 1]);
+                                
+                                if (isActualCheckout) {
+                                  // This is the final checkout week - show with arrow
+                                  return (
+                                    <div className="flex items-center justify-center text-primary w-full max-w-full">
+                                      <FitText text={`→ ${checkoutText}`} minFontSizePx={12} maxFontSizePx={22} className="w-full" />
+                                    </div>
+                                  );
+                                } else {
+                                  // This is an intermediate selected week - show dimmed
+                                  return (
+                                    <div className="flex items-center justify-center text-secondary w-full max-w-full">
+                                      <FitText text={checkoutText} minFontSizePx={12} maxFontSizePx={22} className="w-full" />
+                                    </div>
+                                  );
+                                }
+                              }
 
                               if (isFirstSelected && effectiveStartDate) { // Use effectiveStartDate here
-                                console.log('[WeekSelector Render] Displaying effectiveStartDate (first selected):', {
-                                  dateObj: effectiveStartDate,
-                                  iso: effectiveStartDate.toISOString(),
-                                  formatted: formatInTimeZone(effectiveStartDate, 'UTC', 'MMM d')
-                                });
+                                const dateText = formatInTimeZone(effectiveStartDate, 'UTC', 'MMM d');
                                 return (
-                                  <div className="flex items-center justify-center gap-1 text-primary">
-                                    <span>{formatInTimeZone(effectiveStartDate, 'UTC', 'MMM d')}</span>
+                                  <div className="flex items-center justify-center gap-1 text-primary w-full max-w-full">
+                                    <FitText text={dateText} minFontSizePx={12} maxFontSizePx={22} className="w-full" />
                                     <span>→</span>
                                   </div>
                                 );
                               }
-                              if (isLastSelected) {
-                                console.log('[WeekSelector Render] Displaying endDate (last selected):', {
-                                  dateObj: week.endDate,
-                                  iso: week.endDate.toISOString(),
-                                  formatted: formatInTimeZone(week.endDate, 'UTC', 'MMM d')
-                                });
+                              if (isLastSelected && !isExtensionWeek) { // Only show this if not already handled by extension logic
+                                const dateText = formatInTimeZone(week.endDate, 'UTC', 'MMM d');
                                 return (
-                                  <div className="flex items-center justify-center gap-1 text-primary">
+                                  <div className="flex items-center justify-center gap-1 text-primary w-full max-w-full">
                                     <span>→</span>
-                                    <span>{formatInTimeZone(week.endDate, 'UTC', 'MMM d')}</span>
+                                    <FitText text={dateText} minFontSizePx={12} maxFontSizePx={22} className="w-full" />
                                   </div>
                                 );
                               }
                               // If it's an intermediary selected week (between first and last)
-                              if (isAnySelectedWeek && !isFirstSelected && !isLastSelected) {
-                                console.log('[WeekSelector Render] Displaying null for intermediary selected week:', { weekId: week.id });
+                              if (isAnySelectedWeek && !isFirstSelected && !isLastSelected && !isExtensionWeek) {
                                 return null; // Intermediary selected weeks display nothing specific
                               }
-
                               // --- START: Modified logic for NON-SELECTED WEEKS when multiple are selected ---
                               if (!isAnySelectedWeek) {
                                 // If this non-selected week comes AFTER the first selected week
                                 if (isAfter(week.startDate, firstSelected.startDate)) {
-                                  console.log('[WeekSelector Render] Displaying potential checkout date (multi-select, after first):', {
-                                    weekId: week.id,
-                                    endDate: formatDateForDisplay(week.endDate)
-                                  });
+                                  // Show potential checkout date in white, no arrow
+                                  const dateText = formatInTimeZone(week.endDate, 'UTC', 'MMM d');
                                   return (
-                                    <div className="flex items-center justify-center text-primary">
-                                      {/* Display the END date */}
-                                      <span>{formatInTimeZone(week.endDate, 'UTC', 'MMM d')}</span>
+                                    <div className="flex items-center justify-center text-primary w-full max-w-full">
+                                      <FitText text={dateText} minFontSizePx={12} maxFontSizePx={22} className="w-full" />
                                     </div>
                                   );
                                 } else {
                                   // If this non-selected week comes BEFORE the first selected week,
                                   // fall through to the default display logic below (showing earliest check-in).
-                                  console.log('[WeekSelector Render] Non-selected week before first selection. Falling back to default.', { weekId: week.id });
                                 }
                               }
                               // --- END: Modified logic ---
-
                               // Fallthrough for weeks before the first selected will reach the default logic below.
                             }
 
@@ -643,21 +660,39 @@ export function WeekSelector({
                             if (selectedWeeks.length === 1) {
                               const selectedWeek = selectedWeeks[0];
                               const isSelected = areSameWeeks(week, selectedWeek);
-
-                              if (isSelected && effectiveStartDate) { // Handles selectedWeeks.length === 1 case. Use effectiveStartDate.
-                                console.log('[WeekSelector Render] Displaying effectiveStartDate & endDate (single selected):', {
-                                  startObj: effectiveStartDate,
-                                  startIso: effectiveStartDate.toISOString(),
-                                  startFormatted: formatInTimeZone(effectiveStartDate, 'UTC', 'MMM d'),
-                                  endObj: week.endDate,
-                                  endIso: week.endDate.toISOString(),
-                                  endFormatted: formatInTimeZone(week.endDate, 'UTC', 'MMM d')
-                                });
+                              const isExtensionWeek = extensionWeeks?.some(ew => areSameWeeks(week, ew));
+                              
+                              // Special case: Show checkout date for extension weeks
+                              if (isSelected && isExtensionWeek) {
+                                const checkoutText = formatInTimeZone(week.endDate, 'UTC', 'MMM d');
+                                const isActualCheckout = extensionWeeks && extensionWeeks.length > 0 && 
+                                  areSameWeeks(week, extensionWeeks[extensionWeeks.length - 1]);
+                                
+                                if (isActualCheckout) {
+                                  // This is the final checkout week - show with arrow
+                                  return (
+                                    <div className="flex items-center justify-center text-primary w-full max-w-full">
+                                      <FitText text={`→ ${checkoutText}`} minFontSizePx={12} maxFontSizePx={22} className="w-full" />
+                                    </div>
+                                  );
+                                } else {
+                                  // This is an intermediate selected week - show dimmed
+                                  return (
+                                    <div className="flex items-center justify-center text-secondary w-full max-w-full">
+                                      <FitText text={checkoutText} minFontSizePx={12} maxFontSizePx={22} className="w-full" />
+                                    </div>
+                                  );
+                                }
+                              }
+                              
+                              if (isSelected && effectiveStartDate && !isExtensionWeek) { // Handles selectedWeeks.length === 1 case. Use effectiveStartDate.
+                                const startText = formatInTimeZone(effectiveStartDate, 'UTC', 'MMM d');
+                                const endText = formatInTimeZone(week.endDate, 'UTC', 'MMM d');
                                 return (
-                                  <div className="flex items-center justify-center gap-1 text-primary">
-                                    <span>{formatInTimeZone(effectiveStartDate, 'UTC', 'MMM d')}</span>
+                                  <div className="flex items-center justify-center gap-1 text-primary w-full max-w-full">
+                                    <FitText text={startText} minFontSizePx={12} maxFontSizePx={22} className="w-full" />
                                     <span>→</span>
-                                    <span>{formatInTimeZone(week.endDate, 'UTC', 'MMM d')}</span>
+                                    <FitText text={endText} minFontSizePx={12} maxFontSizePx={22} className="w-full" />
                                   </div>
                                 );
                               }
@@ -667,26 +702,16 @@ export function WeekSelector({
                                 const isSubsequent = isAfter(week.startDate, selectedWeek.endDate);
                                 // Also ensure it's selectable according to existing rules (availability, contiguity unless admin)
                                 const isNextSelectable = isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode); 
-                                
                                 if (isSubsequent && isNextSelectable) {
-                                  console.log('[WeekSelector Render] Displaying potential checkout date for subsequent week:', {
-                                      weekId: week.id,
-                                      weekStartDate: formatDateForDisplay(week.startDate),
-                                      weekEndDate: formatDateForDisplay(week.endDate),
-                                      isSelectable: isNextSelectable // Should be true here
-                                  });
+                                  // Show potential checkout date in white, no arrow
+                                  const dateText = formatInTimeZone(week.endDate, 'UTC', 'MMM d');
                                   return (
-                                    <div className="flex items-center justify-center gap-1 text-primary">
-                                      <span>{formatInTimeZone(week.endDate, 'UTC', 'MMM d')}</span>
+                                    <div className="flex items-center justify-center text-primary w-full max-w-full">
+                                      <FitText text={dateText} minFontSizePx={12} maxFontSizePx={22} className="w-full" />
                                     </div>
                                   );
                                 }
                                 // If not subsequent or not selectable, fall through to default display below
-                                console.log('[WeekSelector Render] Week is not the selected one and not the next selectable subsequent week. Falling back to default.', {
-                                  weekId: week.id,
-                                  isSubsequent,
-                                  isNextSelectable
-                                });
                               }
                               // --- END: New logic for subsequent weeks ---
                             }
@@ -699,14 +724,10 @@ export function WeekSelector({
                               const sortedFlexDates = [...week.flexibleDates].sort((a, b) => a.getTime() - b.getTime());
                               fallbackDisplayDate = sortedFlexDates[0];
                             }
-                            console.log('[WeekSelector Render] Displaying fallback date:', {
-                              dateObj: fallbackDisplayDate,
-                              iso: fallbackDisplayDate.toISOString(),
-                              formatted: formatInTimeZone(fallbackDisplayDate, 'UTC', 'MMM d')
-                            });
+                            const fallbackText = formatInTimeZone(fallbackDisplayDate, 'UTC', 'MMM d');
                             return (
-                              <div className="flex items-center justify-center text-primary">
-                                <span>{formatInTimeZone(fallbackDisplayDate, 'UTC', 'MMM d')}</span>
+                              <div className="flex items-center justify-center text-primary w-full max-w-full">
+                                <FitText text={fallbackText} minFontSizePx={12} maxFontSizePx={22} className="w-full" />
                               </div>
                             );
 
@@ -801,16 +822,17 @@ export function WeekSelector({
                       </div>
                     )}
 
-                    {/* Add fireflies for all selected weeks */}
-                    {isWeekSelected(week) && (
+                    {/* Add fireflies for all selected weeks, unless disabled */}
+                    {isWeekSelected(week) && !disableFireflies && (
                       <div className="absolute inset-0 overflow-hidden pointer-events-none z-[1]">
                         <Fireflies 
-                          count={3}
+                          count={2}
                           color="#fddba3"
-                          minSize={3}
-                          maxSize={5}
+                          minSize={0.5}
+                          maxSize={2}
                           ambient={true}
-                          className="!relative !w-full !h-full"
+                          contained={true}
+                          className="relative w-full h-full"
                         />
                       </div>
                     )}

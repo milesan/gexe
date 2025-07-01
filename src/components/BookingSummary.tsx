@@ -19,6 +19,7 @@ import { Fireflies } from './Fireflies';
 
 // Import types
 import type { BookingSummaryProps, SeasonBreakdown, AppliedDiscount } from './BookingSummary/BookingSummary.types';
+import type { PaymentBreakdown } from '../types/payment';
 
 // Import hooks
 import { usePricing } from './BookingSummary/BookingSummary.hooks';
@@ -32,7 +33,8 @@ import { CreditsSection } from './BookingSummary/components/CreditsSection';
 import { ConfirmButtons } from './BookingSummary/components/ConfirmButtons';
 
 // Import utils
-import { formatPriceDisplay } from './BookingSummary/BookingSummary.utils';
+import { formatPriceDisplay, calculateFoodContributionRange } from './BookingSummary/BookingSummary.utils';
+import { useDiscountCode } from '../hooks/useDiscountCode';
 
 export function BookingSummary({
   selectedWeeks,
@@ -87,11 +89,16 @@ export function BookingSummary({
   // State for celebration fireflies
   const [showCelebrationFireflies, setShowCelebrationFireflies] = useState(false);
 
-  // --- State for Discount Code ---
-  const [discountCodeInput, setDiscountCodeInput] = useState('');
-  const [appliedDiscount, setAppliedDiscount] = useState<AppliedDiscount | null>(null);
-  const [discountError, setDiscountError] = useState<string | null>(null);
-  const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
+  // --- Discount Code functionality using reusable hook ---
+  const {
+    discountCodeInput,
+    setDiscountCodeInput,
+    appliedDiscount,
+    discountError,
+    isApplyingDiscount,
+    handleApplyDiscount,
+    handleRemoveDiscount
+  } = useDiscountCode();
   // --- End Discount Code State ---
 
   // --- State for Credits ---
@@ -256,33 +263,36 @@ export function BookingSummary({
     }
   }, [selectedWeeks]); // Only depend on selectedWeeks changing
 
-  // Initialize food contribution based on number of nights/weeks (USE BASE RATES for slider)
+  // Initialize food contribution based on number of nights/weeks with duration discount applied
   useEffect(() => {
-    console.log('[BookingSummary] useEffect[selectedWeeks] - Initializing BASE food contribution range...');
+    console.log('[BookingSummary] useEffect[selectedWeeks] - Initializing food contribution range with duration discount...');
     if (selectedWeeks.length > 0) {
       const totalNights = calculateTotalNights(selectedWeeks);
-      // Set default contribution to the middle of the BASE range (undiscounted)
-      if (totalNights <= 6) {
-        // Base range for 1 week: €345-€390
-        const min = 345;
-        const max = 390;
-        const defaultContribution = Math.round((min + max) / 2);
-        setFoodContribution(defaultContribution);
-        console.log('[BookingSummary] Setting default BASE food contribution for short stay:', defaultContribution, 'per week');
-      } else {
-        // Base range for 2+ weeks: €240-€390
-        const min = 240;
-        const max = 390;
-        const defaultContribution = Math.round((min + max) / 2);
-        setFoodContribution(defaultContribution);
-        console.log('[BookingSummary] Setting default BASE food contribution for long stay:', defaultContribution, 'per week');
-      }
+      
+      // Use the utility function to get the discounted range
+      const foodRange = calculateFoodContributionRange(totalNights, pricing.durationDiscountPercent / 100);
+      
+      // Only set to default if not already set or if current value is outside the valid range
+      setFoodContribution(current => {
+        if (current === null || current < foodRange.min || current > foodRange.max) {
+          console.log('[BookingSummary] Food contribution reset to default:', {
+            previousValue: current,
+            newValue: foodRange.defaultValue,
+            reason: current === null ? 'not set' : 'outside range',
+            validRange: `${foodRange.min}-${foodRange.max}`,
+            totalNights,
+            durationDiscountPercent: pricing.durationDiscountPercent + '%'
+          });
+          return foodRange.defaultValue;
+        }
+        console.log('[BookingSummary] Keeping existing food contribution:', current);
+        return current;
+      });
     } else {
       setFoodContribution(null);
       console.log('[BookingSummary] Clearing food contribution');
     }
-    // No longer depends on pricing.durationDiscountPercent
-  }, [selectedWeeks]);
+  }, [selectedWeeks, pricing.durationDiscountPercent]);
 
   // Log when food contribution changes (for debugging slider/pricing interaction)
   useEffect(() => {
@@ -409,7 +419,10 @@ export function BookingSummary({
     }
   };
 
-  const handleBookingSuccess = useCallback(async (paymentIntentId?: string) => {
+  // State for pending payment row
+  const [pendingPaymentRowId, setPendingPaymentRowId] = useState<string | null>(null);
+
+  const handleBookingSuccess = useCallback(async (paymentIntentId?: string, paymentRowIdOverride?: string) => {
     // Added optional paymentIntentId
     console.log('[BookingSummary] handleBookingSuccess called. Payment Intent ID:', paymentIntentId || 'N/A');
     console.log('[BookingSummary] ENTRY - Checking required info:', {
@@ -516,6 +529,7 @@ export function BookingSummary({
           accommodationPricePaid: pricing.totalAccommodationCost // Should be actual price AFTER discounts
         });
         
+        const paymentRowIdToUse = paymentRowIdOverride || pendingPaymentRowId;
         const bookingPayload: any = {
           accommodationId: selectedAccommodation.id,
           checkIn: formattedCheckIn,
@@ -534,35 +548,27 @@ export function BookingSummary({
           // NEW: Store accommodation price after seasonal/duration but before discount codes
           accommodationPriceAfterSeasonalDuration: parseFloat(accommodationAfterSeasonalDuration.toFixed(2)),
           // NEW: Store subtotal after discount code but before credits
-          subtotalAfterDiscountCode: parseFloat(subtotalAfterDiscountCode.toFixed(2))
+          subtotalAfterDiscountCode: parseFloat(subtotalAfterDiscountCode.toFixed(2)),
+          paymentRowId: paymentRowIdToUse,
         };
 
         if (appliedDiscount?.code) {
-            bookingPayload.appliedDiscountCode = appliedDiscount.code;
-            bookingPayload.discountCodePercent = appliedDiscount.percentage_discount;
-            bookingPayload.discountCodeAppliesTo = appliedDiscount.applies_to; // NEW: Save what the discount applies to
-            console.log("[Booking Summary] Adding applied discount code to booking payload:", appliedDiscount.code, "with", appliedDiscount.percentage_discount, "% discount, applies to:", appliedDiscount.applies_to);
+          bookingPayload.appliedDiscountCode = appliedDiscount.code;
+          bookingPayload.discountCodePercent = appliedDiscount.percentage_discount;
+          bookingPayload.discountCodeAppliesTo = appliedDiscount.applies_to; // NEW: Save what the discount applies to
+          console.log("[Booking Summary] Adding applied discount code to booking payload:", appliedDiscount.code, "with", appliedDiscount.percentage_discount, "% discount, applies to:", appliedDiscount.applies_to);
         }
 
         // Add credits used if any
         if (creditsToUse > 0) {
-            bookingPayload.creditsUsed = creditsToUse;
-            console.log("[Booking Summary] Adding credits used to booking payload:", creditsToUse);
+          bookingPayload.creditsUsed = creditsToUse;
+          console.log("[Booking Summary] Adding credits used to booking payload:", creditsToUse);
         }
 
         // Add payment intent ID if available (for webhook coordination)
         if (paymentIntentId) {
-            bookingPayload.paymentIntentId = paymentIntentId;
-            console.log("[Booking Summary] Adding payment intent ID to booking payload:", paymentIntentId);
-        }
-
-        // TEST CONDITION: Simulate booking failure for payments under €1
-        // Check the actual payment amount (after credits are applied)
-        const paymentAmount = Math.max(0, roundedTotal - (creditsToUse || 0));
-        const isTestPayment = paymentAmount < 1 && paymentAmount > 0; // Don't trigger for €0 payments (fully covered by credits)
-        if (isTestPayment) {
-          console.log("[TEST MODE] Simulating booking failure for payment under €1. Payment amount:", paymentAmount);
-          throw new Error("TEST: Simulated booking failure for small payment amount");
+          bookingPayload.paymentIntentId = paymentIntentId;
+          console.log("[Booking Summary] Adding payment intent ID to booking payload:", paymentIntentId);
         }
 
         console.log("[Booking Summary] SENDING BOOKING PAYLOAD:", JSON.stringify(bookingPayload, null, 2));
@@ -571,8 +577,36 @@ export function BookingSummary({
 
         console.log("[Booking Summary] Booking created:", booking);
         
+        // Update the pending payment row with booking_id and stripe_payment_id
+        if (typeof paymentRowIdToUse === 'string' && booking.id) {
+          // For credits-only bookings, use a special payment ID
+          const effectivePaymentId = paymentIntentId || 
+            (creditsToUse > 0 && finalAmountAfterCredits === 0 ? 'credits-only-' + booking.id : 'admin-booking-' + booking.id);
+          
+          console.log('[BookingSummary] [DEBUG] About to update payment after booking:', {
+            pendingPaymentRowId: paymentRowIdToUse,
+            bookingId: booking.id,
+            creditsToUse,
+            finalAmountAfterCredits,
+            effectivePaymentId,
+            isCreditsOnly: creditsToUse > 0 && finalAmountAfterCredits === 0
+          });
+          try {
+            const updateResult = await bookingService.updatePaymentAfterBooking({
+              paymentRowId: paymentRowIdToUse,
+              bookingId: booking.id,
+              stripePaymentId: effectivePaymentId
+            });
+            console.log('[BookingSummary] [DEBUG] Payment row update result:', updateResult);
+            console.log('[BookingSummary] Payment row updated successfully');
+          } catch (err) {
+            console.error('[BookingSummary] [DEBUG] Failed to update payment after booking:', err);
+          }
+        }
+        
         // Trigger celebration fireflies
         setShowCelebrationFireflies(true);
+        setPendingPaymentRowId(null); // Clear after booking completes
         
         // Refresh credits manually to ensure UI updates immediately
         if (creditsToUse > 0) {
@@ -869,56 +903,86 @@ Please manually create the booking for this user or process a refund.`;
       setError('An error occurred. Please try again.');
       setIsBooking(false);
     }
-  }, [selectedAccommodation, selectedWeeks, selectedCheckInDate, navigate, pricing.totalAmount, appliedDiscount, creditsToUse, refreshCredits, userEmail, onClearWeeks, onClearAccommodation, bookingService]);
+  }, [selectedAccommodation, selectedWeeks, selectedCheckInDate, navigate, pricing.totalAmount, appliedDiscount, creditsToUse, refreshCredits, userEmail, onClearWeeks, onClearAccommodation, bookingService, pendingPaymentRowId]);
 
   const handleConfirmClick = async () => {
     console.log('[Booking Summary] Confirm button clicked.');
-    console.log('[Booking Summary] handleConfirmClick: Initial selectedCheckInDate:', selectedCheckInDate?.toISOString(), selectedCheckInDate); // ADDED LOG
     setError(null); // Clear previous errors
 
     if (!validateCheckInDate()) {
       console.warn('[Booking Summary] Confirm FAILED: Check-in date validation failed.');
       return;
     }
-    
     if (!selectedAccommodation) {
       console.warn('[Booking Summary] No accommodation selected');
       setError('Please select an accommodation');
       return;
     }
-    
     try {
       // Check if the accommodation is still available
       const isAvailable = await validateAvailability();
       if (!isAvailable) {
-        console.warn('[Booking Summary] Accommodation is no longer available');
         setError('This accommodation is no longer available for the selected dates');
         return;
       }
-      
-      // If the final amount is 0 (fully paid with credits), skip payment
-      if (finalAmountAfterCredits === 0 && creditsToUse > 0) {
-        console.log('[Booking Summary] Total is 0 after credits, skipping payment');
-        await handleBookingSuccess();
-        return;
+
+      // --- NEW: Create pending payment row for ALL bookings (including credits-only) ---
+      if (authToken && !pendingPaymentRowId) {
+        try {
+          const user = await bookingService.getCurrentUser();
+          if (!user) throw new Error('User not authenticated');
+          const startDate = selectedWeeks[0].startDate;
+          const endDate = selectedWeeks[selectedWeeks.length - 1].endDate;
+          // Use avgSeasonalDiscountPercent from the calculation above
+          let avgSeasonalDiscountPercent = 0;
+          if (seasonBreakdownState && selectedAccommodation && !selectedAccommodation.title.toLowerCase().includes('dorm')) {
+            const preciseDiscount = seasonBreakdownState.seasons.reduce((sum, season) => 
+              sum + (season.discount * season.nights), 0) / 
+              seasonBreakdownState.seasons.reduce((sum, season) => sum + season.nights, 0);
+            avgSeasonalDiscountPercent = Math.round(preciseDiscount * 100) / 100;
+          }
+          const breakdownJson: PaymentBreakdown = {
+            accommodation: pricing.totalAccommodationCost,
+            food_facilities: pricing.totalFoodAndFacilitiesCost,
+            duration_discount_percent: pricing.durationDiscountPercent,
+            seasonal_discount_percent: avgSeasonalDiscountPercent,
+            discount_code: appliedDiscount?.code || null,
+            discount_code_percent: appliedDiscount?.percentage_discount || null,
+            discount_code_applies_to: (appliedDiscount?.applies_to as 'accommodation' | 'food_facilities' | 'total') || null,
+            credits_used: creditsToUse, // Include credits in the breakdown
+            subtotal_before_discounts: pricing.subtotal,
+            total_after_discounts: pricing.totalAmount
+          };
+
+          const payment = await bookingService.createPendingPayment({
+            bookingId: null, // Use null for pending payment
+            userId: user.id,
+            startDate,
+            endDate,
+            amountPaid: finalAmountAfterCredits, // This will be 0 for credits-only bookings
+            breakdownJson,
+            discountCode: appliedDiscount?.code || undefined,
+            paymentType: 'initial'
+          });
+
+          console.log('[BookingSummary] Created pending payment for credits-only booking:', payment);
+          setPendingPaymentRowId(payment.id);
+
+          // If the final amount is 0 (fully paid with credits), skip payment and pass payment.id
+          if (finalAmountAfterCredits === 0 && creditsToUse > 0) {
+            await handleBookingSuccess(undefined, payment.id);
+            return;
+          }
+        } catch (err) {
+          console.error('[BookingSummary] Failed to create pending payment for credits-only booking:', err);
+          setError('Failed to create pending payment. Please try again.');
+          return;
+        }
       }
-      
-      // If we have a valid auth token, show the Stripe modal
-      if (authToken) {
-        console.log('[Booking Summary] Showing Stripe modal');
-        setShowStripeModal(true);
-      } else {
-        console.warn('[Booking Summary] No auth token, redirecting to login');
-        setError('Please sign in to continue with your booking');
-        navigate('/login', { 
-          state: { 
-            returnTo: '/book',
-            message: 'Please sign in to complete your booking' 
-          } 
-        });
-      }
+
+      // Show Stripe modal after pending payment row is created
+      setShowStripeModal(true);
     } catch (err) {
-      console.error('[Booking Summary] Error in confirm click handler:', err);
       setError('An error occurred. Please try again.');
     }
   };
@@ -949,91 +1013,7 @@ Please manually create the booking for this user or process a refund.`;
   };
 
   // --- Placeholder Handlers for Discount Code ---
-  const handleApplyDiscount = useCallback(async () => {
-    const codeToApply = discountCodeInput.trim().toUpperCase(); // Standardize
-    if (!codeToApply) return;
-
-    console.log('[BookingSummary] Applying discount code:', codeToApply);
-    setIsApplyingDiscount(true);
-    setError(null); 
-    setDiscountError(null);
-    setAppliedDiscount(null); // Clear previous discount first
-
-    try {
-      // Get the current session token for authorization
-      const sessionResponse = await supabase.auth.getSession();
-      const token = sessionResponse?.data?.session?.access_token;
-
-      if (!token) {
-          throw new Error('Authentication token not found. Please sign in.');
-      }
-
-      // Get Supabase URL from the client
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://lpsdzjvyvufwqrnuafqd.supabase.co';
-      
-      // Use direct fetch instead of Supabase Functions API
-      console.log('[BookingSummary] Sending discount code validation request');
-      const response = await fetch(`${supabaseUrl}/functions/v1/validate-discount-code`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ code: codeToApply })
-      });
-      
-      // Always get the response as text first to properly handle both success and error responses
-      const responseText = await response.text();
-      console.log('[BookingSummary] Raw response:', responseText);
-      
-      // Try to parse the response as JSON
-      let responseData;
-      try {
-        responseData = JSON.parse(responseText);
-        console.log('[BookingSummary] Parsed response data:', responseData);
-      } catch (parseError) {
-        console.error('[BookingSummary] Failed to parse response as JSON:', parseError);
-        setDiscountError('Invalid response from server');
-        return;
-      }
-      
-      // If response is not ok, handle the error
-      if (!response.ok) {
-        const errorMessage = responseData?.error || 'Invalid code';
-        console.error('[BookingSummary] Error response:', errorMessage);
-        setDiscountError(errorMessage);
-        return;
-      }
-      
-      // --- Success Case --- 
-      if (responseData && responseData.code && typeof responseData.percentage_discount === 'number') {
-        console.log("[BookingSummary] code validated successfully:", responseData);
-        setAppliedDiscount({
-          code: responseData.code,
-          percentage_discount: responseData.percentage_discount,
-          applies_to: responseData.applies_to || 'total'
-        });
-        setDiscountCodeInput(''); // Clear input on success
-      } else {
-        // Malformed success response
-        console.warn("[BookingSummary] Discount validation returned unexpected data:", responseData);
-        setDiscountError('Invalid response from validation service');
-      }
-    } catch (error) {
-      // This now only catches network errors, not HTTP error responses
-      console.error('[BookingSummary] Network error during discount validation:', error);
-      setDiscountError(error instanceof Error ? error.message : 'Failed to connect to validation service');
-    } finally {
-      setIsApplyingDiscount(false);
-    }
-  }, [discountCodeInput, supabase]);
-
-  const handleRemoveDiscount = useCallback(() => {
-    console.log('[BookingSummary] Removing applied discount');
-    setAppliedDiscount(null);
-    setDiscountCodeInput(''); // Also clear the input maybe?
-    setDiscountError(null);
-  }, []);
+  // Now using handlers from useDiscountCode hook
   // --- End Placeholder Handlers ---
 
   // --- LOGGING: Final Render Values ---

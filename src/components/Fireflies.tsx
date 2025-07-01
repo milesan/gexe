@@ -16,6 +16,7 @@ interface FireflyProps {
   position?: { x: number; y: number };
   localized?: boolean;
   localizedRadius?: number;
+  contained?: boolean;
 }
 
 interface FireflyParticle {
@@ -44,10 +45,11 @@ export function Fireflies({
   visible,
   position,
   localized = false,
-  localizedRadius = 150
+  localizedRadius = 150,
+  contained = false
 }: FireflyProps) {
   console.log('[Fireflies] Component mounting with props:', {
-    count, color, minSize, maxSize, fadeIn, fadeOut, duration, clickTrigger, ambient, visible, position, localized, localizedRadius
+    count, color, minSize, maxSize, fadeIn, fadeOut, duration, clickTrigger, ambient, visible, position, localized, localizedRadius, contained
   });
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -129,6 +131,19 @@ export function Fireflies({
           right: rect.right,
           isVisible: rect.top < window.innerHeight && rect.bottom > 0
         });
+      } else if (contained) {
+        // For contained mode, size canvas to match its parent container
+        const parent = canvas.parentElement;
+        if (parent) {
+          const rect = parent.getBoundingClientRect();
+          canvas.width = rect.width;
+          canvas.height = rect.height;
+          canvas.style.position = 'absolute';
+          canvas.style.left = '0';
+          canvas.style.top = '0';
+          canvas.style.width = '100%';
+          canvas.style.height = '100%';
+        }
       } else {
         // Full screen mode
         canvas.width = window.innerWidth;
@@ -158,6 +173,19 @@ export function Fireflies({
           size,
           angle: Math.random() * 2 * Math.PI,
           velocity: 0.2 + Math.random() * 0.3, // Gentle movement
+          opacity: 0,
+          fadeDirection: 1,
+          lifespan: duration,
+          age: 0
+        };
+      } else if (contained) {
+        // For contained mode, create fireflies within container bounds
+        return {
+          x: x ?? Math.random() * canvas.width,
+          y: y ?? Math.random() * canvas.height,
+          size,
+          angle: Math.random() * 2 * Math.PI,
+          velocity: 0.3 + Math.random() * 0.4, // Gentle movement for containers
           opacity: 0,
           fadeDirection: 1,
           lifespan: duration,
@@ -398,7 +426,7 @@ export function Fireflies({
         animationRef.current = undefined;
       }
     };
-  }, [isVisible, clickPosition, count, color, minSize, maxSize, fadeIn, fadeOut, duration, clickTrigger, ambient, localized, localizedRadius]);
+  }, [isVisible, clickPosition, count, color, minSize, maxSize, fadeIn, fadeOut, duration, clickTrigger, ambient, localized, localizedRadius, contained]);
 
   return (
     <AnimatePresence>

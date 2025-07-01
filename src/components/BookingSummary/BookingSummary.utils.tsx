@@ -116,3 +116,34 @@ export const getAppliesToText = (appliesToValue: string | undefined): string => 
       return 'Total Amount';
   }
 };
+
+// Helper function to calculate food contribution range with duration discount applied
+export const calculateFoodContributionRange = (
+  totalNights: number,
+  durationDiscountPercent: number = 0
+): { min: number; max: number; defaultValue: number } => {
+  // Determine base range based on stay length
+  const baseMin = totalNights <= 6 ? 345 : 240; // 1 week vs 2+ weeks
+  const baseMax = 390; // Always €390
+  
+  // Apply duration discount to the minimum (lower bound gets discounted)
+  const discountedMin = Math.round(baseMin * (1 - durationDiscountPercent));
+  
+  // Default to middle of the range
+  const defaultValue = Math.round((discountedMin + baseMax) / 2);
+  
+  console.log('[calculateFoodContributionRange] Calculated range:', {
+    totalNights,
+    durationDiscountPercent: (durationDiscountPercent * 100).toFixed(1) + '%',
+    baseMin,
+    baseMax,
+    discountedMin,
+    defaultValue
+  });
+  
+  return {
+    min: discountedMin,
+    max: baseMax,
+    defaultValue
+  };
+};

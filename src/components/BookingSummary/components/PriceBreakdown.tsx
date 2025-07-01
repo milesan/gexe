@@ -2,7 +2,8 @@ import React from 'react';
 import { Info } from 'lucide-react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { HoverClickPopover } from '../../HoverClickPopover';
-import { formatPriceDisplay, formatNumber } from '../BookingSummary.utils';
+import { formatPriceDisplay, formatNumber, calculateFoodContributionRange } from '../BookingSummary.utils';
+import { OptimizedSlider } from '../../shared/OptimizedSlider';
 import type { Accommodation } from '../../../types';
 import type { PricingDetails } from '../BookingSummary.types';
 
@@ -25,10 +26,44 @@ export function PriceBreakdown({
   selectedWeeks,
   onShowDiscountModal
 }: PriceBreakdownProps) {
-  // Determine min/max based on the event
-  const sliderMin = isStateOfTheArtist ? 390 : (pricing.totalNights <= 6 ? 345 : 240);
-  const sliderMax = isStateOfTheArtist ? 3600 : 390; 
-  console.log('[BookingSummary] Slider Range:', { sliderMin, sliderMax, isStateOfTheArtist });
+  // Local state for immediate slider feedback
+  const [displayFoodContribution, setDisplayFoodContribution] = React.useState<number | null>(null);
+  const isDraggingRef = React.useRef(false);
+  
+  // Calculate food contribution range with duration discount applied
+  const foodRange = React.useMemo(() => {
+    if (isStateOfTheArtist) {
+      // Special case for State of the Artist event
+      return { min: 390, max: 3600, defaultValue: 390 };
+    }
+    return calculateFoodContributionRange(pricing.totalNights, pricing.durationDiscountPercent / 100);
+  }, [isStateOfTheArtist, pricing.totalNights, pricing.durationDiscountPercent]);
+  
+  // Sync display value with actual value only when not dragging
+  React.useEffect(() => {
+    if (!isDraggingRef.current) {
+      setDisplayFoodContribution(foodContribution);
+    }
+  }, [foodContribution]);
+  
+  // Handle display value changes during drag
+  const handleDisplayValueChange = React.useCallback((value: number) => {
+    isDraggingRef.current = true;
+    // Ensure value is within bounds
+    const clampedValue = Math.max(foodRange.min, Math.min(foodRange.max, value));
+    setDisplayFoodContribution(clampedValue);
+    
+    // Reset dragging flag shortly after (but don't reset display value)
+    setTimeout(() => {
+      isDraggingRef.current = false;
+    }, 200);
+  }, [foodRange.min, foodRange.max]);
+  
+  console.log('[BookingSummary] Slider Range with duration discount:', { 
+    foodRange, 
+    isStateOfTheArtist, 
+    durationDiscountPercent: pricing.durationDiscountPercent + '%'
+  });
 
   return (
     <div>
@@ -138,29 +173,28 @@ export function PriceBreakdown({
                 />
               </div>
 
-             {/* --- Slider remains outside Popover Root --- */}
-             <input
+             {/* --- Optimized Slider for smooth performance --- */}
+             <OptimizedSlider
                id="food-contribution"
-               type="range"
-               min={sliderMin} // Use variable
-               max={sliderMax} // Use variable
-               value={foodContribution ?? sliderMin} // Use sliderMin as fallback default
-               onChange={(e) => setFoodContribution(Number(e.target.value))}
-               className="w-full h-2 bg-border rounded-lg appearance-none cursor-pointer accent-accent-primary slider-thumb-accent" /* Added slider-thumb-accent */
+               min={foodRange.min}
+               max={foodRange.max}
+               value={foodContribution ?? foodRange.defaultValue}
+               onChange={(value) => setFoodContribution(value)}
+               onDisplayValueChange={handleDisplayValueChange}
              />
               <div className="flex justify-between text-xs text-secondary mt-1 font-mono">
                  {/* Apply requested styles to Min */}
                  <span className="uppercase text-xs font-lettra-bold text-primary">
-                   Min: €{Math.round(sliderMin * (1 - pricing.durationDiscountPercent / 100))} 
+                   Min: €{foodRange.min}
                  </span>
-                 {/* Apply requested styles to Rate */}
+                 {/* Apply requested styles to Rate - Shows immediate feedback */}
                  <span className="uppercase text-xs font-lettra-bold text-primary"> {/* Removed font-medium text-sm text-shade-1 font-mono */}
-                   {/* Ensure the displayed rate uses the correct base (sliderMin if null) */}
-                   €{Math.round((foodContribution ?? sliderMin) * (1 - pricing.durationDiscountPercent / 100))} / week
+                   {/* Show the display value for immediate feedback, fallback to actual value */}
+                   €{displayFoodContribution ?? foodContribution ?? foodRange.defaultValue} / week
                  </span>
                  {/* Apply requested styles to Max */}
                  <span className="uppercase text-xs font-lettra-bold text-primary">
-                   Max: €{sliderMax}
+                   Max: €{foodRange.max}
                  </span>
               </div>
            </div>

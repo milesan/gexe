@@ -4,6 +4,12 @@ import type { AvailabilityResult } from '../types/availability';
 import { addDays, startOfWeek, endOfWeek, isBefore, isEqual } from 'date-fns';
 import { normalizeToUTCDate, formatDateOnly } from '../utils/dates';
 import { getFrontendUrl } from '../lib/environment';
+import type { 
+  PaymentBreakdown, 
+  PaymentType, 
+  CreatePendingPaymentInput, 
+  UpdatePaymentAfterBookingInput 
+} from '../types/payment';
 
 class BookingService {
   private static instance: BookingService;
@@ -168,6 +174,59 @@ class BookingService {
     return user;
   }
 
+  /**
+   * Create a pending payment row before redirecting to Stripe
+   */
+  async createPendingPayment(payment: CreatePendingPaymentInput) {
+    const { bookingId, userId, startDate, endDate, amountPaid, breakdownJson, discountCode, paymentType } = payment;
+    const startISO = startDate instanceof Date ? formatDateOnly(startDate) : formatDateOnly(new Date(startDate));
+    const endISO = endDate instanceof Date ? formatDateOnly(endDate) : formatDateOnly(new Date(endDate));
+    const { data, error } = await supabase
+      .from('payments')
+      .insert({
+        booking_id: bookingId ?? null,
+        user_id: userId,
+        start_date: startISO,
+        end_date: endISO,
+        amount_paid: amountPaid,
+        breakdown_json: breakdownJson ? JSON.stringify(breakdownJson) : null,
+        discount_code: discountCode || null,
+        payment_type: paymentType,
+        status: 'pending',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .select('*')
+      .single();
+    if (error) {
+      console.error('[BookingService] Error creating pending payment:', error);
+      throw error;
+    }
+    return data;
+  }
+
+  /**
+   * Update a payment row after Stripe payment confirmation
+   */
+  async markPaymentAsPaid(paymentId: string, stripePaymentId: string, breakdownJson?: any) {
+    const { data, error } = await supabase
+      .from('payments')
+      .update({
+        status: 'paid',
+        stripe_payment_id: stripePaymentId,
+        breakdown_json: breakdownJson ? JSON.stringify(breakdownJson) : undefined,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', paymentId)
+      .select('*')
+      .single();
+    if (error) {
+      console.error('[BookingService] Error updating payment to paid:', error);
+      throw error;
+    }
+    return data;
+  }
+
   async createBooking(booking: {
     accommodationId: string;
     checkIn: Date | string;
@@ -188,6 +247,7 @@ class BookingService {
     accommodationPricePaid?: number; // NEW: Actual accommodation amount paid
     accommodationPriceAfterSeasonalDuration?: number; // NEW: After seasonal/duration but before codes
     subtotalAfterDiscountCode?: number; // NEW: After discount code but before credits
+    paymentRowId?: string; // NEW: Optionally link to a pending payment row
   }): Promise<Booking> {
     console.log('[BookingService] Creating booking with data:', {
       ...booking,
@@ -312,6 +372,23 @@ class BookingService {
         console.log('[BookingService] Email sending result:', { emailError });
       }
 
+      // After booking is created, if paymentRowId is provided, mark payment as paid
+      if (booking.paymentRowId && booking.paymentIntentId) {
+        await this.markPaymentAsPaid(booking.paymentRowId, booking.paymentIntentId, {
+          accommodationPrice: booking.accommodationPrice,
+          foodContribution: booking.foodContribution,
+          seasonalAdjustment: booking.seasonalAdjustment,
+          seasonalDiscountPercent: booking.seasonalDiscountPercent,
+          durationDiscountPercent: booking.durationDiscountPercent,
+          discountAmount: booking.discountAmount,
+          discountCodePercent: booking.discountCodePercent,
+          discountCodeAppliesTo: booking.discountCodeAppliesTo,
+          accommodationPricePaid: booking.accommodationPricePaid,
+          accommodationPriceAfterSeasonalDuration: booking.accommodationPriceAfterSeasonalDuration,
+          subtotalAfterDiscountCode: booking.subtotalAfterDiscountCode,
+        });
+      }
+
       console.log('[BookingService] Returning booking with accommodation:', {
         booking: newBooking,
         accommodation
@@ -335,7 +412,8 @@ class BookingService {
           accommodation:accommodations (
             title,
             type,
-            image_url
+            image_url,
+            base_price
           )
         `)
         .eq('user_id', user.id)
@@ -376,6 +454,206 @@ class BookingService {
       console.error('[BookingService] Error in checkBookingByPaymentIntent:', error);
       // In case of error, return false to avoid false positives
       return false;
+    }
+  }
+
+  /**
+   * Update a pending payment row after booking creation
+   */
+  async updatePaymentAfterBooking(input: UpdatePaymentAfterBookingInput) {
+    const { paymentRowId, bookingId, stripePaymentId } = input;
+    console.log('[BookingService] [DEBUG] updatePaymentAfterBooking called with:', {
+      paymentRowId,
+      bookingId,
+      stripePaymentId
+    });
+    const { data, error } = await supabase
+      .from('payments')
+      .update({
+        booking_id: bookingId,
+        status: 'paid',
+        stripe_payment_id: stripePaymentId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', paymentRowId)
+      .select('*')
+      .single();
+    if (error) {
+      console.error('[BookingService] [DEBUG] Error updating payment after booking:', error);
+      throw error;
+    }
+    console.log('[BookingService] [DEBUG] Payment row updated successfully:', data);
+    return data;
+  }
+
+  /**
+   * Extend an existing booking
+   */
+  async extendBooking(extension: {
+    bookingId: string;
+    newCheckOut: string; // YYYY-MM-DD format
+    extensionPrice: number;
+    paymentIntentId: string;
+    appliedDiscountCode?: string;
+    discountCodePercent?: number;
+    discountCodeAppliesTo?: string;
+    discountAmount?: number;
+    accommodationPrice?: number;
+    foodContribution?: number;
+    seasonalDiscountPercent?: number;
+    durationDiscountPercent?: number;
+    extensionWeeks?: number;
+  }) {
+    console.log('[BookingService] Extending booking:', extension);
+
+    const user = await this.getCurrentUser();
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
+    try {
+      // First, get the current booking to validate and calculate dates
+      const { data: currentBooking, error: fetchError } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('id', extension.bookingId)
+        .eq('user_id', user.id) // Ensure user owns this booking
+        .single();
+
+      if (fetchError || !currentBooking) {
+        console.error('[BookingService] Error fetching booking for extension:', fetchError);
+        throw new Error('Booking not found or unauthorized');
+      }
+
+      // Parse the current checkout date and new checkout date
+      const currentCheckOut = new Date(currentBooking.check_out);
+      const newCheckOut = new Date(extension.newCheckOut);
+      
+      // Validate that the new checkout is after the current checkout
+      if (newCheckOut <= currentCheckOut) {
+        throw new Error('New checkout date must be after current checkout date');
+      }
+
+      console.log('[BookingService] Extension validation passed:', {
+        bookingId: extension.bookingId,
+        currentCheckOut: currentCheckOut.toISOString(),
+        newCheckOut: newCheckOut.toISOString(),
+        extensionPrice: extension.extensionPrice
+      });
+
+      // Create payment record for the extension
+      const paymentBreakdown: PaymentBreakdown = {
+        accommodation: extension.accommodationPrice || 0,
+        food_facilities: extension.foodContribution || 0,
+        duration_discount_percent: extension.durationDiscountPercent || 0,
+        seasonal_discount_percent: extension.seasonalDiscountPercent || 0,
+        discount_code: extension.appliedDiscountCode || null,
+        discount_code_percent: extension.discountCodePercent || null,
+        discount_code_applies_to: extension.discountCodeAppliesTo as any || null,
+        credits_used: 0, // Extensions are paid, not credits
+        subtotal_before_discounts: (extension.accommodationPrice || 0) + (extension.foodContribution || 0),
+        total_after_discounts: extension.extensionPrice
+      };
+
+      const { data: paymentRecord, error: paymentError } = await supabase
+        .from('payments')
+        .insert({
+          booking_id: extension.bookingId,
+          user_id: user.id,
+          start_date: formatDateOnly(currentCheckOut), // Extension starts where original ends
+          end_date: extension.newCheckOut,
+          amount_paid: extension.extensionPrice,
+          breakdown_json: paymentBreakdown,
+          discount_code: extension.appliedDiscountCode || null,
+          payment_type: 'extension' as PaymentType,
+          stripe_payment_id: extension.paymentIntentId,
+          status: 'paid',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select('*')
+        .single();
+
+      if (paymentError) {
+        console.error('[BookingService] Error creating extension payment:', paymentError);
+        throw new Error('Failed to create payment record for extension');
+      }
+
+      // Update the booking with new checkout date and total price
+      const newTotalPrice = currentBooking.total_price + extension.extensionPrice;
+      
+      const { data: updatedBooking, error: updateError } = await supabase
+        .from('bookings')
+        .update({
+          check_out: extension.newCheckOut,
+          total_price: newTotalPrice,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', extension.bookingId)
+        .select('*')
+        .single();
+
+      if (updateError) {
+        console.error('[BookingService] Error updating booking for extension:', updateError);
+        throw new Error('Failed to update booking with extension');
+      }
+
+      // Update availability calendar for the extension period
+      const extensionStartDate = new Date(currentCheckOut.getTime() + 24 * 60 * 60 * 1000); // Start day after current checkout
+      const extensionEndDate = new Date(newCheckOut.getTime()); // Until new checkout (exclusive)
+      
+      // Generate dates for the extension period
+      const dates = [];
+      for (let d = new Date(extensionStartDate); d < extensionEndDate; d.setDate(d.getDate() + 1)) {
+        dates.push(formatDateOnly(new Date(d)));
+      }
+
+      if (dates.length > 0) {
+        const { error: availabilityError } = await supabase
+          .from('availability')
+          .upsert(
+            dates.map(date => ({
+              accommodation_id: currentBooking.accommodation_id,
+              date,
+              status: 'BOOKED'
+            })),
+            { onConflict: 'accommodation_id,date' }
+          );
+
+        if (availabilityError) {
+          console.warn('[BookingService] Warning: Failed to update availability for extension:', availabilityError);
+          // Don't throw here - the booking extension still succeeded
+        }
+      }
+
+      console.log('[BookingService] Booking extension completed successfully:', {
+        bookingId: extension.bookingId,
+        paymentId: paymentRecord.id,
+        oldCheckOut: currentCheckOut.toISOString(),
+        newCheckOut: extension.newCheckOut,
+        extensionPrice: extension.extensionPrice,
+        newTotalPrice
+      });
+
+      // Fetch accommodation details for response
+      const { data: accommodation, error: accError } = await supabase
+        .from('accommodations')
+        .select('title, type, image_url, base_price')
+        .eq('id', currentBooking.accommodation_id)
+        .single();
+
+      if (accError) {
+        console.warn('[BookingService] Warning: Could not fetch accommodation details:', accError);
+      }
+
+      return {
+        booking: { ...updatedBooking, accommodation },
+        payment: paymentRecord
+      };
+
+    } catch (error) {
+      console.error('[BookingService] Error in extendBooking:', error);
+      throw error;
     }
   }
 }
