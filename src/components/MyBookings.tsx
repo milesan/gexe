@@ -1,6 +1,6 @@
 import React from 'react';
 import { format, parseISO, isAfter, isBefore, addMonths } from 'date-fns';
-import { calculateTotalWeeksDecimal, formatDateForDisplay, normalizeToUTCDate, calculateTotalNights, calculateDurationDiscountWeeks, isWeekSelectable } from '../utils/dates';
+import { calculateTotalWeeksDecimal, formatDateForDisplay, normalizeToUTCDate, calculateTotalNights, calculateDurationDiscountWeeks, isWeekSelectable, calculateDisplayWeeks, formatWeeksForDisplay, calculateAndFormatDisplayWeeks, calculateTotalDays } from '../utils/dates';
 import { getSeasonBreakdown, getDurationDiscount, calculateWeeklyAccommodationPrice } from '../utils/pricing';
 import { bookingService } from '../services/BookingService';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -198,17 +198,84 @@ export function MyBookings() {
 
   // Helper function to calculate actual decimal weeks for display
   const getActualWeeks = (startDate: Date, endDate: Date) => {
+    console.log('[getActualWeeks] === DEBUGGING WEEK CALCULATION ===');
+    console.log('[getActualWeeks] Input dates:', {
+      startDate: startDate.toISOString(),
+      startDateLocal: startDate.toString(),
+      endDate: endDate.toISOString(), 
+      endDateLocal: endDate.toString()
+    });
+    
+    // OLD METHOD: Manual calculation using days
     const tempWeek = { startDate, endDate, status: 'default' as const };
-    const totalNights = calculateTotalNights([tempWeek]);
-    return totalNights / 7;
+    const totalDays = calculateTotalDays([tempWeek]);
+    const weeksDecimal = totalDays / 7;
+    
+    console.log('[getActualWeeks] OLD METHOD - Calculation breakdown:', {
+      totalDays,
+      weeksDecimal,
+      weeksDecimalRounded: Math.round(weeksDecimal * 10) / 10,
+      manualDaysCheck: Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1,
+      timeDiffMs: endDate.getTime() - startDate.getTime(),
+      msPerDay: 1000 * 60 * 60 * 24
+    });
+    
+    // NEW METHOD: Using helper function with business logic
+    const displayWeeks = calculateDisplayWeeks(startDate, endDate);
+    
+    console.log('[getActualWeeks] NEW METHOD - Using calculateDisplayWeeks:', {
+      displayWeeks,
+      oldMethod: weeksDecimal,
+      difference: displayWeeks - weeksDecimal,
+      usingNewMethod: true
+    });
+    
+    // Let's also manually verify the date range
+    console.log('[getActualWeeks] Manual date verification:', {
+      startDateFormatted: formatDateForDisplay(startDate),
+      endDateFormatted: formatDateForDisplay(endDate),
+      startDateUTCComponents: {
+        year: startDate.getUTCFullYear(),
+        month: startDate.getUTCMonth() + 1, // +1 for human readable
+        day: startDate.getUTCDate()
+      },
+      endDateUTCComponents: {
+        year: endDate.getUTCFullYear(), 
+        month: endDate.getUTCMonth() + 1, // +1 for human readable
+        day: endDate.getUTCDate()
+      }
+    });
+    
+    return displayWeeks; // Use the new method with business logic
   };
 
   // Calculate actual decimal weeks for display
   const originalWeeksDecimal = extendingBooking 
-    ? getActualWeeks(
-        typeof extendingBooking.check_in === 'string' ? normalizeToUTCDate(extendingBooking.check_in) : extendingBooking.check_in,
-        typeof extendingBooking.check_out === 'string' ? normalizeToUTCDate(extendingBooking.check_out) : extendingBooking.check_out
-      )
+    ? (() => {
+        console.log('[originalWeeksDecimal] === BOOKING DATE PARSING DEBUG ===');
+        console.log('[originalWeeksDecimal] Raw booking data:', {
+          check_in_raw: extendingBooking.check_in,
+          check_in_type: typeof extendingBooking.check_in,
+          check_out_raw: extendingBooking.check_out,
+          check_out_type: typeof extendingBooking.check_out
+        });
+        
+        const checkInDate = typeof extendingBooking.check_in === 'string' 
+          ? normalizeToUTCDate(extendingBooking.check_in) 
+          : extendingBooking.check_in;
+        const checkOutDate = typeof extendingBooking.check_out === 'string' 
+          ? normalizeToUTCDate(extendingBooking.check_out) 
+          : extendingBooking.check_out;
+          
+        console.log('[originalWeeksDecimal] Parsed dates:', {
+          checkInDate: checkInDate.toISOString(),
+          checkOutDate: checkOutDate.toISOString(),
+          checkInFormatted: formatDateForDisplay(checkInDate),
+          checkOutFormatted: formatDateForDisplay(checkOutDate)
+        });
+        
+        return getActualWeeks(checkInDate, checkOutDate);
+      })()
     : 0;
 
   const totalWeeksDecimal = originalWeeksDecimal + extensionOnlyWeeks.length;
@@ -663,7 +730,7 @@ export function MyBookings() {
                           </span>
                           {isEligibleForExtension(booking) && (
                             <button
-                              className="ml-2 px-2 py-0.5 text-xs font-mono border border-green-600/30 text-accent-primary bg-transparent rounded transition-colors hover:bg-green-900/20 hover:text-green-300 hover:border-green-500/50 focus:outline-none focus:ring-2 focus:ring-green-600 shadow-sm"
+                              className="ml-2 px-2 py-0.5 text-xs font-mono border border-green-600/30 text-accent-primary bg-transparent rounded-sm transition-colors hover:bg-green-900/20 hover:text-green-300 hover:border-green-500/50 focus:outline-none focus:ring-2 focus:ring-green-600 shadow-sm"
                               onClick={() => {
                                 console.log('[DEBUG] Extend button clicked - setting extendingBooking:', booking);
                                 setExtendingBooking(booking);
@@ -768,7 +835,7 @@ export function MyBookings() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-[var(--color-bg-surface)] rounded-lg max-w-md w-full p-4 sm:p-6 border border-gray-500/30 text-text-primary shadow-xl relative max-h-[85vh] overflow-y-auto backdrop-blur-sm"
+              className="bg-[var(--color-bg-surface)] rounded-sm max-w-md w-full p-4 sm:p-6 border border-gray-500/30 text-text-primary shadow-xl relative max-h-[85vh] overflow-y-auto backdrop-blur-sm"
               onClick={(e) => e.stopPropagation()}
             >
               <button
@@ -793,11 +860,11 @@ export function MyBookings() {
               </div>
               
               {/* Current Booking Summary - Simplified */}
-              <div className="bg-surface-dark/30 rounded-lg p-3 mb-4 border border-border/30">
+              <div className="bg-surface-dark/30 rounded-sm p-3 mb-4 border border-border/30">
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-secondary font-mono">Current stay</span>
                   <span className="text-primary font-mono">
-                    {format(checkIn, 'MMM d')} → {format(checkOut, 'MMM d')} ({originalWeeksDecimal.toFixed(1)}w)
+                    {format(checkIn, 'MMM d')} → {format(checkOut, 'MMM d')} ({formatWeeksForDisplay(originalWeeksDecimal)}w)
                   </span>
                 </div>
               </div>
@@ -828,7 +895,7 @@ export function MyBookings() {
                       
                       if (availableOptions.length === 0) {
                         return (
-                          <div className="p-3 border border-border/30 rounded-lg text-center">
+                          <div className="p-3 border border-border/30 rounded-sm text-center">
                             <p className="text-xs text-secondary font-mono">No quick extensions available</p>
                             <p className="text-xs text-secondary/70 font-mono mt-1">
                               {(originalWeeksDecimal >= MAX_WEEKS_ALLOWED) 
@@ -853,7 +920,7 @@ export function MyBookings() {
                                 setExtensionWeeks(selectableWeeks);
                               }}
                               className={`
-                                p-3 rounded-lg border font-mono text-sm transition-all
+                                p-3 rounded-sm border font-mono text-sm transition-all
                                 ${extensionOnlyWeeks.length === weeks
                                   ? 'border-accent-primary bg-accent-primary/20 text-accent-primary'
                                   : 'border-border hover:border-accent-primary/50 text-primary hover:bg-surface-dark/50'
@@ -869,7 +936,7 @@ export function MyBookings() {
                     
                     {/* Error message */}
                     {extensionError && (
-                      <div className="mt-2 p-2 bg-red-900/20 border border-red-600/30 rounded-md">
+                                              <div className="mt-2 p-2 bg-red-900/20 border border-red-600/30 rounded-sm">
                         <p className="text-xs text-red-400 font-mono">{extensionError}</p>
                       </div>
                     )}
@@ -947,7 +1014,7 @@ export function MyBookings() {
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="mb-4 p-3 bg-accent-primary/10 rounded-lg border border-accent-primary/30"
+                      className="mb-4 p-3 bg-accent-primary/10 rounded-sm border border-accent-primary/30"
                     >
                       <div className="flex justify-between items-center">
                         <div>
@@ -959,7 +1026,7 @@ export function MyBookings() {
                         <div className="text-right">
                           <p className="text-xs text-secondary font-mono">Total stay</p>
                           <p className="text-lg text-primary font-mono">
-                            {totalWeeksDecimal.toFixed(1)} weeks
+                            {formatWeeksForDisplay(totalWeeksDecimal)} weeks
                           </p>
                         </div>
                       </div>
@@ -974,7 +1041,7 @@ export function MyBookings() {
                       className="space-y-4"
                     >
                       {/* Pricing Details */}
-                      <div className="p-4 bg-surface-dark rounded-lg border border-border">
+                                              <div className="p-4 bg-surface-dark rounded-sm border border-border">
                   <div className="flex items-center justify-between mb-3">
                           <h4 className="text-base font-mono text-primary">Extension Cost</h4>
                     <Tooltip.Provider>
@@ -1062,20 +1129,20 @@ export function MyBookings() {
                               type="text"
                               value={discountCodeInput}
                               onChange={(e) => setDiscountCodeInput(e.target.value.toUpperCase())}
-                              className="flex-1 px-3 py-2 bg-surface-dark border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-accent-primary text-primary placeholder:text-secondary text-sm font-mono"
+                              className="flex-1 px-3 py-2 bg-surface-dark border border-border rounded-sm focus:outline-none focus:ring-1 focus:ring-accent-primary text-primary placeholder:text-secondary text-sm font-mono"
                               placeholder="Discount code"
                               disabled={isApplyingDiscount}
                             />
                             <button
                               onClick={handleApplyDiscount}
                               disabled={isApplyingDiscount || !discountCodeInput.trim()}
-                              className="px-3 py-2 bg-surface-dark border border-border rounded-md text-primary text-sm font-mono hover:border-accent-primary/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                              className="px-3 py-2 bg-surface-dark border border-border rounded-sm text-primary text-sm font-mono hover:border-accent-primary/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                             >
                               {isApplyingDiscount ? '...' : 'Apply'}
                             </button>
                           </div>
                         ) : (
-                          <div className="flex items-center justify-between p-2.5 bg-emerald-900/20 rounded-md border border-emerald-600/30">
+                                                      <div className="flex items-center justify-between p-2.5 bg-emerald-900/20 rounded-sm border border-emerald-600/30">
                             <div className="flex items-center gap-2 text-sm">
                               <Tag className="w-3.5 h-3.5 text-emerald-500" />
                               <span className="text-emerald-400 font-mono">{appliedDiscount.code} (-{appliedDiscount.percentage_discount}%)</span>
@@ -1097,7 +1164,7 @@ export function MyBookings() {
                   <button
                     onClick={handleConfirmExtension}
                     disabled={isProcessingPayment}
-                        className="w-full px-4 py-2.5 bg-accent-primary text-stone-800 font-mono text-sm rounded-lg transition-all hover:bg-accent-secondary disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
+                        className="w-full px-4 py-2.5 bg-accent-primary text-stone-800 font-mono text-sm rounded-sm transition-all hover:bg-accent-secondary disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
                       >
                         {isProcessingPayment ? (
                           <span className="flex items-center justify-center gap-2">
@@ -1142,7 +1209,7 @@ export function MyBookings() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-[var(--color-bg-surface)] rounded-lg max-w-md w-full p-4 sm:p-6 border border-gray-500/30 text-text-primary shadow-xl relative backdrop-blur-sm"
+              className="bg-[var(--color-bg-surface)] rounded-sm max-w-md w-full p-4 sm:p-6 border border-gray-500/30 text-text-primary shadow-xl relative backdrop-blur-sm"
               onClick={(e) => e.stopPropagation()}
             >
               <button

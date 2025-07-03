@@ -192,3 +192,60 @@ export function calculateWeeklyAccommodationPrice(
 
   return roundedFinalPrice;
 }
+
+/**
+ * Calculate weeks for pricing purposes - always uses exact calculation
+ * This ensures pricing is precise and doesn't change based on display rounding
+ */
+export function calculatePricingWeeksFromDates(startDate: Date, endDate: Date): number {
+  // Import the helper we created
+  const { normalizeToUTCDate } = require('./dates');
+  
+  const startUTC = normalizeToUTCDate(startDate);
+  const endUTC = normalizeToUTCDate(endDate);
+  
+  const timeDiff = endUTC.getTime() - startUTC.getTime();
+  const nights = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+  const exactWeeks = nights / 7;
+  
+  console.log('[calculatePricingWeeksFromDates] Pricing week calculation:', {
+    startDate: startDate.toISOString(),
+    endDate: endDate.toISOString(), 
+    nights,
+    exactWeeks,
+    note: 'Used for precise pricing calculations'
+  });
+  
+  return exactWeeks;
+}
+
+/**
+ * Determine if a booking duration should be considered "standard" weeks
+ * This helps identify when business rounding should apply
+ */
+export function isStandardWeekDuration(startDate: Date, endDate: Date): boolean {
+  const { normalizeToUTCDate } = require('./dates');
+  
+  const startUTC = normalizeToUTCDate(startDate);
+  const endUTC = normalizeToUTCDate(endDate);
+  
+  const timeDiff = endUTC.getTime() - startUTC.getTime();
+  const nights = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+  
+  // Check if it's a multiple of 7 days (standard week)
+  const isExactWeeks = nights % 7 === 0;
+  
+  // Check if it's close to a multiple of 7 days (within 1 day)
+  const remainder = nights % 7;
+  const closeToWeeks = remainder <= 1 || remainder >= 6;
+  
+  console.log('[isStandardWeekDuration] Duration analysis:', {
+    nights,
+    isExactWeeks,
+    remainder,
+    closeToWeeks,
+    isStandard: isExactWeeks || closeToWeeks
+  });
+  
+  return isExactWeeks || closeToWeeks;
+}
