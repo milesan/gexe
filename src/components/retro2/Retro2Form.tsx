@@ -280,12 +280,12 @@ export function Retro2Form({ questions, onSubmit, initialData }: Props) {
           <div className="flex justify-center items-center w-full pointer-events-auto pb-4">
             <button
               type="submit"
-              disabled={isSubmitting || !isFormComplete(currentVisibleQuestions, formData)}
+              disabled={isSubmitting}
               onClick={handleSubmit}
               className={`group flex items-center justify-center gap-2 px-6 py-3 text-lg transition-colors min-w-44 ${isSubmitting || !isFormComplete(currentVisibleQuestions, formData)
-                ? 'bg-retro-accent/10 text-retro-accent'
+                ? 'bg-retro-accent/10 text-retro-accent cursor-pointer'
                 : 'bg-retro-accent text-black hover:bg-accent-secondary'
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
+              } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
               style={{
                 clipPath: `polygon(
                   0 4px, 4px 4px, 4px 0,
