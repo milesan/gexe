@@ -221,7 +221,7 @@ async function reverseEngineerBookings() {
           food_contribution: ffBase,
           seasonal_adjustment: baseAccomTotal * seasonalDiscountPercent,
           duration_discount_percent: durationDiscountPercent * 100,
-          discount_code_percent: discountCodePercent * 100,
+          discount_code_percent: discountCodePercent, // Already in decimal (0.5 for 50%)
           applied_discount_code: discountCodePercent > 0.05 ? 'UNKNOWN' : null,
           discount_amount: totalDiscountAmount
         };

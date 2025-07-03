@@ -14,14 +14,21 @@ interface DiscountModalProps {
   basePrice: number;
   calculatedWeeklyPrice: number | null;
   averageSeasonalDiscount: number | null;
+  // Optional props for extensions where duration should be calculated differently
+  durationCheckInDate?: Date;
+  durationCheckOutDate?: Date;
 }
 
 // Custom hook to handle all discount calculations
-function useDiscounts(checkInDate: Date, checkOutDate: Date, accommodationName: string, basePrice: number) {
+function useDiscounts(checkInDate: Date, checkOutDate: Date, accommodationName: string, basePrice: number, durationCheckInDate?: Date, durationCheckOutDate?: Date) {
   // Calculate duration discount using the utility function
+  // Use durationCheckInDate/durationCheckOutDate if provided (for extensions), otherwise use regular dates
+  const durationStartDate = durationCheckInDate || checkInDate;
+  const durationEndDate = durationCheckOutDate || checkOutDate;
+  
   const completeWeeks = calculateDurationDiscountWeeks([{ 
-    startDate: checkInDate, 
-    endDate: checkOutDate,
+    startDate: durationStartDate, 
+    endDate: durationEndDate,
     status: 'visible' as const
   }]);
   const durationDiscount = getDurationDiscount(completeWeeks);
@@ -30,12 +37,15 @@ function useDiscounts(checkInDate: Date, checkOutDate: Date, accommodationName: 
   const seasonBreakdown = getSeasonBreakdown(checkInDate, checkOutDate);
   const showAccSeasonalSection = basePrice > 0 && seasonBreakdown.seasons.length > 0 && !accommodationName.toLowerCase().includes('dorm');
 
-  console.log('[DiscountModal] useDiscounts Results (Percentages Only - Seasonal passed in):', {
+  console.log('[DiscountModal] useDiscounts Results:', {
     basePrice,
     completeWeeks,
     durationDiscount,
     showAccSeasonalSection,
-    seasonBreakdown
+    seasonBreakdown,
+    usingCustomDurationDates: !!(durationCheckInDate && durationCheckOutDate),
+    seasonalDates: `${checkInDate.toISOString().split('T')[0]} to ${checkOutDate.toISOString().split('T')[0]}`,
+    durationDates: `${durationStartDate.toISOString().split('T')[0]} to ${durationEndDate.toISOString().split('T')[0]}`
   });
 
   return {
@@ -54,14 +64,16 @@ export function DiscountModal({
   accommodationName,
   basePrice, // Base price for accommodation
   calculatedWeeklyPrice, // ADDED: Destructure the new prop
-  averageSeasonalDiscount // ADDED: Destructure the new prop
+  averageSeasonalDiscount, // ADDED: Destructure the new prop
+  durationCheckInDate, // Optional: for extensions where duration calculation differs
+  durationCheckOutDate // Optional: for extensions where duration calculation differs
 }: DiscountModalProps) {
   const {
     completeWeeks,
     durationDiscount,
     seasonBreakdown,
     showAccSeasonalSection, // Renamed for clarity
-  } = useDiscounts(checkInDate, checkOutDate, accommodationName, basePrice);
+  } = useDiscounts(checkInDate, checkOutDate, accommodationName, basePrice, durationCheckInDate, durationCheckOutDate);
 
   // Helper to format percentage
   const formatPercent = (value: number) => `${Math.round(value * 100)}%`;
@@ -114,41 +126,58 @@ export function DiscountModal({
                             <ArrowDown className="w-5 h-5 color-shade-2"/>
                          </div>
 
-                        {/* Conditionally render the Combined Accommodation Discounts Section */}
-                        { (showAccSeasonalSection && averageSeasonalDiscount !== null && averageSeasonalDiscount > 0) && (
-                          <div className="border border-gray-600/50 rounded-sm p-3 space-y-3">
-                            {showAccSeasonalSection && averageSeasonalDiscount !== null && averageSeasonalDiscount > 0 && (
-                              <div>
-                                <div className="flex justify-between items-center mb-1">
-                                  <h4 className="font-mono color-text-primary text-xs sm:text-sm flex items-center gap-2">
-                                    <span className="w-2 h-2 rounded-full bg-accent-primary"></span>
-                                    Seasonal Discount (Accomm.)
-                                  </h4>
-                                  <span className="text-accent-primary font-mono text-xs sm:text-sm font-medium">
-                                    -{formatPercent(averageSeasonalDiscount)}
-                                  </span>
-                                </div>
-                                <p className="text-[10px] sm:text-xs color-shade-2 font-mono pl-4">
-                                  (Weighted average based on your dates: 
-                                  {seasonBreakdown.seasons.map((s, i) => 
-                                    ` ${s.nights} night${s.nights !== 1 ? 's' : ''} in ${s.name}${i < seasonBreakdown.seasons.length - 1 ? ',' : ''}`
-                                  )})
-                                </p>
-                              </div>
-                            )}
-                            
-                            {/* Show message if no discounts applied *to accommodation* */}
-                             {!showAccSeasonalSection && durationDiscount === 0 && (
-                                <p className="text-xs color-shade-3 font-mono text-center italic">No discounts applicable to accommodation.</p>
-                             )}
+                        {/* Seasonal Discount Section (if applicable) */}
+                        {showAccSeasonalSection && averageSeasonalDiscount !== null && averageSeasonalDiscount > 0 && (
+                          <div className="border border-gray-600/50 rounded-sm p-3">
+                            <div className="flex justify-between items-center mb-1">
+                              <h4 className="font-mono color-text-primary text-xs sm:text-sm flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-accent-primary"></span>
+                                Seasonal Discount (Accomm.)
+                              </h4>
+                              <span className="text-accent-primary font-mono text-xs sm:text-sm font-medium">
+                                -{formatPercent(averageSeasonalDiscount)}
+                              </span>
+                            </div>
+                            <p className="text-[10px] sm:text-xs color-shade-2 font-mono pl-4">
+                              (Weighted average based on your dates: 
+                              {seasonBreakdown.seasons.map((s, i) => 
+                                ` ${s.nights} night${s.nights !== 1 ? 's' : ''} in ${s.name}${i < seasonBreakdown.seasons.length - 1 ? ',' : ''}`
+                              )})
+                            </p>
                           </div>
                         )}
 
-                        {/* Conditionally render the second arrow only when the above box is shown */}
-                        { (showAccSeasonalSection || durationDiscount === 0) && (
-                           <div className="flex justify-center">
+                        {/* Duration Discount Section (if applicable) */}
+                        {durationDiscount > 0 && (
+                          <>
+                            <div className="border border-gray-600/50 rounded-sm p-3">
+                              <div className="flex justify-between items-center mb-1">
+                                <h4 className="color-text-primary text-xs sm:text-sm flex items-center gap-2 font-mono">
+                                  <span className="w-2 h-2 rounded-full bg-purple-400"></span>
+                                  Duration Discount 
+                                </h4>
+                                <span className="text-purple-400 text-xs sm:text-sm font-mono font-medium">
+                                  -{formatPercent(durationDiscount)}
+                                </span>
+                              </div>
+                              <p className="text-[10px] sm:text-xs color-shade-2 font-mono pl-4">
+                                (Applied for stays of 3+ weeks. {durationCheckInDate && durationCheckOutDate ? 'Your total stay is' : 'You\'re staying'} {completeWeeks} week{completeWeeks !== 1 ? 's' : ''}.)
+                                {' '}
+                                Applies to Food & Facilities{ !noAccommodationDiscount && ' and Accommodation'}.
+                              </p>
+                            </div>
+                            
+                            <div className="flex justify-center">
                               <ArrowDown className="w-5 h-5 color-shade-2"/>
-                           </div>
+                            </div>
+                          </>
+                        )}
+
+                        {/* Show message if no discounts applied to accommodation */}
+                        {!showAccSeasonalSection && durationDiscount === 0 && (
+                          <div className="border border-gray-600/50 rounded-sm p-3">
+                            <p className="text-xs color-shade-3 font-mono text-center italic">No discounts applicable to accommodation.</p>
+                          </div>
                         )}
 
                         {/* Final Accommodation Rate Section */}
@@ -156,14 +185,11 @@ export function DiscountModal({
                             <div className="text-xs text-accent-primary/80 font-mono mb-1">Final Accommodation Weekly Rate</div>
                             <div className="text-lg font-medium text-accent-primary font-mono">€{calculatedWeeklyPrice ?? 'N/A'}</div>
                          </div>
-
-                         {/* Separator if duration discount also applies to F&F */}    
-                         {durationDiscount > 0 && <div className="border-t border-dashed border-gray-600 my-4"></div>}
                     </>
                 )} 
 
-                {/* === Duration Discount for Food & Facilities (Always show if applicable) === */}  
-                 {durationDiscount > 0 && (
+                {/* === Duration Discount for Food & Facilities (Only show if accommodation is free) === */}  
+                 {noAccommodationDiscount && durationDiscount > 0 && (
                    <div className="border border-gray-600/50 rounded-sm p-3 space-y-2">
                       <div className="flex justify-between items-center mb-1">
                           <h4 className="color-text-primary text-xs sm:text-sm flex items-center gap-2 font-mono">
@@ -175,19 +201,16 @@ export function DiscountModal({
                           </span>
                         </div>
                         <p className="text-[10px] sm:text-xs color-shade-2 font-mono pl-4">
-                            (Applied for stays of 3+ weeks. You're staying {completeWeeks} week{completeWeeks !== 1 ? 's' : ''}.)
+                            (Applied for stays of 3+ weeks. {durationCheckInDate && durationCheckOutDate ? 'Your total stay is' : 'You\'re staying'} {completeWeeks} week{completeWeeks !== 1 ? 's' : ''}.)
                             {' '}
-                            Applies to Food & Facilities{ !noAccommodationDiscount && ' and Accommodation'}.
+                            Applies to Food & Facilities cost.
                         </p>
                    </div>
                  )}
 
-                 {/* Message if accommodation is free */}
+                 {/* Message if accommodation is free and no duration discount */}
                  {noAccommodationDiscount && durationDiscount === 0 && (
                     <p className="text-xs color-shade-3 font-mono text-center italic">Accommodation is free. No duration discount applicable (requires 3+ weeks).</p>
-                 )} 
-                 {noAccommodationDiscount && durationDiscount > 0 && (
-                    <p className="text-xs color-shade-3 font-mono text-center italic">Accommodation is free. Duration discount applies to Food & Facilities cost.</p>
                  )} 
               </div>
             </motion.div>

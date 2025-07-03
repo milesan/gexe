@@ -158,7 +158,8 @@ export function MyBookings() {
     // This ensures we get the correct count even if the original booking is in the past
     const tempWeek = { startDate: checkIn, endDate: checkOut, status: 'default' as const };
     const totalNights = calculateTotalNights([tempWeek]);
-    const originalWeeksCount = Math.round(totalNights / 7);
+    const originalWeeksDecimal = totalNights / 7;
+    const originalWeeksCount = Math.ceil(originalWeeksDecimal); // Use ceil for pricing calculations to ensure we don't undercharge
     
     // Create mock week objects for duration discount calculation
     // We only need the count and date range for pricing calculations
@@ -178,8 +179,9 @@ export function MyBookings() {
       checkIn: formatDateForDisplay(checkIn),
       checkOut: formatDateForDisplay(checkOut),
       totalNights,
+      originalWeeksDecimal: originalWeeksDecimal.toFixed(2),
       originalWeeksCount: originalWeeksCount,
-      calculationMethod: 'Math.round(totalNights / 7)'
+      calculationMethod: 'Math.ceil(totalNights / 7) for pricing, but display shows decimal'
     });
     console.log('[DEBUG] getOriginalWeeks - reconstructed weeks:', {
       weekCount: originalWeeks.length,
@@ -194,8 +196,26 @@ export function MyBookings() {
   };
   const originalWeeks = getOriginalWeeks();
 
+  // Helper function to calculate actual decimal weeks for display
+  const getActualWeeks = (startDate: Date, endDate: Date) => {
+    const tempWeek = { startDate, endDate, status: 'default' as const };
+    const totalNights = calculateTotalNights([tempWeek]);
+    return totalNights / 7;
+  };
+
+  // Calculate actual decimal weeks for display
+  const originalWeeksDecimal = extendingBooking 
+    ? getActualWeeks(
+        typeof extendingBooking.check_in === 'string' ? normalizeToUTCDate(extendingBooking.check_in) : extendingBooking.check_in,
+        typeof extendingBooking.check_out === 'string' ? normalizeToUTCDate(extendingBooking.check_out) : extendingBooking.check_out
+      )
+    : 0;
+
+  const totalWeeksDecimal = originalWeeksDecimal + extensionOnlyWeeks.length;
+
   console.log('[DEBUG] originalWeeks length:', originalWeeks.length);
   console.log('[DEBUG] originalWeeks IDs:', originalWeeks.map(w => w.id));
+  console.log('[DEBUG] Display weeks - original:', originalWeeksDecimal.toFixed(2), 'total:', totalWeeksDecimal.toFixed(2));
 
   // Calculate food contribution range with duration discount for slider
   const foodContributionRange = React.useMemo(() => {
@@ -311,14 +331,25 @@ export function MyBookings() {
       };
     }
     
-    // Calculate seasonal discount for extension period
-    const seasonBreakdown = getSeasonBreakdown(extensionStartDate, extensionEndDate);
+    // Calculate seasonal discount based on TOTAL stay (original + extension)
+    // This ensures someone extending pays the same rate as someone booking the full period upfront
+    // NOTE: The DiscountModal will separately calculate and show the breakdown for just the extension period
+    // NOTE: For payment breakdown, we'll calculate seasonal discount for extension period only
+    const totalStayStartDate = originalWeeks[0]?.startDate || extensionStartDate;
+    const totalStayEndDate = extensionEndDate;
+    
+    const seasonBreakdown = getSeasonBreakdown(totalStayStartDate, totalStayEndDate);
     const averageSeasonalDiscount = seasonBreakdown.seasons.reduce((sum, season) => 
       sum + (season.discount * season.nights), 0) / 
       seasonBreakdown.seasons.reduce((sum, season) => sum + season.nights, 0);
     
     // Round seasonal discount for consistency with BookingSummary
     const roundedAverageSeasonalDiscount = Math.round(averageSeasonalDiscount * 100) / 100;
+    
+    // CRITICAL FIX: Dorms don't get seasonal discounts
+    const effectiveSeasonalDiscount = accommodationTitle.toLowerCase().includes('dorm') 
+      ? 0 
+      : roundedAverageSeasonalDiscount;
     
     // Calculate duration discount based on TOTAL stay (original + extension)
     const combinedWeeksForDiscount = [...originalWeeks, ...extensionOnlyWeeks];
@@ -359,7 +390,7 @@ export function MyBookings() {
     const weeklyAccommodationRate = calculateWeeklyAccommodationPrice(
       mockAccommodation,
       [...originalWeeks, ...extensionOnlyWeeks],
-      averageSeasonalDiscount
+      effectiveSeasonalDiscount
     );
     
     // Calculate extension accommodation cost
@@ -375,39 +406,41 @@ export function MyBookings() {
     // Calculate subtotal before discount codes
     const subtotalBeforeDiscount = extensionAccommodationPrice + extensionFoodCost;
     
-    // Apply discount code if present
-    let discountAmount = 0;
-    if (appliedDiscount && subtotalBeforeDiscount > 0) {
-      const discountPercentage = appliedDiscount.percentage_discount / 100;
-      const appliesTo = appliedDiscount.applies_to || 'total';
+            // Apply discount code if present
+        let discountAmount = 0;
+        if (appliedDiscount && subtotalBeforeDiscount > 0) {
+          const discountPercentage = appliedDiscount.percentage_discount / 100; // Convert to decimal (0.5 for 50%)
+          const appliesTo = appliedDiscount.applies_to || 'total';
 
-      let amountToDiscountFrom = 0;
-      
-      if (appliesTo === 'accommodation') {
-        amountToDiscountFrom = extensionAccommodationPrice;
-      } else if (appliesTo === 'food_facilities') {
-        amountToDiscountFrom = extensionFoodCost;
-      } else { // 'total' or fallback
-        amountToDiscountFrom = subtotalBeforeDiscount;
-      }
+          let amountToDiscountFrom = 0;
+          
+          if (appliesTo === 'accommodation') {
+            amountToDiscountFrom = extensionAccommodationPrice;
+          } else if (appliesTo === 'food_facilities') {
+            amountToDiscountFrom = extensionFoodCost;
+          } else { // 'total' or fallback
+            amountToDiscountFrom = subtotalBeforeDiscount;
+          }
 
-      if (amountToDiscountFrom > 0) {
-        discountAmount = parseFloat((amountToDiscountFrom * discountPercentage).toFixed(2));
-      }
+          if (amountToDiscountFrom > 0) {
+            discountAmount = parseFloat((amountToDiscountFrom * discountPercentage).toFixed(2));
+          }
 
-      console.log('[Extension] Discount applied:', {
-        code: appliedDiscount.code,
-        percentage: appliedDiscount.percentage_discount,
-        appliesTo,
-        amountDiscountedFrom: amountToDiscountFrom,
-        discountAmount
-      });
-    }
+          console.log('[Extension] Discount applied:', {
+            code: appliedDiscount.code,
+            percentage: appliedDiscount.percentage_discount,
+            appliesTo,
+            amountDiscountedFrom: amountToDiscountFrom,
+            discountAmount
+          });
+        }
     
-    // Calculate final extension price after discount
+    // Calculate final extension price after discount (use precise discount amount)
     const finalExtensionPrice = Math.max(0, subtotalBeforeDiscount - discountAmount);
 
     console.log('[Extension] ===== DETAILED PRICING CALCULATION DEBUG =====');
+    console.log('[Extension] FIXED: Dorm accommodations now correctly get 0% seasonal discount');
+    console.log('[Extension] FIXED: Final extension price is now rounded to match Stripe amount');
     console.log('[Extension] Original booking weeks:', {
       count: originalWeeks.length,
       weeks: originalWeeks.map(w => ({
@@ -428,13 +461,17 @@ export function MyBookings() {
       totalWeeksCount: originalWeeks.length + extensionOnlyWeeks.length,
       totalNightsForDiscount,
       completeWeeksForDiscount,
-      durationDiscountPercent: (durationDiscountPercent * 100).toFixed(1) + '%'
+      durationDiscountPercent: (durationDiscountPercent * 100).toFixed(1) + '%',
+      note: 'Both seasonal and duration discounts are calculated based on TOTAL stay (original + extension)'
     });
     console.log('[Extension] Accommodation pricing breakdown:', {
       accommodationBasePrice,
       accommodationTitle,
-      averageSeasonalDiscount: (averageSeasonalDiscount * 100).toFixed(1) + '%',
-      weeklyAccommodationRate: `€${weeklyAccommodationRate} (base: €${accommodationBasePrice} * (1 - ${(averageSeasonalDiscount * 100).toFixed(1)}%) * (1 - ${(durationDiscountPercent * 100).toFixed(1)}%))`,
+      totalStayPeriod: `${formatDateForDisplay(totalStayStartDate)} to ${formatDateForDisplay(totalStayEndDate)}`,
+      calculatedSeasonalDiscount: (averageSeasonalDiscount * 100).toFixed(1) + '%',
+      effectiveSeasonalDiscount: (effectiveSeasonalDiscount * 100).toFixed(1) + '%',
+      isDorm: accommodationTitle.toLowerCase().includes('dorm'),
+      weeklyAccommodationRate: `€${weeklyAccommodationRate} (base: €${accommodationBasePrice} * (1 - ${(effectiveSeasonalDiscount * 100).toFixed(1)}%) * (1 - ${(durationDiscountPercent * 100).toFixed(1)}%))`,
       extensionWeeks,
       extensionAccommodationPrice: `€${extensionAccommodationPrice} (€${weeklyAccommodationRate} * ${extensionWeeks})`
     });
@@ -457,10 +494,11 @@ export function MyBookings() {
       extensionPrice: subtotalBeforeDiscount, // Keep original for display
       accommodationBasePrice,
       extensionAccommodationPrice,
+      extensionAccommodationOriginalPrice: accommodationBasePrice * extensionWeeks, // Original price before discounts - passed directly to avoid reverse calculations
       extensionFoodCost,
       discountAmount,
       finalExtensionPrice,
-      averageSeasonalDiscount: roundedAverageSeasonalDiscount
+      averageSeasonalDiscount: effectiveSeasonalDiscount
     };
   }, [extendingBooking, originalWeeks, extensionOnlyWeeks, foodContribution, appliedDiscount]);
 
@@ -488,7 +526,7 @@ export function MyBookings() {
           // Include discount information if applied
           ...(appliedDiscount && {
             appliedDiscountCode: appliedDiscount.code,
-            discountCodePercent: appliedDiscount.percentage_discount,
+            discountCodePercent: appliedDiscount.percentage_discount / 100,
             discountCodeAppliesTo: appliedDiscount.applies_to,
             discountAmount: extensionPricing.discountAmount
           })
@@ -503,12 +541,34 @@ export function MyBookings() {
         extensionPrice: extensionPricing.finalExtensionPrice,
         paymentIntentId: paymentIntentId || '',
         appliedDiscountCode: appliedDiscount?.code,
-        discountCodePercent: appliedDiscount?.percentage_discount,
+        discountCodePercent: appliedDiscount?.percentage_discount ? appliedDiscount.percentage_discount / 100 : undefined, // Store as decimal (0.5 for 50%)
         discountCodeAppliesTo: appliedDiscount?.applies_to,
         discountAmount: extensionPricing.discountAmount,
+        discountCodeAmount: extensionPricing.discountAmount, // FIXED: Pass exact discount code amount
         accommodationPrice: extensionPricing.extensionAccommodationPrice,
+        accommodationOriginalPrice: extensionPricing.extensionAccommodationOriginalPrice, // Original price before discounts - no more reverse calculations!
         foodContribution: extensionPricing.extensionFoodCost,
-        seasonalDiscountPercent: extensionPricing.averageSeasonalDiscount,
+        seasonalDiscountPercent: (() => {
+          // Calculate seasonal discount for EXTENSION PERIOD ONLY (for payment breakdown)
+          if (extensionOnlyWeeks.length === 0) return 0;
+          const extensionStartDate = extensionOnlyWeeks[0]?.startDate;
+          const extensionEndDate = extensionOnlyWeeks[extensionOnlyWeeks.length - 1]?.endDate;
+          if (!extensionStartDate || !extensionEndDate) return 0;
+          
+          // CRITICAL FIX: Dorms don't get seasonal discounts
+          if (extendingBooking.accommodation?.title?.toLowerCase().includes('dorm')) {
+            return 0;
+          }
+          
+          const extensionSeasonBreakdown = getSeasonBreakdown(extensionStartDate, extensionEndDate);
+          if (extensionSeasonBreakdown.seasons.length === 0) return 0;
+          
+          const extensionAvgDiscount = extensionSeasonBreakdown.seasons.reduce((sum, season) => 
+            sum + (season.discount * season.nights), 0) / 
+            extensionSeasonBreakdown.seasons.reduce((sum, season) => sum + season.nights, 0);
+          
+          return Math.round(extensionAvgDiscount * 100) / 100;
+        })(),
         durationDiscountPercent: getDurationDiscount(calculateDurationDiscountWeeks([...originalWeeks, ...extensionOnlyWeeks])),
         extensionWeeks: extensionOnlyWeeks.length
       });
@@ -603,7 +663,7 @@ export function MyBookings() {
                           </span>
                           {isEligibleForExtension(booking) && (
                             <button
-                              className="ml-2 px-2 py-0.5 text-xs font-mono border border-emerald-700/50 text-emerald-400 bg-transparent rounded transition-colors hover:bg-emerald-900/30 hover:text-emerald-300 hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-700 shadow-sm"
+                              className="ml-2 px-2 py-0.5 text-xs font-mono border border-green-600/30 text-accent-primary bg-transparent rounded transition-colors hover:bg-green-900/20 hover:text-green-300 hover:border-green-500/50 focus:outline-none focus:ring-2 focus:ring-green-600 shadow-sm"
                               onClick={() => {
                                 console.log('[DEBUG] Extend button clicked - setting extendingBooking:', booking);
                                 setExtendingBooking(booking);
@@ -635,7 +695,7 @@ export function MyBookings() {
                           href="https://gardening.notion.site/Welcome-to-The-Garden-2684f446b48e4b43b3f003d7fca33664?pvs=4"
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-emerald-400 hover:text-emerald-300 hover:underline font-mono transition-colors mt-2"
+                          className="inline-flex items-center gap-1 text-accent-primary hover:text-accent-secondary hover:underline font-mono transition-colors mt-2"
                         >
                           Welcome Guide
                           <ExternalLink className="w-3 h-3" />
@@ -737,7 +797,7 @@ export function MyBookings() {
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-secondary font-mono">Current stay</span>
                   <span className="text-primary font-mono">
-                    {format(checkIn, 'MMM d')} → {format(checkOut, 'MMM d')} ({originalWeeks.length}w)
+                    {format(checkIn, 'MMM d')} → {format(checkOut, 'MMM d')} ({originalWeeksDecimal.toFixed(1)}w)
                   </span>
                 </div>
               </div>
@@ -756,7 +816,7 @@ export function MyBookings() {
                       // Calculate which options are actually available
                       const availableOptions = [1, 2, 4].filter(weeks => {
                         // Check if within max weeks limit
-                        if ((originalWeeks.length + weeks) > MAX_WEEKS_ALLOWED) return false;
+                        if ((originalWeeksDecimal + weeks) > MAX_WEEKS_ALLOWED) return false;
                         
                         // Check if enough weeks are available
                         const selectableWeeks = extensionWeeksData
@@ -771,7 +831,7 @@ export function MyBookings() {
                           <div className="p-3 border border-border/30 rounded-lg text-center">
                             <p className="text-xs text-secondary font-mono">No quick extensions available</p>
                             <p className="text-xs text-secondary/70 font-mono mt-1">
-                              {(originalWeeks.length >= MAX_WEEKS_ALLOWED) 
+                              {(originalWeeksDecimal >= MAX_WEEKS_ALLOWED) 
                                 ? `Maximum stay of ${MAX_WEEKS_ALLOWED} weeks reached`
                                 : 'Try using the calendar below'
                               }
@@ -839,7 +899,7 @@ export function MyBookings() {
                           <WeekSelector
                             weeks={extensionWeeksData
                               .filter(w => isAfter(w.startDate, checkOut) && isWeekSelectable(w, false, originalWeeks, undefined, false))
-                              .slice(0, MAX_WEEKS_ALLOWED - originalWeeks.length)}
+                              .slice(0, MAX_WEEKS_ALLOWED - Math.ceil(originalWeeksDecimal))}
                   selectedWeeks={[...originalWeeks, ...extensionWeeks]}
                   extensionWeeks={extensionOnlyWeeks}
                                     onWeekSelect={(week) => {
@@ -853,7 +913,7 @@ export function MyBookings() {
                     
                               const selectableWeeks = extensionWeeksData
                                 .filter(w => isAfter(w.startDate, checkOut) && isWeekSelectable(w, false, originalWeeks, undefined, false))
-                      .slice(0, MAX_WEEKS_ALLOWED - originalWeeks.length);
+                      .slice(0, MAX_WEEKS_ALLOWED - Math.ceil(originalWeeksDecimal));
                     
                               const clickedWeekIndex = selectableWeeks.findIndex(w => w.id === week.id);
                               if (clickedWeekIndex !== -1) {
@@ -899,7 +959,7 @@ export function MyBookings() {
                         <div className="text-right">
                           <p className="text-xs text-secondary font-mono">Total stay</p>
                           <p className="text-lg text-primary font-mono">
-                            {originalWeeks.length + extensionOnlyWeeks.length} weeks
+                            {totalWeeksDecimal.toFixed(1)} weeks
                           </p>
                         </div>
                       </div>
@@ -980,7 +1040,7 @@ export function MyBookings() {
                       </div>
                       <div className="flex justify-between text-emerald-600">
                                 <span>{appliedDiscount.code} (-{appliedDiscount.percentage_discount}%)</span>
-                                <span>-€{Math.round(extensionPricing.discountAmount)}</span>
+                                <span>-€{extensionPricing.discountAmount.toFixed(2)}</span>
                       </div>
                             </>
                           )}
@@ -988,7 +1048,7 @@ export function MyBookings() {
                           <div className="border-t border-border pt-2 mt-2">
                             <div className="flex justify-between text-base">
                               <span className="text-primary font-medium">Total</span>
-                              <span className="text-primary font-medium">€{Math.round(extensionPricing.finalExtensionPrice)}</span>
+                              <span className="text-primary font-medium">€{extensionPricing.finalExtensionPrice.toFixed(2)}</span>
                             </div>
                           </div>
                     </div>
@@ -1047,7 +1107,7 @@ export function MyBookings() {
                         ) : (
                           <span className="flex items-center justify-center gap-2">
                             Continue to Payment
-                            <span className="opacity-90">€{Math.round(extensionPricing.finalExtensionPrice)}</span>
+                            <span className="opacity-90">€{extensionPricing.finalExtensionPrice.toFixed(2)}</span>
                           </span>
                         )}
                   </button>
@@ -1093,7 +1153,7 @@ export function MyBookings() {
               </button>
               
               <div className="mb-4 sm:mb-6">
-                <h3 className="text-lg sm:text-xl font-display">Complete Extension Payment</h3>
+                <h3 className="text-lg sm:text-xl font-display">Complete Extension Donation</h3>
                 <p className="text-sm text-text-secondary mt-2">
                   Extend your stay by {extensionOnlyWeeks.length} week{extensionOnlyWeeks.length > 1 ? 's' : ''}${appliedDiscount ? ` (${appliedDiscount.code} applied)` : ''}
                 </p>
@@ -1119,16 +1179,39 @@ export function MyBookings() {
       )}
 
       {/* Discount Modal for Extension */}
-      {extendingBooking && (
+      {extendingBooking && extensionOnlyWeeks.length > 0 && (
         <DiscountModal
           isOpen={showDiscountModal}
           onClose={() => setShowDiscountModal(false)}
-          checkInDate={originalWeeks[0]?.startDate || new Date()}
-          checkOutDate={extensionOnlyWeeks.length > 0 ? extensionOnlyWeeks[extensionOnlyWeeks.length - 1]?.endDate : (originalWeeks[originalWeeks.length - 1]?.endDate || new Date())}
+          checkInDate={extensionOnlyWeeks[0]?.startDate || new Date()}
+          checkOutDate={extensionOnlyWeeks[extensionOnlyWeeks.length - 1]?.endDate || new Date()}
+          durationCheckInDate={originalWeeks[0]?.startDate || new Date()}
+          durationCheckOutDate={extensionOnlyWeeks[extensionOnlyWeeks.length - 1]?.endDate || new Date()}
           accommodationName={extendingBooking.accommodation?.title || ''}
           basePrice={extendingBooking.accommodation?.base_price || 0}
-          calculatedWeeklyPrice={extensionPricing.weeklyAccommodationRate}
-          averageSeasonalDiscount={extensionPricing.averageSeasonalDiscount && extensionPricing.averageSeasonalDiscount > 0 ? extensionPricing.averageSeasonalDiscount : null}
+          calculatedWeeklyPrice={extensionPricing.weeklyAccommodationRate} // Price AFTER discounts (seasonal + duration) - this is what the user actually pays per week
+          averageSeasonalDiscount={(() => {
+            // Calculate seasonal discount for EXTENSION PERIOD ONLY (for display in modal)
+            // This shows what seasons the extension covers, not what was used for pricing calculation
+            if (extensionOnlyWeeks.length === 0) return null;
+            const extensionStartDate = extensionOnlyWeeks[0]?.startDate;
+            const extensionEndDate = extensionOnlyWeeks[extensionOnlyWeeks.length - 1]?.endDate;
+            if (!extensionStartDate || !extensionEndDate) return null;
+            
+            // CRITICAL FIX: Dorms don't get seasonal discounts
+            if (extendingBooking.accommodation?.title?.toLowerCase().includes('dorm')) {
+              return 0;
+            }
+            
+            const extensionSeasonBreakdown = getSeasonBreakdown(extensionStartDate, extensionEndDate);
+            if (extensionSeasonBreakdown.seasons.length === 0) return null;
+            
+            const extensionAvgDiscount = extensionSeasonBreakdown.seasons.reduce((sum, season) => 
+              sum + (season.discount * season.nights), 0) / 
+              extensionSeasonBreakdown.seasons.reduce((sum, season) => sum + season.nights, 0);
+            
+            return Math.round(extensionAvgDiscount * 100) / 100;
+          })()}
         />
       )}
     </div>

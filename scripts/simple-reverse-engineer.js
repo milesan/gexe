@@ -217,7 +217,7 @@ async function simpleReverseEngineer() {
               food_contribution: foodBase,
               seasonal_adjustment: seasonalDiscountAmount,
               duration_discount_percent: durationDiscountPercent * 100,
-              discount_code_percent: discountCodePercent,
+              discount_code_percent: discountCodePercent / 100, // Store as decimal (0.5 for 50%)
               applied_discount_code: existingDiscountCode,
               discount_amount: seasonalDiscountAmount + accommodationDurationDiscount + (foodBase * durationDiscountPercent) + foodDiscountCodeAmount
             };
@@ -245,7 +245,7 @@ async function simpleReverseEngineer() {
               food_contribution: foodBase,
               seasonal_adjustment: seasonalDiscountAmount,
               duration_discount_percent: durationDiscountPercent * 100,
-              discount_code_percent: discountCodePercent,
+              discount_code_percent: discountCodePercent / 100, // Store as decimal (0.5 for 50%)
               applied_discount_code: existingDiscountCode,
               discount_amount: seasonalDiscountAmount + accommodationDurationDiscount + (foodBase * durationDiscountPercent) + totalDiscountCodeAmount
             };

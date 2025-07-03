@@ -193,7 +193,7 @@ async function reverseEngineerBooking(booking: Booking, accommodation: Accommoda
     food_contribution: parseFloat(adjustedFoodContribution.toFixed(2)),
     seasonal_adjustment: parseFloat(seasonalAdjustmentAmount.toFixed(2)),
     duration_discount_percent: parseFloat((durationDiscountPercent * 100).toFixed(2)),
-    discount_code_percent: parseFloat(discountCodePercent.toFixed(2))
+    discount_code_percent: parseFloat((discountCodePercent / 100).toFixed(4)) // Store as decimal (0.5 for 50%)
   };
 }
 

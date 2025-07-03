@@ -181,6 +181,7 @@ class BookingService {
     const { bookingId, userId, startDate, endDate, amountPaid, breakdownJson, discountCode, paymentType } = payment;
     const startISO = startDate instanceof Date ? formatDateOnly(startDate) : formatDateOnly(new Date(startDate));
     const endISO = endDate instanceof Date ? formatDateOnly(endDate) : formatDateOnly(new Date(endDate));
+    
     const { data, error } = await supabase
       .from('payments')
       .insert({
@@ -189,7 +190,7 @@ class BookingService {
         start_date: startISO,
         end_date: endISO,
         amount_paid: amountPaid,
-        breakdown_json: breakdownJson ? JSON.stringify(breakdownJson) : null,
+        breakdown_json: breakdownJson,
         discount_code: discountCode || null,
         payment_type: paymentType,
         status: 'pending',
@@ -202,6 +203,7 @@ class BookingService {
       console.error('[BookingService] Error creating pending payment:', error);
       throw error;
     }
+    
     return data;
   }
 
@@ -214,7 +216,7 @@ class BookingService {
       .update({
         status: 'paid',
         stripe_payment_id: stripePaymentId,
-        breakdown_json: breakdownJson ? JSON.stringify(breakdownJson) : undefined,
+        breakdown_json: breakdownJson,
         updated_at: new Date().toISOString(),
       })
       .eq('id', paymentId)
@@ -244,6 +246,7 @@ class BookingService {
     discountAmount?: number;
     discountCodePercent?: number;
     discountCodeAppliesTo?: string; // NEW: What the discount code applies to (total, food_facilities, etc.)
+    discountCodeAmount?: number; // NEW: Exact discount code amount to avoid rounding issues
     accommodationPricePaid?: number; // NEW: Actual accommodation amount paid
     accommodationPriceAfterSeasonalDuration?: number; // NEW: After seasonal/duration but before codes
     subtotalAfterDiscountCode?: number; // NEW: After discount code but before credits
@@ -498,7 +501,9 @@ class BookingService {
     discountCodePercent?: number;
     discountCodeAppliesTo?: string;
     discountAmount?: number;
+    discountCodeAmount?: number; // NEW: Exact discount code amount to avoid rounding issues
     accommodationPrice?: number;
+    accommodationOriginalPrice?: number; // NEW: Original accommodation price before discounts
     foodContribution?: number;
     seasonalDiscountPercent?: number;
     durationDiscountPercent?: number;
@@ -541,19 +546,65 @@ class BookingService {
         extensionPrice: extension.extensionPrice
       });
 
+      console.log('[BookingService] FIXED: Using original accommodation price directly - no more reverse calculations');
+
+      // Use the original accommodation price directly (no more reverse calculations)
+      const accommodationOriginal = extension.accommodationOriginalPrice || extension.accommodationPrice || 0;
+      
       // Create payment record for the extension
+      // FIXED: Using original accommodation price directly - much cleaner!
       const paymentBreakdown: PaymentBreakdown = {
-        accommodation: extension.accommodationPrice || 0,
+        accommodation: extension.accommodationPrice || 0, // Discounted accommodation price (after seasonal/duration discounts)
         food_facilities: extension.foodContribution || 0,
-        duration_discount_percent: extension.durationDiscountPercent || 0,
-        seasonal_discount_percent: extension.seasonalDiscountPercent || 0,
+        accommodation_original: Math.round(accommodationOriginal), // Original price before discounts
+        duration_discount_percent: (extension.durationDiscountPercent || 0), // Already in decimal format (0.16 for 16%)
+        seasonal_discount_percent: (extension.seasonalDiscountPercent || 0), // Already in decimal format (0.16 for 16%)
         discount_code: extension.appliedDiscountCode || null,
-        discount_code_percent: extension.discountCodePercent || null,
+        discount_code_percent: extension.discountCodePercent || null, // Should be decimal (0.5 for 50%)
         discount_code_applies_to: extension.discountCodeAppliesTo as any || null,
+        discount_code_amount: extension.discountCodeAmount || 0, // Already rounded in MyBookings.tsx
         credits_used: 0, // Extensions are paid, not credits
-        subtotal_before_discounts: (extension.accommodationPrice || 0) + (extension.foodContribution || 0),
-        total_after_discounts: extension.extensionPrice
+        subtotal_before_discounts: (extension.accommodationPrice || 0) + (extension.foodContribution || 0), // Use discounted accommodation price
+        total_after_discounts: Math.round(extension.extensionPrice) // Round to match Stripe amount
       };
+
+      // DETAILED LOGGING: Verify all payment breakdown values are accurate
+      console.log('[BookingService] ===== EXTENSION PAYMENT BREAKDOWN VERIFICATION =====');
+      console.log('[BookingService] Input values received:', {
+        extensionPrice: extension.extensionPrice,
+        accommodationPrice: extension.accommodationPrice,
+        accommodationOriginalPrice: extension.accommodationOriginalPrice,
+        foodContribution: extension.foodContribution,
+        seasonalDiscountPercent: extension.seasonalDiscountPercent, // For extension period only
+        durationDiscountPercent: extension.durationDiscountPercent, // For total stay (original + extension)
+        appliedDiscountCode: extension.appliedDiscountCode,
+        discountCodePercent: extension.discountCodePercent,
+        discountCodeAppliesTo: extension.discountCodeAppliesTo,
+        discountCodeAmount: extension.discountCodeAmount // FIXED: Log exact discount code amount
+      });
+      console.log('[BookingService] Calculated values:', {
+        accommodationOriginal: accommodationOriginal,
+        roundedAccommodationOriginal: Math.round(accommodationOriginal),
+        seasonalDiscountDecimal: (extension.seasonalDiscountPercent || 0) / 100,
+        durationDiscountDecimal: (extension.durationDiscountPercent || 0) / 100,
+        discountCodeDecimal: extension.discountCodePercent,
+        subtotalBeforeDiscounts: (extension.accommodationPrice || 0) + (extension.foodContribution || 0),
+        totalAfterDiscounts: Math.round(extension.extensionPrice)
+      });
+      console.log('[BookingService] FIXED: No more reverse calculations - using original price directly!');
+      console.log('[BookingService] Final payment breakdown object:', JSON.stringify(paymentBreakdown, null, 2));
+      console.log('[BookingService] Verification checks:', {
+        accommodationIsDiscountedPrice: paymentBreakdown.accommodation === (extension.accommodationPrice || 0),
+        accommodationOriginalIsOriginalPrice: paymentBreakdown.accommodation_original === Math.round(accommodationOriginal),
+        seasonalDiscountIsDecimal: paymentBreakdown.seasonal_discount_percent === (extension.seasonalDiscountPercent || 0) / 100,
+        durationDiscountIsDecimal: paymentBreakdown.duration_discount_percent === (extension.durationDiscountPercent || 0) / 100,
+        subtotalCalculation: paymentBreakdown.subtotal_before_discounts === (extension.accommodationPrice || 0) + (extension.foodContribution || 0),
+        totalMatchesExtensionPrice: paymentBreakdown.total_after_discounts === Math.round(extension.extensionPrice),
+        originalPriceSource: extension.accommodationOriginalPrice ? 'directly provided' : 'fallback to accommodationPrice'
+      });
+      console.log('[BookingService] ===== END VERIFICATION =====');
+
+      
 
       const { data: paymentRecord, error: paymentError } = await supabase
         .from('payments')
@@ -575,7 +626,7 @@ class BookingService {
         .single();
 
       if (paymentError) {
-        console.error('[BookingService] Error creating extension payment:', paymentError);
+        console.error('[BookingService] Error creating extension donation:', paymentError);
         throw new Error('Failed to create payment record for extension');
       }
 

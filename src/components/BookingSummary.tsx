@@ -492,11 +492,10 @@ export function BookingSummary({
             sum + (season.discount * season.nights), 0) / 
             seasonBreakdownState.seasons.reduce((sum, season) => sum + season.nights, 0);
           
-          // CRITICAL FIX: Round to match what's displayed in modal (Math.round(value * 100))
-          // This ensures calculations use the same value users see (e.g., 10% not 9.51%)
+          // Store as decimal (e.g., 0.08 for 8%) to match the expected format
           avgSeasonalDiscountPercent = Math.round(preciseDiscount * 100) / 100;
           
-          // Calculate the actual discount amount: base price * weeks * ROUNDED seasonal discount %
+          // Calculate the actual discount amount: base price * weeks * seasonal discount % (already in decimal)
           seasonalDiscountAmount = baseAccommodationPrice * avgSeasonalDiscountPercent;
         }
         
@@ -509,6 +508,9 @@ export function BookingSummary({
         // Calculate subtotal after discount code (but before credits)
         const subtotalAfterDiscountCode = pricing.totalAmount; // This is already calculated in usePricing hook
         
+        // FIXED: Use the exact discount code amount from pricing hook to avoid rounding issues
+        const exactDiscountCodeAmount = pricing.appliedCodeDiscountValue;
+        
         // Log the breakdown for debugging
         console.log('[Booking Summary] Accommodation pricing breakdown:', {
           baseWeeklyRate: selectedAccommodation.base_price,
@@ -520,6 +522,7 @@ export function BookingSummary({
           accommodationDurationDiscountAmount: accommodationDurationDiscountAmount,
           accommodationAfterSeasonalDuration: accommodationAfterSeasonalDuration,
           finalAccommodationPrice: pricing.totalAccommodationCost,
+          exactDiscountCodeAmount: exactDiscountCodeAmount, // FIXED: Use exact amount
           // Note: Now using pricing.totalAccommodationCost directly to avoid rounding discrepancies
           usingPricingHookValue: true
         });
@@ -539,22 +542,24 @@ export function BookingSummary({
           accommodationPrice: parseFloat(baseAccommodationPrice.toFixed(2)), // Base price BEFORE discounts
           foodContribution: pricing.totalFoodAndFacilitiesCost,
           seasonalAdjustment: parseFloat(seasonalDiscountAmount.toFixed(2)),
-          seasonalDiscountPercent: Math.round(avgSeasonalDiscountPercent * 100), // Store as rounded integer percentage (matches display)
+          seasonalDiscountPercent: Math.round(avgSeasonalDiscountPercent * 100), // Store as percentage (e.g., 8 for 8%)
           durationDiscountPercent: pricing.durationDiscountPercent,
-          // Calculate total discount amount (accommodation duration + food duration + code + seasonal discounts)
-          discountAmount: accommodationDurationDiscountAmount + pricing.durationDiscountAmount + pricing.appliedCodeDiscountValue + parseFloat(seasonalDiscountAmount.toFixed(2)),
+          // FIXED: Use exact discount amounts to avoid rounding issues
+          discountAmount: parseFloat((accommodationDurationDiscountAmount + pricing.durationDiscountAmount + exactDiscountCodeAmount + seasonalDiscountAmount).toFixed(2)),
           // NEW: Store the actual accommodation amount paid (after all discounts)
           accommodationPricePaid: pricing.totalAccommodationCost,
           // NEW: Store accommodation price after seasonal/duration but before discount codes
           accommodationPriceAfterSeasonalDuration: parseFloat(accommodationAfterSeasonalDuration.toFixed(2)),
           // NEW: Store subtotal after discount code but before credits
           subtotalAfterDiscountCode: parseFloat(subtotalAfterDiscountCode.toFixed(2)),
+          // FIXED: Store exact discount code amount for payment breakdown
+          discountCodeAmount: parseFloat(exactDiscountCodeAmount.toFixed(2)),
           paymentRowId: paymentRowIdToUse,
         };
 
         if (appliedDiscount?.code) {
           bookingPayload.appliedDiscountCode = appliedDiscount.code;
-          bookingPayload.discountCodePercent = appliedDiscount.percentage_discount;
+          bookingPayload.discountCodePercent = appliedDiscount.percentage_discount / 100; // Store as decimal (0.5 for 50%)
           bookingPayload.discountCodeAppliesTo = appliedDiscount.applies_to; // NEW: Save what the discount applies to
           console.log("[Booking Summary] Adding applied discount code to booking payload:", appliedDiscount.code, "with", appliedDiscount.percentage_discount, "% discount, applies to:", appliedDiscount.applies_to);
         }
@@ -941,18 +946,28 @@ Please manually create the booking for this user or process a refund.`;
               seasonBreakdownState.seasons.reduce((sum, season) => sum + season.nights, 0);
             avgSeasonalDiscountPercent = Math.round(preciseDiscount * 100) / 100;
           }
+          // Calculate the original accommodation price before all discounts
+          const baseAccommodationPrice = pricing.baseAccommodationRate * pricing.weeksStaying;
+          
+          // FIXED: Define exactDiscountCodeAmount in this scope
+          const exactDiscountCodeAmount = pricing.appliedCodeDiscountValue;
+          
           const breakdownJson: PaymentBreakdown = {
             accommodation: pricing.totalAccommodationCost,
             food_facilities: pricing.totalFoodAndFacilitiesCost,
-            duration_discount_percent: pricing.durationDiscountPercent,
-            seasonal_discount_percent: avgSeasonalDiscountPercent,
+            accommodation_original: baseAccommodationPrice, // Original accommodation price before all discounts
+            duration_discount_percent: pricing.durationDiscountPercent / 100, // Convert to decimal (e.g., 0.18 for 18%)
+            seasonal_discount_percent: avgSeasonalDiscountPercent, // Already in decimal (e.g., 0.08 for 8%)
             discount_code: appliedDiscount?.code || null,
-            discount_code_percent: appliedDiscount?.percentage_discount || null,
+            discount_code_percent: appliedDiscount?.percentage_discount ? appliedDiscount.percentage_discount / 100 : null, // Store as decimal (0.5 for 50%)
             discount_code_applies_to: (appliedDiscount?.applies_to as 'accommodation' | 'food_facilities' | 'total') || null,
+            discount_code_amount: parseFloat(exactDiscountCodeAmount.toFixed(2)), // FIXED: Store exact discount code amount
             credits_used: creditsToUse, // Include credits in the breakdown
             subtotal_before_discounts: pricing.subtotal,
             total_after_discounts: pricing.totalAmount
           };
+
+
 
           const payment = await bookingService.createPendingPayment({
             bookingId: null, // Use null for pending payment

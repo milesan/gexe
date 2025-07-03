@@ -9,6 +9,9 @@ export interface PaymentBreakdown {
   accommodation: number;           // Accommodation cost for this payment period
   food_facilities: number;         // Food & facilities cost for this payment period
   
+  // Original accommodation price (before all discounts)
+  accommodation_original: number;  // Original accommodation price before seasonal/duration discounts
+  
   // Discount percentages
   duration_discount_percent: number;    // Duration discount % (applies to both accommodation and food)
   seasonal_discount_percent: number;    // Seasonal discount % (applies to accommodation only)
@@ -17,6 +20,7 @@ export interface PaymentBreakdown {
   discount_code: string | null;         // The discount code applied (if any)
   discount_code_percent: number | null; // Discount code percentage
   discount_code_applies_to: 'accommodation' | 'food_facilities' | 'total' | null; // What the code applies to
+  discount_code_amount: number;         // Exact discount code amount to avoid rounding issues
   
   // Credits (for credits-only or partial credits bookings)
   credits_used: number;                 // Credits applied to this payment (0 if no credits)

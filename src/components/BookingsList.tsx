@@ -7,6 +7,22 @@ import { EditBookingModal } from './EditBookingModal';
 import { AddBookingModal } from './AddBookingModal';
 import { PriceBreakdownModal } from './PriceBreakdownModal';
 
+interface Payment {
+  id: string;
+  booking_id: string;
+  user_id: string;
+  start_date: string;
+  end_date: string;
+  amount_paid: number;
+  breakdown_json: any | null;
+  discount_code: string | null;
+  payment_type: string;
+  stripe_payment_id: string | null;
+  created_at: string;
+  updated_at: string;
+  status: string;
+}
+
 interface Booking {
   id: string;
   accommodation_id: string;
@@ -33,6 +49,8 @@ interface Booking {
   discount_code_applies_to?: string | null; // NEW: What the discount code applies to
   accommodation_price_after_seasonal_duration?: number | null; // NEW: After seasonal/duration discounts
   subtotal_after_discount_code?: number | null; // NEW: After discount code but before credits
+  // Add payments data
+  payments?: Payment[];
 }
 
 export function BookingsList() {
@@ -67,7 +85,7 @@ export function BookingsList() {
       if (!user) throw new Error('User not authenticated');
       console.log('Current user:', user.id);
 
-      console.log('Fetching bookings with accommodation titles...');
+      console.log('Fetching bookings with accommodation titles and payments...');
       const { data: bookingsData, error: bookingsError, count } = await supabase
         .from('bookings_with_emails')
         .select(`
@@ -85,7 +103,22 @@ export function BookingsList() {
           discount_code_applies_to,
           accommodation_price_after_seasonal_duration,
           subtotal_after_discount_code,
-          accommodations ( title )
+          accommodations ( title ),
+          payments ( 
+            id,
+            booking_id,
+            user_id,
+            start_date,
+            end_date,
+            amount_paid,
+            breakdown_json,
+            discount_code,
+            payment_type,
+            stripe_payment_id,
+            created_at,
+            updated_at,
+            status
+          )
         `, { count: 'exact' })
         .neq('status', 'cancelled')
         .order('created_at', { ascending: false });

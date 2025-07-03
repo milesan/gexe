@@ -262,7 +262,7 @@ async function reverseEngineerBookings() {
               food_contribution: foodBaseBeforeDuration,
               seasonal_adjustment: seasonalDiscountAmount,
               duration_discount_percent: durationDiscountPercent * 100,
-              discount_code_percent: discountCodePercent,
+              discount_code_percent: discountCodePercent / 100, // Store as decimal (0.5 for 50%)
               applied_discount_code: appliedDiscountCode,
               discount_amount: seasonalDiscountAmount + accommodationDurationDiscount + 
                              (foodBaseBeforeDuration * durationDiscountPercent) + totalDiscountCodeAmount
