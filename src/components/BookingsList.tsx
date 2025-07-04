@@ -286,18 +286,6 @@ export function BookingsList() {
                         return finalAmount % 1 === 0 ? finalAmount.toFixed(0) : finalAmount.toFixed(2);
                       })()}
                     </span>
-                    {/* Show credits used indicator if credits were used */}
-                    {booking.credits_used !== null && booking.credits_used !== undefined && booking.credits_used > 0 && (
-                      <span className="text-xs text-blue-600 font-mono">
-                        (-{booking.credits_used} credits)
-                      </span>
-                    )}
-                    {/* Show a compact discount indicator if discount exists */}
-                    {booking.discount_amount !== null && booking.discount_amount !== undefined && booking.discount_amount > 0 && (
-                      <span className="text-xs text-emerald-600 font-mono">
-                        (-€{booking.discount_amount.toFixed(0)})
-                      </span>
-                    )}
                     {/* Show breakdown button - always available for admin */}
                     <button
                       onClick={() => setBreakdownModalBooking(booking)}

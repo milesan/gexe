@@ -42,25 +42,6 @@ export function normalizeToUTCDate(date: Date | string): Date {
   
   // Create a new Date object from this specific UTC timestamp.
   const returnDate = new Date(utcTimestamp);
-  console.log('[normalizeToUTCDate] === DATE NORMALIZATION DEBUG ===');
-  console.log('[normalizeToUTCDate] Input:', {
-    originalInput: date,
-    inputType: typeof date,
-    inputDateParsed: inputDate.toISOString(),
-    inputDateLocal: inputDate.toString()
-  });
-  console.log('[normalizeToUTCDate] UTC Components extracted:', {
-    utcYear,
-    utcMonth,
-    utcDay,
-    monthName: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][utcMonth]
-  });
-  console.log('[normalizeToUTCDate] Output:', {
-    returnDate: returnDate.toISOString(),
-    returnDateFormatted: formatDateForDisplay(returnDate)
-  });
-  // Add a log to trace specific conversions if needed during debugging
-  // console.log(`[normalizeToUTCDate UTC] Input: ${date instanceof Date ? date.toISOString() : date} -> Output: ${returnDate.toISOString()}`);
 
   return returnDate;
 }
@@ -140,22 +121,15 @@ export function generateUniqueWeekId(startDate: Date, endDate: Date): string {
 }
 
 export function generateWeeks(startDate: Date, count: number): Date[] {
-  console.log('[generateWeeks] Called with:', {
-    startDate: formatDateForDisplay(startDate),
-    count
-  });
-  
   const weeks: Date[] = [];
   let currentDate = new Date(startDate);
   
   // For normal weeks, just generate the requested number
   while (weeks.length < count) {
-    console.log(`[generateWeeks] Adding week ${weeks.length + 1}:`, formatDateForDisplay(currentDate));
     weeks.push(new Date(currentDate));
     currentDate = addDays(currentDate, 7);
   }
   
-  console.log('[generateWeeks] Generated weeks:', weeks.slice(0, 3).map(w => formatDateForDisplay(w)));
   return weeks;
 }
 
@@ -778,15 +752,6 @@ export function calculateDaysBetween(startDate: Date, endDate: Date, includeEndD
 }
 
 export function calculateTotalNights(selectedWeeks: Week[]): number {
-  console.log('[calculateTotalNights] === DEBUGGING NIGHTS CALCULATION ===');
-  console.log('[calculateTotalNights] Input weeks:', selectedWeeks.map(w => ({
-    id: w.id,
-    startDate: w.startDate.toISOString(),
-    endDate: w.endDate.toISOString(),
-    startDateFormatted: formatDateForDisplay(w.startDate),
-    endDateFormatted: formatDateForDisplay(w.endDate)
-  })));
-
   if (selectedWeeks.length === 0) return 0;
   
   // Determine effective start date (could be flex date)
@@ -795,47 +760,19 @@ export function calculateTotalNights(selectedWeeks: Week[]): number {
 
   const lastDate = selectedWeeks[selectedWeeks.length - 1].endDate;
   
-  console.log('[calculateTotalNights] Effective dates before normalization:', {
-    effectiveStartDate: effectiveStartDate.toISOString(),
-    lastDate: lastDate.toISOString()
-  });
-  
   // Ensure dates are UTC midnight
   const startUTC = normalizeToUTCDate(effectiveStartDate);
   const endUTC = normalizeToUTCDate(lastDate);
-  
-  console.log('[calculateTotalNights] Dates after normalization:', {
-    startUTC: startUTC.toISOString(),
-    endUTC: endUTC.toISOString(),
-    startUTCFormatted: formatDateForDisplay(startUTC),
-    endUTCFormatted: formatDateForDisplay(endUTC)
-  });
   
   // FIXED: Use millisecond-based calculation to avoid DST issues
   // Total nights = millisecond difference / ms per day (no +1 since nights != days)
   const timeDiff = endUTC.getTime() - startUTC.getTime();
   const nights = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
   
-  console.log('[calculateTotalNights] Final calculation:', {
-    timeDiffMs: timeDiff,
-    msPerDay: 1000 * 60 * 60 * 24,
-    nightsCalculated: nights,
-    manualDaysDiff: Math.floor(timeDiff / (1000 * 60 * 60 * 24)),
-    weeksFromNights: nights / 7,
-    note: 'nights = Math.floor((endUTC - startUTC) / msPerDay)'
-  });
-  
   return nights;
 }
 
 export function calculateTotalDays(selectedWeeks: Week[]): number {
-  console.log('[calculateTotalDays] Calculating for:', {
-    weeks: selectedWeeks.map(w => ({
-      id: w.id,
-      startDate: formatDateForDisplay(w.startDate),
-      endDate: formatDateForDisplay(w.endDate)
-    }))
-  });
   if (selectedWeeks.length === 0) return 0;
   
   // Determine effective start date (could be flex date)
@@ -848,14 +785,10 @@ export function calculateTotalDays(selectedWeeks: Week[]): number {
   const startUTC = normalizeToUTCDate(effectiveStartDate);
   const endUTC = normalizeToUTCDate(lastDate);
 
-  console.log('[calculateTotalDays] firstDate (UTC):', startUTC.toISOString());
-  console.log('[calculateTotalDays] lastDate (UTC):', endUTC.toISOString());
-  
   // FIXED: Use millisecond-based calculation to avoid DST issues
   // Total days (inclusive) = millisecond difference / ms per day + 1
   const timeDiff = endUTC.getTime() - startUTC.getTime();
   const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24)) + 1;
-  console.log('[calculateTotalDays] total days:', days);
   return days;
 }
 
@@ -865,18 +798,9 @@ export function calculateTotalDays(selectedWeeks: Week[]): number {
  * A week is only counted if there are at least 7 days
  */
 export function calculateDurationDiscountWeeks(selectedWeeks: Week[]): number {
-  console.log('[calculateDurationDiscountWeeks] Calculating for:', {
-    weeks: selectedWeeks.map(w => ({
-      id: w.id,
-      startDate: formatDateForDisplay(w.startDate),
-      endDate: formatDateForDisplay(w.endDate)
-    }))
-  });
   if (selectedWeeks.length === 0) return 0;
   
   const totalDays = calculateTotalDays(selectedWeeks);
-  console.log('[calculateDurationDiscountWeeks] totalDays:', totalDays);
-  console.log('[calculateDurationDiscountWeeks] returning:', totalDays >= 7 ? Math.floor(totalDays / 7) : 0);
   // Only count as a week if there are at least 7 days
   return totalDays >= 7 ? Math.floor(totalDays / 7) : 0;
 }
@@ -888,17 +812,9 @@ export function calculateDurationDiscountWeeks(selectedWeeks: Week[]): number {
  * @returns Total duration in weeks (e.g., 3.4)
  */
 export function calculateTotalWeeksDecimal(selectedWeeks: Week[]): number {
-  console.log('[calculateTotalWeeksDecimal] Calculating for:', {
-    weeks: selectedWeeks.map(w => ({
-      id: w.id,
-      startDate: formatDateForDisplay(w.startDate),
-      endDate: formatDateForDisplay(w.endDate)
-    }))
-  });
   if (selectedWeeks.length === 0) return 0;
 
   const totalDays = calculateTotalDays(selectedWeeks);
-  console.log('[calculateTotalWeeksDecimal] totalDays:', totalDays);
 
   if (totalDays <= 0) return 0;
 
@@ -906,7 +822,6 @@ export function calculateTotalWeeksDecimal(selectedWeeks: Week[]): number {
   // REMOVE ROUNDING HERE - Return full precision
   // const roundedWeeks = Math.round(weeksDecimal * 10) / 10;
 
-  console.log('[calculateTotalWeeksDecimal] returning (full precision):', weeksDecimal);
   // return roundedWeeks; // OLD
   return weeksDecimal; // NEW
 }
@@ -948,18 +863,9 @@ export function calculateBookingWeeks(startDate: Date, endDate: Date): {
   nights: number;
   days: number;
 } {
-  console.log('[calculateBookingWeeks] === COMPREHENSIVE WEEK CALCULATION ===');
-  
   // Normalize dates
   const startUTC = normalizeToUTCDate(startDate);
   const endUTC = normalizeToUTCDate(endDate);
-  
-  console.log('[calculateBookingWeeks] Normalized dates:', {
-    startUTC: startUTC.toISOString(),
-    endUTC: endUTC.toISOString(),
-    startFormatted: formatDateForDisplay(startUTC),
-    endFormatted: formatDateForDisplay(endUTC)
-  });
   
   // Calculate nights (check-in to check-out, exclusive of check-out day)
   const timeDiff = endUTC.getTime() - startUTC.getTime();
@@ -983,20 +889,8 @@ export function calculateBookingWeeks(startDate: Date, endDate: Date): {
   
   if (difference <= 0.2) { // Within 1.4 days of a whole week
     businessWeeks = wholeWeeks;
-    console.log('[calculateBookingWeeks] Applied business rounding:', {
-      exactWeeks,
-      wholeWeeks,
-      difference,
-      appliedBusinessRounding: true
-    });
   } else {
     businessWeeks = roundedWeeks;
-    console.log('[calculateBookingWeeks] No business rounding applied:', {
-      exactWeeks,
-      wholeWeeks, 
-      difference,
-      appliedBusinessRounding: false
-    });
   }
   
   const result = {
@@ -1006,8 +900,6 @@ export function calculateBookingWeeks(startDate: Date, endDate: Date): {
     nights,
     days
   };
-  
-  console.log('[calculateBookingWeeks] All calculation methods:', result);
   
   return result;
 }

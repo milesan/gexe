@@ -310,7 +310,7 @@ export function BookingSummary({
   useEffect(() => {
     if (creditsEnabled && !creditsLoading && pricing.totalAmount > 0) {
       // Automatically set credits to use (min of available credits or total amount)
-      const maxCreditsToUse = Math.min(availableCredits, Math.floor(pricing.totalAmount));
+      const maxCreditsToUse = Math.min(availableCredits, pricing.totalAmount);
       setCreditsToUse(maxCreditsToUse);
       console.log('[BookingSummary] Auto-setting credits to use:', maxCreditsToUse, 'from available:', availableCredits);
     } else if (!creditsEnabled) {
@@ -424,8 +424,9 @@ export function BookingSummary({
 
   const handleBookingSuccess = useCallback(async (paymentIntentId?: string, paymentRowIdOverride?: string) => {
     // Added optional paymentIntentId
-    console.log('[BookingSummary] handleBookingSuccess called. Payment Intent ID:', paymentIntentId || 'N/A');
-    console.log('[BookingSummary] ENTRY - Checking required info:', {
+    console.log('[BOOKING_FLOW] === STEP 5: handleBookingSuccess called ===');
+    console.log('[BOOKING_FLOW] Payment Intent ID:', paymentIntentId || 'N/A');
+    console.log('[BOOKING_FLOW] Checking required info:', {
       selectedAccommodation: !!selectedAccommodation,
       selectedAccommodationTitle: selectedAccommodation?.title,
       selectedWeeksLength: selectedWeeks.length,
@@ -576,11 +577,12 @@ export function BookingSummary({
           console.log("[Booking Summary] Adding payment intent ID to booking payload:", paymentIntentId);
         }
 
-        console.log("[Booking Summary] SENDING BOOKING PAYLOAD:", JSON.stringify(bookingPayload, null, 2));
+        console.log("[BOOKING_FLOW] === STEP 6: Creating booking in database ===");
+        console.log("[BOOKING_FLOW] BOOKING PAYLOAD:", JSON.stringify(bookingPayload, null, 2));
         
         const booking = await bookingService.createBooking(bookingPayload);
 
-        console.log("[Booking Summary] Booking created:", booking);
+        console.log("[BOOKING_FLOW] STEP 6 SUCCESS: Booking created:", booking.id);
         
         // Update the pending payment row with booking_id and stripe_payment_id
         if (typeof paymentRowIdToUse === 'string' && booking.id) {
@@ -588,7 +590,8 @@ export function BookingSummary({
           const effectivePaymentId = paymentIntentId || 
             (creditsToUse > 0 && finalAmountAfterCredits === 0 ? 'credits-only-' + booking.id : 'admin-booking-' + booking.id);
           
-          console.log('[BookingSummary] [DEBUG] About to update payment after booking:', {
+          console.log('[BOOKING_FLOW] === STEP 7: Updating payment record ===');
+          console.log('[BOOKING_FLOW] Payment update details:', {
             pendingPaymentRowId: paymentRowIdToUse,
             bookingId: booking.id,
             creditsToUse,
@@ -602,10 +605,9 @@ export function BookingSummary({
               bookingId: booking.id,
               stripePaymentId: effectivePaymentId
             });
-            console.log('[BookingSummary] [DEBUG] Payment row update result:', updateResult);
-            console.log('[BookingSummary] Payment row updated successfully');
+            console.log('[BOOKING_FLOW] STEP 7 SUCCESS: Payment record updated');
           } catch (err) {
-            console.error('[BookingSummary] [DEBUG] Failed to update payment after booking:', err);
+            console.error('[BOOKING_FLOW] STEP 7 FAILED: Payment update failed:', err);
           }
         }
         
@@ -615,10 +617,10 @@ export function BookingSummary({
         
         // Refresh credits manually to ensure UI updates immediately
         if (creditsToUse > 0) {
-          console.log("[Booking Summary] Credits used, manually refreshing credits");
+          console.log("[BOOKING_FLOW] === STEP 8: Refreshing credits after use ===");
           try {
             await refreshCredits();
-            console.log("[Booking Summary] Credits refreshed successfully");
+            console.log("[BOOKING_FLOW] STEP 8 SUCCESS: Credits refreshed");
             
             // Add a fallback refresh with delay in case the first one was too fast
             setTimeout(async () => {
@@ -637,6 +639,7 @@ export function BookingSummary({
         
         // Delay navigation slightly to show fireflies
         setTimeout(() => {
+          console.log("[BOOKING_FLOW] === STEP 9: Navigating to confirmation ===");
           // Calculate actual amount donated (after credits)
           const actualDonationAmount = Math.max(0, booking.total_price - (creditsToUse || 0));
           
@@ -652,9 +655,11 @@ export function BookingSummary({
               }
             } 
           });
+          console.log("[BOOKING_FLOW] STEP 9 SUCCESS: Navigation completed");
         }, 1500);
       } catch (err) {
-        console.error('[Booking Summary] Error creating booking:', err);
+        console.error('[BOOKING_FLOW] === STEP 6 FAILED: Error creating booking ===');
+        console.error('[BOOKING_FLOW] Error details:', err);
         
         // CRITICAL: Log detailed error for payment without booking
         const errorDetails = {
@@ -911,27 +916,31 @@ Please manually create the booking for this user or process a refund.`;
   }, [selectedAccommodation, selectedWeeks, selectedCheckInDate, navigate, pricing.totalAmount, appliedDiscount, creditsToUse, refreshCredits, userEmail, onClearWeeks, onClearAccommodation, bookingService, pendingPaymentRowId]);
 
   const handleConfirmClick = async () => {
-    console.log('[Booking Summary] Confirm button clicked.');
+    console.log('[BOOKING_FLOW] === STEP 1: Confirm button clicked ===');
     setError(null); // Clear previous errors
 
     if (!validateCheckInDate()) {
-      console.warn('[Booking Summary] Confirm FAILED: Check-in date validation failed.');
+      console.warn('[BOOKING_FLOW] STEP 1 FAILED: Check-in date validation failed.');
       return;
     }
     if (!selectedAccommodation) {
-      console.warn('[Booking Summary] No accommodation selected');
+      console.warn('[BOOKING_FLOW] STEP 1 FAILED: No accommodation selected');
       setError('Please select an accommodation');
       return;
     }
     try {
       // Check if the accommodation is still available
+      console.log('[BOOKING_FLOW] === STEP 2: Validating availability ===');
       const isAvailable = await validateAvailability();
       if (!isAvailable) {
+        console.warn('[BOOKING_FLOW] STEP 2 FAILED: Accommodation no longer available');
         setError('This accommodation is no longer available for the selected dates');
         return;
       }
+      console.log('[BOOKING_FLOW] STEP 2 SUCCESS: Availability confirmed');
 
       // --- NEW: Create pending payment row for ALL bookings (including credits-only) ---
+      console.log('[BOOKING_FLOW] === STEP 3: Creating pending payment row ===');
       if (authToken && !pendingPaymentRowId) {
         try {
           const user = await bookingService.getCurrentUser();
@@ -980,22 +989,24 @@ Please manually create the booking for this user or process a refund.`;
             paymentType: 'initial'
           });
 
-          console.log('[BookingSummary] Created pending payment for credits-only booking:', payment);
+          console.log('[BOOKING_FLOW] STEP 3 SUCCESS: Created pending payment row:', payment.id);
           setPendingPaymentRowId(payment.id);
 
           // If the final amount is 0 (fully paid with credits), skip payment and pass payment.id
           if (finalAmountAfterCredits === 0 && creditsToUse > 0) {
+            console.log('[BOOKING_FLOW] === STEP 4: Credits-only booking, skipping Stripe ===');
             await handleBookingSuccess(undefined, payment.id);
             return;
           }
         } catch (err) {
-          console.error('[BookingSummary] Failed to create pending payment for credits-only booking:', err);
+          console.error('[BOOKING_FLOW] STEP 3 FAILED: Failed to create pending payment:', err);
           setError('Failed to create pending payment. Please try again.');
           return;
         }
       }
 
       // Show Stripe modal after pending payment row is created
+      console.log('[BOOKING_FLOW] === STEP 4: Opening Stripe modal ===');
       setShowStripeModal(true);
     } catch (err) {
       setError('An error occurred. Please try again.');

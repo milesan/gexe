@@ -22,6 +22,9 @@ import * as Tooltip from '@radix-ui/react-tooltip';
 import { calculateBaseFoodCost, calculateFoodContributionRange } from './BookingSummary/BookingSummary.utils';
 import { useDiscountCode } from '../hooks/useDiscountCode';
 import { OptimizedSlider } from './shared/OptimizedSlider';
+import { useCredits } from '../hooks/useCredits';
+import { CreditsSection } from './BookingSummary/components/CreditsSection';
+import { formatPriceDisplay } from './BookingSummary/BookingSummary.utils';
 
 export function MyBookings() {
   const [bookings, setBookings] = React.useState<Booking[]>([]);
@@ -46,6 +49,11 @@ export function MyBookings() {
   const session = useSession();
   useWeeklyAccommodations();
 
+  // Credits functionality for extensions
+  const { credits: availableCredits, loading: creditsLoading, refresh: refreshCredits } = useCredits();
+  const [creditsEnabled, setCreditsEnabled] = React.useState(false);
+  const [creditsToUse, setCreditsToUse] = React.useState(0);
+
   // Discount code functionality for extensions
   const {
     discountCodeInput,
@@ -56,6 +64,9 @@ export function MyBookings() {
     handleApplyDiscount,
     handleRemoveDiscount
   } = useDiscountCode();
+
+  // Credits functionality for extensions - allows users to use their available credits
+  // to reduce the amount they need to pay for their booking extension
 
   const checkIn = extendingBooking
     ? typeof extendingBooking.check_in === 'string'
@@ -323,7 +334,7 @@ export function MyBookings() {
           : current;
           
         if (newValue !== current) {
-          console.log('[Extension] Food contribution reset to default:', {
+          console.log('[EXTENSION_PRICING] Food contribution reset to default:', {
             previousValue: current,
             newValue,
             reason: current === null ? 'not set' : 'outside range',
@@ -334,7 +345,7 @@ export function MyBookings() {
             setDisplayFoodContribution(newValue);
         }
         } else {
-        console.log('[Extension] Keeping existing food contribution:', current);
+        console.log('[EXTENSION_PRICING] Keeping existing food contribution:', current);
           // Sync display value (only if not dragging)
           if (!isDraggingSliderRef.current) {
             setDisplayFoodContribution(current);
@@ -348,6 +359,8 @@ export function MyBookings() {
       setDisplayFoodContribution(null);
     }
   }, [foodContributionRange]);
+
+
 
   // Calculate extension pricing
   const extensionPricing = React.useMemo(() => {
@@ -364,7 +377,8 @@ export function MyBookings() {
         extensionAccommodationPrice: 0,
         extensionFoodCost: 0,
         discountAmount: 0,
-        finalExtensionPrice: 0
+        finalExtensionPrice: 0,
+        finalAmountAfterCredits: 0
       };
     }
 
@@ -420,7 +434,7 @@ export function MyBookings() {
     
     // Calculate duration discount based on TOTAL stay (original + extension)
     const combinedWeeksForDiscount = [...originalWeeks, ...extensionOnlyWeeks];
-    console.log('[Extension] DEBUG: Combined weeks array for discount:', {
+    console.log('[EXTENSION_PRICING] Combined weeks array for discount calculation:', {
       originalCount: originalWeeks.length,
       extensionCount: extensionOnlyWeeks.length,
       combinedCount: combinedWeeksForDiscount.length,
@@ -434,7 +448,7 @@ export function MyBookings() {
     const totalNightsForDiscount = calculateTotalNights(combinedWeeksForDiscount);
     const completeWeeksForDiscount = calculateDurationDiscountWeeks(combinedWeeksForDiscount);
     
-    console.log('[Extension] DEBUG: Duration discount inputs:', {
+    console.log('[EXTENSION_PRICING] Duration discount calculation inputs:', {
       totalNightsForDiscount,
       completeWeeksForDiscount,
       calculationNote: 'completeWeeksForDiscount = calculateDurationDiscountWeeks(combinedWeeks)'
@@ -442,7 +456,7 @@ export function MyBookings() {
     
     const durationDiscountPercent = getDurationDiscount(completeWeeksForDiscount);
     
-    console.log('[Extension] DEBUG: Duration discount result:', {
+    console.log('[EXTENSION_PRICING] Duration discount calculation result:', {
       inputWeeks: completeWeeksForDiscount,
       outputPercent: durationDiscountPercent,
       outputPercentFormatted: (durationDiscountPercent * 100).toFixed(1) + '%'
@@ -493,7 +507,7 @@ export function MyBookings() {
             discountAmount = parseFloat((amountToDiscountFrom * discountPercentage).toFixed(2));
           }
 
-          console.log('[Extension] Discount applied:', {
+          console.log('[EXTENSION_PRICING] Discount code applied:', {
             code: appliedDiscount.code,
             percentage: appliedDiscount.percentage_discount,
             appliesTo,
@@ -504,11 +518,12 @@ export function MyBookings() {
     
     // Calculate final extension price after discount (use precise discount amount)
     const finalExtensionPrice = Math.max(0, subtotalBeforeDiscount - discountAmount);
+    
+    // Calculate final amount after credits
+    const finalAmountAfterCredits = Math.max(0, finalExtensionPrice - creditsToUse);
 
-    console.log('[Extension] ===== DETAILED PRICING CALCULATION DEBUG =====');
-    console.log('[Extension] FIXED: Dorm accommodations now correctly get 0% seasonal discount');
-    console.log('[Extension] FIXED: Final extension price is now rounded to match Stripe amount');
-    console.log('[Extension] Original booking weeks:', {
+    console.log('[EXTENSION_PRICING] ===== DETAILED PRICING CALCULATION =====');
+    console.log('[EXTENSION_PRICING] Original booking weeks:', {
       count: originalWeeks.length,
       weeks: originalWeeks.map(w => ({
         id: w.id,
@@ -516,7 +531,7 @@ export function MyBookings() {
         end: formatDateForDisplay(w.endDate)
       }))
     });
-    console.log('[Extension] Extension weeks:', {
+    console.log('[EXTENSION_PRICING] Extension weeks:', {
       count: extensionOnlyWeeks.length,
       weeks: extensionOnlyWeeks.map(w => ({
         id: w.id,
@@ -524,14 +539,14 @@ export function MyBookings() {
         end: formatDateForDisplay(w.endDate)
       }))
     });
-    console.log('[Extension] Combined weeks for discount calculation:', {
+    console.log('[EXTENSION_PRICING] Combined weeks for discount calculation:', {
       totalWeeksCount: originalWeeks.length + extensionOnlyWeeks.length,
       totalNightsForDiscount,
       completeWeeksForDiscount,
       durationDiscountPercent: (durationDiscountPercent * 100).toFixed(1) + '%',
       note: 'Both seasonal and duration discounts are calculated based on TOTAL stay (original + extension)'
     });
-    console.log('[Extension] Accommodation pricing breakdown:', {
+    console.log('[EXTENSION_PRICING] Accommodation pricing breakdown:', {
       accommodationBasePrice,
       accommodationTitle,
       totalStayPeriod: `${formatDateForDisplay(totalStayStartDate)} to ${formatDateForDisplay(totalStayEndDate)}`,
@@ -542,14 +557,16 @@ export function MyBookings() {
       extensionWeeks,
       extensionAccommodationPrice: `€${extensionAccommodationPrice} (€${weeklyAccommodationRate} * ${extensionWeeks})`
     });
-    console.log('[Extension] Final pricing summary:', {
+    console.log('[EXTENSION_PRICING] Final pricing summary:', {
       extensionAccommodationPrice,
       extensionFoodCost,
       subtotalBeforeDiscount,
       discountAmount,
-      finalExtensionPrice
+      finalExtensionPrice,
+      creditsToUse,
+      finalAmountAfterCredits
     });
-    console.log('[Extension] ===== END DEBUG =====');
+    console.log('[EXTENSION_PRICING] ===== END CALCULATION =====');
 
     return {
       totalWeeks,
@@ -565,14 +582,44 @@ export function MyBookings() {
       extensionFoodCost,
       discountAmount,
       finalExtensionPrice,
+      finalAmountAfterCredits,
       averageSeasonalDiscount: effectiveSeasonalDiscount
     };
-  }, [extendingBooking, originalWeeks, extensionOnlyWeeks, foodContribution, appliedDiscount]);
+  }, [extendingBooking, originalWeeks, extensionOnlyWeeks, foodContribution, appliedDiscount, creditsToUse]);
+
+  // Initialize credits to max available when extension pricing is calculated
+  React.useEffect(() => {
+    if (extendingBooking && extensionOnlyWeeks.length > 0 && !creditsLoading && availableCredits > 0) {
+      const maxCreditsToUse = Math.min(availableCredits, extensionPricing.finalExtensionPrice);
+      
+      if (maxCreditsToUse > 0) {
+        console.log('[EXTENSION_PRICING] Setting credits to max by default:', {
+          availableCredits,
+          finalExtensionPrice: extensionPricing.finalExtensionPrice,
+          maxCreditsToUse
+        });
+        setCreditsEnabled(true);
+        setCreditsToUse(maxCreditsToUse);
+      }
+    }
+  }, [extendingBooking, extensionOnlyWeeks.length, availableCredits, creditsLoading, extensionPricing.finalExtensionPrice]);
 
 
 
   const handleExtensionPaymentSuccess = React.useCallback(async (paymentIntentId?: string) => {
-    console.log('[Extension] Payment successful, processing extension...');
+    console.log('[EXTENSION_FLOW] === STEP 3: Extension payment success handler called ===');
+    console.log('[EXTENSION_FLOW] Payment Intent ID:', paymentIntentId || 'N/A');
+    console.log('[EXTENSION_FLOW] Extension payment details:', {
+      paymentIntentId,
+      creditsToUse,
+      finalAmountAfterCredits: extensionPricing.finalAmountAfterCredits,
+      originalExtensionPrice: extensionPricing.finalExtensionPrice,
+      creditsEnabled,
+      availableCredits,
+      extendingBookingId: extendingBooking?.id,
+      extensionWeeksCount: extensionOnlyWeeks.length
+    });
+
     setIsProcessingPayment(true);
     
     try {
@@ -580,32 +627,16 @@ export function MyBookings() {
         throw new Error('Missing extension data');
       }
 
-              // Calculate new check-out date
-        const newCheckOut = extensionOnlyWeeks[extensionOnlyWeeks.length - 1].endDate;
-        const formattedCheckOut = format(newCheckOut, 'yyyy-MM-dd');
+      // Calculate new check-out date
+      const newCheckOut = extensionOnlyWeeks[extensionOnlyWeeks.length - 1].endDate;
+      const formattedCheckOut = format(newCheckOut, 'yyyy-MM-dd');
 
-        const extensionPayload = {
-          bookingId: extendingBooking.id,
-          newCheckOut: formattedCheckOut,
-          extensionWeeks: extensionOnlyWeeks.length,
-          extensionPrice: extensionPricing.finalExtensionPrice,
-          paymentIntentId: paymentIntentId,
-          // Include discount information if applied
-          ...(appliedDiscount && {
-            appliedDiscountCode: appliedDiscount.code,
-            discountCodePercent: appliedDiscount.percentage_discount / 100,
-            discountCodeAppliesTo: appliedDiscount.applies_to,
-            discountAmount: extensionPricing.discountAmount
-          })
-        };
-
-      console.log('[Extension] Sending extension payload:', extensionPayload);
-      
-      // Call the extension booking service
-      const result = await bookingService.extendBooking({
+      const extensionPayload = {
         bookingId: extendingBooking.id,
         newCheckOut: formattedCheckOut,
-        extensionPrice: extensionPricing.finalExtensionPrice,
+        extensionWeeks: extensionOnlyWeeks.length,
+        extensionPrice: extensionPricing.finalExtensionPrice, // Full value for booking total
+        paymentAmount: extensionPricing.finalAmountAfterCredits, // Amount paid after credits
         paymentIntentId: paymentIntentId || '',
         appliedDiscountCode: appliedDiscount?.code,
         discountCodePercent: appliedDiscount?.percentage_discount ? appliedDiscount.percentage_discount / 100 : undefined, // Store as decimal (0.5 for 50%)
@@ -615,6 +646,7 @@ export function MyBookings() {
         accommodationPrice: extensionPricing.extensionAccommodationPrice,
         accommodationOriginalPrice: extensionPricing.extensionAccommodationOriginalPrice, // Original price before discounts - no more reverse calculations!
         foodContribution: extensionPricing.extensionFoodCost,
+        creditsUsed: creditsToUse || 0, // NEW: Pass credits used
         seasonalDiscountPercent: (() => {
           // Calculate seasonal discount for EXTENSION PERIOD ONLY (for payment breakdown)
           if (extensionOnlyWeeks.length === 0) return 0;
@@ -634,32 +666,97 @@ export function MyBookings() {
             sum + (season.discount * season.nights), 0) / 
             extensionSeasonBreakdown.seasons.reduce((sum, season) => sum + season.nights, 0);
           
-          return Math.round(extensionAvgDiscount * 100) / 100;
+          return extensionAvgDiscount; // Return as decimal (0.16 for 16%)
         })(),
-        durationDiscountPercent: getDurationDiscount(calculateDurationDiscountWeeks([...originalWeeks, ...extensionOnlyWeeks])),
-        extensionWeeks: extensionOnlyWeeks.length
-      });
+        durationDiscountPercent: (() => {
+          // Calculate duration discount for TOTAL STAY (original + extension) for payment breakdown
+          const totalWeeksAfterExtension = originalWeeksDecimal + extensionOnlyWeeks.length;
+          const durationDiscount = getDurationDiscount(totalWeeksAfterExtension);
+          return durationDiscount; // Return as decimal (0.16 for 16%)
+        })()
+      };
+
+      console.log('[EXTENSION_FLOW] === STEP 4: Calling BookingService.extendBooking ===');
+      console.log('[EXTENSION_FLOW] EXTENSION PAYLOAD:', JSON.stringify(extensionPayload, null, 2));
       
-      console.log('[Extension] Extension processed successfully:', result);
+      // Call the extension booking service
+      const result = await bookingService.extendBooking(extensionPayload);
       
-      // Close modals and refresh bookings
+      console.log('[EXTENSION_FLOW] STEP 4 SUCCESS: BookingService.extendBooking completed');
+      console.log('[EXTENSION_FLOW] Extension result:', result);
+
+      console.log('[EXTENSION_FLOW] === STEP 5: Cleaning up extension UI state ===');
       setShowPaymentModal(false);
       setExtendingBooking(null);
       setExtensionWeeks([]);
-      await loadBookings();
+      setShowCustomWeeks(false);
+      setExtensionError(null);
+      setCreditsEnabled(false);
+      setCreditsToUse(0);
+      handleRemoveDiscount();
       
+      console.log('[EXTENSION_FLOW] === STEP 6: Refreshing bookings and credits data ===');
+      await Promise.all([
+        loadBookings(),
+        refreshCredits()
+      ]);
+      
+      console.log('[EXTENSION_FLOW] STEP 6 SUCCESS: Extension process completed successfully');
     } catch (err) {
-      console.error('[Extension] Error processing extension:', err);
-      // Handle error gracefully
+      console.error('[EXTENSION_FLOW] === STEP 4 FAILED: Extension process failed ===');
+      console.error('[EXTENSION_FLOW] Error details:', {
+        error: err,
+        creditsToUse,
+        creditsEnabled,
+        extensionPrice: extensionPricing.finalExtensionPrice,
+        paymentAmount: extensionPricing.finalAmountAfterCredits
+      });
+      setExtensionError(err instanceof Error ? err.message : 'Extension failed');
+      setShowPaymentModal(false);
     } finally {
       setIsProcessingPayment(false);
     }
-  }, [extendingBooking, extensionOnlyWeeks, extensionPricing.finalExtensionPrice, loadBookings]);
+  }, [extendingBooking, originalWeeksDecimal, extensionOnlyWeeks, foodContribution, appliedDiscount, creditsToUse, extensionPricing, creditsEnabled, availableCredits, refreshCredits]);
 
   const handleConfirmExtension = () => {
+    console.log('[EXTENSION_FLOW] === STEP 1: Extension confirm button clicked ===');
     if (extensionOnlyWeeks.length === 0) {
+      console.warn('[EXTENSION_FLOW] STEP 1 FAILED: No weeks selected for extension');
+      setExtensionError('Please select weeks to extend');
       return;
     }
+
+    const finalAmountAfterCredits = extensionPricing.finalAmountAfterCredits || 0;
+    
+    console.log('[EXTENSION_FLOW] STEP 1 SUCCESS: Extension details validated');
+    console.log('[EXTENSION_FLOW] Extension pricing breakdown:', {
+      finalAmountAfterCredits,
+      originalPrice: extensionPricing.finalExtensionPrice,
+      creditsUsed: creditsToUse,
+      creditsEnabled,
+      availableCredits,
+      isCreditsOnlyTransaction: finalAmountAfterCredits < 0.5,
+      extensionWeeks: extensionOnlyWeeks.length,
+      bookingId: extendingBooking?.id
+    });
+
+    // If the amount after credits is very small (less than $0.50), treat as credits-only transaction
+    if (finalAmountAfterCredits < 0.5) {
+      console.log('[EXTENSION_FLOW] === STEP 2A: Credits-only extension, skipping Stripe ===');
+      // Generate a fake payment intent ID for credits-only transactions
+      const creditsOnlyPaymentId = `credits_only_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      handleExtensionPaymentSuccess(creditsOnlyPaymentId);
+      return;
+    }
+
+    // Otherwise, proceed with Stripe payment
+    console.log('[EXTENSION_FLOW] === STEP 2B: Opening Stripe modal for extension ===');
+    console.log('[EXTENSION_FLOW] Stripe payment details:', {
+      creditsToUse,
+      creditsEnabled,
+      finalAmountAfterCredits,
+      willPassCreditsToStripe: creditsEnabled && creditsToUse > 0
+    });
     setShowPaymentModal(true);
   };
 
@@ -732,7 +829,13 @@ export function MyBookings() {
                             <button
                               className="ml-2 px-2 py-0.5 text-xs font-mono border border-green-600/30 text-accent-primary bg-transparent rounded-sm transition-colors hover:bg-green-900/20 hover:text-green-300 hover:border-green-500/50 focus:outline-none focus:ring-2 focus:ring-green-600 shadow-sm"
                               onClick={() => {
-                                console.log('[DEBUG] Extend button clicked - setting extendingBooking:', booking);
+                                console.log('[EXTENSION_FLOW] === STEP 0: Extend button clicked ===');
+                                console.log('[EXTENSION_FLOW] Opening extension modal for booking:', {
+                                  bookingId: booking.id,
+                                  accommodationTitle: booking.accommodation?.title,
+                                  checkIn: booking.check_in,
+                                  checkOut: booking.check_out
+                                });
                                 setExtendingBooking(booking);
                               }}
                             >
@@ -744,19 +847,10 @@ export function MyBookings() {
                           <span className="text-primary">Total Donated:</span>{' '}
                           <span className="text-primary">
                             €{(() => {
-                              const creditsUsed = (booking as any).credits_used || 0;
-                              const finalAmount = creditsUsed > 0 ? booking.total_price - creditsUsed : booking.total_price;
-                              return finalAmount % 1 === 0 ? finalAmount.toFixed(0) : finalAmount.toFixed(2);
+                              const totalPaid = (booking as any).total_amount_paid || 0;
+                              return totalPaid % 1 === 0 ? totalPaid.toFixed(0) : totalPaid.toFixed(2);
                             })()}
                           </span>
-                          {(() => {
-                            const creditsUsed = (booking as any).credits_used || 0;
-                            return creditsUsed > 0 && (
-                              <span className="text-xs text-shade-2 ml-1">
-                                (used {creditsUsed} credits)
-                              </span>
-                            );
-                          })()}
                         </p>
                         <a 
                           href="https://gardening.notion.site/Welcome-to-The-Garden-2684f446b48e4b43b3f003d7fca33664?pvs=4"
@@ -828,6 +922,8 @@ export function MyBookings() {
               setExtensionWeeks([]);
               setShowCustomWeeks(false);
               setExtensionError(null);
+              setCreditsEnabled(false);
+              setCreditsToUse(0);
               handleRemoveDiscount();
             }}
           >
@@ -844,6 +940,8 @@ export function MyBookings() {
                   setExtensionWeeks([]);
                   setShowCustomWeeks(false);
                   setExtensionError(null);
+                  setCreditsEnabled(false);
+                  setCreditsToUse(0);
                   handleRemoveDiscount();
                 }}
                 className="absolute top-2 sm:top-4 right-2 sm:right-4 text-text-secondary hover:text-text-primary transition-colors z-[1]"
@@ -941,16 +1039,18 @@ export function MyBookings() {
                       </div>
                     )}
                     
-                    {/* Custom selection toggle */}
-                    <button
-                      onClick={() => {
-                        setShowCustomWeeks(!showCustomWeeks);
-                        setExtensionError(null); // Clear error when toggling
-                      }}
-                      className="w-full mt-2 text-xs text-accent-primary hover:underline font-mono"
-                    >
-                      {showCustomWeeks ? 'Hide calendar' : 'Choose specific dates →'}
-                    </button>
+                    {/* Custom selection toggle - only show if user hasn't reached maximum weeks */}
+                    {originalWeeksDecimal < MAX_WEEKS_ALLOWED && (
+                      <button
+                        onClick={() => {
+                          setShowCustomWeeks(!showCustomWeeks);
+                          setExtensionError(null); // Clear error when toggling
+                        }}
+                        className="w-full mt-2 text-xs text-accent-primary hover:underline font-mono"
+                      >
+                        {showCustomWeeks ? 'Hide calendar' : 'Choose specific dates →'}
+                      </button>
+                    )}
                   </div>
                   
                   {/* Custom Week Selection (collapsible) */}
@@ -1033,7 +1133,7 @@ export function MyBookings() {
                     </motion.div>
                   )}
                   
-                  {/* Price Breakdown - Always visible when extension selected */}
+                                        {/* Price Breakdown - Always visible when extension selected */}
               {extensionOnlyWeeks.length > 0 && (
                     <motion.div
                       initial={{ opacity: 0 }}
@@ -1121,6 +1221,34 @@ export function MyBookings() {
                     </div>
                   </div>
 
+                      {/* Credits Section */}
+                      <CreditsSection
+                        availableCredits={availableCredits}
+                        creditsLoading={creditsLoading}
+                        creditsEnabled={creditsEnabled}
+                        setCreditsEnabled={setCreditsEnabled}
+                        creditsToUse={creditsToUse}
+                        setCreditsToUse={setCreditsToUse}
+                        pricing={{
+                          totalNights: extensionPricing.extensionNights || 0,
+                          nightlyAccommodationRate: (extensionPricing.weeklyAccommodationRate || 0) / 7,
+                          baseAccommodationRate: extensionPricing.accommodationBasePrice || 0,
+                          effectiveBaseRate: extensionPricing.weeklyAccommodationRate || 0,
+                          totalAccommodationCost: extensionPricing.extensionAccommodationPrice || 0,
+                          totalFoodAndFacilitiesCost: extensionPricing.extensionFoodCost || 0,
+                          subtotal: extensionPricing.extensionPrice || 0,
+                          durationDiscountAmount: (extensionPricing.extensionPrice || 0) - (extensionPricing.extensionAccommodationPrice || 0) - (extensionPricing.extensionFoodCost || 0),
+                          durationDiscountPercent: extensionPricing.averageSeasonalDiscount || 0,
+                          weeksStaying: extensionPricing.extensionWeeks || 0,
+                          totalAmount: extensionPricing.finalExtensionPrice || 0,
+                          appliedCodeDiscountValue: extensionPricing.discountAmount || 0,
+                          seasonalDiscount: extensionPricing.averageSeasonalDiscount || 0,
+                          vatAmount: 0,
+                          totalWithVat: extensionPricing.finalExtensionPrice || 0
+                        }}
+                        finalAmountAfterCredits={extensionPricing.finalAmountAfterCredits || 0}
+                      />
+
                       {/* Discount Code Section - Simplified */}
                       <div className="space-y-2">
                         {!appliedDiscount ? (
@@ -1174,15 +1302,15 @@ export function MyBookings() {
                         ) : (
                           <span className="flex items-center justify-center gap-2">
                             Continue to Payment
-                            <span className="opacity-90">€{extensionPricing.finalExtensionPrice.toFixed(2)}</span>
+                            <span className="opacity-90">€{(extensionPricing.finalAmountAfterCredits || 0).toFixed(2)}</span>
                           </span>
                         )}
                   </button>
                     </motion.div>
                   )}
                   
-                  {/* No extension selected prompt */}
-                  {extensionOnlyWeeks.length === 0 && (
+                  {/* No extension selected prompt - only show if user can still extend */}
+                  {extensionOnlyWeeks.length === 0 && originalWeeksDecimal < MAX_WEEKS_ALLOWED && (
                     <div className="text-center py-6 text-secondary text-sm font-mono">
                       Select how many weeks you'd like to extend
                 </div>
@@ -1222,19 +1350,30 @@ export function MyBookings() {
               <div className="mb-4 sm:mb-6">
                 <h3 className="text-lg sm:text-xl font-display">Complete Extension Donation</h3>
                 <p className="text-sm text-text-secondary mt-2">
-                  Extend your stay by {extensionOnlyWeeks.length} week{extensionOnlyWeeks.length > 1 ? 's' : ''}${appliedDiscount ? ` (${appliedDiscount.code} applied)` : ''}
+                  Extend your stay by {extensionOnlyWeeks.length} week{extensionOnlyWeeks.length > 1 ? 's' : ''}${appliedDiscount ? ` (${appliedDiscount.code} applied)` : ''}${creditsToUse > 0 ? ` (${creditsToUse} credits used)` : ''}
                 </p>
               </div>
 
               <StripeCheckoutForm
                 authToken={authToken}
                 userEmail={session?.session?.user?.email || ''}
-                total={extensionPricing.finalExtensionPrice}
-                description={`Booking extension for ${extendingBooking?.accommodation?.title || 'Accommodation'} - ${extensionOnlyWeeks.length} week${extensionOnlyWeeks.length > 1 ? 's' : ''}${appliedDiscount ? ` (${appliedDiscount.code} applied)` : ''}`}
+                total={(() => {
+                  const paymentAmount = extensionPricing.finalAmountAfterCredits || 0;
+                  console.log('[EXTENSION_FLOW] StripeCheckoutForm payment amount:', {
+                    paymentAmount,
+                    originalPrice: extensionPricing.finalExtensionPrice,
+                    creditsToUse,
+                    creditsEnabled,
+                    calculation: `${extensionPricing.finalExtensionPrice} - ${creditsToUse} = ${paymentAmount}`
+                  });
+                  return paymentAmount;
+                })()}
+                description={`Booking extension for ${extendingBooking?.accommodation?.title || 'Accommodation'} - ${extensionOnlyWeeks.length} week${extensionOnlyWeeks.length > 1 ? 's' : ''}${appliedDiscount ? ` (${appliedDiscount.code} applied)` : ''}${creditsToUse > 0 ? ` (${creditsToUse} credits used)` : ''}`}
                 bookingMetadata={{
                   accommodationId: extendingBooking?.accommodation_id,
-                  originalTotal: extensionPricing.finalExtensionPrice,
-                  discountCode: appliedDiscount?.code
+                  originalTotal: extensionPricing.finalAmountAfterCredits,
+                  discountCode: appliedDiscount?.code,
+                  creditsUsed: creditsToUse || 0
                 }}
                 onSuccess={handleExtensionPaymentSuccess}
                 onClose={() => setShowPaymentModal(false)}
