@@ -212,37 +212,8 @@ export function CabinSelector({
     );
   };
 
-  console.log('[CabinSelector] Rendering with props:', {
-    accommodationsCount: accommodations?.length,
-    selectedAccommodationId,
-    selectedWeeksCount: selectedWeeks?.length,
-    currentMonth: currentMonth.toISOString(),
-    currentMonthNumber: currentMonth.getUTCMonth(),
-    currentMonthName: new Intl.DateTimeFormat('en-US', { month: 'long', timeZone: 'UTC' }).format(currentMonth),
-    isAdmin,
-    permissionsLoading,
-    selectedWeeks: selectedWeeks?.map(w => {
-      if (!w || typeof w === 'string') return null;
-      
-      // Check if it's a Week object with startDate and endDate properties
-      if (w.startDate && w.endDate) {
-        return {
-          startDate: w.startDate.toISOString(),
-          endDate: w.endDate.toISOString()
-        };
-      }
-      
-      // If it's a plain Date object
-      if (w instanceof Date) {
-        return {
-          startDate: w.toISOString(),
-          endDate: addDays(w, 7).toISOString()
-        };
-      }
-      
-      return null;
-    }).filter(Boolean)
-  });
+  // Debug logging for development
+  console.log('[CabinSelector] Rendered:', { selectedAccommodationId });
 
   // --- Normalization Step ---
   const normalizedCurrentMonth = new Date(Date.UTC(
@@ -299,11 +270,6 @@ export function CabinSelector({
       // MODIFIED: Determine overall check-in and check-out dates
       const checkInDate = selectedWeeks.length > 0 ? selectedWeeks[0].startDate : null;
       const checkOutDate = selectedWeeks.length > 0 ? selectedWeeks[selectedWeeks.length - 1].endDate : null;
-      
-      console.log('[CabinSelector] useEffect[selectedWeeks] - Checking availability with range:', {
-        checkInDate: checkInDate?.toISOString(),
-        checkOutDate: checkOutDate?.toISOString()
-      });
 
       accommodations.forEach(acc => {
         if (!(acc as any).parent_accommodation_id) { // Only check parent accommodations
@@ -316,39 +282,17 @@ export function CabinSelector({
   }, [selectedWeeks, accommodations, checkWeekAvailability]);
 
   const handleSelectAccommodation = useCallback((id: string) => {
-    console.log("[CabinSelector] Accommodation selected:", {
-      accommodationId: id,
-      previousSelection: selectedAccommodationId
-    });
-    
     // NEW: If clicking the already selected accommodation, deselect it
     if (id === selectedAccommodationId) {
-      console.log("[CabinSelector] Deselecting accommodation:", { accommodationId: id });
       onSelectAccommodation('');
       return; // Stop further execution
     }
 
-    // Check availability when accommodation is selected and weeks are already chosen
-    if (selectedWeeks.length > 0) {
-      // MODIFIED: Determine overall check-in and check-out dates
-      const checkInDate = selectedWeeks.length > 0 ? selectedWeeks[0].startDate : null;
-      const checkOutDate = selectedWeeks.length > 0 ? selectedWeeks[selectedWeeks.length - 1].endDate : null;
-      
-      console.log('[CabinSelector] handleSelectAccommodation - Checking availability with range:', {
-        checkInDate: checkInDate?.toISOString(),
-        checkOutDate: checkOutDate?.toISOString()
-      });
-      
-      const accommodation = accommodations.find(a => a.id === id);
-      if (accommodation) {
-        // MODIFIED: Pass derived dates to checkWeekAvailability
-        checkWeekAvailability(accommodation, checkInDate, checkOutDate);
-      }
-    }
+    // REMOVED: No longer checking availability here since useEffect[selectedWeeks] already does it
+    // This was causing double API calls and state thrashing leading to flickering
 
     onSelectAccommodation(id);
-    // MODIFIED: Dependency array includes derived dates implicitly via selectedWeeks
-  }, [accommodations, selectedWeeks, checkWeekAvailability, onSelectAccommodation, selectedAccommodationId]);
+  }, [onSelectAccommodation, selectedAccommodationId]);
 
   // Helper function to check if user can see test accommodations
   const canSeeTestAccommodations = () => {
@@ -512,13 +456,6 @@ export function CabinSelector({
                     (testMode || (finalCanSelect && !isDisabled)) && 'cursor-pointer'
                   )}
                                       onClick={(e) => {
-                    console.log('[CabinSelector] Accommodation card clicked:', acc.title);
-                    console.log('[CabinSelector] Click conditions:', {
-                      testMode,
-                      finalCanSelect,
-                      isDisabled,
-                      canSelect: testMode || (finalCanSelect && !isDisabled)
-                    });
                     // Prevent event bubbling to parent elements
                     e.stopPropagation();
                     
@@ -554,7 +491,7 @@ export function CabinSelector({
                   {/* Top-right badges container */}
                   <div className="absolute top-2 right-2 z-10 flex flex-col items-end gap-2">
                     {/* Capacity Badge */}
-                    {acc.capacity && !isFullyBooked && (!['parking', 'tent'].includes(acc.type) || acc.title.toLowerCase().includes('tipi') || acc.title.toLowerCase().includes('bell tent')) && !acc.title.toLowerCase().includes('van parking') && !acc.title.toLowerCase().includes('own tent') && !acc.title.toLowerCase().includes('staying with somebody') && !acc.title.toLowerCase().includes('dorm') && (
+                    {acc.capacity && selectedWeeks.length > 0 && !isFullyBooked && (!['parking', 'tent'].includes(acc.type) || acc.title.toLowerCase().includes('tipi') || acc.title.toLowerCase().includes('bell tent')) && !acc.title.toLowerCase().includes('van parking') && !acc.title.toLowerCase().includes('own tent') && !acc.title.toLowerCase().includes('staying with somebody') && !acc.title.toLowerCase().includes('dorm') && (
                       <div className="text-xs font-medium px-3 py-1 rounded-full shadow-lg bg-gray-600/90 text-white border border-white/30 font-mono">
                         Fits {acc.capacity} {acc.capacity === 1 ? 'person' : 'people'}
                       </div>

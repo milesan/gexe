@@ -32,13 +32,25 @@ export function useWeeklyAccommodations() {
 
     if (accommodation.is_unlimited) {
       console.log('[useWeeklyAccommodations] Accommodation is unlimited, returning true');
-      setAvailabilityMap(prev => ({
-        ...prev,
-        [accommodation.id]: {
-          isAvailable: true,
-          availableCapacity: null
+      setAvailabilityMap(prev => {
+        const existingData = prev[accommodation.id];
+        
+        // Only update if data actually changed
+        if (!existingData || 
+            existingData.isAvailable !== true ||
+            existingData.availableCapacity !== null) {
+          return {
+            ...prev,
+            [accommodation.id]: {
+              isAvailable: true,
+              availableCapacity: null
+            }
+          };
         }
-      }));
+        
+        // No changes needed, return existing reference
+        return prev;
+      });
       return true;
     }
     
@@ -72,9 +84,31 @@ export function useWeeklyAccommodations() {
       });
       
       setAvailabilityMap(prev => {
-        const updated = { ...prev, ...newAvailabilityMap };
-        console.log('[useWeeklyAccommodations] Updated availability map:', updated);
-        return updated;
+        // Check if we actually need to update the availability map
+        let hasChanges = false;
+        const updated = { ...prev };
+        
+        // Only update properties that have actually changed
+        Object.entries(newAvailabilityMap).forEach(([accommodationId, newData]) => {
+          const existingData = prev[accommodationId];
+          
+          // Check if data actually changed
+          if (!existingData || 
+              existingData.isAvailable !== newData.isAvailable ||
+              existingData.availableCapacity !== newData.availableCapacity) {
+            updated[accommodationId] = newData;
+            hasChanges = true;
+          }
+        });
+        
+        // Only return new object if there were actual changes
+        if (hasChanges) {
+          console.log('[useWeeklyAccommodations] Updated availability map with changes:', updated);
+          return updated;
+        } else {
+          console.log('[useWeeklyAccommodations] No changes detected, keeping existing availability map');
+          return prev; // Return existing reference to prevent unnecessary re-renders
+        }
       });
       
       const result = availability.find(a => a.accommodation_id === accommodation.id);
@@ -97,7 +131,7 @@ export function useWeeklyAccommodations() {
       const data = await bookingService.getAccommodations();
       console.log('[useWeeklyAccommodations] Received accommodations:', data);
       
-      const rootAccommodations = data.filter(acc => !acc.parent_accommodation_id);
+      const rootAccommodations = data.filter(acc => !(acc as any).parent_accommodation_id);
       console.log('[useWeeklyAccommodations] Filtered root accommodations:', rootAccommodations);
       
       setAccommodations(rootAccommodations as Accommodation[]);

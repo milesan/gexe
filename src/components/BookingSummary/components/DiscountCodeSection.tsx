@@ -33,7 +33,7 @@ export function DiscountCodeSection({
                 id="discount-code"
                 value={discountCodeInput}
                 onChange={(e) => setDiscountCodeInput(e.target.value.toUpperCase())}
-                className="flex-grow px-3 py-2 bg-[var(--color-input-bg)] border border-border rounded-sm focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent text-primary placeholder:text-shade-1 placeholder:font-display text-sm disabled:bg-transparent disabled:text-shade-3"
+                className="w-32 sm:w-36 px-3 py-2 bg-[var(--color-input-bg)] border border-border rounded-sm focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent text-primary placeholder:text-shade-1 placeholder:font-display text-sm disabled:bg-transparent disabled:text-shade-3"
                 placeholder="ENTER CODE"
                 disabled={isApplyingDiscount}
               />
