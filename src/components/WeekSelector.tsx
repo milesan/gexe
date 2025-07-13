@@ -4,7 +4,7 @@ import { formatInTimeZone } from 'date-fns-tz';
 import { WeekBox } from './WeekBox';
 import clsx from 'clsx';
 import { Week } from '../types/calendar';
-import { isWeekSelectable, formatWeekRange, formatDateForDisplay, normalizeToUTCDate, generateWeekId, canDeselectArrivalWeek, getWeeksToDeselect, calculateTotalWeeksDecimal, areSameWeeks } from '../utils/dates';
+import { isWeekSelectable, formatWeekRange, formatDateForDisplay, normalizeToUTCDate, generateWeekId, canDeselectArrivalWeek, getWeeksToDeselect, calculateTotalWeeksDecimal, areSameWeeks, isBlockedFranceEventWeek } from '../utils/dates';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, X, ChevronDown, ChevronUp } from 'lucide-react';
@@ -14,15 +14,17 @@ import { getSeasonalDiscount, getSeasonName } from '../utils/pricing';
 import { FitText } from './FitText';
 import { Fireflies } from './Fireflies';
 
+
+
 // Helper function to log week dates consistently without timezone confusion
-const getSimplifiedWeekInfo = (week: Week, isAdmin: boolean = false, selectedWeeks: Week[] = [], testMode: boolean = false) => {
+const getSimplifiedWeekInfo = (week: Week, isAdmin: boolean = false, selectedWeeks: Week[] = [], testMode: boolean = false, allWeeks?: Week[]) => {
   return {
     weekStartDate: formatDateForDisplay(week.startDate),
     weekEndDate: formatDateForDisplay(week.endDate),
     weekStatus: week.status,
     weekName: week.name,
     isCustom: week.isCustom,
-    isSelectable: isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode),
+    isSelectable: isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode, allWeeks),
     isEdgeWeek: week.isEdgeWeek
   };
 };
@@ -68,7 +70,7 @@ export function WeekSelector({
   onMaxWeeksReached,
   testMode = false,
 }: WeekSelectorProps) {
-  console.log('[WeekSelector] Rendering weeks:', weeks?.map(w => getSimplifiedWeekInfo(w, isAdmin, selectedWeeks, testMode)));
+  console.log('[WeekSelector] Rendering weeks:', weeks?.map(w => getSimplifiedWeekInfo(w, isAdmin, selectedWeeks, testMode, weeks)));
   // --- START: Add log for incoming props ---
   console.log('[WeekSelector PROPS] Received props:', {
     weeksCount: weeks?.length,
@@ -90,7 +92,7 @@ export function WeekSelector({
       
       // If it's a partial week at the edge, filter it out
       if (diffDays !== 7) {
-        console.log('[WeekSelector] Filtering out partial edge week:', getSimplifiedWeekInfo(week, isAdmin, selectedWeeks, testMode));
+        console.log('[WeekSelector] Filtering out partial edge week:', getSimplifiedWeekInfo(week, isAdmin, selectedWeeks, testMode, weeks));
         return false;
       }
     }
@@ -105,7 +107,7 @@ export function WeekSelector({
     isLoading,
     currentMonth: currentMonth ? formatDateForDisplay(currentMonth) : undefined,
     isMobile,
-    weeks: filteredWeeks?.map(w => getSimplifiedWeekInfo(w, isAdmin, selectedWeeks, testMode))
+    weeks: filteredWeeks?.map(w => getSimplifiedWeekInfo(w, isAdmin, selectedWeeks, testMode, weeks))
   });
   // --- START: Add log for filtered weeks ---
   console.log('[WeekSelector FILTERED] Filtered weeks:', {
@@ -137,7 +139,7 @@ export function WeekSelector({
 
   const handleWeekClick = useCallback((week: Week) => {
     console.log('[WeekSelector] Week clicked:', {
-      weekInfo: getSimplifiedWeekInfo(week, isAdmin, selectedWeeks),
+      weekInfo: getSimplifiedWeekInfo(week, isAdmin, selectedWeeks, testMode, weeks),
       selectedWeeksCount: selectedWeeks.length,
       hasFlexDates: Boolean(week.flexibleDates?.length),
       flexDatesCount: week.flexibleDates?.length || 0,
@@ -148,7 +150,7 @@ export function WeekSelector({
     // If the week is already selected, we're trying to deselect it
     if (isWeekSelected(week)) {
       // Get all weeks that should be deselected when clicking this week
-      const weeksToDeselect = getWeeksToDeselect(week, selectedWeeks, isAdmin);
+      const weeksToDeselect = getWeeksToDeselect(week, selectedWeeks, isAdmin, weeks);
       console.log('[WeekSelector] Weeks to deselect:', {
         count: weeksToDeselect.length,
         weeks: weeksToDeselect.map(w => ({
@@ -185,11 +187,12 @@ export function WeekSelector({
     }
     
     // If we're selecting a new week (not deselecting)
-    if (!isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode)) {
+    if (!isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode, weeks) || isBlockedFranceEventWeek(week)) {
       console.log('[WeekSelector] Week not selectable:', {
         isAdmin,
         weekStatus: week.status,
-        weekStartDate: formatDateForDisplay(week.startDate)
+        weekStartDate: formatDateForDisplay(week.startDate),
+        isBlockedFranceEvent: isBlockedFranceEventWeek(week)
       });
       return;
     }
@@ -271,7 +274,7 @@ export function WeekSelector({
     let classes = ['relative', 'transition-all', 'duration-200', 'ease-in-out', 'transform', 'hover:scale-[1.02]', 'focus:outline-none', 'focus:ring-2', 'focus:ring-offset-2', 'focus:ring-emerald-500', 'pixel-corners'];
 
     // --- Simplified logic based on grep findings and likely intent ---
-    const isSelectableFlag = isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode);
+    const isSelectableFlag = isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode, weeks);
     const isPastWeek = isBefore(week.endDate, startOfToday()) && !isSameDay(week.endDate, startOfToday());
 
     if (isPastWeek && !isAdmin) {
@@ -400,7 +403,7 @@ export function WeekSelector({
             )}>
               {monthWeeks.map((week, index) => {
                 // All the existing week rendering logic stays the same
-                const isContentVisible = isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode) || isAdmin;
+                const isContentVisible = isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode, weeks) || isAdmin || isBlockedFranceEventWeek(week);
 
                 // --- START: Add log inside render map (BEFORE RETURN) --- 
                 console.log(`[WeekSelector RENDER LOOP] Rendering week ${index}:`, { id: week.id, startDate: formatDateForDisplay(week.startDate), endDate: formatDateForDisplay(week.endDate) });
@@ -416,7 +419,7 @@ export function WeekSelector({
                   shouldBeMedium: getSeasonName(week.startDate) === 'Medium Season', // Updated comparison string
                   shouldBeSummer: getSeasonName(week.startDate) === 'Summer Season', // Updated comparison string
                   // Relevant inputs
-                  isSelectable: isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode),
+                  isSelectable: isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode, weeks),
                   isAdmin,
                 }); */
                 // --- DEBUG LOG END ---
@@ -429,7 +432,7 @@ export function WeekSelector({
                   isCustom: week.isCustom,
                   status: week.status,
                   isAdmin: isAdmin,
-                  isSelectable: isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode),
+                  isSelectable: isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode, weeks),
                   isContentVisible: isContentVisible,
                   selectedWeeksLength: selectedWeeks.length,
                   weekObjectReceived: week // Log the raw week object just in case
@@ -437,7 +440,7 @@ export function WeekSelector({
                 // --- END: Added log ---
 
                 // Debug log for min-height class
-                const isSelectableForHeightClass = isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode);
+                const isSelectableForHeightClass = isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode, weeks);
                 const minHeightClass = (!isSelectableForHeightClass && !isAdmin) 
                   ? 'min-h-[50px] xxs:min-h-[90px] xs:min-h-[100px] sm:min-h-[110px]' 
                   : 'min-h-[80px] xxs:min-h-[90px] xs:min-h-[100px] sm:min-h-[110px]';
@@ -476,9 +479,9 @@ export function WeekSelector({
                       isWeekSelected(week) && 'border-accent-primary shadow-lg bg-surface-dark', 
                       !isWeekSelected(week) && selectedWeeks.length > 1 && isWeekBetweenSelection(week, selectedWeeks) && 'border-accent-primary/20 bg-surface/50', 
                       // Opacity/cursor for non-selectable (content hiding handled below)
-                      !isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode) && !isAdmin && !testMode && 'opacity-50 cursor-not-allowed',
+                      !isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode, weeks) && !isAdmin && !testMode && 'opacity-50 cursor-not-allowed',
                       // Hover/cursor for selectable admin view
-                      isAdmin && isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode) && 'cursor-pointer hover:border-blue-400',
+                      isAdmin && isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode, weeks) && 'cursor-pointer hover:border-blue-400',
                       // Status colors - only for admin (These might override bg too)
                       isAdmin && week.status === 'hidden' && 'border-yellow-400 bg-yellow-500/10',
                       isAdmin && week.status === 'deleted' && 'border-red-400 bg-red-500/10 border-dashed',
@@ -500,11 +503,12 @@ export function WeekSelector({
                       })()
                       // --- END: Seasonal/Default Border Logic ---
                     )}
-                    disabled={!isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode)}
+                    disabled={!isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode, weeks) || isBlockedFranceEventWeek(week)}
                   >
                     {/* Conditionally render the content */}
-                    {isContentVisible && (
+                    {(isContentVisible || isBlockedFranceEventWeek(week)) && (
                       <div className="text-center flex flex-col justify-center h-full">
+
                         {/* --- START: Unified Date Display Logic --- */}
                         {/* This block now handles both named and unnamed weeks */}
                         <div className={clsx(
@@ -555,6 +559,24 @@ export function WeekSelector({
 
                             // If no weeks are selected, show the earliest potential check-in date
                             if (selectedWeeks.length === 0) {
+                              // Special case for blocked France event week
+                              if (isBlockedFranceEventWeek(week)) {
+                                return (
+                                  <div className="flex flex-col items-center justify-center text-center">
+                                    <div className="text-xs">SECRET EVENT</div>
+                                    <div className="text-xs mt-1">
+                                      <a
+                                        href="mailto:dawn@thegarden.pt?subject=Garden Rental Inquiry&body=Hi, I am interested in renting the garden for all or part of Sep 23-29th"
+                                        className="text-primary hover:text-accent-primary underline"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        GARDEN RENTAL
+                                      </a>
+                                    </div>
+                                  </div>
+                                );
+                              }
+                              
                               let displayDate = week.startDate;
                               if (week.flexibleDates?.length) {
                                 // Sort dates and pick the earliest Date object directly
@@ -666,7 +688,7 @@ export function WeekSelector({
                                 // Check if this week comes directly after the selected one and is selectable
                                 const isSubsequent = isAfter(week.startDate, selectedWeek.endDate);
                                 // Also ensure it's selectable according to existing rules (availability, contiguity unless admin)
-                                const isNextSelectable = isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode); 
+                                const isNextSelectable = isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode, weeks); 
                                 
                                 if (isSubsequent && isNextSelectable) {
                                   console.log('[WeekSelector Render] Displaying potential checkout date for subsequent week:', {

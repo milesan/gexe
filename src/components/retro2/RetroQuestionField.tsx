@@ -89,7 +89,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
         // Use isWeekSelectable to apply all business rules (including November cutoff, hidden weeks, etc.)
         const selectableWeeks = fetchedWeeks.filter(week => {
           // For arrival date selection, we pass empty array as selectedWeeks since this is for initial selection
-          const isSelectable = isWeekSelectable(week, false, []);
+          const isSelectable = isWeekSelectable(week, false, [], undefined, false, undefined);
           if (!isSelectable) {
             console.log('[RetroQuestionField] Excluding week (not selectable):', {
               startDate: week.startDate.toISOString().split('T')[0],
