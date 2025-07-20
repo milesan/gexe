@@ -15,11 +15,11 @@ WHERE u.email = 'redis213+bryanjeffsart@gmail.com';
 -- Check acceptance token
 SELECT 'TOKEN CHECK' as check_type, token, application_id, expires_at, used_at
 FROM acceptance_tokens
-WHERE token = '11e3533f-47ec-4f02-94a0-5e735f6cc199';
+WHERE token = '..';
 
 -- Test the RPC function
 SELECT 'RPC TEST' as test_type, *
-FROM get_application_token_data('11e3533f-47ec-4f02-94a0-5e735f6cc199');
+FROM get_application_token_data('..');
 
 -- Check profile
 SELECT 'PROFILE CHECK' as check_type, id, email, first_name, last_name

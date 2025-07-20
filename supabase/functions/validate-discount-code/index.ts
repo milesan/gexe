@@ -91,6 +91,18 @@ serve(async (req: Request) => {
 
     // --- Success Case ---
     if (codeData) {
+      // Check if the discount code is active
+      if (!codeData.is_active) {
+        console.log(`Code "${codeToValidate}" is inactive.`);
+        return new Response(
+          JSON.stringify({ error: 'This discount code is no longer active.' }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 400, // Bad Request
+          }
+        );
+      }
+
       console.log(`Code "${codeToValidate}" validated successfully:`, codeData);
       return new Response(
         JSON.stringify({

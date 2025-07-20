@@ -3,6 +3,41 @@ import { formatInTimeZone } from 'date-fns-tz';
 import { convertToUTC1 } from './timezone';
 import { CalendarConfig, Week, WeekCustomization, WeekStatus } from '../types/calendar';
 
+// Helper function to check if a week is the blocked France event week (Sep 23-29, 2025)
+export function isBlockedFranceEventWeek(week: Week): boolean {
+  const startDate = week.startDate;
+  const endDate = week.endDate;
+  
+  // Check if this week spans Sep 23-29, 2025 specifically
+  const startMonth = startDate.getMonth(); // 0-indexed, so September is 8
+  const startDay = startDate.getDate();
+  const startYear = startDate.getFullYear();
+  const endMonth = endDate.getMonth();
+  const endDay = endDate.getDate();
+  const endYear = endDate.getFullYear();
+  
+  // Check if start date is Sep 23, 2025 and end date is Sep 29, 2025
+  return (startMonth === 8 && startDay === 23 && startYear === 2025 && 
+          endMonth === 8 && endDay === 29 && endYear === 2025);
+}
+
+// Helper function to check if there are any blocked weeks between two weeks
+export function hasBlockedWeeksBetween(startWeek: Week, endWeek: Week, allWeeks: Week[]): boolean {
+  // If we don't have access to all weeks, we can't check - allow the selection
+  if (!allWeeks || allWeeks.length === 0) {
+    return false;
+  }
+  
+  // Find weeks that fall between startWeek and endWeek (exclusive)
+  const betweenWeeks = allWeeks.filter(week => {
+    return week.startDate.getTime() > startWeek.startDate.getTime() && 
+           week.startDate.getTime() < endWeek.startDate.getTime();
+  });
+  
+  // Check if any of these weeks are blocked
+  return betweenWeeks.some(week => isBlockedFranceEventWeek(week));
+}
+
 // Helper function for consistent date formatting (using UTC)
 export function formatDateOnly(date: Date): string {
     // Use formatInTimeZone to ensure we format based on UTC components
@@ -487,7 +522,7 @@ export function generateWeeksWithCustomizations(
 /**
  * Check if a week is selectable based on its status and date
  */
-export function isWeekSelectable(week: Week, isAdmin: boolean = false, selectedWeeks: Week[] = [], testCurrentTime?: Date, testMode: boolean = false): boolean {
+export function isWeekSelectable(week: Week, isAdmin: boolean = false, selectedWeeks: Week[] = [], testCurrentTime?: Date, testMode: boolean = false, allWeeks?: Week[]): boolean {
     // Test mode bypasses all restrictions
   if (testMode) {
     return true;
@@ -583,6 +618,12 @@ export function isWeekSelectable(week: Week, isAdmin: boolean = false, selectedW
       return false;
     }
     
+    // Check if this week is blocked (even for arrival)
+    if (!isAdmin && isBlockedFranceEventWeek(week)) {
+      console.log('[isWeekSelectable] Cannot select blocked week as arrival week');
+      return false;
+    }
+    
     // Check if this week is in May or June (months are 0-indexed: 4=May, 5=June)
     const month = weekStartDate.getUTCMonth();
     if (month === 4 || month === 5) {
@@ -595,7 +636,28 @@ export function isWeekSelectable(week: Week, isAdmin: boolean = false, selectedW
   // Allow any week after the arrival week for departure, even if hidden
   if (selectedWeeks.length > 0) {
     const arrivalWeek = selectedWeeks[0];
-    return weekStartDate.getTime() > arrivalWeek.startDate.getTime();
+    
+    // Check if this week is after the arrival week
+    if (weekStartDate.getTime() > arrivalWeek.startDate.getTime()) {
+      // For non-admin users, check if there are blocked weeks between arrival and this week
+      if (!isAdmin) {
+        // Check if this specific week is blocked
+        if (isBlockedFranceEventWeek(week)) {
+          console.log('[isWeekSelectable] Week is blocked (France event week)');
+          return false;
+        }
+        
+        // If we have access to all weeks, check for blocked weeks in between
+        if (allWeeks && allWeeks.length > 0) {
+          if (hasBlockedWeeksBetween(arrivalWeek, week, allWeeks)) {
+            console.log('[isWeekSelectable] Cannot select week - blocked week exists between arrival and target week');
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+    return false;
   }
 
   // Non-admin can only select visible weeks (this is a fallback)
@@ -650,7 +712,8 @@ export function areSameWeeks(week1: Week, week2: Week): boolean {
 export function getWeeksToDeselect(
   weekToDeselect: Week,
   selectedWeeks: Week[],
-  isAdmin: boolean = false
+  isAdmin: boolean = false,
+  allWeeks?: Week[]
 ): Week[] {
   console.log('[getWeeksToDeselect] Starting with:', {
     weekToDeselect: {
@@ -695,7 +758,7 @@ export function getWeeksToDeselect(
         status: potentialNewArrivalWeek.status
       });
 
-      if (isWeekSelectable(potentialNewArrivalWeek, isAdmin, [])) {
+      if (isWeekSelectable(potentialNewArrivalWeek, isAdmin, [], undefined, false, allWeeks)) {
         console.log('[getWeeksToDeselect] Found valid new arrival week - returning weeks to deselect:', {
           weeksToDeselect: selectedWeeks.slice(0, i).map(w => ({
             id: w.id,
@@ -726,9 +789,10 @@ export function getWeeksToDeselect(
 export function canDeselectArrivalWeek(
   weekToDeselect: Week,
   selectedWeeks: Week[],
-  isAdmin: boolean = false
+  isAdmin: boolean = false,
+  allWeeks?: Week[]
 ): boolean {
-  return getWeeksToDeselect(weekToDeselect, selectedWeeks, isAdmin).length > 0;
+  return getWeeksToDeselect(weekToDeselect, selectedWeeks, isAdmin, allWeeks).length > 0;
 }
 
 /**

@@ -4,7 +4,7 @@ import { formatInTimeZone } from 'date-fns-tz';
 import { WeekBox } from './WeekBox';
 import clsx from 'clsx';
 import { Week } from '../types/calendar';
-import { isWeekSelectable, formatWeekRange, formatDateForDisplay, normalizeToUTCDate, generateWeekId, canDeselectArrivalWeek, getWeeksToDeselect, calculateTotalWeeksDecimal, areSameWeeks } from '../utils/dates';
+import { isWeekSelectable, formatWeekRange, formatDateForDisplay, normalizeToUTCDate, generateWeekId, canDeselectArrivalWeek, getWeeksToDeselect, calculateTotalWeeksDecimal, areSameWeeks, isBlockedFranceEventWeek } from '../utils/dates';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, X, ChevronDown, ChevronUp } from 'lucide-react';
@@ -14,15 +14,17 @@ import { getSeasonalDiscount, getSeasonName } from '../utils/pricing';
 import { FitText } from './FitText';
 import { Fireflies } from './Fireflies';
 
+
+
 // Helper function to log week dates consistently without timezone confusion
-const getSimplifiedWeekInfo = (week: Week, isAdmin: boolean = false, selectedWeeks: Week[] = [], testMode: boolean = false) => {
+const getSimplifiedWeekInfo = (week: Week, isAdmin: boolean = false, selectedWeeks: Week[] = [], testMode: boolean = false, allWeeks?: Week[]) => {
   return {
     weekStartDate: formatDateForDisplay(week.startDate),
     weekEndDate: formatDateForDisplay(week.endDate),
     weekStatus: week.status,
     weekName: week.name,
     isCustom: week.isCustom,
-    isSelectable: isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode),
+    isSelectable: isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode, allWeeks),
     isEdgeWeek: week.isEdgeWeek
   };
 };
@@ -464,7 +466,7 @@ export function WeekSelector({
       
       // If it's a partial week at the edge, filter it out
       if (diffDays !== 7) {
-        console.log('[WeekSelector] Filtering out partial edge week:', getSimplifiedWeekInfo(week, isAdmin, selectedWeeks, testMode));
+        console.log('[WeekSelector] Filtering out partial edge week:', getSimplifiedWeekInfo(week, isAdmin, selectedWeeks, testMode, weeks));
         return false;
       }
     }
@@ -502,7 +504,7 @@ export function WeekSelector({
     // If the week is already selected, we're trying to deselect it
     if (isWeekSelected(week)) {
       // Get all weeks that should be deselected when clicking this week
-      const weeksToDeselect = getWeeksToDeselect(week, selectedWeeks, isAdmin);
+      const weeksToDeselect = getWeeksToDeselect(week, selectedWeeks, isAdmin, weeks);
       console.log('[WeekSelector] Weeks to deselect:', {
         count: weeksToDeselect.length,
         weeks: weeksToDeselect.map(w => ({
@@ -541,11 +543,12 @@ export function WeekSelector({
     }
     
     // If we're selecting a new week (not deselecting)
-    if (!isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode)) {
+    if (!isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode, weeks) || isBlockedFranceEventWeek(week)) {
       console.log('[WeekSelector] Week not selectable:', {
         isAdmin,
         weekStatus: week.status,
-        weekStartDate: formatDateForDisplay(week.startDate)
+        weekStartDate: formatDateForDisplay(week.startDate),
+        isBlockedFranceEvent: isBlockedFranceEventWeek(week)
       });
       return;
     }
@@ -628,7 +631,7 @@ export function WeekSelector({
     let classes = ['relative', 'transition-all', 'duration-200', 'ease-in-out', 'transform', 'hover:scale-[1.02]', 'focus:outline-none', 'focus:ring-2', 'focus:ring-offset-2', 'focus:ring-emerald-500', 'pixel-corners'];
 
     // --- Simplified logic based on grep findings and likely intent ---
-    const isSelectableFlag = isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode);
+    const isSelectableFlag = isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode, weeks);
     const isPastWeek = isBefore(week.endDate, startOfToday()) && !isSameDay(week.endDate, startOfToday());
 
     if (isPastWeek && !isAdmin) {

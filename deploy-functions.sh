@@ -27,6 +27,7 @@ deploy_function() {
 # Deploy functions
 deploy_function "stripe-payment-webhook"
 deploy_function "create-booking-securely"
+deploy_function "validate-discount-code"
 
 echo "🎉 Deployment complete!"
 echo ""
