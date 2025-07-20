@@ -56,6 +56,376 @@ function isWeekBetweenSelection(week: Week, selectedWeeks: Week[]): boolean {
   return isAfter(week.startDate, firstSelectedStart) && isBefore(week.startDate, lastSelectedStart);
 }
 
+
+
+// Add the memoized WeekComponent before the main WeekSelector component
+interface WeekComponentProps {
+  week: Week;
+  index: number;
+  isContentVisible: boolean;
+  selectedWeeks: Week[];
+  extensionWeeks: Week[];
+  isAdmin: boolean;
+  testMode: boolean;
+  handleWeekClick: (week: Week) => void;
+  isWeekSelected: (week: Week) => boolean;
+  isWeekDisabled: (week: Week) => boolean;
+  filteredWeeks: Week[];
+  disableFireflies: boolean;
+}
+
+const WeekComponent = React.memo(function WeekComponent({
+  week,
+  index,
+  isContentVisible,
+  selectedWeeks,
+  extensionWeeks,
+  isAdmin,
+  testMode,
+  handleWeekClick,
+  isWeekSelected,
+  isWeekDisabled,
+  filteredWeeks,
+  disableFireflies,
+}: WeekComponentProps) {
+  // Performance optimization: Only compute expensive values once
+  const isSelected = isWeekSelected(week);
+  const disabled = isWeekDisabled(week);
+  const isSelectableForHeight = isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode);
+  
+  // Remove excessive logging for performance
+  // console.log(`[WeekSelector RENDER LOOP] Rendering week ${index}:`, { id: week.id, startDate: formatDateForDisplay(week.startDate), endDate: formatDateForDisplay(week.endDate) });
+
+  const fixedHeightClass = 'h-[80px] xxs:h-[90px] xs:h-[100px] sm:h-[110px]';
+  const paddingClass = 'p-2 xxs:p-2.5 xs:p-3 sm:p-4';
+  const isIntermediateSelected = isSelected && isWeekBetweenSelection(week, selectedWeeks);
+
+  return (
+    <button
+      key={week.id || `week-${index}`}
+      onClick={() => !disabled && handleWeekClick(week)}
+      className={clsx(
+        'relative border-2 transition-all duration-300',
+        paddingClass,
+        fixedHeightClass,
+        'shadow-sm hover:shadow-md',
+        'bg-card-highlight',
+        !isSelected && !(selectedWeeks.length > 1 && isWeekBetweenSelection(week, selectedWeeks)) && !(isAdmin && (week.status === 'hidden' || week.status === 'deleted' || (week.status === 'visible' && week.isCustom))) && 'bg-surface-dark',
+        isSelected && 'border-accent-primary shadow-lg bg-surface-dark',
+        !isSelected && selectedWeeks.length > 1 && isWeekBetweenSelection(week, selectedWeeks) && 'border-accent-primary/20 bg-surface/50',
+        (!isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode) || disabled) && !isAdmin && !testMode && 'opacity-50 cursor-not-allowed',
+        isAdmin && isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode) && 'cursor-pointer hover:border-blue-400',
+        isAdmin && week.status === 'hidden' && 'border-yellow-400 bg-yellow-500/10',
+        isAdmin && week.status === 'deleted' && 'border-red-400 bg-red-500/10 border-dashed',
+        isAdmin && week.status === 'visible' && week.isCustom && 'border-blue-400',
+        (() => {
+          const season = getSeasonName(week.startDate);
+          if (!isSelected && !isAdmin) {
+            if (season === 'Low Season') return 'border-season-low';
+            if (season === 'Medium Season') return 'border-season-medium';
+            if (season === 'Summer Season') return 'border-season-summer';
+          }
+          if (!isSelected && !(selectedWeeks.length > 1 && isWeekBetweenSelection(week, selectedWeeks)) && !(isAdmin && (week.status === 'hidden' || week.status === 'deleted' || (week.status === 'visible' && week.isCustom)))) {
+            return 'border-border';
+          }
+          return null;
+        })()
+      )}
+      disabled={!isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode) || disabled}
+    >
+      {/* Conditionally render the content */}
+      {isContentVisible && (
+        <div className="text-center flex flex-col h-full overflow-hidden">
+          {/* --- START: Unified Date Display Logic --- */}
+          <div className="font-display text-primary mb-1 flex-1 min-h-0 flex items-center justify-center px-1">
+            {(() => {
+              // Simplified date calculation without excessive logging
+              let effectiveStartDate: Date | undefined;
+
+              if (selectedWeeks.length > 0) {
+                const firstSelected = selectedWeeks[0];
+                const originalWeekData = filteredWeeks.find(w => areSameWeeks(w, firstSelected));
+
+                if (firstSelected.selectedFlexDate) {
+                  effectiveStartDate = firstSelected.selectedFlexDate;
+                } else if (originalWeekData?.flexibleDates?.length) {
+                  const sortedFlexDates = [...originalWeekData.flexibleDates].sort((a, b) => a.getTime() - b.getTime());
+                  effectiveStartDate = sortedFlexDates[0]; 
+                } else {
+                  effectiveStartDate = firstSelected.startDate;
+                }
+              }
+
+              // If no weeks are selected, show the earliest potential check-in date
+              if (selectedWeeks.length === 0) {
+                let displayDate = week.startDate;
+                if (week.flexibleDates?.length) {
+                  const sortedFlexDates = [...week.flexibleDates].sort((a, b) => a.getTime() - b.getTime());
+                  displayDate = sortedFlexDates[0];
+                }
+                const dateText = formatInTimeZone(displayDate, 'UTC', 'MMM d');
+                return (
+                  <div className="flex items-center justify-center w-full max-w-full">
+                    <FitText text={dateText} minFontSizePx={10} maxFontSizePx={24} className="w-full" />
+                  </div>
+                );
+              }
+
+              // If multiple weeks are selected
+              if (selectedWeeks.length > 1) {
+                const firstSelected = selectedWeeks[0];
+                const lastSelected = selectedWeeks[selectedWeeks.length - 1];
+                const isFirstSelected = areSameWeeks(week, firstSelected);
+                const isLastSelected = areSameWeeks(week, lastSelected);
+                const isAnySelectedWeek = selectedWeeks.some(sw => areSameWeeks(week, sw));
+                const isExtensionWeek = extensionWeeks?.some(ew => areSameWeeks(week, ew));
+
+                // Special case: Show checkout date for extension weeks
+                if (isExtensionWeek && isAnySelectedWeek) {
+                  const checkoutText = formatInTimeZone(week.endDate, 'UTC', 'MMM d');
+                  const isActualCheckout = extensionWeeks && extensionWeeks.length > 0 && 
+                    areSameWeeks(week, extensionWeeks[extensionWeeks.length - 1]);
+                  
+                  if (isActualCheckout) {
+                    return (
+                      <div className="flex items-center justify-center text-primary w-full max-w-full">
+                        <FitText text={`→ ${checkoutText}`} minFontSizePx={12} maxFontSizePx={22} className="w-full" />
+                      </div>
+                    );
+                  } else {
+                    return (
+                      <div className="flex items-center justify-center text-secondary w-full max-w-full">
+                        <FitText text={checkoutText} minFontSizePx={12} maxFontSizePx={22} className="w-full" />
+                      </div>
+                    );
+                  }
+                }
+
+                if (isFirstSelected && effectiveStartDate) {
+                  const dateText = formatInTimeZone(effectiveStartDate, 'UTC', 'MMM d');
+                  return (
+                    <div className="flex items-center justify-center gap-1 text-primary w-full max-w-full">
+                      <FitText text={dateText} minFontSizePx={12} maxFontSizePx={22} className="w-full" />
+                      <span>→</span>
+                    </div>
+                  );
+                }
+                if (isLastSelected && !isExtensionWeek) {
+                  const dateText = formatInTimeZone(week.endDate, 'UTC', 'MMM d');
+                  return (
+                    <div className="flex items-center justify-center gap-1 text-primary w-full max-w-full">
+                      <span>→</span>
+                      <FitText text={dateText} minFontSizePx={12} maxFontSizePx={22} className="w-full" />
+                    </div>
+                  );
+                }
+                if (isAnySelectedWeek && !isFirstSelected && !isLastSelected && !isExtensionWeek) {
+                  return null;
+                }
+                if (!isAnySelectedWeek) {
+                  if (isAfter(week.startDate, firstSelected.startDate)) {
+                    const dateText = formatInTimeZone(week.endDate, 'UTC', 'MMM d');
+                    return (
+                      <div className="flex items-center justify-center text-primary w-full max-w-full">
+                        <FitText text={dateText} minFontSizePx={12} maxFontSizePx={22} className="w-full" />
+                      </div>
+                    );
+                  }
+                }
+              }
+
+              // If a single week is selected
+              if (selectedWeeks.length === 1) {
+                const selectedWeek = selectedWeeks[0];
+                const isSelectedWeek = areSameWeeks(week, selectedWeek);
+                const isExtensionWeek = extensionWeeks?.some(ew => areSameWeeks(week, ew));
+                
+                if (isSelectedWeek && isExtensionWeek) {
+                  const checkoutText = formatInTimeZone(week.endDate, 'UTC', 'MMM d');
+                  const isActualCheckout = extensionWeeks && extensionWeeks.length > 0 && 
+                    areSameWeeks(week, extensionWeeks[extensionWeeks.length - 1]);
+                  
+                  if (isActualCheckout) {
+                    return (
+                      <div className="flex items-center justify-center text-primary w-full max-w-full">
+                        <FitText text={`→ ${checkoutText}`} minFontSizePx={12} maxFontSizePx={22} className="w-full" />
+                      </div>
+                    );
+                  } else {
+                    return (
+                      <div className="flex items-center justify-center text-secondary w-full max-w-full">
+                        <FitText text={checkoutText} minFontSizePx={12} maxFontSizePx={22} className="w-full" />
+                      </div>
+                    );
+                  }
+                }
+                
+                if (isSelectedWeek && effectiveStartDate && !isExtensionWeek) {
+                  const startText = formatInTimeZone(effectiveStartDate, 'UTC', 'MMM d');
+                  const endText = formatInTimeZone(week.endDate, 'UTC', 'MMM d');
+                  return (
+                    <div className="flex items-center justify-center gap-1 text-primary w-full max-w-full">
+                      <FitText text={startText} minFontSizePx={12} maxFontSizePx={22} className="w-full" />
+                      <span>→</span>
+                      <FitText text={endText} minFontSizePx={12} maxFontSizePx={22} className="w-full" />
+                    </div>
+                  );
+                }
+                else {
+                  const isSubsequent = isAfter(week.startDate, selectedWeek.endDate);
+                  const isNextSelectable = isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode); 
+                  if (isSubsequent && isNextSelectable) {
+                    const dateText = formatInTimeZone(week.endDate, 'UTC', 'MMM d');
+                    return (
+                      <div className="flex items-center justify-center text-primary w-full max-w-full">
+                        <FitText text={dateText} minFontSizePx={12} maxFontSizePx={22} className="w-full" />
+                      </div>
+                    );
+                  }
+                }
+              }
+
+              // Fallback display
+              let fallbackDisplayDate = week.startDate;
+              if (week.flexibleDates?.length) {
+                const sortedFlexDates = [...week.flexibleDates].sort((a, b) => a.getTime() - b.getTime());
+                fallbackDisplayDate = sortedFlexDates[0];
+              }
+              const fallbackText = formatInTimeZone(fallbackDisplayDate, 'UTC', 'MMM d');
+              return (
+                <div className="flex items-center justify-center text-primary w-full max-w-full">
+                  <FitText text={fallbackText} minFontSizePx={12} maxFontSizePx={22} className="w-full" />
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Combined info display */}
+          {(() => {
+            const diffTime = week.endDate.getTime() - week.startDate.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+            const isMultiWeekSelection = selectedWeeks.length > 2;
+            const isFirstSelected = selectedWeeks.length > 0 && areSameWeeks(week, selectedWeeks[0]);
+            const isLastSelected = selectedWeeks.length > 0 && areSameWeeks(week, selectedWeeks[selectedWeeks.length - 1]);
+            const isInBetween = isMultiWeekSelection && !isFirstSelected && !isLastSelected;
+
+            const infoParts = [];
+
+            if (!isIntermediateSelected && week.name) {
+              infoParts.push(week.name);
+            }
+
+            if (week.flexibleDates && week.flexibleDates.length > 0 && !selectedWeeks.length) {
+              infoParts.push(`${week.flexibleDates.length} ${week.flexibleDates.length === 1 ? 'date' : 'dates'}`);
+            }
+
+            if (diffDays !== 7 && !week.isEdgeWeek && !isInBetween) {
+              infoParts.push(`${diffDays} ${diffDays === 1 ? 'day' : 'days'}`);
+            }
+
+            if (isAdmin && (week.status === 'hidden' || week.status === 'deleted')) {
+              infoParts.push(week.status);
+            }
+
+            if (infoParts.length === 0) return null;
+
+            const isAnySelectedWeek = selectedWeeks.some(sw => areSameWeeks(week, sw));
+            if (isAnySelectedWeek) return null;
+
+            const combinedText = infoParts.join(' • ');
+            const hasLink = !!week.link;
+
+            if (hasLink && week.name) {
+              const safeHref = week.link?.startsWith('http') || week.link?.startsWith('//')
+                ? week.link
+                : `//${week.link}`;
+
+              return (
+                <div className="w-full px-1 overflow-hidden flex-shrink-0 h-[14px] xs:h-[16px] sm:h-[28px] flex items-start sm:items-center">
+                  <a
+                    href={safeHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className={clsx(
+                      'font-display text-[8px] xs:text-[9px] sm:text-[10px] underline hover:text-accent-primary transition-colors duration-200 block w-full',
+                      'truncate sm:whitespace-normal sm:line-clamp-2 sm:leading-tight',
+                      isAdmin && (week.status === 'hidden' || week.status === 'deleted') ? (
+                        week.status === 'hidden' ? 'text-yellow-500' : 'text-red-500'
+                      ) : 'text-secondary'
+                    )}
+                    title={`${combinedText} (opens external link)`}
+                  >
+                    {combinedText}
+                  </a>
+                </div>
+              );
+            }
+
+            return (
+              <div className="w-full px-1 overflow-hidden flex-shrink-0 h-[14px] xs:h-[16px] sm:h-[28px] flex items-start sm:items-center">
+                <div 
+                  className={clsx(
+                    'font-display text-[8px] xs:text-[9px] sm:text-[10px] w-full',
+                    'truncate sm:whitespace-normal sm:line-clamp-2 sm:leading-tight',
+                    isAdmin && (week.status === 'hidden' || week.status === 'deleted') ? (
+                      week.status === 'hidden' ? 'text-yellow-500' : 'text-red-500'
+                    ) : week.flexibleDates && week.flexibleDates.length > 0 && !selectedWeeks.length ? 'text-indigo-500' : 'text-secondary'
+                  )}
+                  title={combinedText}
+                >
+                  {combinedText}
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* Fireflies for selected weeks */}
+      {isSelected && !disableFireflies && (
+        <div className="absolute inset-0 overflow-hidden pointer-events-none z-[1]">
+          <Fireflies 
+            count={2}
+            color="#fddba3"
+            minSize={0.5}
+            maxSize={2}
+            ambient={true}
+            contained={true}
+            className="relative w-full h-full"
+          />
+        </div>
+      )}
+
+      {/* Bottom border for season indication */}
+      <div
+        className={clsx(
+          'absolute bottom-0 left-0 right-0 transition-all duration-300',
+          isSelected ? 'h-1.5 sm:h-2' : 'h-1 sm:h-1.5',
+          isContentVisible && !isSelected && {
+            'bg-season-low': getSeasonName(week.startDate) === 'Low Season',
+            'bg-season-medium': getSeasonName(week.startDate) === 'Medium Season',
+            'bg-season-summer': getSeasonName(week.startDate) === 'Summer Season',
+          },
+          isSelected && 'bg-accent-primary'
+        )}
+      />
+    </button>
+  );
+}, (prevProps, nextProps) => {
+  // Custom comparison for better memoization
+  const prevSelectedIds = prevProps.selectedWeeks.map(w => w.id).join(',');
+  const nextSelectedIds = nextProps.selectedWeeks.map(w => w.id).join(',');
+  
+  return (
+    prevProps.week.id === nextProps.week.id &&
+    prevSelectedIds === nextSelectedIds &&
+    prevProps.isAdmin === nextProps.isAdmin &&
+    prevProps.testMode === nextProps.testMode &&
+    prevProps.extensionWeeks?.length === nextProps.extensionWeeks?.length
+  );
+});
+
 export function WeekSelector({
   weeks,
   selectedWeeks,
@@ -76,17 +446,13 @@ export function WeekSelector({
   disabledWeeks = [],
   extensionWeeks = [],
 }: WeekSelectorProps) {
-  console.log('[WeekSelector] Rendering weeks:', weeks?.map(w => getSimplifiedWeekInfo(w, isAdmin, selectedWeeks, testMode)));
-  // --- START: Add log for incoming props ---
-  console.log('[WeekSelector PROPS] Received props:', {
-    weeksCount: weeks?.length,
-    selectedWeeksCount: selectedWeeks?.length,
-    isAdmin,
-    isLoading,
-    currentMonth: currentMonth ? formatDateForDisplay(currentMonth) : 'undefined',
-    incomingWeeksSample: weeks?.slice(0, 5).map(w => ({ start: formatDateForDisplay(w.startDate), end: formatDateForDisplay(w.endDate), id: w.id })), // Log first 5 incoming weeks
-  });
-  // --- END: Add log for incoming props ---
+  // PERFORMANCE: Removed double render investigation logging for better performance
+  
+  // === PERFORMANCE TIMING START ===
+  const renderStart = performance.now();
+  console.log('[PERF] WeekSelector render START');
+  
+  // PERFORMANCE: Removed verbose prop logging
 
   // Filter out partial weeks at the edges of the date range
   const filteredWeeks = weeks.filter(week => {
@@ -105,27 +471,14 @@ export function WeekSelector({
     return true;
   });
 
-  console.log('[WeekSelector] Rendering with props:', {
-    weeksCount: weeks?.length,
-    filteredWeeksCount: filteredWeeks.length,
-    selectedWeeksCount: selectedWeeks?.length,
-    isAdmin,
-    isLoading,
-    currentMonth: currentMonth ? formatDateForDisplay(currentMonth) : undefined,
-    isMobile,
-    weeks: filteredWeeks?.map(w => getSimplifiedWeekInfo(w, isAdmin, selectedWeeks, testMode))
-  });
-  // --- START: Add log for filtered weeks ---
-  console.log('[WeekSelector FILTERED] Filtered weeks:', {
-    count: filteredWeeks.length,
-    filteredWeeksSample: filteredWeeks?.slice(0, 5).map(w => ({ start: formatDateForDisplay(w.startDate), end: formatDateForDisplay(w.endDate), id: w.id })), // Log first 5 filtered weeks
-  });
-  // --- END: Add log for filtered weeks ---
+  // PERFORMANCE: Removed filtered weeks logging
 
 
   
   const [selectedFlexDate, setSelectedFlexDate] = useState<Date | null>(null);
   const [flexModalWeek, setFlexModalWeek] = useState<Week | null>(null);
+  
+  // PERFORMANCE: Removed prop change monitoring for better performance
 
   // Define isWeekSelected first since it's used in the handleWeekClick dependency array
   const isWeekSelected = useCallback((week: Week) => {
@@ -144,14 +497,7 @@ export function WeekSelector({
   }, [selectedWeeks]);
 
   const handleWeekClick = useCallback((week: Week) => {
-    console.log('[WeekSelector] Week clicked:', {
-      weekInfo: getSimplifiedWeekInfo(week, isAdmin, selectedWeeks),
-      selectedWeeksCount: selectedWeeks.length,
-      hasFlexDates: Boolean(week.flexibleDates?.length),
-      flexDatesCount: week.flexibleDates?.length || 0,
-      flexDates: week.flexibleDates?.map(d => formatDateForDisplay(d)),
-      isCurrentlySelected: isWeekSelected(week)
-    });
+    // PERFORMANCE: Removed verbose click logging
     
     // If the week is already selected, we're trying to deselect it
     if (isWeekSelected(week)) {
@@ -176,12 +522,14 @@ export function WeekSelector({
       // If we have a batch deselection handler, use it
       if (onWeeksDeselect && weeksToDeselect.length > 1) {
         console.log('[WeekSelector] Using batch deselection handler for multiple weeks:', weeksToDeselect.length);
+        // PERFORMANCE: Removed debug logging
         onWeeksDeselect(weeksToDeselect);
         return;
       }
       
       // Otherwise fall back to single week deselection
       console.log('[WeekSelector] Using single week deselection');
+              // PERFORMANCE: Removed debug logging
       onWeekSelect(week);
       
       // Log a warning if there are more weeks to deselect but we can't
@@ -216,6 +564,7 @@ export function WeekSelector({
         calculatedWeeks: totalWeeksDecimal,
         max: MAX_WEEKS_ALLOWED
       });
+      onMaxWeeksReached?.(); // Show the "Hold Your Horses!" modal
       return; // Prevent selecting more weeks
     }
 
@@ -231,7 +580,7 @@ export function WeekSelector({
       console.log('[WeekSelector] Standard week selection');
       onWeekSelect(week);
     }
-  }, [onWeekSelect, onWeeksDeselect, isAdmin, selectedWeeks, isWeekSelected]);
+  }, [onWeekSelect, onWeeksDeselect, isAdmin, selectedWeeks, isWeekSelected, onMaxWeeksReached]);
 
   const handleFlexDateSelect = useCallback((date: Date) => {
     if (!flexModalWeek) return;
@@ -353,6 +702,7 @@ export function WeekSelector({
     // If we have a batch deselection handler, use it for all weeks at once
     if (onWeeksDeselect && selectedWeeks.length > 0) {
       console.log('[WeekSelector] Using batch deselection handler to clear all weeks:', selectedWeeks.length);
+      console.log(`[DOUBLE_RENDER] STATE UPDATE: onWeeksDeselect(clear) - fallback`);
       onWeeksDeselect(selectedWeeks);
       return;
     }
@@ -360,6 +710,7 @@ export function WeekSelector({
     // Last resort: fallback to deselecting the arrival week, which should cascade
     if (selectedWeeks.length > 0) {
       console.log('[WeekSelector] Using arrival week deselection to clear all weeks');
+      console.log(`[DOUBLE_RENDER] STATE UPDATE: onWeekSelect(clear) - fallback`);
       onWeekSelect(selectedWeeks[0]);
     }
   }, [onWeekSelect, onWeeksDeselect, selectedWeeks, onClearSelection]);
@@ -374,6 +725,9 @@ export function WeekSelector({
 
   // Group weeks by month
   const weeksByMonth = useMemo(() => {
+    const weekGroupingStart = performance.now();
+    console.log('[PERF] Week grouping START');
+    
     const grouped = new Map<string, Week[]>();
     
     filteredWeeks.forEach(week => {
@@ -385,33 +739,38 @@ export function WeekSelector({
     });
     
     // Convert to array and sort by month
-    return Array.from(grouped.entries())
+    const result = Array.from(grouped.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([monthKey, weeks]) => ({
         monthKey,
         monthDate: new Date(monthKey + '-01'),
         weeks
       }));
+    
+    const weekGroupingEnd = performance.now();
+    console.log(`[PERF] Week grouping DONE: ${(weekGroupingEnd - weekGroupingStart).toFixed(2)}ms`);
+    
+    return result;
   }, [filteredWeeks]);
 
   // Helper to check if a week is disabled (always selected, not clickable)
   const isWeekDisabled = useCallback((week: Week) => {
-    const isDisabled = disabledWeeks.some(dw => areSameWeeks(dw, week));
-    console.log('[DEBUG] isWeekDisabled check:', {
-      weekId: week.id,
-      weekStartDate: formatDateForDisplay(week.startDate),
-      weekEndDate: formatDateForDisplay(week.endDate),
-      disabledWeeksIds: disabledWeeks.map(dw => dw.id),
-      isDisabled
-    });
-    return isDisabled;
+    return disabledWeeks.some(dw => areSameWeeks(dw, week));
   }, [disabledWeeks]);
+
+  // === PERFORMANCE TIMING - BEFORE RENDER ===
+  const mainRenderStart = performance.now();
+  console.log('[PERF] Main render loop START');
 
   return (
     <>
       <div className="space-y-6">
         {/* Render each month as its own row */}
-        {weeksByMonth.map(({ monthKey, monthDate, weeks: monthWeeks }) => (
+        {weeksByMonth.map(({ monthKey, monthDate, weeks: monthWeeks }) => {
+          const monthRenderStart = performance.now();
+          console.log(`[PERF] Month ${monthKey} render START (${monthWeeks.length} weeks)`);
+          
+          return (
           <div key={monthKey}>
             {/* Week grid for this month */}
             <div className={clsx(
@@ -419,55 +778,8 @@ export function WeekSelector({
               columns ? `grid-cols-${columns}` : 'grid-cols-1 xxs:grid-cols-2 xs:grid-cols-3 sm:grid-cols-5'
             )}>
               {monthWeeks.map((week, index) => {
-                // All the existing week rendering logic stays the same
+                // PERFORMANCE OPTIMIZATION: Removed excessive logging for faster rendering
                 const isContentVisible = isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode) || isAdmin;
-
-                // --- START: Add log inside render map (BEFORE RETURN) --- 
-                console.log(`[WeekSelector RENDER LOOP] Rendering week ${index}:`, { id: week.id, startDate: formatDateForDisplay(week.startDate), endDate: formatDateForDisplay(week.endDate) });
-                // --- END: Add log inside render map --- 
-
-                // --- DEBUG LOG START ---
-                /* console.log('[WeekSelector Debug] Week Render Check:', {
-                  weekId: week.id,
-                  startDate: formatDateForDisplay(week.startDate),
-                  isContentVisible, // What is this value?
-                  seasonName: getSeasonName(week.startDate), // What is this value?
-                  shouldBeLow: getSeasonName(week.startDate) === 'Low Season', // Updated comparison string
-                  shouldBeMedium: getSeasonName(week.startDate) === 'Medium Season', // Updated comparison string
-                  shouldBeSummer: getSeasonName(week.startDate) === 'Summer Season', // Updated comparison string
-                  // Relevant inputs
-                  isSelectable: isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode),
-                  isAdmin,
-                }); */
-                // --- DEBUG LOG END ---
-
-                // --- START: Added log for debugging week properties ---
-                console.log(`[WeekSelector Render Debug] Week ${index} (ID: ${week.id || 'N/A'})`, {
-                  startDate: formatDateForDisplay(week.startDate),
-                  flexibleDates: week.flexibleDates?.map(d => formatDateForDisplay(d)) ?? null,
-                  flexibleDatesLength: week.flexibleDates?.length ?? 0,
-                  isCustom: week.isCustom,
-                  status: week.status,
-                  isAdmin: isAdmin,
-                  isSelectable: isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode),
-                  isContentVisible: isContentVisible,
-                  selectedWeeksLength: selectedWeeks.length,
-                  weekObjectReceived: week // Log the raw week object just in case
-                });
-                // --- END: Added log ---
-
-                // Debug log for min-height class
-                const isSelectableForHeightClass = isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode);
-                const minHeightClass = (!isSelectableForHeightClass && !isAdmin) 
-                  ? 'min-h-[50px] xxs:min-h-[90px] xs:min-h-[100px] sm:min-h-[110px]' 
-                  : 'min-h-[80px] xxs:min-h-[90px] xs:min-h-[100px] sm:min-h-[110px]';
-                
-                console.log(`[WeekSelector Height Debug] Week ${index}:`, {
-                  id: week.id,
-                  isSelectable: isSelectableForHeightClass,
-                  isAdmin,
-                  appliedHeightClass: minHeightClass.substring(0, minHeightClass.indexOf(' ')) // Just log the mobile height part
-                });
 
                 // Define fixed height classes - Using the larger dimensions for consistency
                 const fixedHeightClass = 'h-[80px] xxs:h-[90px] xs:h-[100px] sm:h-[110px]';
@@ -481,385 +793,39 @@ export function WeekSelector({
                 const disabled = isWeekDisabled(week);
 
                 return (
-                  <button
+                  <WeekComponent
                     key={week.id || `week-${index}`}
-                    onClick={() => !disabled && handleWeekClick(week)}
-                    className={clsx(
-                      'relative border-2 transition-all duration-300',
-                      paddingClass,
-                      fixedHeightClass,
-                      'shadow-sm hover:shadow-md',
-                      'bg-card-highlight',
-                      !isWeekSelected(week) && !(selectedWeeks.length > 1 && isWeekBetweenSelection(week, selectedWeeks)) && !(isAdmin && (week.status === 'hidden' || week.status === 'deleted' || (week.status === 'visible' && week.isCustom))) && 'bg-surface-dark',
-                      isWeekSelected(week) && 'border-accent-primary shadow-lg bg-surface-dark',
-                      !isWeekSelected(week) && selectedWeeks.length > 1 && isWeekBetweenSelection(week, selectedWeeks) && 'border-accent-primary/20 bg-surface/50',
-                      (!isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode) || disabled) && !isAdmin && !testMode && 'opacity-50 cursor-not-allowed',
-                      isAdmin && isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode) && 'cursor-pointer hover:border-blue-400',
-                      isAdmin && week.status === 'hidden' && 'border-yellow-400 bg-yellow-500/10',
-                      isAdmin && week.status === 'deleted' && 'border-red-400 bg-red-500/10 border-dashed',
-                      isAdmin && week.status === 'visible' && week.isCustom && 'border-blue-400',
-                      (() => {
-                        const season = getSeasonName(week.startDate);
-                        if (!isWeekSelected(week) && !isAdmin) {
-                          if (season === 'Low Season') return 'border-season-low';
-                          if (season === 'Medium Season') return 'border-season-medium';
-                          if (season === 'Summer Season') return 'border-season-summer';
-                        }
-                        if (!isWeekSelected(week) && !(selectedWeeks.length > 1 && isWeekBetweenSelection(week, selectedWeeks)) && !(isAdmin && (week.status === 'hidden' || week.status === 'deleted' || (week.status === 'visible' && week.isCustom)))) {
-                          return 'border-border';
-                        }
-                        return null;
-                      })()
-                    )}
-                    disabled={!isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode) || disabled}
-                  >
-                    {/* Conditionally render the content */}
-                    {isContentVisible && (
-                      <div className="text-center flex flex-col justify-center h-full">
-                        {/* --- START: Unified Date Display Logic --- */}
-                        {/* This block now handles both named and unnamed weeks */}
-                        <div className={clsx(
-                          'font-display text-primary mb-1',
-                          // Adjust text size based on column count
-                          'text-2xl sm:text-3xl'
-                        )}> {/* Added mb-1 for spacing */}
-                          {(() => {
-                            // --- START: Determine effective start date for the first selected week ---
-                            let effectiveStartDate: Date | undefined;
-                            console.log('[WeekSelector Render] Received selectedWeeks prop:', selectedWeeks?.map(w => ({ id: w.id, start: formatDateForDisplay(w.startDate), end: formatDateForDisplay(w.endDate), selectedFlex: w.selectedFlexDate ? formatDateForDisplay(w.selectedFlexDate) : undefined })));
-
-                            if (selectedWeeks.length > 0) {
-                              const firstSelected = selectedWeeks[0];
-                              console.log('[WeekSelector Render] Examining firstSelected week:', { id: firstSelected.id, start: formatDateForDisplay(firstSelected.startDate), end: formatDateForDisplay(firstSelected.endDate), selectedFlex: firstSelected.selectedFlexDate ? formatDateForDisplay(firstSelected.selectedFlexDate) : undefined });
-                              
-                              // --- Log the selectedFlexDate received in props --- 
-                              console.log('[DATE_TRACE] WeekSelector: Received firstSelected.selectedFlexDate in props:', { 
-                                dateObj: firstSelected.selectedFlexDate, 
-                                iso: firstSelected.selectedFlexDate?.toISOString?.() 
-                              });
-
-                              // Find the original week data to access flexibleDates if needed for fallback
-                              const originalWeekData = filteredWeeks.find(w => areSameWeeks(w, firstSelected));
-
-                              if (firstSelected.selectedFlexDate) {
-                                effectiveStartDate = firstSelected.selectedFlexDate;
-                                console.log(`[WeekSelector Render] Found selectedFlexDate in props: ${formatDateForDisplay(effectiveStartDate)}. Using this as effectiveStartDate.`);
-                              } else if (originalWeekData?.flexibleDates?.length) {
-                                // Sort dates and pick the earliest Date object directly
-                                const sortedFlexDates = [...originalWeekData.flexibleDates].sort((a, b) => a.getTime() - b.getTime());
-                                effectiveStartDate = sortedFlexDates[0]; 
-                                console.warn(`[WeekSelector Render] No selectedFlexDate found in props for first selected week. Falling back to earliest flex date: ${formatDateForDisplay(effectiveStartDate)}.`);
-                              } else {
-                                effectiveStartDate = firstSelected.startDate;
-                                console.log(`[WeekSelector Render] No selectedFlexDate and no flexibleDates found. Using standard start date: ${formatDateForDisplay(effectiveStartDate)}.`);
-                              }
-
-                              // --- Log the final effectiveStartDate before formatting --- 
-                              console.log('[DATE_TRACE] WeekSelector: Final effectiveStartDate before formatting:', { 
-                                dateObj: effectiveStartDate, 
-                                iso: effectiveStartDate?.toISOString?.() 
-                              });
-
-                              console.log('[WeekSelector Render] Final effectiveStartDate determined:', effectiveStartDate ? formatDateForDisplay(effectiveStartDate) : 'undefined');
-                            }
-                            // --- END: Determine effective start date ---
-
-                            // If no weeks are selected, show the earliest potential check-in date
-                            if (selectedWeeks.length === 0) {
-                              let displayDate = week.startDate;
-                              if (week.flexibleDates?.length) {
-                                // Sort dates and pick the earliest Date object directly
-                                const sortedFlexDates = [...week.flexibleDates].sort((a, b) => a.getTime() - b.getTime());
-                                displayDate = sortedFlexDates[0];
-                              }
-                              const dateText = formatInTimeZone(displayDate, 'UTC', 'MMM d');
-                              return (
-                                <div className="flex items-center justify-center w-full max-w-full">
-                                  <FitText text={dateText} minFontSizePx={12} maxFontSizePx={22} className="w-full" />
-                                </div>
-                              );
-                            }
-
-                            // If multiple weeks are selected
-                            if (selectedWeeks.length > 1) {
-                              const firstSelected = selectedWeeks[0];
-                              const lastSelected = selectedWeeks[selectedWeeks.length - 1];
-                              const isFirstSelected = areSameWeeks(week, firstSelected);
-                              const isLastSelected = areSameWeeks(week, lastSelected);
-                              // Check if the current week is ANY of the selected weeks (first, last, or intermediate)
-                              const isAnySelectedWeek = selectedWeeks.some(sw => areSameWeeks(week, sw));
-                              // Check if this week is an extension week
-                              const isExtensionWeek = extensionWeeks?.some(ew => areSameWeeks(week, ew));
-
-                              // Special case: Show checkout date for extension weeks
-                              if (isExtensionWeek && isAnySelectedWeek) {
-                                const checkoutText = formatInTimeZone(week.endDate, 'UTC', 'MMM d');
-                                const isActualCheckout = extensionWeeks && extensionWeeks.length > 0 && 
-                                  areSameWeeks(week, extensionWeeks[extensionWeeks.length - 1]);
-                                
-                                if (isActualCheckout) {
-                                  // This is the final checkout week - show with arrow
-                                  return (
-                                    <div className="flex items-center justify-center text-primary w-full max-w-full">
-                                      <FitText text={`→ ${checkoutText}`} minFontSizePx={12} maxFontSizePx={22} className="w-full" />
-                                    </div>
-                                  );
-                                } else {
-                                  // This is an intermediate selected week - show dimmed
-                                  return (
-                                    <div className="flex items-center justify-center text-secondary w-full max-w-full">
-                                      <FitText text={checkoutText} minFontSizePx={12} maxFontSizePx={22} className="w-full" />
-                                    </div>
-                                  );
-                                }
-                              }
-
-                              if (isFirstSelected && effectiveStartDate) { // Use effectiveStartDate here
-                                const dateText = formatInTimeZone(effectiveStartDate, 'UTC', 'MMM d');
-                                return (
-                                  <div className="flex items-center justify-center gap-1 text-primary w-full max-w-full">
-                                    <FitText text={dateText} minFontSizePx={12} maxFontSizePx={22} className="w-full" />
-                                    <span>→</span>
-                                  </div>
-                                );
-                              }
-                              if (isLastSelected && !isExtensionWeek) { // Only show this if not already handled by extension logic
-                                const dateText = formatInTimeZone(week.endDate, 'UTC', 'MMM d');
-                                return (
-                                  <div className="flex items-center justify-center gap-1 text-primary w-full max-w-full">
-                                    <span>→</span>
-                                    <FitText text={dateText} minFontSizePx={12} maxFontSizePx={22} className="w-full" />
-                                  </div>
-                                );
-                              }
-                              // If it's an intermediary selected week (between first and last)
-                              if (isAnySelectedWeek && !isFirstSelected && !isLastSelected && !isExtensionWeek) {
-                                return null; // Intermediary selected weeks display nothing specific
-                              }
-                              // --- START: Modified logic for NON-SELECTED WEEKS when multiple are selected ---
-                              if (!isAnySelectedWeek) {
-                                // If this non-selected week comes AFTER the first selected week
-                                if (isAfter(week.startDate, firstSelected.startDate)) {
-                                  // Show potential checkout date in white, no arrow
-                                  const dateText = formatInTimeZone(week.endDate, 'UTC', 'MMM d');
-                                  return (
-                                    <div className="flex items-center justify-center text-primary w-full max-w-full">
-                                      <FitText text={dateText} minFontSizePx={12} maxFontSizePx={22} className="w-full" />
-                                    </div>
-                                  );
-                                } else {
-                                  // If this non-selected week comes BEFORE the first selected week,
-                                  // fall through to the default display logic below (showing earliest check-in).
-                                }
-                              }
-                              // --- END: Modified logic ---
-                              // Fallthrough for weeks before the first selected will reach the default logic below.
-                            }
-
-                            // If a single week is selected
-                            if (selectedWeeks.length === 1) {
-                              const selectedWeek = selectedWeeks[0];
-                              const isSelected = areSameWeeks(week, selectedWeek);
-                              const isExtensionWeek = extensionWeeks?.some(ew => areSameWeeks(week, ew));
-                              
-                              // Special case: Show checkout date for extension weeks
-                              if (isSelected && isExtensionWeek) {
-                                const checkoutText = formatInTimeZone(week.endDate, 'UTC', 'MMM d');
-                                const isActualCheckout = extensionWeeks && extensionWeeks.length > 0 && 
-                                  areSameWeeks(week, extensionWeeks[extensionWeeks.length - 1]);
-                                
-                                if (isActualCheckout) {
-                                  // This is the final checkout week - show with arrow
-                                  return (
-                                    <div className="flex items-center justify-center text-primary w-full max-w-full">
-                                      <FitText text={`→ ${checkoutText}`} minFontSizePx={12} maxFontSizePx={22} className="w-full" />
-                                    </div>
-                                  );
-                                } else {
-                                  // This is an intermediate selected week - show dimmed
-                                  return (
-                                    <div className="flex items-center justify-center text-secondary w-full max-w-full">
-                                      <FitText text={checkoutText} minFontSizePx={12} maxFontSizePx={22} className="w-full" />
-                                    </div>
-                                  );
-                                }
-                              }
-                              
-                              if (isSelected && effectiveStartDate && !isExtensionWeek) { // Handles selectedWeeks.length === 1 case. Use effectiveStartDate.
-                                const startText = formatInTimeZone(effectiveStartDate, 'UTC', 'MMM d');
-                                const endText = formatInTimeZone(week.endDate, 'UTC', 'MMM d');
-                                return (
-                                  <div className="flex items-center justify-center gap-1 text-primary w-full max-w-full">
-                                    <FitText text={startText} minFontSizePx={12} maxFontSizePx={22} className="w-full" />
-                                    <span>→</span>
-                                    <FitText text={endText} minFontSizePx={12} maxFontSizePx={22} className="w-full" />
-                                  </div>
-                                );
-                              }
-                              // --- START: New logic for subsequent weeks ---
-                              else { // If this week is NOT the single selected week
-                                // Check if this week comes directly after the selected one and is selectable
-                                const isSubsequent = isAfter(week.startDate, selectedWeek.endDate);
-                                // Also ensure it's selectable according to existing rules (availability, contiguity unless admin)
-                                const isNextSelectable = isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode); 
-                                if (isSubsequent && isNextSelectable) {
-                                  // Show potential checkout date in white, no arrow
-                                  const dateText = formatInTimeZone(week.endDate, 'UTC', 'MMM d');
-                                  return (
-                                    <div className="flex items-center justify-center text-primary w-full max-w-full">
-                                      <FitText text={dateText} minFontSizePx={12} maxFontSizePx={22} className="w-full" />
-                                    </div>
-                                  );
-                                }
-                                // If not subsequent or not selectable, fall through to default display below
-                              }
-                              // --- END: New logic for subsequent weeks ---
-                            }
-
-                            // Fallback display for any week not covered above
-                            // (e.g., not selected when others are, or when length === 1 but not subsequent/selectable)
-                            let fallbackDisplayDate = week.startDate;
-                            if (week.flexibleDates?.length) {
-                              // Sort dates and pick the earliest Date object directly
-                              const sortedFlexDates = [...week.flexibleDates].sort((a, b) => a.getTime() - b.getTime());
-                              fallbackDisplayDate = sortedFlexDates[0];
-                            }
-                            const fallbackText = formatInTimeZone(fallbackDisplayDate, 'UTC', 'MMM d');
-                            return (
-                              <div className="flex items-center justify-center text-primary w-full max-w-full">
-                                <FitText text={fallbackText} minFontSizePx={12} maxFontSizePx={22} className="w-full" />
-                              </div>
-                            );
-
-                          })()}
-                        </div>
-                        {/* --- END: Unified Date Display Logic --- */}
-
-                        {/* --- START: Single Row Combined Info --- */}
-                        {/* Combine all supplementary info into one overflow-controlled row */}
-                        {(() => {
-                          const diffTime = week.endDate.getTime() - week.startDate.getTime();
-                          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-                          const isMultiWeekSelection = selectedWeeks.length > 2;
-                          const isFirstSelected = selectedWeeks.length > 0 && areSameWeeks(week, selectedWeeks[0]);
-                          const isLastSelected = selectedWeeks.length > 0 && areSameWeeks(week, selectedWeeks[selectedWeeks.length - 1]);
-                          const isInBetween = isMultiWeekSelection && !isFirstSelected && !isLastSelected;
-
-                          // Collect all info parts
-                          const infoParts = [];
-
-                          // Week name
-                          if (!isIntermediateSelected && week.name) {
-                            const formattedStartDate = formatInTimeZone(week.startDate, 'UTC', 'MMM d');
-                            const formattedEndDate = formatInTimeZone(week.endDate, 'UTC', 'MMM d');
-                            infoParts.push(`${week.name}, ${formattedStartDate} - ${formattedEndDate}`);
-                          }
-
-                          // Flexible dates
-                          if (week.flexibleDates && week.flexibleDates.length > 0 && !selectedWeeks.length) {
-                            infoParts.push(`${week.flexibleDates.length} ${week.flexibleDates.length === 1 ? 'date' : 'dates'}`);
-                          }
-
-                          // Duration
-                          if (diffDays !== 7 && !week.isEdgeWeek && !isInBetween) {
-                            infoParts.push(`${diffDays} ${diffDays === 1 ? 'day' : 'days'}`);
-                          }
-
-                          // Admin status
-                          if (isAdmin && (week.status === 'hidden' || week.status === 'deleted')) {
-                            infoParts.push(week.status);
-                          }
-
-                          // Only render if there are info parts to show
-                          if (infoParts.length === 0) return null;
-
-                          const combinedText = infoParts.join(' • ');
-                          const hasLink = !!week.link;
-
-                          if (hasLink && week.name) {
-                            const safeHref = week.link?.startsWith('http') || week.link?.startsWith('//')
-                              ? week.link
-                              : `//${week.link}`;
-
-                            return (
-                              <div className="mt-0.5 w-full px-1 overflow-hidden">
-                                <a
-                                  href={safeHref}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  onClick={(e) => e.stopPropagation()}
-                                  className={clsx(
-                                    'font-display text-[10px] xxs:text-xs underline hover:text-accent-primary transition-colors duration-200 block truncate whitespace-nowrap',
-                                    isAdmin && (week.status === 'hidden' || week.status === 'deleted') ? (
-                                      week.status === 'hidden' ? 'text-yellow-500' : 'text-red-500'
-                                    ) : 'text-secondary'
-                                  )}
-                                  title={`${combinedText} (opens external link)`}
-                                >
-                                  {combinedText}
-                                </a>
-                              </div>
-                            );
-                          }
-
-                          return (
-                            <div className="mt-0.5 w-full px-1 overflow-hidden">
-                              <div 
-                                className={clsx(
-                                  'font-display text-[10px] xxs:text-xs truncate whitespace-nowrap',
-                                  isAdmin && (week.status === 'hidden' || week.status === 'deleted') ? (
-                                    week.status === 'hidden' ? 'text-yellow-500' : 'text-red-500'
-                                  ) : week.flexibleDates && week.flexibleDates.length > 0 && !selectedWeeks.length ? 'text-indigo-500' : 'text-secondary'
-                                )}
-                                title={combinedText}
-                              >
-                                {combinedText}
-                              </div>
-                            </div>
-                          );
-                        })()}
-                        {/* --- END: Single Row Combined Info --- */}
-                      </div>
-                    )}
-
-                    {/* Add fireflies for all selected weeks, unless disabled */}
-                    {isWeekSelected(week) && !disableFireflies && (
-                      <div className="absolute inset-0 overflow-hidden pointer-events-none z-[1]">
-                        <Fireflies 
-                          count={2}
-                          color="#fddba3"
-                          minSize={0.5}
-                          maxSize={2}
-                          ambient={true}
-                          contained={true}
-                          className="relative w-full h-full"
-                        />
-                      </div>
-                    )}
-
-                    {/* Bottom border for season indication - Using clsx object syntax */}
-                    <div
-                      className={clsx(
-                        'absolute bottom-0 left-0 right-0 transition-all duration-300',
-                        // Height based on selection
-                        isWeekSelected(week) ? 'h-1.5 sm:h-2' : 'h-1 sm:h-1.5',
-                        // Apply seasonal color ONLY IF content is visible AND NOT selected
-                        isContentVisible && !isWeekSelected(week) && {
-                          'bg-season-low': getSeasonName(week.startDate) === 'Low Season',
-                          'bg-season-medium': getSeasonName(week.startDate) === 'Medium Season',
-                          'bg-season-summer': getSeasonName(week.startDate) === 'Summer Season',
-                        },
-                        // Apply accent color IF selected
-                        isWeekSelected(week) && 'bg-accent-primary'
-                      )}
-                    />
-                  </button>
+                    week={week}
+                    index={index}
+                    isContentVisible={isContentVisible}
+                    selectedWeeks={selectedWeeks}
+                    extensionWeeks={extensionWeeks}
+                    isAdmin={isAdmin}
+                    testMode={testMode}
+                    handleWeekClick={handleWeekClick}
+                    isWeekSelected={isWeekSelected}
+                    isWeekDisabled={isWeekDisabled}
+                    filteredWeeks={filteredWeeks}
+                    disableFireflies={disableFireflies}
+                  />
                 );
               })}
             </div>
           </div>
-        ))}
+          );
+          
+          const monthRenderEnd = performance.now();
+          console.log(`[PERF] Month ${monthKey} render DONE: ${(monthRenderEnd - monthRenderStart).toFixed(2)}ms`);
+        })}
       </div>
+
+      {/* === PERFORMANCE TIMING COMPLETE === */}
+      {(() => {
+        const renderEnd = performance.now();
+        console.log(`[PERF] WeekSelector render COMPLETE: ${(renderEnd - renderStart).toFixed(2)}ms`);
+        console.log(`[PERF] Main render loop DONE: ${(renderEnd - mainRenderStart).toFixed(2)}ms`);
+        return null;
+      })()}
 
       <FlexibleCheckInModal
         week={flexModalWeek!}

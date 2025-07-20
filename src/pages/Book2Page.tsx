@@ -87,8 +87,8 @@ export function Book2Page() {
   const [selectedWeekForCustomization, setSelectedWeekForCustomization] = useState<Week | null>(null);
   const [lastRefresh, setLastRefresh] = useState(Date.now());
   const [showDiscountModal, setShowDiscountModal] = useState(false);
-  const [seasonBreakdown, setSeasonBreakdown] = useState<SeasonBreakdown | undefined>(undefined);
-  const [weeklyAccommodationInfo, setWeeklyAccommodationInfo] = useState<Record<string, { price: number | null; avgSeasonalDiscount: number | null }>>({});
+
+
   
   // State for firefly effect
   const [showAccommodationFireflies, setShowAccommodationFireflies] = useState(false);
@@ -649,35 +649,23 @@ export function Book2Page() {
     return { hasMultipleSeasons, seasons };
   }, [currentMonth]);
 
-  // Update season breakdown when selected weeks or accommodation change
-  useEffect(() => {
+  // PERFORMANCE FIX: Convert seasonBreakdown from state to computed value to eliminate double renders
+  const seasonBreakdown = useMemo(() => {
     // Find the selected accommodation first
     const accommodation = selectedAccommodation && accommodations
         ? accommodations.find(a => a.id === selectedAccommodation)
         : null;
     const accommodationPrice = accommodation?.base_price ?? 0;
-    // Also get the title to check for Dorm
     const accommodationTitle = accommodation?.title ?? '';
 
     // Only calculate breakdown if weeks are selected, price > 0, AND it's not a Dorm
     if (selectedWeeks.length > 0 && accommodationPrice > 0 && accommodationTitle !== 'Dorm') {
-      console.log('[Book2Page] Calculating season breakdown (Price > 0 and not Dorm).');
-      const breakdown = calculateSeasonBreakdown(selectedWeeks);
-      setSeasonBreakdown(breakdown);
+      console.log('[Book2Page] Computing season breakdown (useMemo).');
+      return calculateSeasonBreakdown(selectedWeeks);
     } else {
-      // Clear breakdown if no weeks selected, no accommodation, price is 0, or it's a Dorm
-      if (selectedWeeks.length === 0) {
-         console.log('[Book2Page] Clearing season breakdown: No weeks selected.');
-      } else if (!accommodation) {
-         console.log('[Book2Page] Clearing season breakdown: No accommodation selected.');
-      } else if (accommodationPrice === 0) {
-         console.log('[Book2Page] Clearing season breakdown: Accommodation price is 0.');
-      } else if (accommodationTitle === 'Dorm') {
-         console.log('[Book2Page] Clearing season breakdown: Accommodation is Dorm.');
-      }
-      setSeasonBreakdown(undefined);
+      console.log('[Book2Page] No season breakdown needed (useMemo).');
+      return undefined;
     }
-    // Depend on selected weeks, selected accommodation ID, the list of accommodations, and the calculation function
   }, [selectedWeeks, selectedAccommodation, accommodations, calculateSeasonBreakdown]);
 
   // Fix the isWeekSelected function to safely handle undefined selectedWeeks
@@ -775,9 +763,9 @@ export function Book2Page() {
   }, [selectedAccommodation, accommodations]); // Dependencies
   console.log('[Book2Page] Selected Accommodation Details:', selectedAccommodationDetails);
 
-  // NEW: Effect to calculate weekly prices AND average seasonal discounts for ALL accommodations
-  useEffect(() => {
-    console.log('[Book2Page] useEffect - Calculating ALL weekly accommodation info triggered.');
+  // PERFORMANCE FIX: Convert weekly accommodation info from state to computed value
+  const weeklyAccommodationInfo = useMemo(() => {
+    console.log('[Book2Page] useMemo - Computing ALL weekly accommodation info.');
     
     const normalizedCurrentMonth = normalizeToUTCDate(currentMonth);
     const newInfo: Record<string, { price: number | null; avgSeasonalDiscount: number | null }> = {};
@@ -829,8 +817,8 @@ export function Book2Page() {
       console.log('[Book2Page] No accommodations loaded, clearing info.');
     }
     
-    console.log('[Book2Page] Setting updated weekly info state:', newInfo);
-    setWeeklyAccommodationInfo(newInfo);
+    console.log('[Book2Page] Computed weekly info:', newInfo);
+    return newInfo;
 
   }, [selectedWeeks, accommodations, currentMonth]); 
 
