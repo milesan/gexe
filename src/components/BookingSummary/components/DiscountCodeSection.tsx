@@ -27,20 +27,20 @@ export function DiscountCodeSection({
       {!appliedDiscount ? (
         <div>
            <label htmlFor="discount-code" className="uppercase text-primary font-display text-2xl">Code</label>
-           <div className="flex gap-2 mt-2"> {/* Added mt-2 */}
+           <div className="flex flex-col xxs:flex-row gap-2 mt-2 w-full"> {/* Stack vertically only on very small screens, horizontal on xxs+ */}
               <input 
                 type="text"
                 id="discount-code"
                 value={discountCodeInput}
                 onChange={(e) => setDiscountCodeInput(e.target.value.toUpperCase())}
-                className="w-32 sm:w-36 px-3 py-2 bg-[var(--color-input-bg)] border border-border rounded-sm focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent text-primary placeholder:text-shade-1 placeholder:font-display text-sm disabled:bg-transparent disabled:text-shade-3"
+                className="w-full xxs:flex-1 px-3 py-2 bg-[var(--color-input-bg)] border border-border rounded-sm focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent text-primary placeholder:text-shade-1 placeholder:font-display text-sm disabled:bg-transparent disabled:text-shade-3"
                 placeholder="ENTER CODE"
                 disabled={isApplyingDiscount}
               />
               <button
                 onClick={onApplyDiscount}
                 disabled={isApplyingDiscount || !discountCodeInput.trim()}
-                className="px-3 py-2 bg-[var(--color-input-bg)] border border-border rounded-sm focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent text-primary text-sm font-display whitespace-nowrap disabled:bg-transparent disabled:text-shade-3 disabled:border-transparent"
+                className="w-full xxs:w-auto xxs:flex-shrink-0 px-3 py-2 bg-[var(--color-input-bg)] border border-border rounded-sm focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent text-primary text-sm font-display whitespace-nowrap disabled:bg-transparent disabled:text-shade-3 disabled:border-transparent"
               >
                 {isApplyingDiscount ? 'APPLYING...' : 'APPLY'}
               </button>

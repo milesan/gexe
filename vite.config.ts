@@ -15,5 +15,10 @@ export default defineConfig({
     host: true,
     open: true,
     cors: true
+  },
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/components/BookingSummary/__tests__/setup.ts'],
+    globals: true
   }
 });

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { usePricing } from '../BookingSummary.hooks';
 import { renderHook } from '@testing-library/react';
+import { usePricing } from '../BookingSummary.hooks';
 import type { Week } from '../../../types/calendar';
 import type { Accommodation } from '../../../types';
 import type { AppliedDiscount } from '../BookingSummary.types';
@@ -35,23 +35,43 @@ describe('Pricing Calculations', () => {
   const mockAccommodation: Accommodation = {
     id: 'acc-1',
     title: 'Test Cabin',
+    description: 'Test cabin description',
     base_price: 200,
     type: 'cabin',
     is_unlimited: false,
     inventory: 4,
+    capacity: 2,
+    bathrooms: 1,
+    has_wifi: true,
+    has_electricity: true,
+    bed_size: 'double',
     image_url: 'test.jpg',
-    images: []
+    is_fungible: false,
+    parent_accommodation_id: null,
+    inventory_count: 4,
+    created_at: '2024-01-01',
+    updated_at: '2024-01-01'
   };
 
   const mockTestAccommodation: Accommodation = {
     id: 'acc-test',
     title: 'Test Accommodation',
+    description: 'Test accommodation description',
     base_price: 50,
     type: 'test',
     is_unlimited: true,
     inventory: 1,
+    capacity: 1,
+    bathrooms: 1,
+    has_wifi: true,
+    has_electricity: true,
+    bed_size: 'single',
     image_url: 'test.jpg',
-    images: []
+    is_fungible: false,
+    parent_accommodation_id: null,
+    inventory_count: 1,
+    created_at: '2024-01-01',
+    updated_at: '2024-01-01'
   };
 
   const createMockWeek = (id: string, name: string): Week => ({
@@ -59,7 +79,8 @@ describe('Pricing Calculations', () => {
     name,
     startDate: new Date('2024-01-01'),
     endDate: new Date('2024-01-08'),
-    selectedFlexDate: null,
+    status: 'visible',
+    selectedFlexDate: undefined,
     flexibleDates: []
   });
 
@@ -498,11 +519,9 @@ describe('Pricing Calculations', () => {
     });
 
     it('should handle fractional week calculations', () => {
-      // Mock fractional weeks
-      const mockCalculateTotalWeeksDecimal = vi.mocked(
-        require('../../../utils/dates').calculateTotalWeeksDecimal
-      );
-      mockCalculateTotalWeeksDecimal.mockReturnValue(1.5); // 1.5 weeks
+      // Mock fractional weeks by updating the existing mock
+      const { calculateTotalWeeksDecimal } = require('../../../utils/dates');
+      vi.mocked(calculateTotalWeeksDecimal).mockReturnValue(1.5); // 1.5 weeks
 
       const selectedWeeks = [createMockWeek('week-1', 'Partial Week')];
 
