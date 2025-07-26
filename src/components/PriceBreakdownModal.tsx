@@ -112,6 +112,18 @@ export function PriceBreakdownModal({ isOpen, onClose, booking }: PriceBreakdown
     });
   };
 
+  // DEBUG: Log the booking data to see what we're working with
+  console.log('[PriceBreakdownModal] Booking data:', {
+    hasPayments: !!booking.payments,
+    paymentsCount: booking.payments?.length || 0,
+    payments: booking.payments?.map(p => ({
+      id: p.id,
+      hasBreakdownJson: !!p.breakdown_json,
+      breakdownJsonType: typeof p.breakdown_json,
+      breakdownJsonValue: p.breakdown_json
+    }))
+  });
+
   // STRICT PAYMENTS-ONLY APPROACH: Only use breakdown_json from payments table
   const hasPaymentsData = booking.payments && booking.payments.length > 0;
   
@@ -121,6 +133,12 @@ export function PriceBreakdownModal({ isOpen, onClose, booking }: PriceBreakdown
     : [];
 
   const hasValidBreakdown = validPayments.length > 0;
+
+  console.log('[PriceBreakdownModal] Breakdown check:', {
+    hasPaymentsData,
+    validPaymentsCount: validPayments.length,
+    hasValidBreakdown
+  });
 
   if (!hasValidBreakdown) {
     return (
@@ -173,7 +191,31 @@ export function PriceBreakdownModal({ isOpen, onClose, booking }: PriceBreakdown
 
   // Helper function to calculate breakdown for a single payment
   const calculatePaymentBreakdown = (payment: Payment) => {
-    const breakdownData = payment.breakdown_json;
+    console.log('[PriceBreakdownModal] calculatePaymentBreakdown called with payment:', {
+      id: payment.id,
+      breakdownJsonType: typeof payment.breakdown_json,
+      breakdownJsonValue: payment.breakdown_json
+    });
+
+    // Handle case where breakdown_json might be a string that needs parsing
+    let breakdownData;
+    if (typeof payment.breakdown_json === 'string') {
+      try {
+        breakdownData = JSON.parse(payment.breakdown_json);
+        console.log('[PriceBreakdownModal] Successfully parsed breakdown_json string:', breakdownData);
+      } catch (error) {
+        console.error('[PriceBreakdownModal] Failed to parse breakdown_json string:', error);
+        return null;
+      }
+    } else {
+      breakdownData = payment.breakdown_json;
+      console.log('[PriceBreakdownModal] Using breakdown_json as object:', breakdownData);
+    }
+    
+    if (!breakdownData) {
+      console.error('[PriceBreakdownModal] No breakdown data available');
+      return null;
+    }
     
     // accommodation in JSON is the amount paid AFTER discounts
     // Use stored original price if available, otherwise reverse-calculate
@@ -461,6 +503,12 @@ export function PriceBreakdownModal({ isOpen, onClose, booking }: PriceBreakdown
                 const paymentType = payment.payment_type === 'initial' ? 'Initial Donation' : 
                                   payment.payment_type === 'extension' ? 'Extension Donation' : 
                                   payment.payment_type;
+                
+                // Skip rendering if breakdown calculation failed
+                if (!breakdown) {
+                  console.error('[PriceBreakdownModal] Failed to calculate breakdown for payment:', payment.id);
+                  return null;
+                }
                 
                 return (
                   <div key={payment.id} className="space-y-4">

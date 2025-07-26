@@ -135,8 +135,26 @@ export function ManageCreditsModal({ application, onClose, onCreditsUpdated }: M
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!amount || parseFloat(amount) <= 0) {
-      setError('Please enter a valid amount');
+    if (!amount) {
+      setError('Please enter an amount');
+      return;
+    }
+    
+    const amountValue = parseFloat(amount);
+    if (isNaN(amountValue)) {
+      setError('Please enter a valid number');
+      return;
+    }
+    
+    // For add/remove operations, amount must be positive
+    if (operation !== 'set' && amountValue <= 0) {
+      setError('Please enter a valid amount greater than 0');
+      return;
+    }
+    
+    // For set operation, amount can be 0 or positive
+    if (operation === 'set' && amountValue < 0) {
+      setError('Balance cannot be negative');
       return;
     }
 
@@ -144,7 +162,6 @@ export function ManageCreditsModal({ application, onClose, onCreditsUpdated }: M
     setError(null);
 
     try {
-      const amountValue = parseFloat(amount);
       let newBalance: number;
 
       if (operation === 'set') {

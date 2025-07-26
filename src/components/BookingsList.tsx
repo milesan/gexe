@@ -103,22 +103,7 @@ export function BookingsList() {
           discount_code_applies_to,
           accommodation_price_after_seasonal_duration,
           subtotal_after_discount_code,
-          accommodations ( title ),
-          payments ( 
-            id,
-            booking_id,
-            user_id,
-            start_date,
-            end_date,
-            amount_paid,
-            breakdown_json,
-            discount_code,
-            payment_type,
-            stripe_payment_id,
-            created_at,
-            updated_at,
-            status
-          )
+          accommodations ( title )
         `, { count: 'exact' })
         .neq('status', 'cancelled')
         .order('created_at', { ascending: false });
@@ -130,7 +115,107 @@ export function BookingsList() {
       
       console.log(`Retrieved ${bookingsData?.length || 0} active bookings out of ${count || 0} total (excluding cancelled)`);
       
-      const processedBookings = (bookingsData || []).map(booking => {
+      // DEBUG: Let's also check what payments exist in the database
+      console.log('[BookingsList] Checking all payments in database...');
+      const { data: allPayments, error: allPaymentsError } = await supabase
+        .from('payments')
+        .select('id, booking_id, amount_paid, payment_type, created_at')
+        .order('created_at', { ascending: false })
+        .limit(10);
+      
+      if (allPaymentsError) {
+        console.error('[BookingsList] Error fetching all payments:', allPaymentsError);
+      } else {
+        console.log('[BookingsList] Recent payments in database:', allPayments);
+      }
+      
+      // DEBUG: Let's also check if there are any cancelled bookings that might have the payment
+      console.log('[BookingsList] Checking cancelled bookings...');
+      const { data: cancelledBookings, error: cancelledError } = await supabase
+        .from('bookings')
+        .select('id, status, created_at')
+        .eq('status', 'cancelled')
+        .order('created_at', { ascending: false })
+        .limit(5);
+      
+      if (cancelledError) {
+        console.error('[BookingsList] Error fetching cancelled bookings:', cancelledError);
+      } else {
+        console.log('[BookingsList] Recent cancelled bookings:', cancelledBookings);
+      }
+      
+      // Fetch payments separately for each booking
+      const bookingsWithPayments = await Promise.all(
+        (bookingsData || []).map(async (booking) => {
+          console.log(`[BookingsList] Fetching payments for booking ${booking.id}...`);
+          
+          const { data: paymentsData, error: paymentsError } = await supabase
+            .from('payments')
+            .select(`
+              id,
+              booking_id,
+              user_id,
+              start_date,
+              end_date,
+              amount_paid,
+              breakdown_json,
+              discount_code,
+              payment_type,
+              stripe_payment_id,
+              created_at,
+              updated_at,
+              status
+            `)
+            .eq('booking_id', booking.id);
+
+          console.log(`[BookingsList] Payments query result for booking ${booking.id}:`, {
+            paymentsData,
+            paymentsError,
+            count: paymentsData?.length || 0
+          });
+
+          // DEBUG: If this booking has payments, let's see what they look like
+          if (paymentsData && paymentsData.length > 0) {
+            console.log(`[BookingsList] Payment details for booking ${booking.id}:`, paymentsData.map(p => ({
+              id: p.id,
+              booking_id: p.booking_id,
+              amount_paid: p.amount_paid,
+              payment_type: p.payment_type,
+              hasBreakdownJson: !!p.breakdown_json,
+              breakdownJsonType: typeof p.breakdown_json,
+              breakdownJsonPreview: p.breakdown_json ? JSON.stringify(p.breakdown_json).substring(0, 100) + '...' : null
+            })));
+          }
+
+          if (paymentsError) {
+            console.error(`Error fetching payments for booking ${booking.id}:`, paymentsError);
+            return { ...booking, payments: [] };
+          }
+
+          return {
+            ...booking,
+            payments: paymentsData || []
+          };
+        })
+      );
+      
+      // DEBUG: Log the first booking's payments to see the breakdown_json structure
+      if (bookingsWithPayments && bookingsWithPayments.length > 0) {
+        const firstBooking = bookingsWithPayments[0];
+        console.log('[BookingsList] First booking payments debug:', {
+          bookingId: firstBooking.id,
+          hasPayments: !!firstBooking.payments,
+          paymentsCount: firstBooking.payments?.length || 0,
+          payments: firstBooking.payments?.map((p: any) => ({
+            id: p.id,
+            hasBreakdownJson: !!p.breakdown_json,
+            breakdownJsonType: typeof p.breakdown_json,
+            breakdownJsonValue: p.breakdown_json
+          }))
+        });
+      }
+      
+      const processedBookings = bookingsWithPayments.map(booking => {
         return {
           ...booking,
           accommodation_title: booking.accommodations?.title || 'N/A',
@@ -288,7 +373,20 @@ export function BookingsList() {
                     </span>
                     {/* Show breakdown button - always available for admin */}
                     <button
-                      onClick={() => setBreakdownModalBooking(booking)}
+                      onClick={() => {
+                        console.log('[BookingsList] Breakdown button clicked for booking:', {
+                          id: booking.id,
+                          hasPayments: !!booking.payments,
+                          paymentsCount: booking.payments?.length || 0,
+                          payments: booking.payments?.map(p => ({
+                            id: p.id,
+                            booking_id: p.booking_id,
+                            amount_paid: p.amount_paid,
+                            hasBreakdownJson: !!p.breakdown_json
+                          }))
+                        });
+                        setBreakdownModalBooking(booking);
+                      }}
                       className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors p-1 rounded hover:bg-[var(--color-bg-surface)]"
                       title="View price breakdown"
                     >

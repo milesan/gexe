@@ -99,9 +99,9 @@ const WeekComponent = React.memo(function WeekComponent({
   const disabled = isWeekDisabled(week);
   const isSelectableForHeight = isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode);
   
-  // Dynamic font sizes based on screen size
-  const maxFontSizeLarge = isLargeScreen ? 24 : 20;  // For single dates (used to be 20)
-  const maxFontSizeSmall = isLargeScreen ? 22 : 18;  // For multi-element dates (used to be 18)
+  // FIXED: Use consistent font sizes instead of dynamic sizing
+  const singleDateFontSize = isLargeScreen ? 'text-2xl' : 'text-xl';
+  const multiElementFontSize = isLargeScreen ? 'text-2xl' : 'text-xl';
   
   // Remove excessive logging for performance
   // console.log(`[WeekSelector RENDER LOOP] Rendering week ${index}:`, { id: week.id, startDate: formatDateForDisplay(week.startDate), endDate: formatDateForDisplay(week.endDate) });
@@ -141,12 +141,12 @@ const WeekComponent = React.memo(function WeekComponent({
           return null;
         })()
       )}
-      disabled={(!isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode) && !isBlockedFranceEventWeek(week)) || disabled}
+      disabled={(!isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode) || isBlockedFranceEventWeek(week)) || disabled}
     >
       {/* Conditionally render the content */}
       {isContentVisible && (
         <div className="text-center flex flex-col h-full overflow-hidden">
-          {/* --- START: Unified Date Display Logic --- */}
+          {/* --- START: Unified Date Display Logic with FIXED font sizes --- */}
           <div className="font-display text-primary mb-2 flex-1 min-h-0 flex items-center justify-center px-1">
             {(() => {
               // Special case: Secret event week should ALWAYS show the same content regardless of selection
@@ -194,7 +194,7 @@ const WeekComponent = React.memo(function WeekComponent({
                 const dateText = formatInTimeZone(displayDate, 'UTC', 'MMM d');
                 return (
                   <div className="flex items-center justify-center w-full max-w-full">
-                    <FitText text={dateText} minFontSizePx={10} maxFontSizePx={maxFontSizeLarge} className="w-full" />
+                    <span className={`${singleDateFontSize} font-display`}>{dateText}</span>
                   </div>
                 );
               }
@@ -217,13 +217,13 @@ const WeekComponent = React.memo(function WeekComponent({
                   if (isActualCheckout) {
                     return (
                       <div className="flex items-center justify-center text-primary w-full max-w-full">
-                        <FitText text={`→ ${checkoutText}`} minFontSizePx={12} maxFontSizePx={maxFontSizeSmall} className="w-full" />
+                        <span className={`${multiElementFontSize} font-display`}>→ {checkoutText}</span>
                       </div>
                     );
                   } else {
                     return (
                       <div className="flex items-center justify-center text-secondary w-full max-w-full">
-                        <FitText text={checkoutText} minFontSizePx={12} maxFontSizePx={maxFontSizeSmall} className="w-full" />
+                        <span className={`${multiElementFontSize} font-display`}>{checkoutText}</span>
                       </div>
                     );
                   }
@@ -233,7 +233,7 @@ const WeekComponent = React.memo(function WeekComponent({
                   const dateText = formatInTimeZone(effectiveStartDate, 'UTC', 'MMM d');
                   return (
                     <div className="flex items-center justify-center gap-1 text-primary w-full max-w-full">
-                      <FitText text={dateText} minFontSizePx={12} maxFontSizePx={maxFontSizeSmall} className="w-full" />
+                      <span className={`${multiElementFontSize} font-display`}>{dateText}</span>
                       <span>→</span>
                     </div>
                   );
@@ -243,7 +243,7 @@ const WeekComponent = React.memo(function WeekComponent({
                   return (
                     <div className="flex items-center justify-center gap-1 text-primary w-full max-w-full">
                       <span>→</span>
-                      <FitText text={dateText} minFontSizePx={12} maxFontSizePx={maxFontSizeSmall} className="w-full" />
+                      <span className={`${multiElementFontSize} font-display`}>{dateText}</span>
                     </div>
                   );
                 }
@@ -255,7 +255,7 @@ const WeekComponent = React.memo(function WeekComponent({
                     const dateText = formatInTimeZone(week.endDate, 'UTC', 'MMM d');
                     return (
                       <div className="flex items-center justify-center text-primary w-full max-w-full">
-                        <FitText text={dateText} minFontSizePx={12} maxFontSizePx={maxFontSizeSmall} className="w-full" />
+                        <span className={`${multiElementFontSize} font-display`}>{dateText}</span>
                       </div>
                     );
                   }
@@ -276,13 +276,13 @@ const WeekComponent = React.memo(function WeekComponent({
                   if (isActualCheckout) {
                     return (
                       <div className="flex items-center justify-center text-primary w-full max-w-full">
-                        <FitText text={`→ ${checkoutText}`} minFontSizePx={12} maxFontSizePx={maxFontSizeSmall} className="w-full" />
+                        <span className={`${multiElementFontSize} font-display`}>→ {checkoutText}</span>
                       </div>
                     );
                   } else {
                     return (
                       <div className="flex items-center justify-center text-secondary w-full max-w-full">
-                        <FitText text={checkoutText} minFontSizePx={12} maxFontSizePx={maxFontSizeSmall} className="w-full" />
+                        <span className={`${multiElementFontSize} font-display`}>{checkoutText}</span>
                       </div>
                     );
                   }
@@ -293,9 +293,9 @@ const WeekComponent = React.memo(function WeekComponent({
                   const endText = formatInTimeZone(week.endDate, 'UTC', 'MMM d');
                   return (
                     <div className="flex items-center justify-center gap-1 text-primary w-full max-w-full">
-                      <FitText text={startText} minFontSizePx={12} maxFontSizePx={maxFontSizeSmall} className="w-full" />
+                      <span className={`${multiElementFontSize} font-display`}>{startText}</span>
                       <span>→</span>
-                      <FitText text={endText} minFontSizePx={12} maxFontSizePx={maxFontSizeSmall} className="w-full" />
+                      <span className={`${multiElementFontSize} font-display`}>{endText}</span>
                     </div>
                   );
                 }
@@ -306,7 +306,7 @@ const WeekComponent = React.memo(function WeekComponent({
                     const dateText = formatInTimeZone(week.endDate, 'UTC', 'MMM d');
                     return (
                       <div className="flex items-center justify-center text-primary w-full max-w-full">
-                        <FitText text={dateText} minFontSizePx={12} maxFontSizePx={maxFontSizeSmall} className="w-full" />
+                        <span className={`${multiElementFontSize} font-display`}>{dateText}</span>
                       </div>
                     );
                   }
@@ -322,7 +322,7 @@ const WeekComponent = React.memo(function WeekComponent({
               const fallbackText = formatInTimeZone(fallbackDisplayDate, 'UTC', 'MMM d');
               return (
                 <div className="flex items-center justify-center text-primary w-full max-w-full">
-                  <FitText text={fallbackText} minFontSizePx={12} maxFontSizePx={maxFontSizeLarge} className="w-full" />
+                  <span className={`${singleDateFontSize} font-display`}>{fallbackText}</span>
                 </div>
               );
             })()}

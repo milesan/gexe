@@ -12,12 +12,7 @@ export function AuthenticatedApp() {
   const { session, isLoading: sessionLoading } = useSession();
   const { isAdmin, hasHousekeeping, isLoading: permissionsLoading } = useUserPermissions(session);
 
-  const isLoading = sessionLoading || permissionsLoading;
-
-  if (isLoading) {
-    return <div>Loading session and permissions...</div>;
-  }
-
+  console.log('[AuthenticatedApp] Loading states:', { sessionLoading, permissionsLoading });
   console.log('[AuthenticatedApp] Access check results:', { isAdmin, hasHousekeeping });
 
   return (

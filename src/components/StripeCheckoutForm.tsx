@@ -21,7 +21,7 @@ interface Props {
   total: number;
   authToken: string;
   userEmail: string;
-  onSuccess: (paymentIntentId?: string) => Promise<void>;
+  onSuccess: (paymentIntentId?: string, paymentRowId?: string) => Promise<void>;
   onClose: () => void;
   // Add booking metadata for enhanced error recovery
   bookingMetadata?: {
@@ -32,9 +32,11 @@ interface Props {
     creditsUsed?: number;
     discountCode?: string;
   };
+  // Add paymentRowId to pass to success handler
+  paymentRowId?: string;
 }
 
-export function StripeCheckoutForm({ total, authToken, description, userEmail, onSuccess, onClose, bookingMetadata }: Props) {
+export function StripeCheckoutForm({ total, authToken, description, userEmail, onSuccess, onClose, bookingMetadata, paymentRowId }: Props) {
   useEffect(() => {
     console.log('[StripeCheckout] Current environment:', import.meta.env.MODE);
   }, []);
@@ -118,7 +120,7 @@ export function StripeCheckoutForm({ total, authToken, description, userEmail, o
       
       try {
         // Pass the payment intent ID to the success handler
-        await onSuccess(paymentIntentId);
+        await onSuccess(paymentIntentId, paymentRowId);
         // If successful, the parent component will handle navigation
       } catch (error) {
         console.error('[StripeCheckout] Booking creation failed after payment:', error);
@@ -130,7 +132,7 @@ export function StripeCheckoutForm({ total, authToken, description, userEmail, o
       // Close modal on payment failure too
       onClose();
     }
-  }, [authToken, clientSecret, onSuccess, onClose]);
+  }, [authToken, clientSecret, onSuccess, onClose, paymentRowId]);
 
   if (!clientSecret) {
     return <div>Loading checkout...</div>;

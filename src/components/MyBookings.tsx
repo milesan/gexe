@@ -1,5 +1,5 @@
 import React from 'react';
-import { format, parseISO, isAfter, isBefore, addMonths } from 'date-fns';
+import { format, parseISO, isAfter, isBefore, addMonths, isSameDay } from 'date-fns';
 import { calculateTotalWeeksDecimal, formatDateForDisplay, normalizeToUTCDate, calculateTotalNights, calculateDurationDiscountWeeks, isWeekSelectable, calculateDisplayWeeks, formatWeeksForDisplay, calculateAndFormatDisplayWeeks, calculateTotalDays } from '../utils/dates';
 import { getSeasonBreakdown, getDurationDiscount, calculateWeeklyAccommodationPrice } from '../utils/pricing';
 import { bookingService } from '../services/BookingService';
@@ -53,6 +53,7 @@ export function MyBookings() {
   const { credits: availableCredits, loading: creditsLoading, refresh: refreshCredits } = useCredits();
   const [creditsEnabled, setCreditsEnabled] = React.useState(false);
   const [creditsToUse, setCreditsToUse] = React.useState(0);
+  const [userHasMadeCreditsChoice, setUserHasMadeCreditsChoice] = React.useState(false);
 
   // Discount code functionality for extensions
   const {
@@ -111,6 +112,8 @@ export function MyBookings() {
       setExtensionWeeks([{ startDate: checkIn, endDate: checkOut }]);
     }
   }, [extendingBooking]);
+
+
 
   const loadBookings = async () => {
     try {
@@ -299,12 +302,14 @@ export function MyBookings() {
   const foodContributionRange = React.useMemo(() => {
     if (extensionOnlyWeeks.length === 0) return null;
     
-    const extensionNights = calculateTotalNights(extensionOnlyWeeks);
     const totalStayWeeks = [...originalWeeks, ...extensionOnlyWeeks];
+    const totalNightsForRange = calculateTotalNights(totalStayWeeks);
     const completeWeeksForDiscount = calculateDurationDiscountWeeks(totalStayWeeks);
     const durationDiscountPercent = getDurationDiscount(completeWeeksForDiscount);
     
-    return calculateFoodContributionRange(extensionNights, durationDiscountPercent);
+    // Use total nights for the combined stay to calculate the food contribution range
+    // This ensures the extension gets the same weekly rate as if they had booked the full period upfront
+    return calculateFoodContributionRange(totalNightsForRange, durationDiscountPercent);
   }, [extensionOnlyWeeks, originalWeeks]);
   
   // Handle display value changes during drag
@@ -364,7 +369,17 @@ export function MyBookings() {
 
   // Calculate extension pricing
   const extensionPricing = React.useMemo(() => {
+    console.log('[EXTENSION_PRICING] === PRICING CALCULATION TRIGGERED ===');
+    console.log('[EXTENSION_PRICING] Dependencies changed:', {
+      hasExtendingBooking: !!extendingBooking,
+      extensionOnlyWeeksLength: extensionOnlyWeeks.length,
+      foodContribution,
+      hasAppliedDiscount: !!appliedDiscount,
+      creditsToUse
+    });
+    
     if (!extendingBooking || extensionOnlyWeeks.length === 0) {
+      console.log('[EXTENSION_PRICING] No extension data, returning default pricing');
       return {
         totalWeeks: 0,
         extensionWeeks: 0,
@@ -412,14 +427,22 @@ export function MyBookings() {
       };
     }
     
-    // Calculate seasonal discount based on TOTAL stay (original + extension)
-    // This ensures someone extending pays the same rate as someone booking the full period upfront
-    // NOTE: The DiscountModal will separately calculate and show the breakdown for just the extension period
-    // NOTE: For payment breakdown, we'll calculate seasonal discount for extension period only
-    const totalStayStartDate = originalWeeks[0]?.startDate || extensionStartDate;
-    const totalStayEndDate = extensionEndDate;
+    // LOG: Extension period and original booking period for seasonal breakdown sanity check
+    console.log('[SEASONAL_BREAKDOWN] Extension period for seasonal breakdown:', {
+      extensionStartDate: extensionStartDate?.toISOString(),
+      extensionEndDate: extensionEndDate?.toISOString(),
+      originalCheckIn: extendingBooking?.check_in,
+      originalCheckOut: extendingBooking?.check_out,
+      extensionOnlyWeeks: extensionOnlyWeeks.map(w => ({
+        id: w.id,
+        start: w.startDate.toISOString(),
+        end: w.endDate.toISOString()
+      }))
+    });
     
-    const seasonBreakdown = getSeasonBreakdown(totalStayStartDate, totalStayEndDate);
+    // Calculate seasonal discount based on EXTENSION PERIOD ONLY
+    // This ensures the extension pricing reflects the seasons of the extension period
+    const seasonBreakdown = getSeasonBreakdown(extensionStartDate, extensionEndDate);
     const averageSeasonalDiscount = seasonBreakdown.seasons.reduce((sum, season) => 
       sum + (season.discount * season.nights), 0) / 
       seasonBreakdown.seasons.reduce((sum, season) => sum + season.nights, 0);
@@ -431,6 +454,15 @@ export function MyBookings() {
     const effectiveSeasonalDiscount = accommodationTitle.toLowerCase().includes('dorm') 
       ? 0 
       : roundedAverageSeasonalDiscount;
+    
+    // LOG: Seasonal breakdown result
+    console.log('[SEASONAL_BREAKDOWN] getSeasonBreakdown result:', {
+      seasonBreakdown,
+      averageSeasonalDiscount,
+      roundedAverageSeasonalDiscount,
+      effectiveSeasonalDiscount,
+      isDorm: accommodationTitle.toLowerCase().includes('dorm')
+    });
     
     // Calculate duration discount based on TOTAL stay (original + extension)
     const combinedWeeksForDiscount = [...originalWeeks, ...extensionOnlyWeeks];
@@ -468,10 +500,11 @@ export function MyBookings() {
       title: accommodationTitle
     } as Accommodation;
     
+    // Use the rounded (and dorm-checked) effectiveSeasonalDiscount for all calculations
     const weeklyAccommodationRate = calculateWeeklyAccommodationPrice(
       mockAccommodation,
       [...originalWeeks, ...extensionOnlyWeeks],
-      effectiveSeasonalDiscount
+      effectiveSeasonalDiscount // <-- always rounded
     );
     
     // Calculate extension accommodation cost
@@ -544,12 +577,12 @@ export function MyBookings() {
       totalNightsForDiscount,
       completeWeeksForDiscount,
       durationDiscountPercent: (durationDiscountPercent * 100).toFixed(1) + '%',
-      note: 'Both seasonal and duration discounts are calculated based on TOTAL stay (original + extension)'
+      note: 'Duration discount is calculated based on TOTAL stay (original + extension), but seasonal discount is based on extension period only'
     });
     console.log('[EXTENSION_PRICING] Accommodation pricing breakdown:', {
       accommodationBasePrice,
       accommodationTitle,
-      totalStayPeriod: `${formatDateForDisplay(totalStayStartDate)} to ${formatDateForDisplay(totalStayEndDate)}`,
+      extensionPeriod: `${formatDateForDisplay(extensionStartDate)} to ${formatDateForDisplay(extensionEndDate)}`,
       calculatedSeasonalDiscount: (averageSeasonalDiscount * 100).toFixed(1) + '%',
       effectiveSeasonalDiscount: (effectiveSeasonalDiscount * 100).toFixed(1) + '%',
       isDorm: accommodationTitle.toLowerCase().includes('dorm'),
@@ -588,21 +621,63 @@ export function MyBookings() {
   }, [extendingBooking, originalWeeks, extensionOnlyWeeks, foodContribution, appliedDiscount, creditsToUse]);
 
   // Initialize credits to max available when extension pricing is calculated
+  // BUT ONLY if credits are currently enabled or haven't been manually set
   React.useEffect(() => {
+    console.log('[EXTENSION_PRICING] === CREDITS INITIALIZATION EFFECT TRIGGERED ===');
+    console.log('[EXTENSION_PRICING] Effect dependencies changed:', {
+      extendingBooking: !!extendingBooking,
+      extensionOnlyWeeksLength: extensionOnlyWeeks.length,
+      availableCredits,
+      creditsLoading,
+      finalExtensionPrice: extensionPricing.finalExtensionPrice,
+      creditsEnabled,
+      creditsToUse
+    });
+    
     if (extendingBooking && extensionOnlyWeeks.length > 0 && !creditsLoading && availableCredits > 0) {
       const maxCreditsToUse = Math.min(availableCredits, extensionPricing.finalExtensionPrice);
       
-      if (maxCreditsToUse > 0) {
-        console.log('[EXTENSION_PRICING] Setting credits to max by default:', {
-          availableCredits,
-          finalExtensionPrice: extensionPricing.finalExtensionPrice,
-          maxCreditsToUse
-        });
-        setCreditsEnabled(true);
-        setCreditsToUse(maxCreditsToUse);
+      console.log('[EXTENSION_PRICING] Conditions met for credit initialization:', {
+        maxCreditsToUse,
+        availableCredits,
+        finalExtensionPrice: extensionPricing.finalExtensionPrice
+      });
+      
+              if (maxCreditsToUse > 0) {
+          // Only auto-set credits if they're currently enabled OR if user hasn't made a choice yet
+          if (creditsEnabled || !userHasMadeCreditsChoice) {
+            console.log('[EXTENSION_PRICING] ✅ Setting credits to max by default:', {
+              availableCredits,
+              finalExtensionPrice: extensionPricing.finalExtensionPrice,
+              maxCreditsToUse,
+              creditsEnabled,
+              currentCreditsToUse: creditsToUse,
+              userHasMadeCreditsChoice,
+              reason: creditsEnabled ? 'credits are enabled' : 'first time (userHasMadeCreditsChoice === false)'
+            });
+            setCreditsEnabled(true);
+            setCreditsToUse(maxCreditsToUse);
+          } else {
+            console.log('[EXTENSION_PRICING] ❌ Skipping auto-credit setting - user has made a choice:', {
+              creditsEnabled,
+              creditsToUse,
+              maxCreditsToUse,
+              userHasMadeCreditsChoice,
+              reason: 'user explicitly made a choice about credits'
+            });
+          }
+      } else {
+        console.log('[EXTENSION_PRICING] No credits to set - maxCreditsToUse <= 0');
       }
+    } else {
+      console.log('[EXTENSION_PRICING] Conditions not met for credit initialization:', {
+        hasExtendingBooking: !!extendingBooking,
+        extensionOnlyWeeksLength: extensionOnlyWeeks.length,
+        creditsLoading,
+        availableCredits
+      });
     }
-  }, [extendingBooking, extensionOnlyWeeks.length, availableCredits, creditsLoading, extensionPricing.finalExtensionPrice]);
+  }, [extendingBooking, extensionOnlyWeeks.length, availableCredits, creditsLoading, extensionPricing.finalExtensionPrice, creditsEnabled, userHasMadeCreditsChoice]); // REMOVED creditsToUse from dependencies
 
 
 
@@ -666,7 +741,8 @@ export function MyBookings() {
             sum + (season.discount * season.nights), 0) / 
             extensionSeasonBreakdown.seasons.reduce((sum, season) => sum + season.nights, 0);
           
-          return extensionAvgDiscount; // Return as decimal (0.16 for 16%)
+          // Always round to two decimals for storage and display
+          return Math.round(extensionAvgDiscount * 100) / 100;
         })(),
         durationDiscountPercent: (() => {
           // Calculate duration discount for TOTAL STAY (original + extension) for payment breakdown
@@ -693,6 +769,7 @@ export function MyBookings() {
       setExtensionError(null);
       setCreditsEnabled(false);
       setCreditsToUse(0);
+      setUserHasMadeCreditsChoice(false);
       handleRemoveDiscount();
       
       console.log('[EXTENSION_FLOW] === STEP 6: Refreshing bookings and credits data ===');
@@ -918,13 +995,29 @@ export function MyBookings() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-overlay backdrop-blur-sm flex items-center justify-center z-[100] p-4"
             onClick={() => {
+              console.log('[EXTENSION_DECREASE] === MODAL CLOSED ===');
+              console.log('[EXTENSION_DECREASE] User closed extension modal');
+              console.log('[EXTENSION_DECREASE] Final extension state before closing:', {
+                extensionOnlyWeeksCount: extensionOnlyWeeks.length,
+                extensionOnlyWeeksIds: extensionOnlyWeeks.map(w => w.id),
+                extensionOnlyWeeksDates: extensionOnlyWeeks.map(w => ({
+                  start: format(w.startDate, 'MMM d, yyyy'),
+                  end: format(w.endDate, 'MMM d, yyyy')
+                })),
+                showCustomWeeks,
+                extensionError,
+                creditsEnabled,
+                creditsToUse
+              });
               setExtendingBooking(null);
               setExtensionWeeks([]);
               setShowCustomWeeks(false);
               setExtensionError(null);
               setCreditsEnabled(false);
               setCreditsToUse(0);
+              setUserHasMadeCreditsChoice(false);
               handleRemoveDiscount();
+              console.log('[EXTENSION_DECREASE] Extension modal state reset');
             }}
           >
             <motion.div
@@ -936,13 +1029,29 @@ export function MyBookings() {
             >
               <button
                 onClick={() => {
+                  console.log('[EXTENSION_DECREASE] === MODAL CLOSED VIA X BUTTON ===');
+                  console.log('[EXTENSION_DECREASE] User closed extension modal via X button');
+                  console.log('[EXTENSION_DECREASE] Final extension state before closing:', {
+                    extensionOnlyWeeksCount: extensionOnlyWeeks.length,
+                    extensionOnlyWeeksIds: extensionOnlyWeeks.map(w => w.id),
+                    extensionOnlyWeeksDates: extensionOnlyWeeks.map(w => ({
+                      start: format(w.startDate, 'MMM d, yyyy'),
+                      end: format(w.endDate, 'MMM d, yyyy')
+                    })),
+                    showCustomWeeks,
+                    extensionError,
+                    creditsEnabled,
+                    creditsToUse
+                  });
                   setExtendingBooking(null);
                   setExtensionWeeks([]);
                   setShowCustomWeeks(false);
                   setExtensionError(null);
                   setCreditsEnabled(false);
                   setCreditsToUse(0);
+                  setUserHasMadeCreditsChoice(false);
                   handleRemoveDiscount();
+                  console.log('[EXTENSION_DECREASE] Extension modal state reset via X button');
                 }}
                 className="absolute top-2 sm:top-4 right-2 sm:right-4 text-text-secondary hover:text-text-primary transition-colors z-[1]"
               >
@@ -972,86 +1081,175 @@ export function MyBookings() {
                 <div className="flex justify-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-primary"></div>
                 </div>
-              ) : (
-                <>
-                  {/* Quick Extension Options */}
-                  <div className="mb-4">
-                    <p className="text-xs text-secondary font-mono mb-2 uppercase">Quick extend by:</p>
-                    {(() => {
-                      // Calculate which options are actually available
-                      const availableOptions = [1, 2, 4].filter(weeks => {
-                        // Check if within max weeks limit
-                        if ((originalWeeksDecimal + weeks) > MAX_WEEKS_ALLOWED) return false;
-                        
-                        // Check if enough weeks are available
-                        const selectableWeeks = extensionWeeksData
-                          .filter(w => isAfter(w.startDate, checkOut) && isWeekSelectable(w, false, originalWeeks, undefined, false))
-                          .slice(0, weeks);
-                        
-                        return selectableWeeks.length >= weeks;
-                      });
-                      
-                      if (availableOptions.length === 0) {
-                        return (
-                          <div className="p-3 border border-border/30 rounded-sm text-center">
-                            <p className="text-xs text-secondary font-mono">No quick extensions available</p>
-                            <p className="text-xs text-secondary/70 font-mono mt-1">
-                              {(originalWeeksDecimal >= MAX_WEEKS_ALLOWED) 
-                                ? `Maximum stay of ${MAX_WEEKS_ALLOWED} weeks reached`
-                                : 'Try using the calendar below'
+              ) : (() => {
+                // Check if there are any selectable weeks available at all
+                // Simple logic: if checkout is before Sep 23, don't show any weeks from Sep 23 onwards
+                const secretEventStartDate = new Date('2025-09-23');
+                const shouldBlockFromSecretEvent = isBefore(checkOut, secretEventStartDate);
+                
+                const selectableWeeks = extensionWeeksData
+                  .filter(w => {
+                    const isAfterCheckOut = isAfter(w.startDate, checkOut);
+                    const isSelectable = isWeekSelectable(w, false, originalWeeks, undefined, false);
+                    const isAfterSecretEvent = isAfter(w.startDate, secretEventStartDate) || isSameDay(w.startDate, secretEventStartDate);
+                    
+                    // If checkout is before Sep 23, block all weeks from Sep 23 onwards
+                    if (shouldBlockFromSecretEvent && isAfterSecretEvent) {
+                      return false;
+                    }
+                    
+                    return isAfterCheckOut && isSelectable;
+                  });
+                
+                // If no weeks are available at all, show single message
+                if (selectableWeeks.length === 0) {
+                  return (
+                    <div className="text-center py-8">
+                      <p className="text-sm text-secondary font-mono">
+                        {originalWeeksDecimal >= MAX_WEEKS_ALLOWED 
+                          ? `Maximum stay of ${MAX_WEEKS_ALLOWED} weeks reached`
+                          : 'No dates available for extension'
+                        }
+                      </p>
+                    </div>
+                  );
+                }
+                
+                // If weeks are available, show the extension options
+                return (
+                  <>
+                    {/* Quick Extension Options */}
+                    <div className="mb-4">
+                      <p className="text-xs text-secondary font-mono mb-2 uppercase">Quick extend by:</p>
+                      {(() => {
+                        // Calculate which options are actually available
+                        const availableOptions = [1, 2, 4].filter(weeks => {
+                          // Check if within max weeks limit
+                          if ((originalWeeksDecimal + weeks) > MAX_WEEKS_ALLOWED) return false;
+                          
+                          // Check if enough weeks are available
+                          const secretEventStartDate = new Date('2025-09-23');
+                          const shouldBlockFromSecretEvent = isBefore(checkOut, secretEventStartDate);
+                          
+                          const selectableWeeks = extensionWeeksData
+                            .filter(w => {
+                              const isAfterCheckOut = isAfter(w.startDate, checkOut);
+                              const isSelectable = isWeekSelectable(w, false, originalWeeks, undefined, false);
+                              const isAfterSecretEvent = isAfter(w.startDate, secretEventStartDate) || isSameDay(w.startDate, secretEventStartDate);
+                              
+                              // If checkout is before Sep 23, block all weeks from Sep 23 onwards
+                              if (shouldBlockFromSecretEvent && isAfterSecretEvent) {
+                                return false;
                               }
-                            </p>
+                              
+                              return isAfterCheckOut && isSelectable;
+                            })
+                            .slice(0, weeks);
+                          
+                          return selectableWeeks.length >= weeks;
+                        });
+                        
+                        if (availableOptions.length === 0) {
+                          return (
+                            <div className="p-3 border border-border/30 rounded-sm text-center">
+                              <p className="text-xs text-secondary font-mono">No quick extensions available</p>
+                              <p className="text-xs text-secondary/70 font-mono mt-1">
+                                Try using the calendar below
+                              </p>
+                            </div>
+                          );
+                        }
+                        
+                        return (
+                          <div className={`grid gap-2 ${availableOptions.length === 1 ? 'grid-cols-1' : availableOptions.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+                            {availableOptions.map(weeks => (
+                              <button
+                                key={weeks}
+                                onClick={() => {
+                                  console.log('[EXTENSION_DECREASE] === QUICK SELECTION TRIGGERED ===');
+                                  console.log('[EXTENSION_DECREASE] User clicked quick selection button:', {
+                                    requestedWeeks: weeks,
+                                    currentExtensionWeeks: extensionOnlyWeeks.length,
+                                    wouldIncrease: weeks > extensionOnlyWeeks.length,
+                                    wouldDecrease: weeks < extensionOnlyWeeks.length,
+                                    wouldStaySame: weeks === extensionOnlyWeeks.length
+                                  });
+                                  
+                                  console.log('[EXTENSION_DECREASE] Previous extension state:', {
+                                    extensionOnlyWeeksCount: extensionOnlyWeeks.length,
+                                    extensionOnlyWeeksIds: extensionOnlyWeeks.map(w => w.id),
+                                    extensionOnlyWeeksDates: extensionOnlyWeeks.map(w => ({
+                                      start: format(w.startDate, 'MMM d, yyyy'),
+                                      end: format(w.endDate, 'MMM d, yyyy')
+                                    }))
+                                  });
+                                  
+                                  setExtensionError(null);
+                                  const secretEventStartDate = new Date('2025-09-23');
+                                  const shouldBlockFromSecretEvent = isBefore(checkOut, secretEventStartDate);
+                                  
+                                  const selectableWeeks = extensionWeeksData
+                                    .filter(w => {
+                                      const isAfterCheckOut = isAfter(w.startDate, checkOut);
+                                      const isSelectable = isWeekSelectable(w, false, originalWeeks, undefined, false);
+                                      const isAfterSecretEvent = isAfter(w.startDate, secretEventStartDate) || isSameDay(w.startDate, secretEventStartDate);
+                                      
+                                      // If checkout is before Sep 23, block all weeks from Sep 23 onwards
+                                      if (shouldBlockFromSecretEvent && isAfterSecretEvent) {
+                                        return false;
+                                      }
+                                      
+                                      return isAfterCheckOut && isSelectable;
+                                    })
+                                    .slice(0, weeks);
+                                  
+                                  console.log('[EXTENSION_DECREASE] New selection created:', {
+                                    newSelectionCount: selectableWeeks.length,
+                                    newSelectionIds: selectableWeeks.map(w => w.id),
+                                    newSelectionDates: selectableWeeks.map(w => ({
+                                      start: format(w.startDate, 'MMM d, yyyy'),
+                                      end: format(w.endDate, 'MMM d, yyyy')
+                                    }))
+                                  });
+                                  
+                                  setExtensionWeeks(selectableWeeks);
+                                  console.log('[EXTENSION_DECREASE] Quick selection completed');
+                                }}
+                                className={`
+                                  p-3 rounded-sm border font-mono text-sm transition-all
+                                  ${extensionOnlyWeeks.length === weeks
+                                    ? 'border-accent-primary bg-accent-primary/20 text-accent-primary'
+                                    : 'border-border hover:border-accent-primary/50 text-primary hover:bg-surface-dark/50'
+                                  }
+                                `}
+                              >
+                                +{weeks} week{weeks > 1 ? 's' : ''}
+                              </button>
+                            ))}
                           </div>
                         );
-                      }
+                      })()}
                       
-                      return (
-                        <div className={`grid gap-2 ${availableOptions.length === 1 ? 'grid-cols-1' : availableOptions.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
-                          {availableOptions.map(weeks => (
-                            <button
-                              key={weeks}
-                              onClick={() => {
-                                setExtensionError(null);
-                                const selectableWeeks = extensionWeeksData
-                                  .filter(w => isAfter(w.startDate, checkOut) && isWeekSelectable(w, false, originalWeeks, undefined, false))
-                                  .slice(0, weeks);
-                                setExtensionWeeks(selectableWeeks);
-                              }}
-                              className={`
-                                p-3 rounded-sm border font-mono text-sm transition-all
-                                ${extensionOnlyWeeks.length === weeks
-                                  ? 'border-accent-primary bg-accent-primary/20 text-accent-primary'
-                                  : 'border-border hover:border-accent-primary/50 text-primary hover:bg-surface-dark/50'
-                                }
-                              `}
-                            >
-                              +{weeks} week{weeks > 1 ? 's' : ''}
-                            </button>
-                          ))}
+                      {/* Error message */}
+                      {extensionError && (
+                        <div className="mt-2 p-2 bg-red-900/20 border border-red-600/30 rounded-sm">
+                          <p className="text-xs text-red-400 font-mono">{extensionError}</p>
                         </div>
-                      );
-                    })()}
-                    
-                    {/* Error message */}
-                    {extensionError && (
-                                              <div className="mt-2 p-2 bg-red-900/20 border border-red-600/30 rounded-sm">
-                        <p className="text-xs text-red-400 font-mono">{extensionError}</p>
-                      </div>
-                    )}
-                    
-                    {/* Custom selection toggle - only show if user hasn't reached maximum weeks */}
-                    {originalWeeksDecimal < MAX_WEEKS_ALLOWED && (
-                      <button
-                        onClick={() => {
-                          setShowCustomWeeks(!showCustomWeeks);
-                          setExtensionError(null); // Clear error when toggling
-                        }}
-                        className="w-full mt-2 text-xs text-accent-primary hover:underline font-mono"
-                      >
-                        {showCustomWeeks ? 'Hide calendar' : 'Choose specific dates →'}
-                      </button>
-                    )}
-                  </div>
+                      )}
+                      
+                      {/* Custom selection toggle - only show if user hasn't reached maximum weeks */}
+                      {originalWeeksDecimal < MAX_WEEKS_ALLOWED && (
+                        <button
+                          onClick={() => {
+                            setShowCustomWeeks(!showCustomWeeks);
+                            setExtensionError(null); // Clear error when toggling
+                          }}
+                          className="w-full mt-2 text-xs text-accent-primary hover:underline font-mono"
+                        >
+                          {showCustomWeeks ? 'Hide calendar' : 'Choose specific dates →'}
+                        </button>
+                      )}
+                    </div>
                   
                   {/* Custom Week Selection (collapsible) */}
                   <AnimatePresence>
@@ -1065,33 +1263,142 @@ export function MyBookings() {
                         <div className="mb-4 pt-2">
                           <WeekSelector
                             weeks={extensionWeeksData
-                              .filter(w => isAfter(w.startDate, checkOut) && isWeekSelectable(w, false, originalWeeks, undefined, false))
+                              .filter(w => {
+                                const isAfterCheckOut = isAfter(w.startDate, checkOut);
+                                const isSelectable = isWeekSelectable(w, false, originalWeeks, undefined, false);
+                                const secretEventStartDate = new Date('2025-09-23');
+                                const shouldBlockFromSecretEvent = isBefore(checkOut, secretEventStartDate);
+                                const isAfterSecretEvent = isAfter(w.startDate, secretEventStartDate) || isSameDay(w.startDate, secretEventStartDate);
+                                
+                                // If checkout is before Sep 23, block all weeks from Sep 23 onwards
+                                if (shouldBlockFromSecretEvent && isAfterSecretEvent) {
+                                  return false;
+                                }
+                                
+                                return isAfterCheckOut && isSelectable;
+                              })
                               .slice(0, MAX_WEEKS_ALLOWED - Math.ceil(originalWeeksDecimal))}
-                  selectedWeeks={[...originalWeeks, ...extensionWeeks]}
-                  extensionWeeks={extensionOnlyWeeks}
+                            selectedWeeks={[...originalWeeks, ...extensionWeeks]}
+                            extensionWeeks={extensionOnlyWeeks}
                                     onWeekSelect={(week) => {
+                    console.log('[EXTENSION_DECREASE] === WEEK SELECTION TRIGGERED ===');
+                    console.log('[EXTENSION_DECREASE] Clicked week details:', {
+                      weekId: week.id,
+                      weekStart: format(week.startDate, 'MMM d, yyyy'),
+                      weekEnd: format(week.endDate, 'MMM d, yyyy'),
+                      isCustom: week.isCustom,
+                      status: week.status
+                    });
+                    
+                    console.log('[EXTENSION_DECREASE] Current extension state:', {
+                      extensionOnlyWeeksCount: extensionOnlyWeeks.length,
+                      extensionOnlyWeeksIds: extensionOnlyWeeks.map(w => w.id),
+                      extensionOnlyWeeksDates: extensionOnlyWeeks.map(w => ({
+                        start: format(w.startDate, 'MMM d, yyyy'),
+                        end: format(w.endDate, 'MMM d, yyyy')
+                      }))
+                    });
+                    
                     const isCurrentCheckoutWeek = extensionOnlyWeeks.length > 0 && 
                       extensionOnlyWeeks[extensionOnlyWeeks.length - 1].id === week.id;
                     
+                    console.log('[EXTENSION_DECREASE] Checkout week analysis:', {
+                      isCurrentCheckoutWeek,
+                      lastSelectedWeekId: extensionOnlyWeeks.length > 0 ? extensionOnlyWeeks[extensionOnlyWeeks.length - 1].id : 'none',
+                      clickedWeekId: week.id,
+                      wouldTriggerDecrease: isCurrentCheckoutWeek
+                    });
+                    
                     if (isCurrentCheckoutWeek) {
+                      console.log('[EXTENSION_DECREASE] === DECREASING BOOKING TRIGGERED ===');
+                      console.log('[EXTENSION_DECREASE] User clicked on current checkout week, clearing extension selection');
+                      console.log('[EXTENSION_DECREASE] Previous extension weeks:', {
+                        count: extensionOnlyWeeks.length,
+                        weeks: extensionOnlyWeeks.map(w => ({
+                          id: w.id,
+                          start: format(w.startDate, 'MMM d, yyyy'),
+                          end: format(w.endDate, 'MMM d, yyyy')
+                        }))
+                      });
                       setExtensionWeeks([]);
+                      console.log('[EXTENSION_DECREASE] Extension weeks cleared - booking decreased');
                       return;
                     }
                     
-                              const selectableWeeks = extensionWeeksData
-                                .filter(w => isAfter(w.startDate, checkOut) && isWeekSelectable(w, false, originalWeeks, undefined, false))
+                    console.log('[EXTENSION_DECREASE] === INCREASING BOOKING TRIGGERED ===');
+                    console.log('[EXTENSION_DECREASE] User clicked on future week, extending booking');
+                    
+                    const secretEventStartDate = new Date('2025-09-23');
+                    const shouldBlockFromSecretEvent = isBefore(checkOut, secretEventStartDate);
+                    
+                    const selectableWeeks = extensionWeeksData
+                      .filter(w => {
+                        const isAfterCheckOut = isAfter(w.startDate, checkOut);
+                        const isSelectable = isWeekSelectable(w, false, originalWeeks, undefined, false);
+                        const isAfterSecretEvent = isAfter(w.startDate, secretEventStartDate) || isSameDay(w.startDate, secretEventStartDate);
+                        
+                        // If checkout is before Sep 23, block all weeks from Sep 23 onwards
+                        if (shouldBlockFromSecretEvent && isAfterSecretEvent) {
+                          return false;
+                        }
+                        
+                        return isAfterCheckOut && isSelectable;
+                      })
                       .slice(0, MAX_WEEKS_ALLOWED - Math.ceil(originalWeeksDecimal));
                     
-                              const clickedWeekIndex = selectableWeeks.findIndex(w => w.id === week.id);
-                              if (clickedWeekIndex !== -1) {
-                                                              const newSelection = selectableWeeks.slice(0, clickedWeekIndex + 1);
-                    setExtensionWeeks(newSelection);
-                              setExtensionError(null); // Clear error on success
-                            }
+                    console.log('[EXTENSION_DECREASE] Available selectable weeks:', {
+                      totalSelectable: selectableWeeks.length,
+                      maxAllowed: MAX_WEEKS_ALLOWED - Math.ceil(originalWeeksDecimal),
+                      selectableWeekIds: selectableWeeks.map(w => w.id),
+                      selectableWeekDates: selectableWeeks.map(w => ({
+                        start: format(w.startDate, 'MMM d, yyyy'),
+                        end: format(w.endDate, 'MMM d, yyyy')
+                      }))
+                    });
+                    
+                    const clickedWeekIndex = selectableWeeks.findIndex(w => w.id === week.id);
+                    console.log('[EXTENSION_DECREASE] Week position analysis:', {
+                      clickedWeekIndex,
+                      foundInSelectable: clickedWeekIndex !== -1,
+                      totalSelectableWeeks: selectableWeeks.length
+                    });
+                    
+                    if (clickedWeekIndex !== -1) {
+                      const newSelection = selectableWeeks.slice(0, clickedWeekIndex + 1);
+                      console.log('[EXTENSION_DECREASE] Creating new extension selection:', {
+                        newSelectionCount: newSelection.length,
+                        newSelectionIds: newSelection.map(w => w.id),
+                        newSelectionDates: newSelection.map(w => ({
+                          start: format(w.startDate, 'MMM d, yyyy'),
+                          end: format(w.endDate, 'MMM d, yyyy')
+                        })),
+                        previousSelectionCount: extensionOnlyWeeks.length,
+                        isIncreasing: newSelection.length > extensionOnlyWeeks.length,
+                        isDecreasing: newSelection.length < extensionOnlyWeeks.length,
+                        isSameLength: newSelection.length === extensionOnlyWeeks.length
+                      });
+                      
+                      setExtensionWeeks(newSelection);
+                      setExtensionError(null); // Clear error on success
+                      console.log('[EXTENSION_DECREASE] Extension weeks updated successfully');
+                    } else {
+                      console.warn('[EXTENSION_DECREASE] Clicked week not found in selectable weeks - this should not happen');
+                    }
                   }}
                   onWeeksDeselect={() => {
+                    console.log('[EXTENSION_DECREASE] === MANUAL DESELECTION TRIGGERED ===');
+                    console.log('[EXTENSION_DECREASE] User manually deselected extension weeks');
+                    console.log('[EXTENSION_DECREASE] Previous extension state:', {
+                      extensionOnlyWeeksCount: extensionOnlyWeeks.length,
+                      extensionOnlyWeeksIds: extensionOnlyWeeks.map(w => w.id),
+                      extensionOnlyWeeksDates: extensionOnlyWeeks.map(w => ({
+                        start: format(w.startDate, 'MMM d, yyyy'),
+                        end: format(w.endDate, 'MMM d, yyyy')
+                      }))
+                    });
                     setExtensionWeeks([]);
-                            setExtensionError(null);
+                    setExtensionError(null);
+                    console.log('[EXTENSION_DECREASE] Extension weeks cleared via manual deselection');
                   }}
                   onClearSelection={undefined}
                   currentMonth={undefined}
@@ -1226,7 +1533,11 @@ export function MyBookings() {
                         availableCredits={availableCredits}
                         creditsLoading={creditsLoading}
                         creditsEnabled={creditsEnabled}
-                        setCreditsEnabled={setCreditsEnabled}
+                        setCreditsEnabled={(enabled) => {
+                          console.log('[EXTENSION_PRICING] User toggled credits:', { enabled, previousValue: creditsEnabled });
+                          setCreditsEnabled(enabled);
+                          setUserHasMadeCreditsChoice(true);
+                        }}
                         creditsToUse={creditsToUse}
                         setCreditsToUse={setCreditsToUse}
                         pricing={{
@@ -1309,14 +1620,9 @@ export function MyBookings() {
                     </motion.div>
                   )}
                   
-                  {/* No extension selected prompt - only show if user can still extend */}
-                  {extensionOnlyWeeks.length === 0 && originalWeeksDecimal < MAX_WEEKS_ALLOWED && (
-                    <div className="text-center py-6 text-secondary text-sm font-mono">
-                      Select how many weeks you'd like to extend
-                </div>
-                  )}
+
                 </>
-              )}
+              )})()}
             </motion.div>
           </motion.div>
         </AnimatePresence>,
@@ -1397,8 +1703,8 @@ export function MyBookings() {
           basePrice={extendingBooking.accommodation?.base_price || 0}
           calculatedWeeklyPrice={extensionPricing.weeklyAccommodationRate} // Price AFTER discounts (seasonal + duration) - this is what the user actually pays per week
           averageSeasonalDiscount={(() => {
-            // Calculate seasonal discount for EXTENSION PERIOD ONLY (for display in modal)
-            // This shows what seasons the extension covers, not what was used for pricing calculation
+            // Calculate seasonal discount for EXTENSION PERIOD ONLY
+            // This shows what seasons the extension covers
             if (extensionOnlyWeeks.length === 0) return null;
             const extensionStartDate = extensionOnlyWeeks[0]?.startDate;
             const extensionEndDate = extensionOnlyWeeks[extensionOnlyWeeks.length - 1]?.endDate;
@@ -1416,7 +1722,18 @@ export function MyBookings() {
               sum + (season.discount * season.nights), 0) / 
               extensionSeasonBreakdown.seasons.reduce((sum, season) => sum + season.nights, 0);
             
+            // Always round to two decimals for display
             return Math.round(extensionAvgDiscount * 100) / 100;
+          })()}
+          selectedWeeks={[...originalWeeks, ...extensionOnlyWeeks]}
+          customSeasonBreakdown={(() => {
+            // Pass the extension period season breakdown
+            if (extensionOnlyWeeks.length === 0) return undefined;
+            const extensionStartDate = extensionOnlyWeeks[0]?.startDate;
+            const extensionEndDate = extensionOnlyWeeks[extensionOnlyWeeks.length - 1]?.endDate;
+            if (!extensionStartDate || !extensionEndDate) return undefined;
+            
+            return getSeasonBreakdown(extensionStartDate, extensionEndDate);
           })()}
         />
       )}

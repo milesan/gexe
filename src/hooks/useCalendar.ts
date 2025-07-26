@@ -50,7 +50,7 @@ export function useCalendar({ startDate, endDate, isAdminMode = false }: UseCale
     const [selectedWeeks, setSelectedWeeks] = useState<Week[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
-    const [lastRefresh, setLastRefresh] = useState(Date.now());
+    const [lastRefresh, setLastRefresh] = useState(0);
 
     // Generate weeks with customizations
     const weeks = useMemo(() => {
@@ -132,7 +132,7 @@ export function useCalendar({ startDate, endDate, isAdminMode = false }: UseCale
 
         loadData();
         return () => { mounted = false; };
-    }, [normalizedStartDate.toISOString(), normalizedEndDate.toISOString(), lastRefresh]);
+    }, [normalizedStartDate.getTime(), normalizedEndDate.getTime(), lastRefresh]);
 
     // Week selection logic
     const selectWeek = useCallback((week: Week) => {

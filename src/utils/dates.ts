@@ -853,20 +853,49 @@ export function calculateTotalDays(selectedWeeks: Week[]): number {
   // Total days (inclusive) = millisecond difference / ms per day + 1
   const timeDiff = endUTC.getTime() - startUTC.getTime();
   const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24)) + 1;
+  
+  // [EXTENSION_DURATION_DEBUG] Add logging for day calculation
+  console.log('[EXTENSION_DURATION_DEBUG] calculateTotalDays calculation:', {
+    inputWeeks: selectedWeeks.map(w => ({
+      startDate: w.startDate.toISOString(),
+      endDate: w.endDate.toISOString(),
+      hasFlexDate: !!w.selectedFlexDate,
+      flexDate: w.selectedFlexDate?.toISOString()
+    })),
+    effectiveStartDate: effectiveStartDate.toISOString(),
+    lastDate: lastDate.toISOString(),
+    startUTC: startUTC.toISOString(),
+    endUTC: endUTC.toISOString(),
+    timeDiffMs: timeDiff,
+    timeDiffDays: timeDiff / (1000 * 60 * 60 * 24),
+    calculatedDays: days,
+    calculationNote: 'days = Math.floor(timeDiff / (1000 * 60 * 60 * 24)) + 1 (inclusive)'
+  });
+  
   return days;
 }
 
 /**
  * Calculate the number of complete weeks for duration discount purposes
- * This uses 7 days per week as per the discount policy
- * A week is only counted if there are at least 7 days
+ * This function counts the actual number of weeks selected, not calculated from days
+ * For duration discount purposes, we want the number of weeks the user has selected
  */
 export function calculateDurationDiscountWeeks(selectedWeeks: Week[]): number {
   if (selectedWeeks.length === 0) return 0;
   
-  const totalDays = calculateTotalDays(selectedWeeks);
-  // Only count as a week if there are at least 7 days
-  return totalDays >= 7 ? Math.floor(totalDays / 7) : 0;
+  // FIX: For duration discount purposes, we should count the actual number of weeks selected
+  // This is more accurate than trying to calculate from days, especially when weeks
+  // might have different lengths or customizations
+  const weeks = selectedWeeks.length;
+  
+  // [EXTENSION_DURATION_DEBUG] Add logging for week calculation
+  console.log('[EXTENSION_DURATION_DEBUG] calculateDurationDiscountWeeks calculation:', {
+    selectedWeeksCount: selectedWeeks.length,
+    weeks,
+    calculationNote: 'weeks = selectedWeeks.length (counting actual selected weeks)'
+  });
+  
+  return weeks;
 }
 
 /**

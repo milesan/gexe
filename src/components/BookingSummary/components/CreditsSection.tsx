@@ -32,6 +32,30 @@ export function CreditsSection({
   // Calculate the maximum credits that can be used
   const maxCredits = Math.min(availableCredits, pricing.totalAmount);
   
+  // Ensure creditsToUse is 0 when credits are disabled
+  React.useEffect(() => {
+    console.log('[CreditsSection] === CREDITS TOGGLE EFFECT TRIGGERED ===');
+    console.log('[CreditsSection] Current state:', {
+      creditsEnabled,
+      creditsToUse,
+      availableCredits,
+      maxCredits
+    });
+    
+    if (!creditsEnabled && creditsToUse > 0) {
+      console.log('[CreditsSection] ✅ Credits disabled, setting creditsToUse to 0');
+      setCreditsToUse(0);
+    } else if (creditsEnabled && creditsToUse === 0) {
+      console.log('[CreditsSection] ✅ Credits enabled but creditsToUse is 0, this is expected');
+    } else {
+      console.log('[CreditsSection] ℹ️ No action needed:', {
+        creditsEnabled,
+        creditsToUse,
+        action: 'none'
+      });
+    }
+  }, [creditsEnabled, setCreditsToUse, availableCredits, maxCredits]); // REMOVED creditsToUse from dependencies
+  
   // Smart stepping: use integer steps but allow exact max
   const sliderMax = Math.floor(maxCredits);
   
@@ -39,10 +63,21 @@ export function CreditsSection({
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = Number(e.target.value);
     
+    console.log('[CreditsSection] === SLIDER CHANGE TRIGGERED ===');
+    console.log('[CreditsSection] Slider change details:', {
+      newValue: value,
+      sliderMax,
+      maxCredits,
+      currentCreditsToUse: creditsToUse,
+      willUseExactMax: value === sliderMax && maxCredits > sliderMax
+    });
+    
     // If slider is at max position, use the exact decimal amount
     if (value === sliderMax && maxCredits > sliderMax) {
+      console.log('[CreditsSection] Using exact max credits:', maxCredits);
       setCreditsToUse(maxCredits);
     } else {
+      console.log('[CreditsSection] Using slider value:', value);
       setCreditsToUse(value);
     }
   };
@@ -67,7 +102,9 @@ export function CreditsSection({
           <input 
             type="checkbox" 
             checked={creditsEnabled}
-            onChange={(e) => setCreditsEnabled(e.target.checked)}
+            onChange={(e) => {
+              setCreditsEnabled(e.target.checked);
+            }}
             className="sr-only peer"
           />
           <div className="w-11 h-6 bg-border rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent-primary"></div>

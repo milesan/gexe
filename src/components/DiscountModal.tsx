@@ -4,6 +4,7 @@ import { X, ArrowDown } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { getDurationDiscount, getSeasonalDiscount, getSeasonBreakdown } from '../utils/pricing';
 import { calculateDurationDiscountWeeks } from '../utils/dates';
+import { Week } from '../types/calendar';
 
 interface DiscountModalProps {
   isOpen: boolean;
@@ -17,21 +18,66 @@ interface DiscountModalProps {
   // Optional props for extensions where duration should be calculated differently
   durationCheckInDate?: Date;
   durationCheckOutDate?: Date;
+  // NEW: Pass the actual selected weeks for accurate duration calculation
+  selectedWeeks?: Week[];
+  // NEW: Pass custom season breakdown for extensions (to match pricing calculation)
+  customSeasonBreakdown?: { hasMultipleSeasons: boolean, seasons: { name: string, discount: number, nights: number }[] };
 }
 
 // Custom hook to handle all discount calculations
-function useDiscounts(checkInDate: Date, checkOutDate: Date, accommodationName: string, basePrice: number, durationCheckInDate?: Date, durationCheckOutDate?: Date) {
+function useDiscounts(checkInDate: Date, checkOutDate: Date, accommodationName: string, basePrice: number, selectedWeeks?: Week[], durationCheckInDate?: Date, durationCheckOutDate?: Date) {
   // Calculate duration discount using the utility function
   // Use durationCheckInDate/durationCheckOutDate if provided (for extensions), otherwise use regular dates
   const durationStartDate = durationCheckInDate || checkInDate;
   const durationEndDate = durationCheckOutDate || checkOutDate;
   
-  const completeWeeks = calculateDurationDiscountWeeks([{ 
-    startDate: durationStartDate, 
-    endDate: durationEndDate,
-    status: 'visible' as const
-  }]);
+
+  
+  let completeWeeks: number;
+  
+  if (selectedWeeks && selectedWeeks.length > 0) {
+    // Use the actual selected weeks for accurate duration calculation
+    completeWeeks = calculateDurationDiscountWeeks(selectedWeeks);
+    console.log('[EXTENSION_DURATION_DEBUG] Duration calculation using selectedWeeks:', {
+      selectedWeeksCount: selectedWeeks.length,
+      completeWeeks,
+      calculationNote: 'completeWeeks = calculateDurationDiscountWeeks(selectedWeeks)'
+    });
+  } else {
+    // Fallback to the old method for extensions or when selectedWeeks is not provided
+    const mockWeek = { 
+      startDate: durationStartDate, 
+      endDate: durationEndDate,
+      status: 'visible' as const
+    };
+    
+    console.log('[EXTENSION_DURATION_DEBUG] Duration calculation inputs (fallback):', {
+      durationStartDate: durationStartDate.toISOString(),
+      durationEndDate: durationEndDate.toISOString(),
+      mockWeek: {
+        startDate: mockWeek.startDate.toISOString(),
+        endDate: mockWeek.endDate.toISOString()
+      },
+      usingCustomDurationDates: !!(durationCheckInDate && durationCheckOutDate),
+      regularDates: `${checkInDate.toISOString().split('T')[0]} to ${checkOutDate.toISOString().split('T')[0]}`,
+      durationDates: `${durationStartDate.toISOString().split('T')[0]} to ${durationEndDate.toISOString().split('T')[0]}`
+    });
+    
+    completeWeeks = calculateDurationDiscountWeeks([mockWeek]);
+    
+    console.log('[EXTENSION_DURATION_DEBUG] Duration calculation result (fallback):', {
+      completeWeeks,
+      calculationNote: 'completeWeeks = calculateDurationDiscountWeeks([mockWeek])'
+    });
+  }
+  
   const durationDiscount = getDurationDiscount(completeWeeks);
+  
+  console.log('[EXTENSION_DURATION_DEBUG] Duration discount result:', {
+    inputWeeks: completeWeeks,
+    outputDiscount: durationDiscount,
+    outputDiscountPercent: (durationDiscount * 100).toFixed(1) + '%'
+  });
 
   // Calculate seasonal discount breakdown for accommodation
   const seasonBreakdown = getSeasonBreakdown(checkInDate, checkOutDate);
@@ -66,20 +112,28 @@ export function DiscountModal({
   calculatedWeeklyPrice, // ADDED: Destructure the new prop
   averageSeasonalDiscount, // ADDED: Destructure the new prop
   durationCheckInDate, // Optional: for extensions where duration calculation differs
-  durationCheckOutDate // Optional: for extensions where duration calculation differs
+  durationCheckOutDate, // Optional: for extensions where duration calculation differs
+  selectedWeeks, // NEW: Pass the actual selected weeks for accurate duration calculation
+  customSeasonBreakdown // NEW: Pass custom season breakdown for extensions
 }: DiscountModalProps) {
+
+  
   const {
     completeWeeks,
     durationDiscount,
     seasonBreakdown,
     showAccSeasonalSection, // Renamed for clarity
-  } = useDiscounts(checkInDate, checkOutDate, accommodationName, basePrice, durationCheckInDate, durationCheckOutDate);
+  } = useDiscounts(checkInDate, checkOutDate, accommodationName, basePrice, selectedWeeks, durationCheckInDate, durationCheckOutDate);
 
+  // Use custom season breakdown if provided (for extensions), otherwise use calculated one
+  const displaySeasonBreakdown = customSeasonBreakdown || seasonBreakdown;
+  const showSeasonalSection = basePrice > 0 && displaySeasonBreakdown.seasons.length > 0 && !accommodationName.toLowerCase().includes('dorm');
+  
   // Helper to format percentage
   const formatPercent = (value: number) => `${Math.round(value * 100)}%`;
   
   // Determine if only the duration discount applies (no seasonal or accommodation is free)
-  const onlyDurationDiscount = durationDiscount > 0 && !showAccSeasonalSection;
+  const onlyDurationDiscount = durationDiscount > 0 && !showSeasonalSection;
   const noAccommodationDiscount = basePrice === 0;
 
   return (
@@ -127,7 +181,7 @@ export function DiscountModal({
                          </div>
 
                         {/* Seasonal Discount Section (if applicable) */}
-                        {showAccSeasonalSection && averageSeasonalDiscount !== null && averageSeasonalDiscount > 0 && (
+                        {showSeasonalSection && averageSeasonalDiscount !== null && averageSeasonalDiscount > 0 && (
                           <div className="border border-gray-600/50 rounded-sm p-3">
                             <div className="flex justify-between items-center mb-1">
                               <h4 className="font-mono color-text-primary text-xs sm:text-sm flex items-center gap-2">
@@ -140,8 +194,8 @@ export function DiscountModal({
                             </div>
                             <p className="text-[10px] sm:text-xs color-shade-2 font-mono pl-4">
                               (Weighted average based on your dates: 
-                              {seasonBreakdown.seasons.map((s, i) => 
-                                ` ${s.nights} night${s.nights !== 1 ? 's' : ''} in ${s.name}${i < seasonBreakdown.seasons.length - 1 ? ',' : ''}`
+                              {displaySeasonBreakdown.seasons.map((s, i) => 
+                                ` ${s.nights} night${s.nights !== 1 ? 's' : ''} in ${s.name}${i < displaySeasonBreakdown.seasons.length - 1 ? ',' : ''}`
                               )})
                             </p>
                           </div>
@@ -174,7 +228,7 @@ export function DiscountModal({
                         )}
 
                         {/* Show message if no discounts applied to accommodation */}
-                        {!showAccSeasonalSection && durationDiscount === 0 && (
+                        {!showSeasonalSection && durationDiscount === 0 && (
                           <div className="border border-gray-600/50 rounded-sm p-3">
                             <p className="text-xs color-shade-3 font-mono text-center italic">No discounts applicable to accommodation.</p>
                           </div>

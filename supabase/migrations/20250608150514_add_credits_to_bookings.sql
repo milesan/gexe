@@ -1,6 +1,15 @@
--- Add credits_used column to bookings table
-ALTER TABLE bookings
-ADD COLUMN credits_used integer DEFAULT 0 NOT NULL CHECK (credits_used >= 0);
+-- Add credits_used column to bookings table (only if it doesn't exist)
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'bookings' 
+    AND column_name = 'credits_used'
+  ) THEN
+    ALTER TABLE bookings
+    ADD COLUMN credits_used numeric(10,2) DEFAULT 0 NOT NULL CHECK (credits_used >= 0);
+  END IF;
+END $$;
 
 -- Create function to handle booking creation with credits
 CREATE OR REPLACE FUNCTION handle_booking_with_credits()
@@ -53,11 +62,20 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Create trigger to handle credits on booking insert
-CREATE TRIGGER booking_credits_trigger
-AFTER INSERT ON bookings
-FOR EACH ROW
-EXECUTE FUNCTION handle_booking_with_credits();
+-- Create trigger to handle credits on booking insert (only if it doesn't exist)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.triggers 
+    WHERE trigger_name = 'booking_credits_trigger' 
+    AND event_object_table = 'bookings'
+  ) THEN
+    CREATE TRIGGER booking_credits_trigger
+    AFTER INSERT ON bookings
+    FOR EACH ROW
+    EXECUTE FUNCTION handle_booking_with_credits();
+  END IF;
+END $$;
 
 -- Create function to handle booking cancellation with credits
 CREATE OR REPLACE FUNCTION handle_booking_cancellation_credits()
@@ -105,11 +123,20 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Create trigger to handle credits on booking status update
-CREATE TRIGGER booking_cancellation_credits_trigger
-AFTER UPDATE OF status ON bookings
-FOR EACH ROW
-EXECUTE FUNCTION handle_booking_cancellation_credits();
+-- Create trigger to handle credits on booking status update (only if it doesn't exist)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.triggers 
+    WHERE trigger_name = 'booking_cancellation_credits_trigger' 
+    AND event_object_table = 'bookings'
+  ) THEN
+    CREATE TRIGGER booking_cancellation_credits_trigger
+    AFTER UPDATE OF status ON bookings
+    FOR EACH ROW
+    EXECUTE FUNCTION handle_booking_cancellation_credits();
+  END IF;
+END $$;
 
 -- Grant necessary permissions
 GRANT EXECUTE ON FUNCTION handle_booking_with_credits TO authenticated;

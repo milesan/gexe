@@ -14,6 +14,8 @@ interface UserPermissions {
  * Handles async permission checks with proper loading states
  */
 export function useUserPermissions(session: Session | null): UserPermissions {
+  // console.log('🔍 [useUserPermissions] HOOK CALLED', { hasSession: !!session, userId: session?.user?.id, userEmail: session?.user?.email });
+
   const [permissions, setPermissions] = useState<UserPermissions>({
     isAdmin: false,
     hasHousekeeping: false,
@@ -21,11 +23,18 @@ export function useUserPermissions(session: Session | null): UserPermissions {
     error: null
   });
 
+  // Extract primitive values directly to avoid object reference issues
+  const userId = session?.user?.id || null;
+  const userEmail = session?.user?.email || null;
+
   useEffect(() => {
     let mounted = true;
 
     const checkPermissions = async () => {
-      if (!session?.user?.email) {
+      // console.log('[useUserPermissions] checkPermissions called', { userId, userEmail, hasSession: !!session });
+
+      if (!userId || !userEmail) {
+        // console.log('[useUserPermissions] No user ID or email, setting not loading');
         if (mounted) {
           setPermissions({
             isAdmin: false,
@@ -38,6 +47,7 @@ export function useUserPermissions(session: Session | null): UserPermissions {
       }
 
       try {
+        // console.log('[useUserPermissions] Setting loading=true, starting permission check');
         setPermissions(prev => ({ ...prev, isLoading: true, error: null }));
 
         // Check both permissions in parallel
@@ -47,6 +57,7 @@ export function useUserPermissions(session: Session | null): UserPermissions {
         ]);
 
         if (mounted) {
+          // console.log('[useUserPermissions] Permission check complete', { adminResult, housekeepingResult });
           setPermissions({
             isAdmin: adminResult,
             hasHousekeeping: housekeepingResult,
@@ -72,7 +83,7 @@ export function useUserPermissions(session: Session | null): UserPermissions {
     return () => {
       mounted = false;
     };
-  }, [session?.user?.id, session?.user?.email]); // Depend on user ID and email
+  }, [userId, userEmail]); // Use primitive values directly
 
   return permissions;
 } 

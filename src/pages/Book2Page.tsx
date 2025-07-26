@@ -40,6 +40,7 @@ interface SeasonBreakdown {
 
 // Season legend component (Moved from WeekSelector)
 const SeasonLegend = () => {
+  // console.log('[FLICKER_DEBUG] SeasonLegend rendering');
   return (
     // Decreased bottom margin to bring it closer to the header below
     <div className="flex flex-wrap justify-start gap-4 xs:gap-5 sm:gap-8 mb-4">
@@ -69,6 +70,13 @@ const SeasonLegend = () => {
 };
 
 export function Book2Page() {
+  // console.log(`📊 [BOOK2] Render`); // Debug logging disabled
+  
+  // Add render tracking
+  const renderCount = React.useRef(0);
+  renderCount.current += 1;
+  console.log(`[Book2Page] RENDER #${renderCount.current}`);
+  
   // Get current date and set the initial month
   const today = new Date();
   const initialMonth = startOfDay(startOfMonth(today));
@@ -79,17 +87,31 @@ export function Book2Page() {
   });
 
   const { accommodations, loading: accommodationsLoading } = useWeeklyAccommodations();
+  // console.log('[FLICKER_DEBUG] useWeeklyAccommodations result:', { accommodationsCount: accommodations?.length, loading: accommodationsLoading });
+  
+  console.log('[Book2Page] Accommodations state:', {
+    count: accommodations?.length,
+    loading: accommodationsLoading,
+    ids: accommodations?.map(a => a.id)
+  });
+
   const [selectedWeeks, setSelectedWeeks] = useState<Week[]>([]);
   const [selectedAccommodation, setSelectedAccommodation] = useState<string | null>(null);
   const [currentMonth, setCurrentMonth] = useState(initialMonth);
   const [showMaxWeeksModal, setShowMaxWeeksModal] = useState(false);
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [selectedWeekForCustomization, setSelectedWeekForCustomization] = useState<Week | null>(null);
-  const [lastRefresh, setLastRefresh] = useState(Date.now());
+  const [lastRefresh, setLastRefresh] = useState(0);
   const [showDiscountModal, setShowDiscountModal] = useState(false);
 
+  console.log('[Book2Page] Main state values:', {
+    selectedWeeksCount: selectedWeeks.length,
+    selectedAccommodation,
+    currentMonth: formatDateForDisplay(currentMonth),
+    isAdminMode,
+    lastRefresh
+  });
 
-  
   // State for firefly effect
   const [showAccommodationFireflies, setShowAccommodationFireflies] = useState(false);
   const [testMode, setTestMode] = useState(false);
@@ -98,6 +120,24 @@ export function Book2Page() {
   useEffect(() => {
     console.log('[Book2Page] Test mode changed:', testMode ? 'ENABLED' : 'DISABLED');
   }, [testMode]);
+
+  // Log selectedWeeks changes
+  useEffect(() => {
+    console.log('[Book2Page] selectedWeeks changed:', {
+      count: selectedWeeks.length,
+      weeks: selectedWeeks.map(w => ({
+        id: w.id,
+        start: formatDateForDisplay(w.startDate),
+        end: formatDateForDisplay(w.endDate)
+      }))
+    });
+  }, [selectedWeeks]);
+
+  // Log selectedAccommodation changes
+  useEffect(() => {
+    console.log('[Book2Page] selectedAccommodation changed:', selectedAccommodation);
+  }, [selectedAccommodation]);
+
 
   // Calculate combined discount
   const calculateCombinedDiscount = useCallback((weeks: Week[]): number => {
@@ -161,7 +201,11 @@ export function Book2Page() {
   const combinedDiscount = calculateCombinedDiscount(selectedWeeks);
 
   const { session, isLoading: sessionLoading } = useSession();
+  // console.log('[FLICKER_DEBUG] useSession result:', { hasSession: !!session, loading: sessionLoading });
+  
   const { isAdmin, isLoading: permissionsLoading } = useUserPermissions(session);
+  // console.log('[FLICKER_DEBUG] useUserPermissions result:', { isAdmin, loading: permissionsLoading });
+  
   const isMobile = window.innerWidth < 768;
 
   // --- START: Normalize date specifically for the calendar hook ---
@@ -193,10 +237,26 @@ export function Book2Page() {
     isAdminMode
   });
 
+  // console.log('[FLICKER_DEBUG] useCalendar result:', { weeksCount: weeks?.length, customizationsCount: customizations?.length, loading: calendarLoading });
+
+  // Track component mounting for debugging
+  useEffect(() => {
+    // console.log('[BOOK2] Mounted/Updated'); // Debug logging disabled
+  });
+
+  // Track loading state changes
+  useEffect(() => {
+    // console.log('[FLICKER_DEBUG] Loading states changed:', { sessionLoading, permissionsLoading, accommodationsLoading, calendarLoading });
+  }, [sessionLoading, permissionsLoading, accommodationsLoading, calendarLoading]);
+
   // Sync the local refresh state with the useCalendar hook's refresh state
   useEffect(() => {
-    setCalendarRefresh(lastRefresh);
-  }, [lastRefresh, setCalendarRefresh]);
+    // Only sync if lastRefresh is greater than 0 (not the initial state)
+    if (lastRefresh > 0) {
+      console.log('[FLICKER_DEBUG] Syncing calendar refresh:', lastRefresh);
+      setCalendarRefresh(lastRefresh);
+    }
+  }, [lastRefresh]); // Removed setCalendarRefresh from dependencies
 
   console.log('[Book2Page] Calendar state:', {
     weeksCount: weeks?.length,
@@ -491,7 +551,9 @@ export function Book2Page() {
       }
       
       // Refresh calendar data and close modal
-        setLastRefresh(Date.now());
+        const newTimestamp = Date.now();
+        console.log('[FLICKER_DEBUG] setLastRefresh called in handleSaveWeekCustomization:', newTimestamp);
+        setLastRefresh(newTimestamp);
         setSelectedWeekForCustomization(null);
     } catch (error) {
       console.error('[Book2Page] Error saving week customization:', error);
@@ -519,7 +581,9 @@ export function Book2Page() {
       }
       
       // Refresh calendar data and close modal
-      setLastRefresh(Date.now());
+      const newTimestamp = Date.now();
+      console.log('[FLICKER_DEBUG] setLastRefresh called in handleDeleteWeekCustomization:', newTimestamp);
+      setLastRefresh(newTimestamp);
       setSelectedWeekForCustomization(null);
     } catch (error) {
       console.error('[Book2Page] Error deleting week customization:', error);
@@ -545,9 +609,18 @@ export function Book2Page() {
   }, [selectedWeeks, isAdmin]);
 
   const isLoading = accommodationsLoading || calendarLoading;
+  
+  // Track when loading state changes
+  useEffect(() => {
+    console.log('[FLICKER_DEBUG] isLoading changed:', {
+      isLoading,
+      accommodationsLoading,
+      calendarLoading
+    });
+  }, [isLoading, accommodationsLoading, calendarLoading]);
 
   // Calculate season breakdown for the selected weeks
-  const calculateSeasonBreakdown = useCallback((weeks: Week[]): SeasonBreakdown => {
+  const calculateSeasonBreakdown = useCallback((weeks: Week[], accommodationTitle: string): SeasonBreakdown => {
     if (weeks.length === 0) {
       const discount = getSeasonalDiscount(currentMonth, accommodationTitle);
       const seasonName = discount === 0 ? 'Summer Season' : 
@@ -661,7 +734,7 @@ export function Book2Page() {
     // Only calculate breakdown if weeks are selected, price > 0, AND it's not a Dorm
     if (selectedWeeks.length > 0 && accommodationPrice > 0 && accommodationTitle !== 'Dorm') {
       console.log('[Book2Page] Computing season breakdown (useMemo).');
-      return calculateSeasonBreakdown(selectedWeeks);
+      return calculateSeasonBreakdown(selectedWeeks, accommodationTitle);
     } else {
       console.log('[Book2Page] No season breakdown needed (useMemo).');
       return undefined;
@@ -763,16 +836,30 @@ export function Book2Page() {
   }, [selectedAccommodation, accommodations]); // Dependencies
   console.log('[Book2Page] Selected Accommodation Details:', selectedAccommodationDetails);
 
+  // Memoize the selected accommodation object to prevent unnecessary re-renders
+  const selectedAccommodationObject = useMemo(() => {
+    if (!selectedAccommodation || !accommodations) return null;
+    return accommodations.find(a => a.id === selectedAccommodation) || null;
+  }, [selectedAccommodation, accommodations]);
+
   // PERFORMANCE FIX: Convert weekly accommodation info from state to computed value
   const weeklyAccommodationInfo = useMemo(() => {
-    console.log('[Book2Page] useMemo - Computing ALL weekly accommodation info.');
+    console.log('[Book2Page] 🔄 PRICING RECALCULATION TRIGGERED - useMemo weeklyAccommodationInfo');
+    console.log('[Book2Page] useMemo dependencies:', {
+      selectedWeeksCount: selectedWeeks.length,
+      accommodationsCount: accommodations?.length,
+      currentMonth: formatDateForDisplay(currentMonth)
+    });
     
     const normalizedCurrentMonth = normalizeToUTCDate(currentMonth);
     const newInfo: Record<string, { price: number | null; avgSeasonalDiscount: number | null }> = {};
 
     if (accommodations && accommodations.length > 0) {
+      console.log('[Book2Page] 💰 Processing', accommodations.length, 'accommodations for pricing');
       accommodations.forEach(acc => {
         if ((acc as any).parent_accommodation_id) return;
+
+        console.log('[Book2Page] 💰 Calculating pricing for:', acc.title, acc.id);
 
         try {
           // 2. Calculate average seasonal discount separately FIRST (for both display and calculation)
@@ -807,6 +894,13 @@ export function Book2Page() {
           
           // Store both the final price and the definitive seasonal discount used
           newInfo[acc.id] = { price: weeklyPrice, avgSeasonalDiscount };
+          
+          console.log('[Book2Page] 💰 Calculated pricing for', acc.title + ':', {
+            id: acc.id,
+            basePrice: acc.base_price,
+            weeklyPrice,
+            avgSeasonalDiscount
+          });
 
         } catch (error) {
           console.error(`[Book2Page] Error calculating info for ${acc.title} (ID: ${acc.id}):`, error);
@@ -817,7 +911,7 @@ export function Book2Page() {
       console.log('[Book2Page] No accommodations loaded, clearing info.');
     }
     
-    console.log('[Book2Page] Computed weekly info:', newInfo);
+    console.log('[Book2Page] 🔄 PRICING RECALCULATION COMPLETED - Final computed weekly info:', newInfo);
     return newInfo;
 
   }, [selectedWeeks, accommodations, currentMonth]); 
@@ -825,7 +919,6 @@ export function Book2Page() {
   // NEW: Memoized lookup function returns the info object
   const getDisplayInfo = useCallback((accommodationId: string): { price: number | null; avgSeasonalDiscount: number | null } | null => {
     const info = weeklyAccommodationInfo[accommodationId];
-    // console.log('[Book2Page] isAdmin check result:', isAdmin); // <-- REMOVE FROM HERE
     return info ?? null;
   }, [weeklyAccommodationInfo]); // <-- REMOVE isAdmin FROM DEPENDENCIES
 
@@ -834,24 +927,34 @@ export function Book2Page() {
 
   // Handle accommodation selection with firefly effect
   const handleAccommodationSelect = useCallback((accommodationId: string) => {
+    console.log('[Book2Page] 🎯 handleAccommodationSelect called:', {
+      newId: accommodationId,
+      currentId: selectedAccommodation,
+      action: accommodationId ? (accommodationId !== selectedAccommodation ? 'SELECT' : 'SAME') : 'DESELECT'
+    });
+
     // Only trigger fireflies if actually selecting (not deselecting)
     if (accommodationId && accommodationId !== selectedAccommodation) {
+      console.log('[Book2Page] ✨ Triggering accommodation fireflies for:', accommodationId);
       setShowAccommodationFireflies(true);
-      setTimeout(() => setShowAccommodationFireflies(false), 2000);
+      setTimeout(() => {
+        console.log('[Book2Page] ✨ Hiding accommodation fireflies');
+        setShowAccommodationFireflies(false);
+      }, 2000);
     }
+    
+    console.log('[Book2Page] 🔄 Setting selectedAccommodation to:', accommodationId);
     setSelectedAccommodation(accommodationId);
   }, [selectedAccommodation]);
 
-  // ---> ADDING LOADING CHECK HERE <--- 
-  if (sessionLoading || permissionsLoading) {
-      // Render loading state or null while session/permissions are loading
-      return (
-          <div className="min-h-screen flex items-center justify-center">
-              <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-accent-primary"></div>
-          </div>
-      );
-  }
+  // ---> LOADING CHECK HERE <--- 
+  // console.log('[FLICKER_DEBUG] Loading states check:', { sessionLoading, permissionsLoading, accommodationsLoading, calendarLoading, isLoading: accommodationsLoading || calendarLoading });
+  
+  // Removed early loading return - let individual components handle their own loading states
 
+  // console.log('[FLICKER_DEBUG] ===== Book2Page RENDER END =====');
+  // console.log('[FLICKER_DEBUG] About to render main content');
+  
   return (
     <div className="min-h-screen">
       <FireflyPortal />
@@ -965,7 +1068,9 @@ export function Book2Page() {
                         <CalendarConfigButton 
                           onConfigChanged={() => {
                             // Refresh data when config changes
-                            setLastRefresh(Date.now());
+                            const newTimestamp = Date.now();
+                            console.log('[FLICKER_DEBUG] setLastRefresh called in CalendarConfigButton:', newTimestamp);
+                            setLastRefresh(newTimestamp);
                           }} 
                         />
                       </>
@@ -1100,6 +1205,7 @@ export function Book2Page() {
                     <div className="animate-spin rounded-full h-8 w-8 xs:h-10 xs:w-10 border-t-2 border-b-2 border-accent-primary"></div>
                   </div>
                 ) : (
+                  <>
                   <WeekSelector 
                     weeks={weeks}
                     selectedWeeks={selectedWeeks}
@@ -1113,6 +1219,7 @@ export function Book2Page() {
                     onMaxWeeksReached={() => setShowMaxWeeksModal(true)}
                     testMode={testMode}
                   />
+                  </>
                 )}
               </div> {/* Closing Calendar card div */}
               
@@ -1144,9 +1251,7 @@ export function Book2Page() {
                 {selectedWeeks.length > 0 ? (
                   <BookingSummary 
                     selectedWeeks={selectedWeeks}
-                    selectedAccommodation={selectedAccommodation && accommodations ? 
-                      accommodations.find(a => a.id === selectedAccommodation) || null : null
-                    }
+                    selectedAccommodation={selectedAccommodationObject}
                     onClearWeeks={() => setSelectedWeeks([])}
                     onClearAccommodation={() => setSelectedAccommodation(null)}
                     seasonBreakdown={seasonBreakdown}
@@ -1190,6 +1295,7 @@ export function Book2Page() {
           basePrice={selectedAccommodationDetails?.price || 0}
           calculatedWeeklyPrice={selectedAccommodation ? weeklyAccommodationInfo[selectedAccommodation]?.price ?? null : null}
           averageSeasonalDiscount={selectedAccommodation ? weeklyAccommodationInfo[selectedAccommodation]?.avgSeasonalDiscount ?? null : null}
+          selectedWeeks={selectedWeeks}
         />
       )}
     </div>

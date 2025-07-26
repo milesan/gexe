@@ -35,10 +35,19 @@ export function useWeeklyAccommodations() {
       setAvailabilityMap(prev => {
         const existingData = prev[accommodation.id];
         
+        console.log('[useWeeklyAccommodations] 🔄 setAvailabilityMap called for unlimited accommodation:', {
+          accommodationId: accommodation.id,
+          existingData,
+          needsUpdate: !existingData || 
+            existingData.isAvailable !== true ||
+            existingData.availableCapacity !== null
+        });
+        
         // Only update if data actually changed
         if (!existingData || 
             existingData.isAvailable !== true ||
             existingData.availableCapacity !== null) {
+          console.log('[useWeeklyAccommodations] 🔄 UPDATING availability map for unlimited accommodation');
           return {
             ...prev,
             [accommodation.id]: {
@@ -48,6 +57,7 @@ export function useWeeklyAccommodations() {
           };
         }
         
+        console.log('[useWeeklyAccommodations] ✅ No changes needed for unlimited accommodation, returning existing reference');
         // No changes needed, return existing reference
         return prev;
       });
@@ -88,25 +98,42 @@ export function useWeeklyAccommodations() {
         let hasChanges = false;
         const updated = { ...prev };
         
+        console.log('[useWeeklyAccommodations] 🔄 Processing availability map updates:', {
+          previousMapKeys: Object.keys(prev),
+          newResultsCount: Object.keys(newAvailabilityMap).length
+        });
+        
         // Only update properties that have actually changed
         Object.entries(newAvailabilityMap).forEach(([accommodationId, newData]) => {
           const existingData = prev[accommodationId];
+          
+          console.log('[useWeeklyAccommodations] 🔍 Checking accommodation:', {
+            accommodationId,
+            existingData,
+            newData,
+            needsUpdate: !existingData || 
+              existingData.isAvailable !== newData.isAvailable ||
+              existingData.availableCapacity !== newData.availableCapacity
+          });
           
           // Check if data actually changed
           if (!existingData || 
               existingData.isAvailable !== newData.isAvailable ||
               existingData.availableCapacity !== newData.availableCapacity) {
+            console.log('[useWeeklyAccommodations] 🔄 UPDATING data for accommodation:', accommodationId);
             updated[accommodationId] = newData;
             hasChanges = true;
+          } else {
+            console.log('[useWeeklyAccommodations] ✅ No changes for accommodation:', accommodationId);
           }
         });
         
         // Only return new object if there were actual changes
         if (hasChanges) {
-          console.log('[useWeeklyAccommodations] Updated availability map with changes:', updated);
+          console.log('[useWeeklyAccommodations] 🔄 RETURNING UPDATED availability map with changes:', updated);
           return updated;
         } else {
-          console.log('[useWeeklyAccommodations] No changes detected, keeping existing availability map');
+          console.log('[useWeeklyAccommodations] ✅ NO CHANGES detected, keeping existing availability map reference');
           return prev; // Return existing reference to prevent unnecessary re-renders
         }
       });

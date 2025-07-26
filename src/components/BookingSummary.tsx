@@ -44,6 +44,12 @@ export function BookingSummary({
   seasonBreakdown: initialSeasonBreakdown,
   calculatedWeeklyAccommodationPrice
 }: BookingSummaryProps) {
+  // --- REMOVED: Track component renders (no longer needed) ---
+  // Helper function to format dates consistently (needed for the modal)
+  const formatDateForDisplay = (date: Date): string => {
+    return formatInTimeZone(date, 'UTC', 'MMM d, yyyy');
+  };
+
   // --- ADDED LOGGING: Check received prop value ---
   console.log('[BookingSummary] --- PROPS CHECK ---');
   console.log('[BookingSummary] Received calculatedWeeklyAccommodationPrice PROP:', calculatedWeeklyAccommodationPrice);
@@ -105,6 +111,98 @@ export function BookingSummary({
   const [creditsToUse, setCreditsToUse] = useState<number>(0);
   const [creditsEnabled, setCreditsEnabled] = useState<boolean>(true); // Default to using credits
   const { credits: availableCredits, loading: creditsLoading, refresh: refreshCredits } = useCredits();
+  
+  // --- ADDED: Track if user has manually adjusted credits ---
+  const [userHasManuallyAdjustedCredits, setUserHasManuallyAdjustedCredits] = useState<boolean>(false);
+  // --- END ADDED: Track if user has manually adjusted credits ---
+  
+  // --- ADDED: Credit tracking logs ---
+  console.log('[CREDIT_TRACKING] Initial credit state:', {
+    availableCredits,
+    creditsLoading,
+    creditsToUse,
+    creditsEnabled
+  });
+  
+  // --- REMOVED: Track component mount (no longer needed) ---
+  
+  // --- REMOVED: Track credit changes (no longer needed) ---
+  
+  // --- ADDED: Track credit changes over time for debugging ---
+  const creditChangeHistory = React.useRef<Array<{
+    timestamp: string;
+    availableCredits: number;
+    creditsToUse: number;
+    creditsEnabled: boolean;
+    creditsLoading: boolean;
+    userHasManuallyAdjustedCredits: boolean;
+    context?: string;
+  }>>([]);
+  
+  useEffect(() => {
+    const change = {
+      timestamp: new Date().toISOString(),
+      availableCredits,
+      creditsToUse,
+      creditsEnabled,
+      creditsLoading,
+      userHasManuallyAdjustedCredits,
+      context: 'state_change'
+    };
+    creditChangeHistory.current.push(change);
+    
+    // Keep only last 20 changes to avoid memory issues
+    if (creditChangeHistory.current.length > 20) {
+      creditChangeHistory.current = creditChangeHistory.current.slice(-20);
+    }
+    
+    console.log('[CREDIT_TRACKING] 📊 Credit change history updated:', {
+      totalChanges: creditChangeHistory.current.length,
+      latestChange: change,
+      recentChanges: creditChangeHistory.current.slice(-5)
+    });
+  }, [availableCredits, creditsToUse, creditsEnabled, creditsLoading, userHasManuallyAdjustedCredits]);
+  // --- END ADDED: Track credit changes over time ---
+  
+  // Track when credits are set
+  const setCreditsToUseWithLogging = useCallback((value: number) => {
+    console.log('[CREDIT_TRACKING] Setting creditsToUse:', {
+      from: creditsToUse,
+      to: value,
+      availableCredits,
+      willExceedAvailable: value > availableCredits
+    });
+    setCreditsToUse(value);
+  }, [creditsToUse, availableCredits]);
+  
+  // --- ADDED: Manual credit adjustment function ---
+  const setCreditsToUseManually = useCallback((value: number) => {
+    console.log('[CREDIT_TRACKING] 🎯 MANUAL credit adjustment:', {
+      from: creditsToUse,
+      to: value,
+      availableCredits,
+      willExceedAvailable: value > availableCredits
+    });
+    setCreditsToUse(value);
+    setUserHasManuallyAdjustedCredits(true);
+    console.log('[CREDIT_TRACKING] ✅ User has manually adjusted credits - auto-setting disabled');
+  }, [creditsToUse, availableCredits]);
+  // --- END ADDED: Manual credit adjustment function ---
+  
+  // Track refreshCredits calls
+  const refreshCreditsWithLogging = useCallback(async () => {
+    console.log('[CREDIT_TRACKING] 🔄 Calling refreshCredits...');
+    const beforeCredits = availableCredits;
+    try {
+      await refreshCredits();
+      console.log('[CREDIT_TRACKING] ✅ refreshCredits completed successfully');
+      // Note: We can't log the new value here since it's async, but we can check in the next render
+    } catch (error) {
+      console.error('[CREDIT_TRACKING] ❌ refreshCredits failed:', error);
+    }
+  }, [refreshCredits, availableCredits]);
+  // --- END ADDED: Credit tracking logs ---
+  
   // --- End Credits State ---
 
   // State for internally calculated season breakdown
@@ -116,19 +214,9 @@ export function BookingSummary({
       accommodationsCount: accommodations.length, // Log initial count
   });
 
-  // --- LOGGING: Track selectedAccommodation prop changes ---
-  useEffect(() => {
-    console.log('[BookingSummary] PROP CHANGE: selectedAccommodation updated:', {
-        id: selectedAccommodation?.id,
-        title: selectedAccommodation?.title,
-        base_price: selectedAccommodation?.base_price,
-        is_unlimited: selectedAccommodation?.is_unlimited,
-    });
-  }, [selectedAccommodation]);
-  // --- END LOGGING ---
+  // --- REMOVED: Track selectedAccommodation prop changes (no longer needed) ---
 
   // Hooks
-  const { getArrivalDepartureForDate } = useSchedulingRules();
   const navigate = useNavigate();
   const session = useSession();
   const { isAdmin, isLoading: permissionsLoading } = useUserPermissions(session?.session);
@@ -227,6 +315,8 @@ export function BookingSummary({
     appliedDiscount
   });
 
+  // --- REMOVED: Log pricing changes (no longer needed) ---
+
   const isStateOfTheArtist = useMemo(() => {
     if (selectedWeeks.length === 1) {
       const weekName = selectedWeeks[0]?.name?.toLowerCase() || '';
@@ -308,16 +398,30 @@ export function BookingSummary({
 
   // Auto-set credits to use when pricing or available credits change
   useEffect(() => {
-    if (creditsEnabled && !creditsLoading && pricing.totalAmount > 0) {
+    // Only auto-set if user hasn't manually adjusted credits
+    if (!userHasManuallyAdjustedCredits && creditsEnabled && !creditsLoading && pricing.totalAmount > 0) {
       // Automatically set credits to use (min of available credits or total amount)
       const maxCreditsToUse = Math.min(availableCredits, pricing.totalAmount);
-      setCreditsToUse(maxCreditsToUse);
+      setCreditsToUseWithLogging(maxCreditsToUse);
       console.log('[BookingSummary] Auto-setting credits to use:', maxCreditsToUse, 'from available:', availableCredits);
     } else if (!creditsEnabled) {
-      setCreditsToUse(0);
+      setCreditsToUseWithLogging(0);
       console.log('[BookingSummary] Credits disabled, setting to 0');
+    } else if (userHasManuallyAdjustedCredits) {
+      console.log('[BookingSummary] Skipping auto-setting - user has manually adjusted credits');
     }
-  }, [pricing.totalAmount, availableCredits, creditsEnabled, creditsLoading]);
+  }, [pricing.totalAmount, availableCredits, creditsEnabled, creditsLoading, setCreditsToUseWithLogging, userHasManuallyAdjustedCredits]);
+
+  // --- MODIFIED: Only reset manual adjustment flag when pricing changes, not accommodation ---
+  useEffect(() => {
+    // Only reset manual adjustment flag when pricing changes significantly
+    // This allows auto-setting to work again when user changes dates, but preserves credit selection when swapping accommodations
+    if (userHasManuallyAdjustedCredits) {
+      console.log('[CREDIT_TRACKING] 🔄 Pricing changed - resetting manual adjustment flag to allow auto-setting');
+      setUserHasManuallyAdjustedCredits(false);
+    }
+  }, [pricing.totalAmount]); // Only reset when total amount changes, not accommodation
+  // --- END MODIFIED: Only reset manual adjustment flag when pricing changes, not accommodation ---
 
   // Validate that a check-in date is selected
   const validateCheckInDate = useCallback(() => {
@@ -571,6 +675,29 @@ export function BookingSummary({
           console.log("[Booking Summary] Adding credits used to booking payload:", creditsToUse);
         }
 
+        // --- ADDED: Detailed credit logging before booking creation ---
+        console.log('[CREDIT_TRACKING] 🔍 PRE-BOOKING CREDIT ANALYSIS:', {
+          creditsToUse,
+          availableCredits,
+          creditsEnabled,
+          bookingPayloadCreditsUsed: bookingPayload.creditsUsed,
+          willTriggerCreditDeduction: bookingPayload.creditsUsed > 0,
+          userEmail,
+          accommodationTitle: selectedAccommodation.title,
+          totalPrice: bookingPayload.totalPrice,
+          finalAmountAfterCredits
+        });
+        
+        // Log the exact payload being sent to the database
+        console.log('[CREDIT_TRACKING] 📦 BOOKING PAYLOAD FOR DATABASE:', {
+          ...bookingPayload,
+          // Add human-readable fields for debugging
+          creditsUsedForDatabase: bookingPayload.creditsUsed,
+          willDatabaseTriggerFire: bookingPayload.creditsUsed > 0,
+          expectedNewCreditBalance: availableCredits - (bookingPayload.creditsUsed || 0)
+        });
+        // --- END ADDED: Detailed credit logging ---
+
         // Add payment intent ID if available (for webhook coordination)
         if (paymentIntentId) {
           bookingPayload.paymentIntentId = paymentIntentId;
@@ -580,9 +707,30 @@ export function BookingSummary({
         console.log("[BOOKING_FLOW] === STEP 6: Creating booking in database ===");
         console.log("[BOOKING_FLOW] BOOKING PAYLOAD:", JSON.stringify(bookingPayload, null, 2));
         
+        // --- ADDED: Log credits state right before database call ---
+        console.log('[CREDIT_TRACKING] 🎯 MOMENT OF TRUTH - Credits before database call:', {
+          availableCredits,
+          creditsToUse,
+          creditsUsedInPayload: bookingPayload.creditsUsed,
+          expectedDeduction: bookingPayload.creditsUsed || 0,
+          expectedNewBalance: availableCredits - (bookingPayload.creditsUsed || 0)
+        });
+        // --- END ADDED: Log credits state right before database call ---
+        
         const booking = await bookingService.createBooking(bookingPayload);
 
         console.log("[BOOKING_FLOW] STEP 6 SUCCESS: Booking created:", booking.id);
+        
+        // --- ADDED: Log credits state immediately after booking creation ---
+        console.log('[CREDIT_TRACKING] ✅ BOOKING CREATED - Credits should have been deducted by trigger:', {
+          bookingId: booking.id,
+          creditsUsedInBooking: booking.credits_used,
+          creditsUsedInPayload: bookingPayload.creditsUsed,
+          triggerShouldHaveFired: bookingPayload.creditsUsed > 0,
+          // Note: availableCredits here is still the old value since refreshCredits hasn't been called yet
+          availableCreditsBeforeRefresh: availableCredits
+        });
+        // --- END ADDED: Log credits state immediately after booking creation ---
         
         // Update the pending payment row with booking_id and stripe_payment_id
         if (typeof paymentRowIdToUse === 'string' && booking.id) {
@@ -618,23 +766,42 @@ export function BookingSummary({
         // Refresh credits manually to ensure UI updates immediately
         if (creditsToUse > 0) {
           console.log("[BOOKING_FLOW] === STEP 8: Refreshing credits after use ===");
+          console.log('[CREDIT_TRACKING] 🔄 ABOUT TO REFRESH CREDITS - Current state:', {
+            creditsToUse,
+            availableCredits,
+            bookingId: booking.id,
+            creditsUsedInBooking: booking.credits_used,
+            expectedNewBalance: availableCredits - creditsToUse
+          });
+          
           try {
-            await refreshCredits();
+            await refreshCreditsWithLogging();
             console.log("[BOOKING_FLOW] STEP 8 SUCCESS: Credits refreshed");
+            console.log('[CREDIT_TRACKING] ✅ CREDITS REFRESHED - Check next render for updated availableCredits');
             
             // Add a fallback refresh with delay in case the first one was too fast
             setTimeout(async () => {
               console.log("[Booking Summary] Fallback credits refresh after 1 second");
+              console.log('[CREDIT_TRACKING] 🔄 FALLBACK REFRESH - Current state:', {
+                availableCredits,
+                creditsToUse,
+                bookingId: booking.id
+              });
               try {
-                await refreshCredits();
+                await refreshCreditsWithLogging();
                 console.log("[Booking Summary] Fallback credits refresh completed");
+                console.log('[CREDIT_TRACKING] ✅ FALLBACK REFRESH COMPLETED - Check next render for final availableCredits');
               } catch (err) {
                 console.error("[Booking Summary] Fallback credits refresh failed:", err);
+                console.error('[CREDIT_TRACKING] ❌ FALLBACK REFRESH FAILED:', err);
               }
             }, 1000);
           } catch (err) {
             console.error("[Booking Summary] Error refreshing credits:", err);
+            console.error('[CREDIT_TRACKING] ❌ INITIAL CREDITS REFRESH FAILED:', err);
           }
+        } else {
+          console.log('[CREDIT_TRACKING] ⏭️ SKIPPING CREDITS REFRESH - No credits used');
         }
         
         // Delay navigation slightly to show fireflies
@@ -642,6 +809,24 @@ export function BookingSummary({
           console.log("[BOOKING_FLOW] === STEP 9: Navigating to confirmation ===");
           // Calculate actual amount donated (after credits)
           const actualDonationAmount = Math.max(0, booking.total_price - (creditsToUse || 0));
+          
+          // --- ADDED: Final credit state check after booking completion ---
+          console.log('[CREDIT_TRACKING] 🎯 FINAL CREDIT STATE CHECK:', {
+            bookingId: booking.id,
+            creditsUsedInBooking: booking.credits_used,
+            creditsUsedInPayload: bookingPayload.creditsUsed,
+            availableCreditsAfterAllRefreshes: availableCredits,
+            expectedNewBalance: availableCredits - (bookingPayload.creditsUsed || 0),
+            creditsActuallyDeducted: availableCredits < (creditChangeHistory.current[0]?.availableCredits || availableCredits),
+            creditChangeHistory: creditChangeHistory.current.slice(-10), // Last 10 changes
+            triggerShouldHaveFired: bookingPayload.creditsUsed > 0,
+            finalAssessment: bookingPayload.creditsUsed > 0 && availableCredits >= (creditChangeHistory.current[0]?.availableCredits || availableCredits) 
+              ? '❌ CREDITS NOT DEDUCTED - DATABASE TRIGGER MAY HAVE FAILED' 
+              : bookingPayload.creditsUsed > 0 
+                ? '✅ CREDITS APPEAR TO BE DEDUCTED' 
+                : '⏭️ NO CREDITS USED'
+          });
+          // --- END ADDED: Final credit state check ---
           
           navigate('/confirmation', { 
             state: { 
@@ -661,6 +846,13 @@ export function BookingSummary({
         console.error('[BOOKING_FLOW] === STEP 6 FAILED: Error creating booking ===');
         console.error('[BOOKING_FLOW] Error details:', err);
         
+        // ALWAYS navigate to confirmation page when payment succeeded but booking failed
+        console.log('[BookingSummary] Payment succeeded but booking failed - navigating to confirmation page anyway');
+        
+        // Track status for admin alert
+        let confirmationEmailSent = false;
+        let creditsWereDeducted = false;
+        
         // CRITICAL: Log detailed error for payment without booking
         const errorDetails = {
           paymentIntentId: paymentIntentId || undefined,
@@ -678,23 +870,14 @@ export function BookingSummary({
           },
           // CRITICAL STATUS TRACKING
           systemStatus: {
-            confirmationEmailSent: false, // Will be updated after email attempt
-            creditsWereDeducted: false, // Credits only deducted on successful booking insert
+            confirmationEmailSent, // Will be updated after email attempt
+            creditsWereDeducted, // Credits only deducted on successful booking insert
             userWillSeeConfirmationPage: true // We navigate to confirmation page anyway
           },
           timestamp: new Date().toISOString()
         };
         
         console.error('[CRITICAL] PAYMENT WITHOUT BOOKING:', errorDetails);
-        
-
-        
-        // ALWAYS navigate to confirmation page when payment succeeded but booking failed
-        console.log('[BookingSummary] Payment succeeded but booking failed - navigating to confirmation page anyway');
-        
-        // Track status for admin alert
-        let confirmationEmailSent = false;
-        let creditsWereDeducted = false;
         
         // Try to send confirmation email even though booking failed
         if (userEmail && paymentIntentId) {
@@ -737,10 +920,24 @@ export function BookingSummary({
         // Try to manually deduct credits since payment succeeded but booking failed
         if (creditsToUse > 0) {
           console.log('[BookingSummary] Payment succeeded but booking failed - attempting to manually deduct credits:', creditsToUse);
+          console.log('[CREDIT_TRACKING] 🔧 MANUAL CREDIT DEDUCTION ATTEMPT:', {
+            creditsToUse,
+            availableCredits,
+            paymentIntentId,
+            userEmail,
+            reason: 'Payment succeeded but booking failed'
+          });
+          
           try {
             // Get current user for the credit deduction
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
+              console.log('[CREDIT_TRACKING] 🔧 Calling admin_remove_credits RPC:', {
+                userId: user.id,
+                amount: creditsToUse,
+                note: `Credits deducted for successful payment (Payment Intent: ${paymentIntentId}) - booking creation failed and requires manual resolution`
+              });
+              
               const { data: newBalance, error: creditError } = await supabase.rpc('admin_remove_credits', {
                 p_user_id: user.id,
                 p_amount: creditsToUse,
@@ -749,29 +946,45 @@ export function BookingSummary({
               
               if (creditError) {
                 console.error('[BookingSummary] Failed to deduct credits manually:', creditError);
+                console.error('[CREDIT_TRACKING] ❌ MANUAL DEDUCTION FAILED:', {
+                  error: creditError,
+                  userId: user.id,
+                  amount: creditsToUse
+                });
                 creditsWereDeducted = false;
               } else {
                 console.log('[BookingSummary] Successfully deducted credits manually. New balance:', newBalance);
+                console.log('[CREDIT_TRACKING] ✅ MANUAL DEDUCTION SUCCESSFUL:', {
+                  userId: user.id,
+                  amountDeducted: creditsToUse,
+                  newBalance,
+                  oldBalance: availableCredits
+                });
                 creditsWereDeducted = true;
                 
                 // Refresh credits in the UI to reflect the deduction
                 try {
-                  await refreshCredits();
+                  await refreshCreditsWithLogging();
                   console.log('[BookingSummary] Credits UI refreshed after manual deduction');
+                  console.log('[CREDIT_TRACKING] ✅ UI REFRESHED AFTER MANUAL DEDUCTION');
                 } catch (refreshErr) {
                   console.error('[BookingSummary] Failed to refresh credits UI:', refreshErr);
+                  console.error('[CREDIT_TRACKING] ❌ UI REFRESH FAILED AFTER MANUAL DEDUCTION:', refreshErr);
                 }
               }
             } else {
               console.error('[BookingSummary] No user found for manual credit deduction');
+              console.error('[CREDIT_TRACKING] ❌ NO USER FOR MANUAL DEDUCTION');
               creditsWereDeducted = false;
             }
           } catch (creditDeductionErr) {
             console.error('[BookingSummary] Exception during manual credit deduction:', creditDeductionErr);
+            console.error('[CREDIT_TRACKING] ❌ EXCEPTION DURING MANUAL DEDUCTION:', creditDeductionErr);
             creditsWereDeducted = false;
           }
         } else {
           // No credits to deduct
+          console.log('[CREDIT_TRACKING] ⏭️ NO MANUAL DEDUCTION NEEDED - No credits used');
           creditsWereDeducted = false;
         }
         
@@ -860,7 +1073,7 @@ Please manually create the booking for this user or process a refund.`;
           if (creditsToUse > 0) {
             console.log('[BookingSummary] Refreshing credits after webhook booking creation');
             try {
-              await refreshCredits();
+              await refreshCreditsWithLogging();
             } catch (err) {
               console.error('[BookingSummary] Error refreshing credits:', err);
             }
@@ -913,7 +1126,7 @@ Please manually create the booking for this user or process a refund.`;
       setError('An error occurred. Please try again.');
       setIsBooking(false);
     }
-  }, [selectedAccommodation, selectedWeeks, selectedCheckInDate, navigate, pricing.totalAmount, appliedDiscount, creditsToUse, refreshCredits, userEmail, onClearWeeks, onClearAccommodation, bookingService, pendingPaymentRowId]);
+  }, [selectedAccommodation, selectedWeeks, selectedCheckInDate, navigate, pricing.totalAmount, appliedDiscount, creditsToUse, refreshCreditsWithLogging, userEmail, onClearWeeks, onClearAccommodation, bookingService, finalAmountAfterCredits]);
 
   const handleConfirmClick = async () => {
     console.log('[BOOKING_FLOW] === STEP 1: Confirm button clicked ===');
@@ -1057,10 +1270,7 @@ Please manually create the booking for this user or process a refund.`;
   const fallbackDate = new Date();
   fallbackDate.setUTCHours(0, 0, 0, 0);
 
-  // Helper function to format dates consistently (needed for the modal)
-  const formatDateForDisplay = (date: Date): string => {
-    return formatInTimeZone(date, 'UTC', 'MMM d, yyyy');
-  };
+
 
   // Render the component
   return (
@@ -1128,6 +1338,7 @@ Please manually create the booking for this user or process a refund.`;
                   discountCode: appliedDiscount?.code
                 } : undefined}
                 onSuccess={handleBookingSuccess}
+                paymentRowId={pendingPaymentRowId || undefined}
                 onClose={() => {
                   console.log('[BookingSummary] StripeCheckoutForm onClose called');
                   setShowStripeModal(false);
@@ -1240,16 +1451,16 @@ Please manually create the booking for this user or process a refund.`;
                 />
 
                 {/* Credits Section */}
-                <CreditsSection
-                  availableCredits={availableCredits}
-                  creditsLoading={creditsLoading}
-                  creditsEnabled={creditsEnabled}
-                  setCreditsEnabled={setCreditsEnabled}
-                  creditsToUse={creditsToUse}
-                  setCreditsToUse={setCreditsToUse}
-                  pricing={pricing}
-                  finalAmountAfterCredits={finalAmountAfterCredits}
-                />
+                                  <CreditsSection
+                    availableCredits={availableCredits}
+                    creditsLoading={creditsLoading}
+                    creditsEnabled={creditsEnabled}
+                    setCreditsEnabled={setCreditsEnabled}
+                    creditsToUse={creditsToUse}
+                    setCreditsToUse={setCreditsToUseManually}
+                    pricing={pricing}
+                    finalAmountAfterCredits={finalAmountAfterCredits}
+                  />
 
                 {/* --- START: Cancellation Policy Section --- */}
                 <div className="pt-2 mt-2">
@@ -1306,6 +1517,7 @@ Please manually create the booking for this user or process a refund.`;
           ? Math.round(seasonBreakdownState.seasons.reduce((sum, season) => sum + (season.discount * season.nights), 0) / 
             seasonBreakdownState.seasons.reduce((sum, season) => sum + season.nights, 0) * 100) / 100
           : null}
+        selectedWeeks={selectedWeeks}
       />
     </>
   );
