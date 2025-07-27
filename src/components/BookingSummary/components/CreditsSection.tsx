@@ -25,7 +25,7 @@ export function CreditsSection({
   pricing,
   finalAmountAfterCredits
 }: CreditsSectionProps) {
-  if (creditsLoading || availableCredits === 0) {
+  if (availableCredits === 0) {
     return null;
   }
 
@@ -98,13 +98,16 @@ export function CreditsSection({
             hoverCloseDelayMs={150}
           />
         </div>
-        <label className="relative inline-flex items-center cursor-pointer">
+        <label className={`relative inline-flex items-center ${creditsLoading ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
           <input 
             type="checkbox" 
             checked={creditsEnabled}
             onChange={(e) => {
-              setCreditsEnabled(e.target.checked);
+              if (!creditsLoading) {
+                setCreditsEnabled(e.target.checked);
+              }
             }}
+            disabled={creditsLoading}
             className="sr-only peer"
           />
           <div className="w-11 h-6 bg-border rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent-primary"></div>
@@ -112,7 +115,16 @@ export function CreditsSection({
       </div>
       
       <div className="text-xs text-shade-2 font-lettra mb-4">
-        Available: <span className="font-display text-accent-primary">{availableCredits.toFixed(2)} credits</span>
+        Available: <span className="font-display text-accent-primary">
+          {creditsLoading ? (
+            <span className="inline-flex items-center gap-1">
+              <div className="w-3 h-3 border-2 border-accent-primary/30 border-t-accent-primary rounded-full animate-spin"></div>
+              Loading...
+            </span>
+          ) : (
+            `${availableCredits.toFixed(2)} credits`
+          )}
+        </span>
       </div>
       
       {creditsEnabled && (
@@ -129,7 +141,8 @@ export function CreditsSection({
               step={1}
               value={Math.min(creditsToUse, sliderMax)}
               onChange={handleSliderChange}
-              className="w-full h-2 bg-border rounded-sm appearance-none cursor-pointer accent-accent-primary slider-thumb-accent"
+              disabled={creditsLoading}
+              className={`w-full h-2 bg-border rounded-sm appearance-none accent-accent-primary slider-thumb-accent ${creditsLoading ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
             />
             <div className="flex justify-between text-xs text-shade-3 font-lettra">
               <span>0</span>

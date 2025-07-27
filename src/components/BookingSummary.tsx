@@ -79,6 +79,23 @@ export function BookingSummary({
   const [showStripeModal, setShowStripeModal] = useState(false);
   console.log('[BookingSummary] useState(showStripeModal) called');
   
+  // --- ADDED: Track state setters for flickering debug ---
+  const setIsBookingWithLogging = useCallback((value: boolean) => {
+    console.log('[FLICKER_DEBUG] 🎯 SETTING isBooking:', { from: isBooking, to: value });
+    setIsBooking(value);
+  }, [isBooking]);
+  
+  const setErrorWithLogging = useCallback((value: string | null) => {
+    console.log('[FLICKER_DEBUG] 🎯 SETTING error:', { from: error, to: value });
+    setError(value);
+  }, [error]);
+  
+  const setShowStripeModalWithLogging = useCallback((value: boolean) => {
+    console.log('[FLICKER_DEBUG] 🎯 SETTING showStripeModal:', { from: showStripeModal, to: value });
+    setShowStripeModal(value);
+  }, [showStripeModal]);
+  // --- END ADDED: Track state setters for flickering debug ---
+  
   const [authToken, setAuthToken] = useState('');
   console.log('[BookingSummary] useState(authToken) called');
   
@@ -115,6 +132,30 @@ export function BookingSummary({
   // --- ADDED: Track if user has manually adjusted credits ---
   const [userHasManuallyAdjustedCredits, setUserHasManuallyAdjustedCredits] = useState<boolean>(false);
   // --- END ADDED: Track if user has manually adjusted credits ---
+  
+  // --- ADDED: Track render cycles for flickering debug ---
+  const renderCount = React.useRef(0);
+  const lastRenderTime = React.useRef<number>(Date.now());
+  
+  useEffect(() => {
+    renderCount.current += 1;
+    const now = Date.now();
+    const timeSinceLastRender = now - lastRenderTime.current;
+    lastRenderTime.current = now;
+    
+    console.log(`[FLICKER_DEBUG] 🔄 Render #${renderCount.current} (${timeSinceLastRender}ms since last)`, {
+      creditsToUse,
+      availableCredits,
+      finalAmountAfterCredits,
+      isBooking,
+      showStripeModal,
+      error,
+      userHasManuallyAdjustedCredits,
+      creditsEnabled,
+      creditsLoading
+    });
+  });
+  // --- END ADDED: Track render cycles for flickering debug ---
   
   // --- ADDED: Credit tracking logs ---
   console.log('[CREDIT_TRACKING] Initial credit state:', {
@@ -307,12 +348,26 @@ export function BookingSummary({
   // --- END LOGGING ---
 
   // Calculate pricing details - MEMOIZED using custom hook
+  console.log('[FLICKER_DEBUG] 🎯 CALLING usePricing hook with:', {
+    selectedWeeksLength: selectedWeeks.length,
+    selectedAccommodationId: selectedAccommodation?.id,
+    calculatedWeeklyAccommodationPrice,
+    foodContribution,
+    appliedDiscountCode: appliedDiscount?.code
+  });
+  
   const pricing = usePricing({
     selectedWeeks,
     selectedAccommodation,
     calculatedWeeklyAccommodationPrice,
     foodContribution,
     appliedDiscount
+  });
+  
+  console.log('[FLICKER_DEBUG] 🎯 usePricing result:', {
+    totalAmount: pricing.totalAmount,
+    totalNights: pricing.totalNights,
+    finalAmountAfterCredits: Math.max(0, pricing.totalAmount - creditsToUse)
   });
 
   // --- REMOVED: Log pricing changes (no longer needed) ---
@@ -398,25 +453,47 @@ export function BookingSummary({
 
   // Auto-set credits to use when pricing or available credits change
   useEffect(() => {
+    console.log('[FLICKER_DEBUG] 🎯 CREDIT AUTO-SET EFFECT TRIGGERED:', {
+      userHasManuallyAdjustedCredits,
+      creditsEnabled,
+      creditsLoading,
+      pricingTotalAmount: pricing.totalAmount,
+      availableCredits,
+      currentCreditsToUse: creditsToUse
+    });
+    
     // Only auto-set if user hasn't manually adjusted credits
     if (!userHasManuallyAdjustedCredits && creditsEnabled && !creditsLoading && pricing.totalAmount > 0) {
       // Automatically set credits to use (min of available credits or total amount)
       const maxCreditsToUse = Math.min(availableCredits, pricing.totalAmount);
+      console.log('[FLICKER_DEBUG] 🎯 AUTO-SETTING CREDITS:', {
+        from: creditsToUse,
+        to: maxCreditsToUse,
+        reason: 'auto-set triggered'
+      });
       setCreditsToUseWithLogging(maxCreditsToUse);
       console.log('[BookingSummary] Auto-setting credits to use:', maxCreditsToUse, 'from available:', availableCredits);
     } else if (!creditsEnabled) {
+      console.log('[FLICKER_DEBUG] 🎯 SETTING CREDITS TO 0 (disabled)');
       setCreditsToUseWithLogging(0);
       console.log('[BookingSummary] Credits disabled, setting to 0');
     } else if (userHasManuallyAdjustedCredits) {
+      console.log('[FLICKER_DEBUG] 🎯 SKIPPING AUTO-SET (manual adjustment)');
       console.log('[BookingSummary] Skipping auto-setting - user has manually adjusted credits');
     }
   }, [pricing.totalAmount, availableCredits, creditsEnabled, creditsLoading, setCreditsToUseWithLogging, userHasManuallyAdjustedCredits]);
 
   // --- MODIFIED: Only reset manual adjustment flag when pricing changes, not accommodation ---
   useEffect(() => {
+    console.log('[FLICKER_DEBUG] 🔄 PRICING CHANGE EFFECT TRIGGERED:', {
+      pricingTotalAmount: pricing.totalAmount,
+      userHasManuallyAdjustedCredits
+    });
+    
     // Only reset manual adjustment flag when pricing changes significantly
     // This allows auto-setting to work again when user changes dates, but preserves credit selection when swapping accommodations
     if (userHasManuallyAdjustedCredits) {
+      console.log('[FLICKER_DEBUG] 🔄 RESETTING MANUAL ADJUSTMENT FLAG');
       console.log('[CREDIT_TRACKING] 🔄 Pricing changed - resetting manual adjustment flag to allow auto-setting');
       setUserHasManuallyAdjustedCredits(false);
     }
@@ -557,8 +634,9 @@ export function BookingSummary({
           checkOut_Raw: checkOut
         });
         console.log('[BookingSummary] Setting isBooking to true and clearing errors');
-        setIsBooking(true);
-        setError(null);
+        console.log('[FLICKER_DEBUG] 🎯 SETTING STATES FOR BOOKING START');
+        setIsBookingWithLogging(true);
+        setErrorWithLogging(null);
       
       try {
         // (Pricing should already be rounded to 2 decimal places)
@@ -765,6 +843,7 @@ export function BookingSummary({
         
         // Refresh credits manually to ensure UI updates immediately
         if (creditsToUse > 0) {
+          console.log("[FLICKER_DEBUG] 🔄 CREDITS REFRESH SECTION");
           console.log("[BOOKING_FLOW] === STEP 8: Refreshing credits after use ===");
           console.log('[CREDIT_TRACKING] 🔄 ABOUT TO REFRESH CREDITS - Current state:', {
             creditsToUse,
@@ -775,37 +854,24 @@ export function BookingSummary({
           });
           
           try {
+            console.log('[FLICKER_DEBUG] 🔄 CALLING refreshCreditsWithLogging...');
             await refreshCreditsWithLogging();
             console.log("[BOOKING_FLOW] STEP 8 SUCCESS: Credits refreshed");
             console.log('[CREDIT_TRACKING] ✅ CREDITS REFRESHED - Check next render for updated availableCredits');
-            
-            // Add a fallback refresh with delay in case the first one was too fast
-            setTimeout(async () => {
-              console.log("[Booking Summary] Fallback credits refresh after 1 second");
-              console.log('[CREDIT_TRACKING] 🔄 FALLBACK REFRESH - Current state:', {
-                availableCredits,
-                creditsToUse,
-                bookingId: booking.id
-              });
-              try {
-                await refreshCreditsWithLogging();
-                console.log("[Booking Summary] Fallback credits refresh completed");
-                console.log('[CREDIT_TRACKING] ✅ FALLBACK REFRESH COMPLETED - Check next render for final availableCredits');
-              } catch (err) {
-                console.error("[Booking Summary] Fallback credits refresh failed:", err);
-                console.error('[CREDIT_TRACKING] ❌ FALLBACK REFRESH FAILED:', err);
-              }
-            }, 1000);
+            console.log('[FLICKER_DEBUG] 🔄 CREDITS REFRESH COMPLETED');
           } catch (err) {
             console.error("[Booking Summary] Error refreshing credits:", err);
-            console.error('[CREDIT_TRACKING] ❌ INITIAL CREDITS REFRESH FAILED:', err);
+            console.error('[CREDIT_TRACKING] ❌ CREDITS REFRESH FAILED:', err);
+            console.error('[FLICKER_DEBUG] ❌ CREDITS REFRESH FAILED:', err);
           }
         } else {
           console.log('[CREDIT_TRACKING] ⏭️ SKIPPING CREDITS REFRESH - No credits used');
+          console.log('[FLICKER_DEBUG] ⏭️ SKIPPING CREDITS REFRESH - No credits used');
         }
         
         // Delay navigation slightly to show fireflies
         setTimeout(() => {
+          console.log("[FLICKER_DEBUG] 🎯 NAVIGATION TIMEOUT STARTING");
           console.log("[BOOKING_FLOW] === STEP 9: Navigating to confirmation ===");
           // Calculate actual amount donated (after credits)
           const actualDonationAmount = Math.max(0, booking.total_price - (creditsToUse || 0));
@@ -828,6 +894,12 @@ export function BookingSummary({
           });
           // --- END ADDED: Final credit state check ---
           
+          console.log('[FLICKER_DEBUG] 🎯 ABOUT TO NAVIGATE:', {
+            bookingId: booking.id,
+            actualDonationAmount,
+            creditsToUse
+          });
+          
           navigate('/confirmation', { 
             state: { 
               booking: {
@@ -841,6 +913,7 @@ export function BookingSummary({
             } 
           });
           console.log("[BOOKING_FLOW] STEP 9 SUCCESS: Navigation completed");
+          console.log('[FLICKER_DEBUG] 🎯 NAVIGATION COMPLETED');
         }, 1500);
       } catch (err) {
         console.error('[BOOKING_FLOW] === STEP 6 FAILED: Error creating booking ===');
@@ -1123,14 +1196,23 @@ Please manually create the booking for this user or process a refund.`;
         err
       });
       // Don't re-throw any errors - we've handled them gracefully above
-      setError('An error occurred. Please try again.');
-      setIsBooking(false);
+      setErrorWithLogging('An error occurred. Please try again.');
+      setIsBookingWithLogging(false);
     }
   }, [selectedAccommodation, selectedWeeks, selectedCheckInDate, navigate, pricing.totalAmount, appliedDiscount, creditsToUse, refreshCreditsWithLogging, userEmail, onClearWeeks, onClearAccommodation, bookingService, finalAmountAfterCredits]);
 
   const handleConfirmClick = async () => {
+    console.log('[FLICKER_DEBUG] 🎯 CONFIRM BUTTON CLICKED');
     console.log('[BOOKING_FLOW] === STEP 1: Confirm button clicked ===');
-    setError(null); // Clear previous errors
+    console.log('[FLICKER_DEBUG] 🎯 PRE-CLICK STATE:', {
+      creditsToUse,
+      finalAmountAfterCredits,
+      isBooking,
+      showStripeModal,
+      pendingPaymentRowId
+    });
+    
+    setErrorWithLogging(null); // Clear previous errors
 
     if (!validateCheckInDate()) {
       console.warn('[BOOKING_FLOW] STEP 1 FAILED: Check-in date validation failed.');
@@ -1207,8 +1289,15 @@ Please manually create the booking for this user or process a refund.`;
 
           // If the final amount is 0 (fully paid with credits), skip payment and pass payment.id
           if (finalAmountAfterCredits === 0 && creditsToUse > 0) {
+            console.log('[FLICKER_DEBUG] 🎯 CREDITS-ONLY BOOKING DETECTED');
             console.log('[BOOKING_FLOW] === STEP 4: Credits-only booking, skipping Stripe ===');
+            console.log('[FLICKER_DEBUG] 🎯 ABOUT TO CALL handleBookingSuccess:', {
+              paymentId: payment.id,
+              creditsToUse,
+              finalAmountAfterCredits
+            });
             await handleBookingSuccess(undefined, payment.id);
+            console.log('[FLICKER_DEBUG] 🎯 handleBookingSuccess completed for credits-only booking');
             return;
           }
         } catch (err) {
@@ -1220,16 +1309,17 @@ Please manually create the booking for this user or process a refund.`;
 
       // Show Stripe modal after pending payment row is created
       console.log('[BOOKING_FLOW] === STEP 4: Opening Stripe modal ===');
-      setShowStripeModal(true);
-    } catch (err) {
-      setError('An error occurred. Please try again.');
-    }
+      console.log('[FLICKER_DEBUG] 🎯 OPENING STRIPE MODAL');
+      setShowStripeModalWithLogging(true);
+          } catch (err) {
+        setErrorWithLogging('An error occurred. Please try again.');
+      }
   };
 
   const handleAdminConfirm = async () => {
     console.log('[Booking Summary] Admin confirm button clicked.');
     console.log('[Booking Summary] handleAdminConfirm: Initial selectedCheckInDate:', selectedCheckInDate?.toISOString(), selectedCheckInDate); // ADDED LOG
-    setError(null);
+    setErrorWithLogging(null);
 
     if (!validateCheckInDate()) {
       console.warn('[Booking Summary] Admin Confirm FAILED: Check-in date validation failed.');
@@ -1245,10 +1335,10 @@ Please manually create the booking for this user or process a refund.`;
     try {
       // For admin, we skip payment and go straight to booking success
       await handleBookingSuccess();
-    } catch (err) {
-      console.error('[Booking Summary] Error in admin confirm handler:', err);
-      setError('An error occurred. Please try again.');
-    }
+          } catch (err) {
+        console.error('[Booking Summary] Error in admin confirm handler:', err);
+        setErrorWithLogging('An error occurred. Please try again.');
+      }
   };
 
   // --- Placeholder Handlers for Discount Code ---
@@ -1308,7 +1398,10 @@ Please manually create the booking for this user or process a refund.`;
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-display text-primary">Complete Payment</h3>
                 <button
-                  onClick={() => setShowStripeModal(false)}
+                  onClick={() => {
+                    console.log('[FLICKER_DEBUG] 🎯 CLOSING STRIPE MODAL');
+                    setShowStripeModalWithLogging(false);
+                  }}
                   className="text-secondary hover:text-secondary-hover"
                 >
                   <X className="w-6 h-6" />
@@ -1341,7 +1434,8 @@ Please manually create the booking for this user or process a refund.`;
                 paymentRowId={pendingPaymentRowId || undefined}
                 onClose={() => {
                   console.log('[BookingSummary] StripeCheckoutForm onClose called');
-                  setShowStripeModal(false);
+                  console.log('[FLICKER_DEBUG] 🎯 STRIPE MODAL CLOSED VIA onClose');
+                  setShowStripeModalWithLogging(false);
                 }}
               />
             </motion.div>
@@ -1363,7 +1457,7 @@ Please manually create the booking for this user or process a refund.`;
           </div>
 
           {error && (
-            <div className={`mb-6 p-4 rounded-lg flex justify-between items-center font-mono text-xs sm:text-sm ${
+            <div className={`mb-6 p-4 rounded-sm flex justify-between items-center font-mono text-xs sm:text-sm ${
               error.includes('payment was successful') 
                 ? 'bg-amber-100 text-amber-900 border-2 border-amber-400' 
                 : 'bg-error-muted text-error'
