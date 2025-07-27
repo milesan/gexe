@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { format, addDays, startOfMonth, endOfMonth } from 'date-fns';
+import { format, addDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay } from 'date-fns';
 import { supabase } from '../lib/supabase';
-import { Calendar, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { StatusModal } from './StatusModal';
 import type { AvailabilityStatus } from '../types/availability';
 import { motion, AnimatePresence } from 'framer-motion';
 import { normalizeToUTCDate, formatDateForDisplay } from '../utils/dates';
 import { calculateDaysBetween } from '../utils/dates';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 
 interface Props {
   onClose: () => void;
@@ -44,6 +45,11 @@ export function InventoryCalendar({ onClose }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [dailyAvailability, setDailyAvailability] = useState<DailyAvailability>({});
+  
+  // Mobile detection and state
+  const isMobile = useMediaQuery('(max-width: 768px)');
+  const [selectedAccommodationForMobile, setSelectedAccommodationForMobile] = useState<string>('');
+  const [showAccommodationSelector, setShowAccommodationSelector] = useState(false);
 
   const daysInMonth = Array.from({ length: new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate() }, 
     (_, i) => {
@@ -287,6 +293,91 @@ export function InventoryCalendar({ onClose }: Props) {
     }
   };
 
+  // Mobile calendar helpers
+  const getCalendarDays = () => {
+    const start = startOfWeek(startOfMonth(currentDate));
+    const end = endOfWeek(endOfMonth(currentDate));
+    return eachDayOfInterval({ start, end });
+  };
+
+  const getMobileDateStatus = (date: Date): AvailabilityStatus | number | string => {
+    if (!selectedAccommodationForMobile) return 'AVAILABLE';
+    return getDateStatus(date, selectedAccommodationForMobile);
+  };
+
+  const getMobileCellContent = (date: Date) => {
+    const status = getMobileDateStatus(date);
+    
+    if (typeof status === 'string') {
+      switch (status) {
+        case 'BOOKED':
+          return '×';
+        case 'PENDING':
+          return '⌛';
+        default:
+          return '✓';
+      }
+    }
+    
+    if (typeof status === 'number') {
+      return status.toString();
+    }
+    
+    return '✓';
+  };
+
+  const getMobileCellStyle = (date: Date, status: AvailabilityStatus | number | string) => {
+    const baseStyle = 'w-8 h-8 flex items-center justify-center text-xs font-medium rounded transition-colors';
+    
+    // Don't style dates outside current month
+    if (!isSameMonth(date, currentDate)) {
+      return `${baseStyle} text-gray-400`;
+    }
+    
+    if (typeof status === 'number') {
+      if (status === 0) {
+        return `${baseStyle} bg-black text-white`;
+      } else if (status >= 10) {
+        return `${baseStyle} bg-emerald-500 text-white`;
+      } else if (status >= 5) {
+        return `${baseStyle} bg-emerald-700 text-white`;
+      } else if (status >= 3) {
+        return `${baseStyle} bg-emerald-800 text-white`;
+      } else if (status >= 1) {
+        return `${baseStyle} bg-emerald-900 text-white`;
+      } else {
+        return `${baseStyle} bg-black text-white`;
+      }
+    }
+
+    switch (status) {
+      case 'BOOKED':
+        return `${baseStyle} bg-black text-white`;
+      case 'PENDING':
+        return `${baseStyle} bg-yellow-400 text-black`;
+      default:
+        return `${baseStyle} bg-emerald-500 text-white`;
+    }
+  };
+
+  const handleMobileDateClick = (date: Date) => {
+    if (!selectedAccommodationForMobile) return;
+    const status = getMobileDateStatus(date);
+    if (status === 'BOOKED') return;
+
+    if (!selectedDates) {
+      setSelectedDates({ start: date, end: date });
+    } else if (selectedDates.start && !selectedDates.end) {
+      if (date < selectedDates.start) {
+        setSelectedDates({ start: date, end: selectedDates.start });
+      } else {
+        setSelectedDates({ ...selectedDates, end: date });
+      }
+    } else {
+      setSelectedDates({ start: date, end: date });
+    }
+  };
+
   return (
     <AnimatePresence>
       <motion.div
@@ -323,33 +414,35 @@ export function InventoryCalendar({ onClose }: Props) {
               </div>
 
               <div className="flex items-center gap-4">
-                <div className="flex items-center gap-4 text-xs text-[var(--color-text-secondary)]">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-3 bg-emerald-600 text-white text-xs flex items-center justify-center font-mono">25</div>
-                    <span className="font-mono">Available Arrival Slots</span>
+                {!isMobile && (
+                  <div className="flex items-center gap-4 text-xs text-[var(--color-text-secondary)]">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-3 bg-emerald-600 text-white text-xs flex items-center justify-center font-mono">25</div>
+                      <span className="font-mono">Available Arrival Slots</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-3 bg-emerald-500 text-white text-xs flex items-center justify-center font-mono">✓</div>
+                      <span className="font-mono">Available to Check-in</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-3 bg-black text-white text-xs flex items-center justify-center font-mono">×</div>
+                      <span className="font-mono">Occupied</span>
+                    </div>
+                    <div className="h-6 border-l border-[var(--color-border)] mx-2"></div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
+                      <span className="font-mono">High Availability (10+)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-emerald-800"></div>
+                      <span className="font-mono">Low Availability (1-2)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-black"></div>
+                      <span className="font-mono">No Availability (0)</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-3 bg-emerald-500 text-white text-xs flex items-center justify-center font-mono">✓</div>
-                    <span className="font-mono">Available to Check-in</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-3 bg-black text-white text-xs flex items-center justify-center font-mono">×</div>
-                    <span className="font-mono">Occupied</span>
-                  </div>
-                  <div className="h-6 border-l border-[var(--color-border)] mx-2"></div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
-                    <span className="font-mono">High Availability (10+)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-emerald-800"></div>
-                    <span className="font-mono">Low Availability (1-2)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-black"></div>
-                    <span className="font-mono">No Availability (0)</span>
-                  </div>
-                </div>
+                )}
 
                 <button
                   onClick={onClose}
@@ -371,7 +464,96 @@ export function InventoryCalendar({ onClose }: Props) {
                 <div className="flex justify-center items-center h-96">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
                 </div>
+              ) : isMobile ? (
+                // Mobile Calendar View
+                <div className="space-y-4">
+                  {/* Accommodation Selector */}
+                  <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-lg p-4">
+                    <button
+                      onClick={() => setShowAccommodationSelector(!showAccommodationSelector)}
+                      className="w-full flex items-center justify-between p-3 bg-[var(--color-bg-surface-hover)] rounded-lg text-[var(--color-text-primary)]"
+                    >
+                      <span className="text-sm font-medium">
+                        {selectedAccommodationForMobile 
+                          ? accommodations.find(acc => acc.id === selectedAccommodationForMobile)?.title || 'Select Accommodation'
+                          : 'Select Accommodation'
+                        }
+                      </span>
+                      {showAccommodationSelector ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </button>
+                    
+                    {showAccommodationSelector && (
+                      <div className="mt-2 space-y-1">
+                        {accommodations.map((accommodation) => (
+                          <button
+                            key={accommodation.id}
+                            onClick={() => {
+                              setSelectedAccommodationForMobile(accommodation.id);
+                              setShowAccommodationSelector(false);
+                            }}
+                            className="w-full text-left p-2 hover:bg-[var(--color-bg-surface-hover)] rounded text-sm text-[var(--color-text-primary)]"
+                          >
+                            {accommodation.title} ({accommodation.inventory_count})
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Mobile Calendar */}
+                  {selectedAccommodationForMobile && (
+                    <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-lg p-4">
+                      <div className="grid grid-cols-7 gap-1 mb-4">
+                        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                          <div key={day} className="text-center text-xs font-medium text-[var(--color-text-secondary)] py-2">
+                            {day}
+                          </div>
+                        ))}
+                      </div>
+                      
+                      <div className="grid grid-cols-7 gap-1">
+                        {getCalendarDays().map((date, index) => {
+                          const status = getMobileDateStatus(date);
+                          return (
+                            <button
+                              key={index}
+                              onClick={() => handleMobileDateClick(date)}
+                              className={getMobileCellStyle(date, status)}
+                              disabled={status === 'BOOKED'}
+                            >
+                              {getMobileCellContent(date)}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Mobile Legend */}
+                  <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-lg p-4">
+                    <h3 className="text-sm font-medium text-[var(--color-text-primary)] mb-3">Legend</h3>
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 bg-emerald-500 text-white flex items-center justify-center rounded text-xs">✓</div>
+                        <span className="text-[var(--color-text-secondary)]">Available</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 bg-black text-white flex items-center justify-center rounded text-xs">×</div>
+                        <span className="text-[var(--color-text-secondary)]">Occupied</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 bg-emerald-500 text-white flex items-center justify-center rounded text-xs">10</div>
+                        <span className="text-[var(--color-text-secondary)]">High Availability</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 bg-emerald-900 text-white flex items-center justify-center rounded text-xs">1</div>
+                        <span className="text-[var(--color-text-secondary)]">Low Availability</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               ) : (
+                // Desktop Table View
                 <div className="overflow-x-auto">
                   <table className="w-full divide-y divide-[var(--color-border)]" style={{ tableLayout: 'fixed' }}>
                     <thead className="bg-[var(--color-bg-surface)]">

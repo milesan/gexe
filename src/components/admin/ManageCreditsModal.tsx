@@ -267,14 +267,14 @@ export function ManageCreditsModal({ application, onClose, onCreditsUpdated }: M
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg bg-[var(--color-bg-surface-hover)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+            className="p-2 rounded-sm bg-[var(--color-bg-surface-hover)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Current Balance */}
-        <div className="bg-[var(--color-bg-main)] p-4 rounded-lg mb-6 border border-[var(--color-border)]">
+        <div className="bg-[var(--color-bg-main)] p-4 rounded-sm mb-6 border border-[var(--color-border)]">
           <div className="flex items-center gap-2 mb-2">
             <Euro className="w-5 h-5 text-[var(--color-accent-primary)]" />
             <span className="text-sm font-medium text-[var(--color-text-secondary)] font-mono">Current Balance</span>
@@ -295,7 +295,7 @@ export function ManageCreditsModal({ application, onClose, onCreditsUpdated }: M
               <select
                 value={operation}
                 onChange={(e) => setOperation(e.target.value as 'add' | 'remove' | 'set')}
-                className="w-full px-3 py-2 border border-[var(--color-border)] rounded-lg bg-gray-800 text-gray-200 focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono text-sm hover:bg-gray-700 cursor-pointer"
+                className="w-full px-3 py-2 border border-[var(--color-border)] rounded-sm bg-gray-800 text-gray-200 focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono text-sm hover:bg-gray-700 cursor-pointer"
               >
                 <option value="add">Add Credits</option>
                 <option value="remove">Remove Credits</option>
@@ -315,7 +315,7 @@ export function ManageCreditsModal({ application, onClose, onCreditsUpdated }: M
                 min="0"
                 step="0.01"
                 placeholder="0"
-                className="w-full px-3 py-2 border border-[var(--color-border)] rounded-lg bg-[var(--color-bg-input)] text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono text-sm"
+                className="w-full px-3 py-2 border border-[var(--color-border)] rounded-sm bg-[var(--color-bg-input)] text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono text-sm"
                 required
               />
             </div>
@@ -325,7 +325,7 @@ export function ManageCreditsModal({ application, onClose, onCreditsUpdated }: M
               <button
                 type="submit"
                 disabled={loading || !amount}
-                className={`w-full px-4 py-2 rounded-lg font-mono text-sm flex items-center justify-center gap-2 transition-colors ${
+                className={`w-full px-4 py-2 rounded-sm font-mono text-sm flex items-center justify-center gap-2 transition-colors ${
                   loading || !amount
                     ? 'bg-[var(--color-bg-surface)] text-[var(--color-text-tertiary)] cursor-not-allowed'
                     : operation === 'remove'
@@ -357,14 +357,14 @@ export function ManageCreditsModal({ application, onClose, onCreditsUpdated }: M
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Reason for credit adjustment..."
-              className="w-full px-3 py-2 border border-[var(--color-border)] rounded-lg bg-[var(--color-bg-input)] text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono text-sm"
+              className="w-full px-3 py-2 border border-[var(--color-border)] rounded-sm bg-[var(--color-bg-input)] text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono text-sm"
             />
           </div>
         </form>
 
         {/* Error Display */}
         {error && (
-          <div className="mb-6 p-4 bg-red-900/30 text-red-400 rounded-lg border border-red-700/50 font-mono text-sm">
+          <div className="mb-6 p-4 bg-red-900/30 text-red-400 rounded-sm border border-red-700/50 font-mono text-sm">
             {error}
           </div>
         )}
@@ -389,7 +389,7 @@ export function ManageCreditsModal({ application, onClose, onCreditsUpdated }: M
               {transactions.map((transaction) => (
                 <div
                   key={transaction.id}
-                  className="flex justify-between items-center p-3 bg-[var(--color-bg-main)] rounded-lg border border-[var(--color-border)]"
+                  className="flex justify-between items-center p-3 bg-[var(--color-bg-main)] rounded-sm border border-[var(--color-border)]"
                 >
                   <div className="flex items-center gap-3">
                     {getTransactionIcon(transaction.transaction_type)}

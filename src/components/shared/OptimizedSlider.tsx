@@ -17,7 +17,7 @@ export function OptimizedSlider({
   onChange,
   onDisplayValueChange,
   id,
-  className = "w-full h-2 bg-border rounded-lg appearance-none cursor-pointer accent-accent-primary slider-thumb-accent"
+  className = "w-full h-2 bg-border rounded-sm appearance-none cursor-pointer accent-accent-primary slider-thumb-accent"
 }: OptimizedSliderProps) {
   // Local state for immediate visual feedback
   const [localValue, setLocalValue] = useState(value);

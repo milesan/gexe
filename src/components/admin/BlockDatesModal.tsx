@@ -46,7 +46,7 @@ export function BlockDatesModal({ onClose, onSave }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60]">
-      <div className="bg-white rounded-lg w-full max-w-md">
+      <div className="bg-white rounded-sm w-full max-w-md">
         <div className="p-4 border-b border-stone-200 flex justify-between items-center">
           <h3 className="text-lg font-medium">Block Specific Dates</h3>
           <button onClick={onClose} className="text-stone-400 hover:text-stone-600">
@@ -64,12 +64,12 @@ export function BlockDatesModal({ onClose, onSave }: Props) {
                 mode="multiple"
                 selected={selectedDates}
                 onSelect={setSelectedDates}
-                className="border rounded-lg bg-white"
+                className="border rounded-sm bg-white"
               />
             </div>
 
             {error && (
-              <div className="p-3 bg-rose-50 text-rose-600 rounded-lg text-sm">
+              <div className="p-3 bg-rose-50 text-rose-600 rounded-sm text-sm">
                 {error}
               </div>
             )}
@@ -84,7 +84,7 @@ export function BlockDatesModal({ onClose, onSave }: Props) {
               <button
                 onClick={handleSave}
                 disabled={saving || selectedDates.length === 0}
-                className="bg-emerald-900 text-white px-4 py-2 rounded-lg hover:bg-emerald-800 disabled:bg-stone-300"
+                className="bg-emerald-900 text-white px-4 py-2 rounded-sm hover:bg-emerald-800 disabled:bg-stone-300"
               >
                 {saving ? 'Saving...' : 'Block Dates'}
               </button>

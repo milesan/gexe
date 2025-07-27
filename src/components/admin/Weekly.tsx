@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { format, addDays, addWeeks, subWeeks, startOfWeek, endOfWeek, isWithinInterval, parseISO, Day } from 'date-fns';
 import { supabase } from '../../lib/supabase';
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronDown, ChevronUp } from 'lucide-react';
 import { CalendarService } from '../../services/CalendarService';
 import { formatDateForDisplay } from '../../utils/dates';
 import { bookingService } from '../../services/BookingService';
 import { Booking } from '../../types';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 
 interface Props {
   onClose: () => void;
@@ -52,6 +53,10 @@ export function Weekly({ onClose }: Props) {
   const [checkInDay, setCheckInDay] = useState<number>(1); // Default to Monday
   const [bookings, setBookings] = useState<BookingWithColor[]>([]);
   const [loadingBookings, setLoadingBookings] = useState(false);
+  
+  // Mobile detection and state
+  const isMobile = useMediaQuery('(max-width: 768px)');
+  const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set());
 
   // Color palette for bookings
   const colors = [
@@ -336,6 +341,21 @@ export function Weekly({ onClose }: Props) {
     return dayBookings;
   };
 
+  // Mobile helper functions
+  const toggleDayExpansion = (dayIndex: number) => {
+    const newExpandedDays = new Set(expandedDays);
+    if (newExpandedDays.has(dayIndex)) {
+      newExpandedDays.delete(dayIndex);
+    } else {
+      newExpandedDays.add(dayIndex);
+    }
+    setExpandedDays(newExpandedDays);
+  };
+
+  const getDayBookingCount = (day: Date) => {
+    return getBookingsForDay(day).length;
+  };
+
   return (
     <div className="fixed inset-0 bg-[var(--color-bg-surface)] z-50 overflow-auto">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -343,46 +363,47 @@ export function Weekly({ onClose }: Props) {
         <div className="p-4 border-b border-[var(--color-border)] flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <h2 className="text-xl font-display font-light text-[var(--color-text-primary)]">Weekly View</h2>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={handleJumpBackward}
-                className="p-1 hover:bg-[var(--color-bg-surface-hover)] rounded text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
-                title="Jump back 4 weeks"
-              >
-                <ChevronsLeft className="w-5 h-5" />
-              </button>
-              <button
-                onClick={handlePrevWeek}
-                className="p-1 hover:bg-[var(--color-bg-surface-hover)] rounded text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <span className="text-sm font-mono w-52 text-center text-[var(--color-text-secondary)]">
-                {weekStart && weekEnd ? (
-                  `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d, yyyy')}`
-                ) : (
-                  'Loading...'
-                )}
-              </span>
-              <button
-                onClick={handleNextWeek}
-                className="p-1 hover:bg-[var(--color-bg-surface-hover)] rounded text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-              <button
-                onClick={handleJumpForward}
-                className="p-1 hover:bg-[var(--color-bg-surface-hover)] rounded text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
-                title="Jump forward 4 weeks"
-              >
-                <ChevronsRight className="w-5 h-5" />
-              </button>
-            </div>
+            {!isMobile && (
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={handleJumpBackward}
+                  className="p-1 hover:bg-[var(--color-bg-surface-hover)] rounded text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+                  title="Jump back 4 weeks"
+                >
+                  <ChevronsLeft className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={handlePrevWeek}
+                  className="p-1 hover:bg-[var(--color-bg-surface-hover)] rounded text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <span className="text-sm font-mono w-52 text-center text-[var(--color-text-secondary)]">
+                  {weekStart && weekEnd ? (
+                    `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d, yyyy')}`
+                  ) : (
+                    'Loading...'
+                  )}
+                </span>
+                <button
+                  onClick={handleNextWeek}
+                  className="p-1 hover:bg-[var(--color-bg-surface-hover)] rounded text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={handleJumpForward}
+                  className="p-1 hover:bg-[var(--color-bg-surface-hover)] rounded text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+                  title="Jump forward 4 weeks"
+                >
+                  <ChevronsRight className="w-5 h-5" />
+                </button>
+              </div>
+            )}
           </div>
           
           {/* Add the Calendar Config Button here */}
           <div className="flex items-center space-x-3">
-
             <button
               onClick={onClose}
               className="font-mono text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
@@ -391,6 +412,49 @@ export function Weekly({ onClose }: Props) {
             </button>
           </div>
         </div>
+
+        {/* Mobile Navigation */}
+        {isMobile && (
+          <div className="p-4 border-b border-[var(--color-border)]">
+            <div className="flex items-center justify-between">
+              <button
+                onClick={handlePrevWeek}
+                className="p-3 bg-[var(--color-bg-surface-hover)] rounded-sm"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <span className="text-sm font-mono text-center text-[var(--color-text-primary)]">
+                {weekStart && weekEnd ? (
+                  `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d, yyyy')}`
+                ) : (
+                  'Loading...'
+                )}
+              </span>
+              <button
+                onClick={handleNextWeek}
+                className="p-3 bg-[var(--color-bg-surface-hover)] rounded-sm"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex items-center justify-center mt-2 space-x-2">
+              <button
+                onClick={handleJumpBackward}
+                className="px-3 py-1 text-xs bg-[var(--color-bg-surface-hover)] rounded"
+                title="Jump back 4 weeks"
+              >
+                -4 weeks
+              </button>
+              <button
+                onClick={handleJumpForward}
+                className="px-3 py-1 text-xs bg-[var(--color-bg-surface-hover)] rounded"
+                title="Jump forward 4 weeks"
+              >
+                +4 weeks
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Content */}
         <div className="py-6">
@@ -402,7 +466,78 @@ export function Weekly({ onClose }: Props) {
             <div className="text-center py-10 text-[var(--color-text-error)]">
               <p>{error}</p>
             </div>
+          ) : isMobile ? (
+            // Mobile List View
+            <div className="space-y-3">
+              {weekStart && Array.from({ length: 7 }).map((_, i) => {
+                const day = addDays(weekStart, i);
+                const dayBookings = getBookingsForDay(day);
+                const bookingCount = getDayBookingCount(day);
+                const isExpanded = expandedDays.has(i);
+                
+                return (
+                  <div key={i} className="border border-[var(--color-border)] bg-[var(--color-bg-surface)] rounded-sm overflow-hidden">
+                    {/* Day Header */}
+                    <button
+                      onClick={() => toggleDayExpansion(i)}
+                      className="w-full p-4 flex items-center justify-between text-left hover:bg-[var(--color-bg-surface-hover)] transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <h3 className="font-medium text-[var(--color-text-primary)]">
+                          {format(day, 'EEE, MMM d')}
+                        </h3>
+                        {bookingCount > 0 && (
+                          <span className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full">
+                            {bookingCount}
+                          </span>
+                        )}
+                      </div>
+                                               {bookingCount > 0 && (
+                           isExpanded ? <ChevronUp className="w-4 h-4 text-[var(--color-text-primary)]" /> : <ChevronDown className="w-4 h-4 text-[var(--color-text-primary)]" />
+                         )}
+                    </button>
+                    
+                    {/* Day Content */}
+                    {isExpanded && bookingCount > 0 && (
+                      <div className="px-4 pb-4">
+                                                 {loadingBookings ? (
+                           <div className="text-sm text-[var(--color-text-primary)] text-center py-4">
+                             Loading bookings...
+                           </div>
+                         ) : (
+                          <div className="space-y-3">
+                            {dayBookings.map((booking) => (
+                              <div 
+                                key={booking.id} 
+                                className={`p-3 rounded-sm border ${booking.color} overflow-hidden`}
+                                title={`${booking.accommodations?.title || 'Accommodation'} (${format(parseISO(booking.check_in), 'MMM d')} - ${format(parseISO(booking.check_out), 'MMM d')})`}
+                              >
+                                                                 <div className="font-semibold mb-1">
+                                   {booking.accommodations?.title || 'Unknown Room'}
+                                 </div>
+                                                                 <div className="text-sm">
+                                   {format(parseISO(booking.check_in), 'MMM d')} - {format(parseISO(booking.check_out), 'MMM d')}
+                                 </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                                         {bookingCount === 0 && (
+                       <div className="px-4 pb-4">
+                         <div className="text-sm text-[var(--color-text-primary)] text-center py-2">
+                           No bookings
+                         </div>
+                       </div>
+                     )}
+                  </div>
+                );
+              })}
+            </div>
           ) : (
+            // Desktop Grid View
             <div className="grid grid-cols-7 gap-4">
               {/* Days of the week */}
               {weekStart && Array.from({ length: 7 }).map((_, i) => {

@@ -55,7 +55,7 @@ export function SchedulingRules({ onClose }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-white rounded-sm w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <div className="p-6 border-b border-stone-200 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <Calendar className="w-6 h-6 text-emerald-900" />
@@ -68,7 +68,7 @@ export function SchedulingRules({ onClose }: Props) {
 
         <div className="p-6 overflow-y-auto">
           {error && (
-            <div className="mb-6 p-4 bg-rose-50 text-rose-600 rounded-lg">
+            <div className="mb-6 p-4 bg-rose-50 text-rose-600 rounded-sm">
               {error}
             </div>
           )}
@@ -79,7 +79,7 @@ export function SchedulingRules({ onClose }: Props) {
                 setEditingRule(null);
                 setShowAddForm(true);
               }}
-              className="flex items-center gap-2 bg-emerald-900 text-white px-4 py-2 rounded-lg hover:bg-emerald-800"
+              className="flex items-center gap-2 bg-emerald-900 text-white px-4 py-2 rounded-sm hover:bg-emerald-800"
             >
               <Plus className="w-4 h-4" />
               Add New Rule
@@ -95,7 +95,7 @@ export function SchedulingRules({ onClose }: Props) {
               {rules.map((rule) => (
                 <div
                   key={rule.id}
-                  className="bg-white p-6 rounded-lg border border-stone-200 hover:border-emerald-900/20 transition-colors"
+                  className="bg-white p-6 rounded-sm border border-stone-200 hover:border-emerald-900/20 transition-colors"
                 >
                   <div className="flex justify-between items-start">
                     <div>

@@ -238,7 +238,7 @@ export function DiscountCodesManager() {
                  setNewAppliesTo('total');
             }
           }}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap font-mono text-sm bg-accent-primary text-stone-800 hover:bg-accent-secondary"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-sm transition-colors whitespace-nowrap font-mono text-sm bg-accent-primary text-stone-800 hover:bg-accent-secondary"
         >
           <Plus className="w-4 h-4" />
           {showAddForm ? 'Cancel' : 'Add Code'}
@@ -247,20 +247,20 @@ export function DiscountCodesManager() {
 
       {/* --- Messages --- */} 
       {error && (
-        <div className="mb-4 p-3 bg-error-muted text-error rounded-lg text-sm flex items-center gap-2">
+        <div className="mb-4 p-3 bg-error-muted text-error rounded-sm text-sm flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 flex-shrink-0" />
           <span>{error}</span>
         </div>
       )}
       {successMessage && (
-        <div className="mb-4 p-3 bg-success-muted text-success rounded-lg text-sm">
+        <div className="mb-4 p-3 bg-success-muted text-success rounded-sm text-sm">
           {successMessage}
         </div>
       )}
 
       {/* --- Add Form Section --- */}
       {showAddForm && (
-         <div className="mb-6 p-4 border border-border rounded-lg bg-surface">
+         <div className="mb-6 p-4 border border-border rounded-sm bg-surface">
             <h3 className="text-lg font-medium mb-4">Add New Code</h3>
             <form onSubmit={handleAddCode} className="space-y-4">
                 <div>
@@ -340,7 +340,7 @@ export function DiscountCodesManager() {
 
       {/* --- Codes Table --- */}
       {!isLoading && codes.length > 0 && (
-        <div className="overflow-x-auto border border-border rounded-lg shadow-sm">
+        <div className="overflow-x-auto border border-border rounded-sm shadow-sm">
           <table className="min-w-full divide-y divide-border">
             <thead className="bg-surface-subtle">
               <tr><th scope="col" className="px-4 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">Code</th><th scope="col" className="px-4 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">Discount</th><th scope="col" className="px-4 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">Description</th><th scope="col" className="px-4 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">Applies To</th><th scope="col" className="px-4 py-3 text-center text-xs font-medium text-secondary uppercase tracking-wider">Active</th><th scope="col" className="px-4 py-3 text-center text-xs font-medium text-secondary uppercase tracking-wider">Actions</th></tr>
@@ -404,7 +404,7 @@ export function DiscountCodesManager() {
                 </p>
                 
                 {error && (
-                    <div className="mb-4 p-3 bg-error-muted text-error rounded-lg text-sm flex items-center gap-2">
+                    <div className="mb-4 p-3 bg-error-muted text-error rounded-sm text-sm flex items-center gap-2">
                         <AlertTriangle className="w-4 h-4 flex-shrink-0" />
                         <span>{error}</span>
                     </div>
@@ -418,13 +418,13 @@ export function DiscountCodesManager() {
                     value={deleteConfirmationInput}
                     onChange={(e) => setDeleteConfirmationInput(e.target.value)}
                     placeholder={`Type "${codeToDelete.code}" to confirm`}
-                    className="w-full px-3 py-2 border border-[var(--color-border)] rounded-lg bg-[var(--color-bg-input)] text-[var(--color-text-primary)] focus:ring-1 focus:ring-accent-error focus:border-accent-error font-mono text-sm mb-6 disabled:opacity-70"
+                    className="w-full px-3 py-2 border border-[var(--color-border)] rounded-sm bg-[var(--color-bg-input)] text-[var(--color-text-primary)] focus:ring-1 focus:ring-accent-error focus:border-accent-error font-mono text-sm mb-6 disabled:opacity-70"
                     disabled={isDeleting}
                 />
                 <div className="flex justify-end gap-3">
                     <button
                         onClick={closeDeleteModal}
-                        className="px-4 py-2 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] transition-colors font-mono disabled:opacity-70"
+                        className="px-4 py-2 rounded-sm bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] transition-colors font-mono disabled:opacity-70"
                         disabled={isDeleting}
                     >
                         Cancel
@@ -432,7 +432,7 @@ export function DiscountCodesManager() {
                     <button
                         onClick={handleDeleteCode}
                         disabled={isDeleting || deleteConfirmationInput !== codeToDelete.code}
-                        className="px-4 py-2 rounded-lg bg-error text-white hover:bg-error-hover transition-colors font-mono flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-4 py-2 rounded-sm bg-error text-white hover:bg-error-hover transition-colors font-mono flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {isDeleting ? (
                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>

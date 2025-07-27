@@ -13,7 +13,7 @@ export function ImageModal({ imageUrl, onClose }: ImageModalProps) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+        className="fixed inset-0 bg-[var(--color-overlay)] backdrop-blur-sm flex items-center justify-center p-4 z-50"
         onClick={onClose}
       >
         <motion.div
@@ -33,7 +33,7 @@ export function ImageModal({ imageUrl, onClose }: ImageModalProps) {
             <img
               src={imageUrl}
               alt="Full size view"
-              className="max-w-full max-h-[85vh] w-auto h-auto object-contain rounded-lg"
+              className="max-w-full max-h-[85vh] w-auto h-auto object-contain rounded-sm"
             />
           </div>
         </motion.div>

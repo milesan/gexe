@@ -229,7 +229,7 @@ export function WhitelistSignupPage() {
         <div className="absolute top-4 right-4">
           <button
             onClick={handleSignOut}
-            className="bg-retro-accent/10 text-retro-accent px-4 py-2 rounded-lg hover:bg-retro-accent/10 transition-colors text-sm font-body border border-retro-accent/30"
+            className="bg-retro-accent/10 text-retro-accent px-4 py-2 rounded-sm hover:bg-retro-accent/10 transition-colors text-sm font-body border border-retro-accent/30"
           >
             Sign Out
           </button>
@@ -246,7 +246,7 @@ export function WhitelistSignupPage() {
           </div>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-900/20 text-red-500 rounded-lg text-sm">
+            <div className="mb-6 p-4 bg-red-900/20 text-red-500 rounded-sm text-sm">
               {error}
             </div>
           )}
@@ -399,7 +399,7 @@ export function WhitelistSignupPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-retro-accent text-black py-3 rounded-lg hover:bg-retro-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-retro-accent text-black py-3 rounded-sm hover:bg-retro-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Processing...' : 'Complete Signup'}
             </button>

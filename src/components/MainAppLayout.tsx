@@ -213,7 +213,7 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
             {/* Mobile menu button */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="lg:hidden p-2 rounded-lg hover:bg-[var(--color-bg-surface-hover)] transition-colors"
+              className="lg:hidden p-2 rounded-sm hover:bg-[var(--color-bg-surface-hover)] transition-colors"
               aria-label="Toggle menu"
             >
               {isMobileMenuOpen ? <X className="w-6 h-6 text-secondary" /> : <Menu className="w-6 h-6 text-secondary" />}
@@ -291,7 +291,7 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
               {/* THEME TOGGLE BUTTON - Re-enabled here */}
               {/* <button
                 onClick={() => { toggleTheme(); setIsMobileMenuOpen(false); }} // Close menu on theme toggle
-                className="flex items-center gap-2 w-full text-left px-4 py-2 rounded-lg text-secondary hover:bg-[var(--color-bg-surface-hover)] transition-colors text-sm"
+                className="flex items-center gap-2 w-full text-left px-4 py-2 rounded-sm text-secondary hover:bg-[var(--color-bg-surface-hover)] transition-colors text-sm"
               >
                 {theme === 'dark' ? 
                   (<><Sun className="w-4 h-4" /><span>Switch to Light Mode</span></>) : 

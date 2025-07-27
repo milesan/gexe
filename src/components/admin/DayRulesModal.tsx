@@ -61,7 +61,7 @@ export function DayRulesModal({ onClose }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60]">
-      <div className="bg-white rounded-lg w-full max-w-2xl">
+      <div className="bg-white rounded-sm w-full max-w-2xl">
         <div className="p-6 border-b border-stone-200 flex justify-between items-center">
           <h3 className="text-xl font-medium">Manage Day Rules</h3>
           <button onClick={onClose} className="text-stone-400 hover:text-stone-600">
@@ -71,7 +71,7 @@ export function DayRulesModal({ onClose }: Props) {
 
         <div className="p-6">
           <div className="space-y-6">
-            <div className="bg-stone-50 p-4 rounded-lg border border-stone-200">
+            <div className="bg-stone-50 p-4 rounded-sm border border-stone-200">
               <div className="flex items-start gap-3">
                 <Info className="w-5 h-5 text-emerald-900 flex-shrink-0 mt-0.5" />
                 <div className="text-sm text-stone-600">
@@ -108,38 +108,38 @@ export function DayRulesModal({ onClose }: Props) {
                     <div className="space-y-2">
                       <button
                         onClick={() => handleSetRule('arrival')}
-                        className="w-full px-4 py-2 bg-emerald-100 text-emerald-900 rounded-lg hover:bg-emerald-200"
+                        className="w-full px-4 py-2 bg-emerald-100 text-emerald-900 rounded-sm hover:bg-emerald-200"
                       >
                         Set as Arrival Day
                       </button>
                       <button
                         onClick={() => handleSetRule('departure')}
-                        className="w-full px-4 py-2 bg-blue-100 text-blue-900 rounded-lg hover:bg-blue-200"
+                        className="w-full px-4 py-2 bg-blue-100 text-blue-900 rounded-sm hover:bg-blue-200"
                       >
                         Set as Departure Day
                       </button>
                       <button
                         onClick={() => handleSetRule('not_arrival')}
-                        className="w-full px-4 py-2 bg-rose-100 text-rose-900 rounded-lg hover:bg-rose-200"
+                        className="w-full px-4 py-2 bg-rose-100 text-rose-900 rounded-sm hover:bg-rose-200"
                       >
                         Not Available for Arrival
                       </button>
                       <button
                         onClick={() => handleSetRule('not_departure')}
-                        className="w-full px-4 py-2 bg-rose-100 text-rose-900 rounded-lg hover:bg-rose-200"
+                        className="w-full px-4 py-2 bg-rose-100 text-rose-900 rounded-sm hover:bg-rose-200"
                       >
                         Not Available for Departure
                       </button>
                       <button
                         onClick={() => handleSetRule(null)}
-                        className="w-full px-4 py-2 bg-stone-100 text-stone-900 rounded-lg hover:bg-stone-200"
+                        className="w-full px-4 py-2 bg-stone-100 text-stone-900 rounded-sm hover:bg-stone-200"
                       >
                         Clear Rule
                       </button>
                     </div>
 
                     {error && (
-                      <div className="p-4 bg-rose-50 text-rose-600 rounded-lg text-sm">
+                      <div className="p-4 bg-rose-50 text-rose-600 rounded-sm text-sm">
                         {error}
                       </div>
                     )}

@@ -363,7 +363,7 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
-                className="relative z-[101] bg-[var(--color-furface-modal,theme(colors.gray.800))] p-6 rounded-lg shadow-xl max-w-2xl w-full border border-[var(--color-border)] max-h-[90vh] overflow-y-auto" // Increased max-width
+                className="relative z-[101] bg-[var(--color-furface-modal,theme(colors.gray.800))] p-6 rounded-sm shadow-xl max-w-2xl w-full border border-[var(--color-border)] max-h-[90vh] overflow-y-auto" // Increased max-width
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="flex justify-between items-center mb-6">
@@ -658,14 +658,14 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
                             type="button"
                             onClick={() => onClose(false)} 
                             disabled={loading}
-                            className="px-4 py-2 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] font-mono transition-colors disabled:opacity-50"
+                            className="px-4 py-2 rounded-sm bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] font-mono transition-colors disabled:opacity-50"
                         >
                             Cancel
                          </button>
                          <button 
                             type="submit" 
                             disabled={loading}
-                            className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 font-mono transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[80px]"
+                            className="px-4 py-2 rounded-sm bg-emerald-600 text-white hover:bg-emerald-700 font-mono transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[80px]"
                         >
                              {loading ? (
                                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>

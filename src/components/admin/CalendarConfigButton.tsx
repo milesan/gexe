@@ -13,7 +13,7 @@ export function CalendarConfigButton({ onConfigChanged }: Props) {
     <>
       <button
         onClick={() => setIsModalOpen(true)}
-        className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-lg text-xs xs:text-sm font-medium font-mono transition-colors duration-200 bg-[var(--color-button-secondary-bg)] text-primary hover:bg-[var(--color-button-secondary-bg-hover)] border border-border"
+        className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-sm text-xs xs:text-sm font-medium font-mono transition-colors duration-200 bg-[var(--color-button-secondary-bg)] text-primary hover:bg-[var(--color-button-secondary-bg-hover)] border border-border"
         title="Calendar Settings"
       >
         <Settings className="h-4 w-4 xs:h-5 xs:w-5" />

@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, addDays, parseISO, addWeeks, subWeeks, startOfWeek, Day } from 'date-fns';
-import { X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { CalendarService } from '../../services/CalendarService';
 import { formatDateForDisplay, normalizeToUTCDate } from '../../utils/dates';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 
 interface Props {
   onClose: () => void;
@@ -45,6 +46,10 @@ export function Housekeeping({ onClose }: Props) {
   const [weekEnd, setWeekEnd] = useState<Date | null>(null);
   const [checkInDay, setCheckInDay] = useState<number>(1); // Default to Monday
   const [copiedId, setCopiedId] = useState<{id: string, type: 'in' | 'out'} | null>(null);
+  
+  // Mobile detection and state
+  const isMobile = useMediaQuery('(max-width: 768px)');
+  const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     async function fetchCalendarConfig() {
@@ -425,6 +430,23 @@ export function Housekeeping({ onClose }: Props) {
     return checkIns.length > 0 || checkOuts.length > 0;
   }).some(Boolean) : false;
 
+  // Mobile helper functions
+  const toggleDayExpansion = (dayIndex: number) => {
+    const newExpandedDays = new Set(expandedDays);
+    if (newExpandedDays.has(dayIndex)) {
+      newExpandedDays.delete(dayIndex);
+    } else {
+      newExpandedDays.add(dayIndex);
+    }
+    setExpandedDays(newExpandedDays);
+  };
+
+  const getDayActivityCount = (day: Date) => {
+    const checkIns = getBookingsForDate(day, 'check_in');
+    const checkOuts = getBookingsForDate(day, 'check_out');
+    return checkIns.length + checkOuts.length;
+  };
+
   return (
     <div className="fixed inset-0 bg-[var(--color-bg-surface)] text-[var(--color-text-primary)] z-50 overflow-auto">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -432,41 +454,43 @@ export function Housekeeping({ onClose }: Props) {
         <div className="p-4 border-b border-[var(--color-border)] flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <h2 className="font-display text-xl text-[var(--color-text-primary)]">Housekeeping</h2>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={handleJumpBackward}
-                className="p-1 hover:bg-[var(--color-bg-surface-hover)] rounded"
-                title="Jump back 4 weeks"
-              >
-                <ChevronsLeft className="w-5 h-5" />
-              </button>
-              <button
-                onClick={handlePrevWeek}
-                className="p-1 hover:bg-[var(--color-bg-surface-hover)] rounded"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <span className="text-sm font-mono w-[140px] text-center text-[var(--color-text-secondary)]">
-                {weekStart && weekEnd ? (
-                  `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d')}`
-                ) : (
-                  'Loading...'
-                )}
-              </span>
-              <button
-                onClick={handleNextWeek}
-                className="p-1 hover:bg-[var(--color-bg-surface-hover)] rounded"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-              <button
-                onClick={handleJumpForward}
-                className="p-1 hover:bg-[var(--color-bg-surface-hover)] rounded"
-                title="Jump forward 4 weeks"
-              >
-                <ChevronsRight className="w-5 h-5" />
-              </button>
-            </div>
+            {!isMobile && (
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={handleJumpBackward}
+                  className="p-1 hover:bg-[var(--color-bg-surface-hover)] rounded"
+                  title="Jump back 4 weeks"
+                >
+                  <ChevronsLeft className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={handlePrevWeek}
+                  className="p-1 hover:bg-[var(--color-bg-surface-hover)] rounded"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <span className="text-sm font-mono w-[140px] text-center text-[var(--color-text-secondary)]">
+                  {weekStart && weekEnd ? (
+                    `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d')}`
+                  ) : (
+                    'Loading...'
+                  )}
+                </span>
+                <button
+                  onClick={handleNextWeek}
+                  className="p-1 hover:bg-[var(--color-bg-surface-hover)] rounded"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={handleJumpForward}
+                  className="p-1 hover:bg-[var(--color-bg-surface-hover)] rounded"
+                  title="Jump forward 4 weeks"
+                >
+                  <ChevronsRight className="w-5 h-5" />
+                </button>
+              </div>
+            )}
           </div>
           <button
             onClick={onClose}
@@ -475,6 +499,49 @@ export function Housekeeping({ onClose }: Props) {
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {/* Mobile Navigation */}
+        {isMobile && (
+          <div className="p-4 border-b border-[var(--color-border)]">
+            <div className="flex items-center justify-between">
+              <button
+                onClick={handlePrevWeek}
+                className="p-3 bg-[var(--color-bg-surface-hover)] rounded-sm"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <span className="text-sm font-mono text-center text-[var(--color-text-primary)]">
+                {weekStart && weekEnd ? (
+                  `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d')}`
+                ) : (
+                  'Loading...'
+                )}
+              </span>
+              <button
+                onClick={handleNextWeek}
+                className="p-3 bg-[var(--color-bg-surface-hover)] rounded-sm"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex items-center justify-center mt-2 space-x-2">
+              <button
+                onClick={handleJumpBackward}
+                className="px-3 py-1 text-xs bg-[var(--color-bg-surface-hover)] rounded"
+                title="Jump back 4 weeks"
+              >
+                -4 weeks
+              </button>
+              <button
+                onClick={handleJumpForward}
+                className="px-3 py-1 text-xs bg-[var(--color-bg-surface-hover)] rounded"
+                title="Jump forward 4 weeks"
+              >
+                +4 weeks
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Content */}
         <div className="py-6">
@@ -490,7 +557,118 @@ export function Housekeeping({ onClose }: Props) {
             <div className="text-center py-10 text-[var(--color-text-secondary)]">
               <p>No check-ins or check-outs this week</p>
             </div>
+          ) : isMobile ? (
+            // Mobile List View
+            <div className="space-y-3">
+              {weekStart && Array.from({ length: 7 }).map((_, i) => {
+                const day = addDays(weekStart, i);
+                const checkIns = getBookingsForDate(day, 'check_in');
+                const checkOuts = getBookingsForDate(day, 'check_out');
+                const activityCount = getDayActivityCount(day);
+                const isExpanded = expandedDays.has(i);
+                
+                // Sort check-ins by accommodation title
+                checkIns.sort((a, b) => 
+                  a.accommodation_title.localeCompare(b.accommodation_title)
+                );
+                
+                // Sort check-outs by accommodation title
+                checkOuts.sort((a, b) => 
+                  a.accommodation_title.localeCompare(b.accommodation_title)
+                );
+
+                return (
+                  <div key={i} className="border border-[var(--color-border)] bg-[var(--color-bg-surface)] rounded-sm overflow-hidden">
+                    {/* Day Header */}
+                    <button
+                      onClick={() => toggleDayExpansion(i)}
+                      className="w-full p-4 flex items-center justify-between text-left hover:bg-[var(--color-bg-surface-hover)] transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <h3 className="font-medium text-[var(--color-text-primary)]">
+                          {format(day, 'EEE, MMM d')}
+                        </h3>
+                        {activityCount > 0 && (
+                          <span className="bg-emerald-500 text-white text-xs px-2 py-1 rounded-full">
+                            {activityCount}
+                          </span>
+                        )}
+                      </div>
+                      {activityCount > 0 && (
+                        isExpanded ? <ChevronUp className="w-4 h-4 text-[var(--color-text-secondary)]" /> : <ChevronDown className="w-4 h-4 text-[var(--color-text-secondary)]" />
+                      )}
+                    </button>
+                    
+                    {/* Day Content */}
+                    {isExpanded && activityCount > 0 && (
+                      <div className="px-4 pb-4 space-y-4">
+                        {/* Check-ins */}
+                        {checkIns.length > 0 && (
+                          <div>
+                            <h4 className="text-sm font-medium text-green-600 mb-2">Check-ins ({checkIns.length})</h4>
+                            <div className="space-y-2">
+                              {checkIns.map(booking => (
+                                <div key={`in-${booking.id}`} className="p-3 bg-[var(--color-bg-success-subtle)] border border-[var(--color-border-success)] rounded-sm">
+                                  <div className="font-semibold text-[var(--color-text-primary)] mb-1">{booking.accommodation_title}</div>
+                                  <div className="text-sm text-[var(--color-text-primary)] mb-2">{booking.user_name}</div>
+                                  <button 
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(booking.user_email);
+                                      setCopiedId({ id: booking.id, type: 'in' });
+                                      setTimeout(() => setCopiedId(null), 1000);
+                                      console.log('[Housekeeping] Copied check-in email to clipboard:', booking.user_email);
+                                    }}
+                                    className="text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-accent-primary)] transition-colors"
+                                  >
+                                    {copiedId?.id === booking.id && copiedId?.type === 'in' ? 'Copied!' : booking.user_email}
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Check-outs */}
+                        {checkOuts.length > 0 && (
+                          <div>
+                            <h4 className="text-sm font-medium text-red-600 mb-2">Check-outs ({checkOuts.length})</h4>
+                            <div className="space-y-2">
+                              {checkOuts.map(booking => (
+                                <div key={`out-${booking.id}`} className="p-3 bg-[var(--color-bg-error-subtle)] border border-[var(--color-border-error)] rounded-sm">
+                                  <div className="font-semibold text-[var(--color-text-primary)] mb-1">{booking.accommodation_title}</div>
+                                  <div className="text-sm text-[var(--color-text-primary)] mb-2">{booking.user_name}</div>
+                                  <button 
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(booking.user_email);
+                                      setCopiedId({ id: booking.id, type: 'out' });
+                                      setTimeout(() => setCopiedId(null), 1000);
+                                      console.log('[Housekeeping] Copied check-out email to clipboard:', booking.user_email);
+                                    }}
+                                    className="text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-accent-primary)] transition-colors"
+                                  >
+                                    {copiedId?.id === booking.id && copiedId?.type === 'out' ? 'Copied!' : booking.user_email}
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {activityCount === 0 && (
+                      <div className="px-4 pb-4">
+                        <div className="text-sm text-[var(--color-text-secondary)] text-center py-2">
+                          No activity
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           ) : (
+            // Desktop Grid View
             <div className="grid grid-cols-7 gap-4">
               {/* Days of the week */}
               {weekStart && Array.from({ length: 7 }).map((_, i) => {

@@ -302,7 +302,7 @@ export function DateRangePicker({ selected, onSelect, isExtension = false }: Dat
       </div>
 
       <div className="border-t border-stone-200 pt-6 space-y-4">
-        <div className="bg-stone-50 rounded-lg p-4">
+        <div className="bg-stone-50 rounded-sm p-4">
           <h3 className="font-display text-lg text-stone-900 mb-2">Stay Details</h3>
           {selected?.from ? (
             <div className="space-y-2 text-sm">

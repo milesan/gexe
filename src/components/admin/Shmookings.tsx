@@ -114,7 +114,7 @@ export function Shmookings() {
 
   if (error) {
     return (
-      <div className="p-6 text-rose-600 bg-rose-50 rounded-lg">
+      <div className="p-6 text-rose-600 bg-rose-50 rounded-sm">
         {error}
       </div>
     );
@@ -130,13 +130,13 @@ export function Shmookings() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search bookings..."
-              className="w-full pl-10 pr-4 py-2 border border-stone-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              className="w-full pl-10 pr-4 py-2 border border-stone-200 rounded-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
             />
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-stone-400" />
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm('')}
-                className="flex items-center gap-2 bg-emerald-900 text-white px-4 py-2 rounded-lg hover:bg-emerald-800 mb-4"
+                className="flex items-center gap-2 bg-emerald-900 text-white px-4 py-2 rounded-sm hover:bg-emerald-800 mb-4"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -145,7 +145,7 @@ export function Shmookings() {
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value as 'all' | 'email' | 'accommodation')}
-            className="px-4 py-2 border border-stone-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            className="px-4 py-2 border border-stone-200 rounded-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
           >
             <option value="all">All Fields</option>
             <option value="email">Email Only</option>
@@ -162,7 +162,7 @@ export function Shmookings() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="bg-white p-6 rounded-lg border border-stone-200 hover:border-emerald-900/20 transition-colors"
+              className="bg-white p-6 rounded-sm border border-stone-200 hover:border-emerald-900/20 transition-colors"
             >
               <div className="flex justify-between items-start">
                 <div className="space-y-2">

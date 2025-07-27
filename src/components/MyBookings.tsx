@@ -859,13 +859,13 @@ export function MyBookings() {
 
   return (
     <div className="max-w-7xl mx-auto py-6 sm:py-8">
-      <div className="grid grid-cols-1">
-        <div className="px-3 xs:px-4 sm:px-6">
-          <div className="flex justify-between items-start mb-8">
+                          <div className="grid grid-cols-1">
+                      <div className="px-3 xs:px-4 sm:px-6">
+                        <div className="flex items-center justify-between h-10 sm:h-14 mb-8">
             <div>
-              <h1 className="text-4xl font-display font-light text-primary mb-2">My Account</h1>
+              <h1 className="text-xl sm:text-2xl font-display font-light text-primary">My Account</h1>
               <div className="text-primary">
-                <p className="font-mono">{session?.session?.user?.email}</p>
+                <p className="text-sm font-mono">{session?.session?.user?.email}</p>
               </div>
             </div>
           </div>

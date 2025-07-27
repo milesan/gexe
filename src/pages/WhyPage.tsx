@@ -12,7 +12,7 @@ export function WhyPage() {
   return (
     <div className="min-h-screen bg-main flex flex-col">
       <main className="flex-grow container mx-auto px-4 py-8 sm:py-12">
-        <div className="bg-surface rounded-lg shadow-lg p-6 sm:p-10 max-w-3xl mx-auto border border-border">
+        <div className="bg-surface rounded-sm shadow-lg p-6 sm:p-10 max-w-3xl mx-auto border border-border">
           <h1
             className="text-3xl sm:text-4xl font-['VT323'] mb-6 text-center text-white"
           >
@@ -37,12 +37,12 @@ export function WhyPage() {
             </p>
             <button
               onClick={() => setEnlargedImageUrl("https://guquxpxxycfmmlqajdyw.supabase.co/storage/v1/object/public/other//email-before.jpg")}
-              className="focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-offset-2 rounded-lg transition-opacity hover:opacity-80"
+              className="focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-offset-2 rounded-sm transition-opacity hover:opacity-80"
             >
               <img
                 src="https://guquxpxxycfmmlqajdyw.supabase.co/storage/v1/object/public/other//email-before.jpg"
                 alt="A whimsical depiction of an overflowing email inbox"
-                className="rounded-lg shadow-md mx-auto max-w-full h-auto border border-border cursor-pointer"
+                className="rounded-sm shadow-md mx-auto max-w-full h-auto border border-border cursor-pointer"
                 // Add loading="lazy" for performance if image is large
                 onError={(e) => {
                   console.error('WhyPage: Failed to load image', e);
@@ -68,7 +68,7 @@ export function WhyPage() {
             <img
               src={enlargedImageUrl}
               alt="Enlarged image"
-              className="max-w-full max-h-[80vh] w-auto h-auto object-contain rounded-lg shadow-2xl"
+              className="max-w-full max-h-[80vh] w-auto h-auto object-contain rounded-sm shadow-2xl"
             />
             <button
               onClick={() => setEnlargedImageUrl(null)}

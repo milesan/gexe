@@ -481,15 +481,15 @@ export function Applications2() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-3 sm:p-6">
       {error && (
-        <div className="mb-6 p-4 bg-[var(--color-bg-error)] text-[var(--color-text-error)] rounded-lg">
+        <div className="mb-6 p-4 bg-[var(--color-bg-error)] text-[var(--color-text-error)] rounded-sm">
           {error}
         </div>
       )}
 
-      <div className="flex flex-wrap gap-4 mb-6 items-center">
-        <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row flex-wrap gap-4 mb-6 items-start sm:items-center">
+        <div className="flex flex-wrap gap-2 min-w-0">
           <button
             onClick={() => handleFilterChange('all')}
             className={`px-2.5 py-1 rounded-md transition-colors text-xs whitespace-nowrap font-mono ${
@@ -535,7 +535,7 @@ export function Applications2() {
           </button>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-shrink-0">
             <label htmlFor="sort-order" className="text-xs font-mono text-[var(--color-text-secondary)] whitespace-nowrap">Sort by:</label>
             <select
                 id="sort-order"
@@ -548,18 +548,18 @@ export function Applications2() {
             </select>
         </div>
 
-        <div className="flex gap-1.5 items-center flex-grow sm:flex-grow-0">
+        <div className="flex gap-1.5 items-center flex-grow sm:flex-grow-0 min-w-0">
           <input 
             type="text"
             placeholder="Search by email..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             onKeyPress={(e) => { if (e.key === 'Enter') handleSearch(); }}
-            className="px-2.5 py-1 border border-[var(--color-border)] rounded-md bg-[var(--color-bg-input)] text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono text-xs flex-grow"
+            className="px-2.5 py-1 border border-[var(--color-border)] rounded-md bg-[var(--color-bg-input)] text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono text-xs flex-grow min-w-0"
           />
           <button
             onClick={handleSearch}
-            className="p-1.5 rounded-md bg-[var(--color-bg-surface)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-surface-hover)] border border-[var(--color-border)]"
+            className="p-1.5 rounded-md bg-[var(--color-bg-surface)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-surface-hover)] border border-[var(--color-border)] flex-shrink-0"
             title="Search"
           >
             <Search className="w-3 h-3" />
@@ -567,7 +567,7 @@ export function Applications2() {
           {activeSearchQuery && (
             <button
               onClick={handleClearSearch}
-              className="p-1.5 rounded-md bg-[var(--color-bg-surface)] text-[var(--color-text-error)] hover:bg-[var(--color-error-bg-hover)] border border-[var(--color-border)]"
+              className="p-1.5 rounded-md bg-[var(--color-bg-surface)] text-[var(--color-text-error)] hover:bg-[var(--color-error-bg-hover)] border border-[var(--color-border)] flex-shrink-0"
               title="Clear Search"
             >
               <ClearSearchIcon className="w-3 h-3" />
@@ -590,15 +590,15 @@ export function Applications2() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="bg-[var(--color-bg-surface)] p-6 rounded-lg border border-[var(--color-border)] hover:border-[var(--color-border-hover)] transition-colors group"
+              className="bg-[var(--color-bg-surface)] p-6 rounded-sm border border-[var(--color-border)] hover:border-[var(--color-border-hover)] transition-colors group"
             >
               {/* HEADER: Name, Email, Status */}
-              <div className="flex justify-between items-center mb-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
                 <div 
-                  className="cursor-pointer flex-1"
+                  className="cursor-pointer flex-1 min-w-0"
                   onClick={() => setSelectedApplication(application)}
                 >
-                  <h3 className="font-medium font-mono text-xl text-[var(--color-text-primary)] hover:text-[var(--color-accent-primary)] transition-colors hover:underline">
+                  <h3 className="font-medium font-mono text-lg sm:text-xl text-[var(--color-text-primary)] hover:text-[var(--color-accent-primary)] transition-colors hover:underline break-words">
                     {(() => {
                       if (questions.length > 0 && application.data) {
                         const firstNameQuestion = questions.find(q => q.text === "First Name") as QuestionForAnswerRetrieval | undefined;
@@ -610,11 +610,11 @@ export function Applications2() {
                       return "Applicant Name Unavailable";
                     })()}
                   </h3>
-                  <p className="text-sm text-[var(--color-text-secondary)] font-mono mt-1">
+                  <p className="text-sm text-[var(--color-text-secondary)] font-mono mt-1 break-all">
                     {application.user_email}
                   </p>
                 </div>
-                <div className="flex items-center gap-2 ml-4">
+                <div className="flex items-center gap-2 sm:ml-4 flex-shrink-0">
                   <span className={`px-3 py-1.5 rounded-full text-xs font-medium font-mono whitespace-nowrap ${
                       application.status === 'pending'
                         ? 'bg-yellow-100 text-yellow-800'
@@ -622,10 +622,10 @@ export function Applications2() {
                         ? 'bg-emerald-100 text-emerald-800'
                         : 'bg-rose-100 text-rose-800'
                     }`}>
-                      {application.status.toUpperCase()}
+                    {application.status.toUpperCase()}
                   </span>
                   {application.final_action && (
-                    <span className="text-xs text-[var(--color-text-secondary)] font-mono">
+                    <span className="text-xs text-[var(--color-text-secondary)] font-mono hidden sm:inline">
                       by {getAdminName(application.final_action.admin)}
                     </span>
                   )}
@@ -633,9 +633,9 @@ export function Applications2() {
               </div>
 
               {/* MAIN CONTENT: 2x2 grid on left, actions on right */}
-              <div className="flex gap-6 mb-4">
+              <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 mb-4">
                 {/* Left: Details Grid */}
-                <div className="grid grid-cols-2 gap-4 flex-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
                 {/* Submission Date & Time */}
                 <div>
                   <p className="text-xs text-[var(--color-text-tertiary)] font-mono mb-1">Submitted</p>
@@ -695,26 +695,28 @@ export function Applications2() {
 
                 {/* Right: Action Buttons (only for pending) */}
                 {application.status === 'pending' && (
-                  <div className="flex flex-col gap-3 min-w-[120px]">
+                  <div className="flex flex-row sm:flex-col gap-2 sm:gap-3 min-w-[120px] sm:min-w-[120px]">
                     <button
                       onClick={() => initiateApplicationAction(application, 'approve')}
                       disabled={loadingStates[application.id]}
-                      className={`flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/40 hover:text-emerald-300 transition-colors font-mono text-sm border border-emerald-500/30 ${
+                      className={`flex items-center justify-center gap-2 py-2 sm:py-3 px-3 sm:px-4 rounded-sm bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/40 hover:text-emerald-300 transition-colors font-mono text-xs sm:text-sm border border-emerald-500/30 flex-1 sm:flex-none ${
                         loadingStates[application.id] ? 'opacity-50 cursor-not-allowed' : ''
                       }`}
                     >
-                      <CheckCircle className="w-4 h-4" />
-                      Approve
+                      <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <span className="hidden sm:inline">Approve</span>
+                      <span className="sm:hidden">✓</span>
                     </button>
                     <button
                       onClick={() => initiateApplicationAction(application, 'reject')}
                       disabled={loadingStates[application.id]}
-                      className={`flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/40 hover:text-red-300 transition-colors font-mono text-sm border border-red-400/30 ${
+                      className={`flex items-center justify-center gap-2 py-2 sm:py-3 px-3 sm:px-4 rounded-sm bg-red-500/20 text-red-400 hover:bg-red-500/40 hover:text-red-300 transition-colors font-mono text-xs sm:text-sm border border-red-400/30 flex-1 sm:flex-none ${
                         loadingStates[application.id] ? 'opacity-50 cursor-not-allowed' : ''
                       }`}
                     >
-                      <XCircle className="w-4 h-4" />
-                      Reject
+                      <XCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <span className="hidden sm:inline">Reject</span>
+                      <span className="sm:hidden">✗</span>
                     </button>
                   </div>
                 )}
@@ -789,11 +791,11 @@ export function Applications2() {
               </div>
 
               {/* FOOTER: Admin Verdicts (minimized) + Hidden Delete */}
-              <div className="pt-4 border-t border-[var(--color-border)] flex justify-between items-center">
+              <div className="pt-4 border-t border-[var(--color-border)] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
                 {/* Admin Verdicts - Compact */}
                 {isAdmin && (
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                    <div className="flex items-center gap-1 flex-wrap">
                       {application.admin_verdicts && Object.keys(application.admin_verdicts).length > 0 ? (
                         (() => {
                           const currentAdminEmail = session?.user?.email || '';
@@ -812,7 +814,7 @@ export function Applications2() {
                                 title={`${getAdminName(email)}: ${verdict === 'thumbs_up' ? 'Thumbs up' : 'Thumbs down'}`}
                               >
                                 {verdict === 'thumbs_up' ? <ThumbsUp className="w-3 h-3" /> : <ThumbsDown className="w-3 h-3" />}
-                                <span className="hidden sm:inline">{getAdminName(email)}</span>
+                                <span>{getAdminName(email)}</span>
                               </div>
                             ));
                           } else {
@@ -823,8 +825,7 @@ export function Applications2() {
                                 className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-mono bg-slate-700/50 text-slate-400 border border-slate-600/50"
                                 title={`${getAdminName(email)} has voted`}
                               >
-                                <span className="hidden sm:inline">{getAdminName(email)} voted</span>
-                                <span className="sm:hidden">✓</span>
+                                <span>{getAdminName(email)} voted</span>
                               </div>
                             ));
                           }
@@ -867,7 +868,7 @@ export function Applications2() {
                   <button
                     onClick={() => openDeleteConfirmModal(application)}
                     disabled={loadingStates[application.id]}
-                    className={`opacity-0 group-hover:opacity-100 p-2 rounded-lg bg-slate-600 text-white hover:bg-red-600 transition-all ${
+                    className={`opacity-0 group-hover:opacity-100 p-2 rounded-sm bg-slate-600 text-white hover:bg-red-600 transition-all ${
                       loadingStates[application.id] ? 'opacity-50 cursor-not-allowed' : ''
                     }`}
                     title="Delete User & Application"
@@ -900,24 +901,26 @@ export function Applications2() {
         </div>
 
         {totalPageCount > 0 && (
-          <div className="flex items-center space-x-1 order-1 sm:order-2">
+          <div className="flex items-center space-x-1 order-1 sm:order-2 flex-wrap justify-center sm:justify-start">
             <button
               onClick={() => setCurrentPage(1)}
               disabled={currentPage === 1 || loading}
-              className="px-3 py-1.5 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
+              className="px-2 sm:px-3 py-1.5 rounded-sm bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
             >
-              First
+              <span className="hidden sm:inline">First</span>
+              <span className="sm:hidden">1</span>
             </button>
             <button
               onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
               disabled={currentPage === 1 || loading}
-              className="px-3 py-1.5 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
+              className="px-2 sm:px-3 py-1.5 rounded-sm bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
             >
-              Prev
+              <span className="hidden sm:inline">Prev</span>
+              <span className="sm:hidden">‹</span>
             </button>
             {paginationRange?.map((pageNumber, index) => {
               if (pageNumber === DOTS) {
-                return <span key={`${pageNumber}-${index}`} className="px-3 py-1.5 text-[var(--color-text-secondary)] font-mono text-xs">...</span>;
+                return <span key={`${pageNumber}-${index}`} className="px-2 sm:px-3 py-1.5 text-[var(--color-text-secondary)] font-mono text-xs">...</span>;
               }
 
               const pageNum = pageNumber as number;
@@ -926,7 +929,7 @@ export function Applications2() {
                   key={`${pageNumber}-${index}`}
                   onClick={() => setCurrentPage(pageNum)}
                   disabled={loading}
-                  className={`px-3 py-1.5 rounded-lg font-mono text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                  className={`px-2 sm:px-3 py-1.5 rounded-sm font-mono text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                     currentPage === pageNum
                       ? 'bg-emerald-900 text-white'
                       : 'bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)]'
@@ -939,16 +942,18 @@ export function Applications2() {
             <button
               onClick={() => setCurrentPage(prev => Math.min(totalPageCount, prev + 1))}
               disabled={currentPage === totalPageCount || loading || totalPageCount === 0}
-              className="px-3 py-1.5 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
+              className="px-2 sm:px-3 py-1.5 rounded-sm bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
             >
-              Next
+              <span className="hidden sm:inline">Next</span>
+              <span className="sm:hidden">›</span>
             </button>
             <button
               onClick={() => setCurrentPage(totalPageCount)}
               disabled={currentPage === totalPageCount || loading || totalPageCount === 0}
-              className="px-3 py-1.5 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
+              className="px-2 sm:px-3 py-1.5 rounded-sm bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
             >
-              Last
+              <span className="hidden sm:inline">Last</span>
+              <span className="sm:hidden">{totalPageCount}</span>
             </button>
           </div>
         )}
@@ -997,19 +1002,19 @@ export function Applications2() {
               value={deleteConfirmationEmailInput}
               onChange={(e) => setDeleteConfirmationEmailInput(e.target.value)}
               placeholder={applicationToDelete.user_email}
-              className="w-full px-3 py-2 border border-[var(--color-border)] rounded-lg bg-[var(--color-bg-input)] text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono text-sm mb-6"
+              className="w-full px-3 py-2 border border-[var(--color-border)] rounded-sm bg-[var(--color-bg-input)] text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono text-sm mb-6"
             />
             <div className="flex justify-end gap-3">
               <button
                 onClick={closeDeleteConfirmModal}
-                className="px-4 py-2 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] transition-colors font-mono"
+                className="px-4 py-2 rounded-sm bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] transition-colors font-mono"
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirmDeleteUserAndApplication}
                 disabled={loadingStates[applicationToDelete.id] || deleteConfirmationEmailInput !== applicationToDelete.user_email}
-                className={`px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors font-mono flex items-center justify-center ${
+                className={`px-4 py-2 rounded-sm bg-red-600 text-white hover:bg-red-700 transition-colors font-mono flex items-center justify-center ${
                   (loadingStates[applicationToDelete.id] || deleteConfirmationEmailInput !== applicationToDelete.user_email) ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
               >
@@ -1057,14 +1062,14 @@ export function Applications2() {
             <div className="flex justify-end gap-3">
               <button
                 onClick={closeActionConfirmModal}
-                className="px-4 py-2 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] transition-colors font-mono"
+                className="px-4 py-2 rounded-sm bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] transition-colors font-mono"
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirmAction}
                 disabled={loadingStates[applicationToAction.id]}
-                className={`px-4 py-2 rounded-lg transition-colors font-mono flex items-center justify-center ${
+                className={`px-4 py-2 rounded-sm transition-colors font-mono flex items-center justify-center ${
                   actionType === 'approve'
                     ? 'bg-emerald-700 text-white hover:bg-emerald-800'
                     : 'bg-red-600 text-white hover:bg-red-700'

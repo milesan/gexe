@@ -52,7 +52,7 @@ export function TestBooking({ onClose, onSuccess, accommodations }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[60]">
-      <div className="bg-white rounded-lg max-w-md w-full p-6">
+      <div className="bg-white rounded-sm max-w-md w-full p-6">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-display">Create Test Booking</h3>
           <button onClick={onClose} className="text-stone-400 hover:text-stone-600">
@@ -80,7 +80,7 @@ export function TestBooking({ onClose, onSuccess, accommodations }: Props) {
             <select
               value={selectedAccommodation}
               onChange={(e) => setSelectedAccommodation(e.target.value)}
-              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-emerald-500"
+              className="w-full p-2 border rounded-sm focus:ring-2 focus:ring-emerald-500"
             >
               <option value="">Select accommodation</option>
               {accommodations.map((acc) => (
@@ -92,7 +92,7 @@ export function TestBooking({ onClose, onSuccess, accommodations }: Props) {
           </div>
 
           {error && (
-            <div className="p-3 bg-rose-50 text-rose-600 rounded-lg text-sm">
+            <div className="p-3 bg-rose-50 text-rose-600 rounded-sm text-sm">
               {error}
             </div>
           )}
@@ -107,7 +107,7 @@ export function TestBooking({ onClose, onSuccess, accommodations }: Props) {
             <button
               onClick={handleSubmit}
               disabled={loading || !selectedDates?.from || !selectedDates?.to || !selectedAccommodation}
-              className="bg-emerald-900 text-white px-4 py-2 rounded-lg hover:bg-emerald-800 disabled:bg-stone-300"
+              className="bg-emerald-900 text-white px-4 py-2 rounded-sm hover:bg-emerald-800 disabled:bg-stone-300"
             >
               {loading ? 'Creating...' : 'Create Test Booking'}
             </button>

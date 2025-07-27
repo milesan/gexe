@@ -129,7 +129,7 @@ export function CreditsSection({
               step={1}
               value={Math.min(creditsToUse, sliderMax)}
               onChange={handleSliderChange}
-              className="w-full h-2 bg-border rounded-lg appearance-none cursor-pointer accent-accent-primary slider-thumb-accent"
+              className="w-full h-2 bg-border rounded-sm appearance-none cursor-pointer accent-accent-primary slider-thumb-accent"
             />
             <div className="flex justify-between text-xs text-shade-3 font-lettra">
               <span>0</span>

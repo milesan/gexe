@@ -309,12 +309,12 @@ export function Whitelist() {
   return (
     <div className="p-6">
       {error && (
-        <div className="mb-6 p-4 bg-[var(--color-bg-error)] text-[var(--color-text-error)] rounded-lg">
+        <div className="mb-6 p-4 bg-[var(--color-bg-error)] text-[var(--color-text-error)] rounded-sm">
           {error}
         </div>
       )}
 
-      <div className="bg-[var(--color-bg-surface)] p-6 rounded-lg border border-[var(--color-border)] mb-6">
+      <div className="bg-[var(--color-bg-surface)] p-6 rounded-sm border border-[var(--color-border)] mb-6">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-display font-medium text-[var(--color-text-primary)]">Add to Whitelist</h3>
           <button
@@ -326,25 +326,25 @@ export function Whitelist() {
           </button>
         </div>
 
-        <div className="flex gap-4 font-mono text-sm">
+        <div className="flex flex-col sm:flex-row gap-4 font-mono text-sm">
           <input
             type="email"
             value={newEmail}
             onChange={(e) => setNewEmail(e.target.value)}
             placeholder="Email address"
-            className="flex-1 p-2 border border-[var(--color-border)] bg-[var(--color-bg-input)] text-[var(--color-text-primary)] rounded-lg focus:ring-2 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)]"
+            className="flex-1 p-2 border border-[var(--color-border)] bg-[var(--color-bg-input)] text-[var(--color-text-primary)] rounded-sm focus:ring-2 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)]"
           />
           <input
             type="text"
             value={newNotes}
             onChange={(e) => setNewNotes(e.target.value)}
             placeholder="Notes (optional)"
-            className="flex-1 p-2 border border-[var(--color-border)] bg-[var(--color-bg-input)] text-[var(--color-text-primary)] rounded-lg focus:ring-2 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)]"
+            className="flex-1 p-2 border border-[var(--color-border)] bg-[var(--color-bg-input)] text-[var(--color-text-primary)] rounded-sm focus:ring-2 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)]"
           />
           <button
             onClick={addToWhitelist}
             disabled={isAdding || !newEmail}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+            className={`flex items-center justify-center gap-2 px-4 py-2 rounded-sm transition-colors ${
               isAdding || !newEmail
                 ? 'bg-[var(--color-button-disabled-bg)] text-[var(--color-button-disabled-text)] cursor-not-allowed'
                 : 'bg-[var(--color-button-primary-bg)] text-[var(--color-button-primary-text)] hover:bg-[var(--color-button-primary-bg-hover)]'
@@ -364,11 +364,11 @@ export function Whitelist() {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           onKeyPress={(e) => { if (e.key === 'Enter') handleManualSearch(); }}
-          className="flex-grow px-3 py-2 border border-[var(--color-border)] rounded-lg bg-[var(--color-bg-input)] text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono text-sm"
+          className="flex-grow px-3 py-2 border border-[var(--color-border)] rounded-sm bg-[var(--color-bg-input)] text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono text-sm"
         />
         <button
           onClick={handleManualSearch}
-          className="p-2 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-primary)] hover:bg-[var(--color-button-secondary-bg-hover)] border border-[var(--color-border)]"
+          className="p-2 rounded-sm bg-[var(--color-button-secondary-bg)] text-[var(--color-text-primary)] hover:bg-[var(--color-button-secondary-bg-hover)] border border-[var(--color-border)]"
           title="Search"
         >
           <Search className="w-5 h-5" />
@@ -376,7 +376,7 @@ export function Whitelist() {
         {activeSearchQuery && (
           <button
             onClick={handleClearSearch}
-            className="p-2 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-error)] hover:bg-[var(--color-error-bg-hover)] border border-[var(--color-border)]"
+            className="p-2 rounded-sm bg-[var(--color-button-secondary-bg)] text-[var(--color-text-error)] hover:bg-[var(--color-error-bg-hover)] border border-[var(--color-border)]"
             title="Clear Search"
           >
             <ClearSearchIcon className="w-5 h-5" />
@@ -398,35 +398,35 @@ export function Whitelist() {
           </div>
         )}
         {entries.map((entry) => (
-          <motion.div
-            key={entry.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="bg-[var(--color-bg-surface)] p-4 rounded-lg border border-[var(--color-border)] flex justify-between items-center"
-          >
-            <div>
-              <div className="font-medium text-[var(--color-text-primary)]">{entry.email}</div>
-              <div className="flex flex-col sm:flex-row sm:gap-4 mt-2 text-sm">
-                {entry.has_finished_signup ? (
-                  <span className="text-emerald-600">Signup Completed</span>
-                ) : (
-                  <span className="text-[var(--color-text-secondary)]">Signup Not Completed</span>
-                )}
-                {entry.last_sign_in_at && (
-                  <span className="text-[var(--color-text-secondary)]">
-                    Last sign in: {new Date(entry.last_sign_in_at).toISOString().slice(0, 10)}
-                  </span>
-                )}
-              </div>
-            </div>
-            <button
-              onClick={() => removeFromWhitelist(entry.id)}
-              className="p-2 text-[var(--color-text-error)] hover:bg-[var(--color-bg-error-hover)] rounded-lg transition-colors"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          </motion.div>
+                     <motion.div
+             key={entry.id}
+             initial={{ opacity: 0, y: 20 }}
+             animate={{ opacity: 1, y: 0 }}
+             exit={{ opacity: 0, y: -20 }}
+             className="bg-[var(--color-bg-surface)] p-4 rounded-sm border border-[var(--color-border)] flex justify-between items-start gap-3"
+           >
+             <div className="flex-1 min-w-0">
+               <div className="font-medium text-[var(--color-text-primary)] truncate">{entry.email}</div>
+               <div className="flex flex-col sm:flex-row sm:gap-4 mt-2 text-sm">
+                 {entry.has_finished_signup ? (
+                   <span className="text-emerald-600">Signup Completed</span>
+                 ) : (
+                   <span className="text-[var(--color-text-secondary)]">Signup Not Completed</span>
+                 )}
+                 {entry.last_sign_in_at && (
+                   <span className="text-[var(--color-text-secondary)]">
+                     Last sign in: {new Date(entry.last_sign_in_at).toISOString().slice(0, 10)}
+                   </span>
+                 )}
+               </div>
+             </div>
+             <button
+               onClick={() => removeFromWhitelist(entry.id)}
+               className="p-2 text-[var(--color-text-error)] hover:bg-[var(--color-bg-error-hover)] rounded-sm transition-colors flex-shrink-0"
+             >
+               <Trash2 className="w-4 h-4" />
+             </button>
+           </motion.div>
         ))}
       </div>
 
@@ -442,7 +442,7 @@ export function Whitelist() {
               initial={{ scale: 0.95 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.95 }}
-              className="bg-[var(--color-bg-surface)] rounded-lg max-w-md w-full p-6"
+              className="bg-[var(--color-bg-surface)] rounded-sm max-w-md w-full p-6"
             >
               <div className="flex justify-between items-center mb-4">
                 <h3 className="font-display text-lg font-medium text-[var(--color-text-primary)]">Upload CSV</h3>
@@ -482,58 +482,82 @@ export function Whitelist() {
             {totalEntriesCount === 0 && !activeSearchQuery && ` (No entries)`}
           </div>
 
-          {totalPageCount > 0 && (
-            <div className="flex items-center space-x-1 order-1 sm:order-2">
-              <button
-                onClick={() => setCurrentPage(1)}
-                disabled={currentPage === 1 || loading}
-                className="px-3 py-1.5 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
-              >
-                First
-              </button>
-              <button
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={currentPage === 1 || loading}
-                className="px-3 py-1.5 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
-              >
-                Prev
-              </button>
-              {paginationRange?.map((pageNumber, index) => {
-                if (pageNumber === DOTS) {
-                  return <span key={`${pageNumber}-${index}`} className="px-3 py-1.5 text-[var(--color-text-secondary)] font-mono text-xs">...</span>;
-                }
-                const pageNum = pageNumber as number;
-                return (
-                  <button
-                    key={`${pageNumber}-${index}`}
-                    onClick={() => setCurrentPage(pageNum)}
-                    disabled={loading}
-                    className={`px-3 py-1.5 rounded-lg font-mono text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                      currentPage === pageNum
-                        ? 'bg-emerald-900 text-white'
-                        : 'bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)]'
-                    }`}
-                  >
-                    {pageNumber}
-                  </button>
-                );
-              })}
-              <button
-                onClick={() => setCurrentPage(prev => Math.min(totalPageCount, prev + 1))}
-                disabled={currentPage === totalPageCount || loading || totalPageCount === 0}
-                className="px-3 py-1.5 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
-              >
-                Next
-              </button>
-              <button
-                onClick={() => setCurrentPage(totalPageCount)}
-                disabled={currentPage === totalPageCount || loading || totalPageCount === 0}
-                className="px-3 py-1.5 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
-              >
-                Last
-              </button>
-            </div>
-          )}
+                     {totalPageCount > 0 && (
+             <div className="flex items-center space-x-1 order-1 sm:order-2">
+               {/* Mobile: Simple Prev/Next */}
+               <div className="flex sm:hidden items-center space-x-1">
+                 <button
+                   onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                   disabled={currentPage === 1 || loading}
+                   className="px-3 py-1.5 rounded-sm bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
+                 >
+                   Prev
+                 </button>
+                 <span className="px-2 py-1.5 text-[var(--color-text-secondary)] font-mono text-xs">
+                   {currentPage} / {totalPageCount}
+                 </span>
+                 <button
+                   onClick={() => setCurrentPage(prev => Math.min(totalPageCount, prev + 1))}
+                   disabled={currentPage === totalPageCount || loading || totalPageCount === 0}
+                   className="px-3 py-1.5 rounded-sm bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
+                 >
+                   Next
+                 </button>
+               </div>
+               
+               {/* Desktop: Full pagination */}
+               <div className="hidden sm:flex items-center space-x-1">
+                 <button
+                   onClick={() => setCurrentPage(1)}
+                   disabled={currentPage === 1 || loading}
+                   className="px-3 py-1.5 rounded-sm bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
+                 >
+                   First
+                 </button>
+                 <button
+                   onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                   disabled={currentPage === 1 || loading}
+                   className="px-3 py-1.5 rounded-sm bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
+                 >
+                   Prev
+                 </button>
+                 {paginationRange?.map((pageNumber, index) => {
+                   if (pageNumber === DOTS) {
+                     return <span key={`${pageNumber}-${index}`} className="px-3 py-1.5 text-[var(--color-text-secondary)] font-mono text-xs">...</span>;
+                   }
+                   const pageNum = pageNumber as number;
+                   return (
+                     <button
+                       key={`${pageNumber}-${index}`}
+                       onClick={() => setCurrentPage(pageNum)}
+                       disabled={loading}
+                       className={`px-3 py-1.5 rounded-sm font-mono text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                         currentPage === pageNum
+                           ? 'bg-emerald-900 text-white'
+                           : 'bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)]'
+                       }`}
+                     >
+                       {pageNumber}
+                     </button>
+                   );
+                 })}
+                 <button
+                   onClick={() => setCurrentPage(prev => Math.min(totalPageCount, prev + 1))}
+                   disabled={currentPage === totalPageCount || loading || totalPageCount === 0}
+                   className="px-3 py-1.5 rounded-sm bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
+                 >
+                   Next
+                 </button>
+                 <button
+                   onClick={() => setCurrentPage(totalPageCount)}
+                   disabled={currentPage === totalPageCount || loading || totalPageCount === 0}
+                   className="px-3 py-1.5 rounded-sm bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
+                 >
+                   Last
+                 </button>
+               </div>
+             </div>
+           )}
         </div>
       )}
     </div>

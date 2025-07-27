@@ -74,7 +74,7 @@ function AnswerTooltip({ children, content }: { children: React.ReactNode; conte
         {children}
       </div>
       {showTooltip && (
-        <div className="absolute z-50 bg-gray-800 text-[var(--color-text-primary)] p-4 rounded-lg shadow-lg max-w-md whitespace-pre-wrap font-mono">
+        <div className="absolute z-50 bg-gray-800 text-[var(--color-text-primary)] p-4 rounded-sm shadow-lg max-w-md whitespace-pre-wrap font-mono">
           {renderContent(content)}
         </div>
       )}
@@ -235,7 +235,7 @@ export function AppView() {
             key={index}
             src={url}
             alt={`Applicant photo ${index + 1}`}
-            className={`w-full h-full object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity ${
+            className={`w-full h-full object-cover rounded-sm cursor-pointer hover:opacity-90 transition-opacity ${
               photoUrls.length === 3 && index === 2 ? 'col-span-2' : ''
             }`}
             onClick={() => setSelectedImage(url)}
@@ -364,22 +364,22 @@ export function AppView() {
         exit={{ opacity: 0, y: -20 }}
         className="bg-[var(--color-bg-surface)] p-6 rounded-xl shadow-sm border border-[var(--color-border)] hover:border-[var(--color-border-hover)] transition-colors space-y-6"
       >
-        <div className="flex justify-between items-start">
-          <div>
+        <div className="flex justify-between items-start gap-4">
+          <div className="min-w-0 flex-1">
             <button
               onClick={() => setSelectedApplication(application)}
-              className="font-mono text-2xl text-[var(--color-text-primary)] hover:text-[var(--color-accent-primary)] transition-colors text-left group"
+              className="font-mono text-2xl text-[var(--color-text-primary)] hover:text-[var(--color-accent-primary)] transition-colors text-left group w-full"
             >
-              <span className="group-hover:underline">
+              <span className="group-hover:underline break-words">
                 {firstName} {lastName}
               </span>
             </button>
-            <p className="text-[var(--color-text-primary)] font-mono text-md">{application.user_email}</p>
+            <p className="text-[var(--color-text-primary)] font-mono text-md break-all">{application.user_email}</p>
             <p className="text-sm text-[var(--color-text-secondary)] font-mono mt-1">
               Submitted: {new Date(application.created_at).toISOString().slice(0, 10)}
             </p>
           </div>
-          <span className={`px-3 py-1 rounded-full text-xs font-medium font-mono ${
+          <span className={`px-3 py-1 rounded-full text-xs font-medium font-mono flex-shrink-0 ${
             application.status === 'pending'
               ? 'bg-yellow-100 text-yellow-800'
               : application.status === 'approved'
@@ -478,7 +478,7 @@ export function AppView() {
 
   if (error) {
     return (
-      <div className="p-6 bg-[var(--color-bg-error)] text-[var(--color-text-error)] rounded-lg font-mono">
+      <div className="p-6 bg-[var(--color-bg-error)] text-[var(--color-text-error)] rounded-sm font-mono">
         {error}
       </div>
     );
@@ -486,54 +486,56 @@ export function AppView() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap gap-4 mb-6 mt-4 ml-4 items-center">
-        <div className="flex gap-2">
-          {(['pending', 'approved', 'rejected'] as const).map((tab) => (
+      <div className="bg-[var(--color-bg-surface)] p-6 rounded-xl shadow-sm border border-[var(--color-border)] hover:border-[var(--color-border-hover)] transition-colors">
+        <div className="flex flex-col sm:flex-row flex-wrap gap-4 items-start sm:items-center">
+          <div className="flex flex-wrap gap-2 min-w-0 w-full">
+            {(['pending', 'approved', 'rejected'] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => {
+                  setActiveTab(tab);
+                  setCurrentPage(1);
+                }}
+                className={`px-4 py-2 rounded-sm transition-colors text-sm font-mono flex-shrink-0 ${
+                  activeTab === tab
+                    ? 'bg-emerald-900 text-white'
+                    : 'bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] border border-[var(--color-border)]'
+                }`}
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-2 items-center flex-grow sm:flex-grow-0 min-w-0 w-full sm:w-auto">
+            <input 
+              type="text"
+              placeholder="Search by email..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyPress={(e) => { if (e.key === 'Enter') handleSearch(); }}
+              className="px-3 py-1.5 border border-[var(--color-border)] rounded-sm bg-[var(--color-bg-input)] text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono text-sm flex-grow min-w-0"
+            />
             <button
-              key={tab}
-              onClick={() => {
-                setActiveTab(tab);
-                setCurrentPage(1);
-              }}
-              className={`px-4 py-2 rounded-lg transition-colors text-sm font-mono ${
-                activeTab === tab
-                  ? 'bg-emerald-900 text-white'
-                  : 'bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] border border-[var(--color-border)]'
-              }`}
+              onClick={handleSearch}
+              className="p-2 rounded-sm bg-[var(--color-button-secondary-bg)] text-[var(--color-text-primary)] hover:bg-[var(--color-button-secondary-bg-hover)] border border-[var(--color-border)] flex-shrink-0"
+              title="Search"
             >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              <Search className="w-4 h-4" />
             </button>
-          ))}
-        </div>
-        <div className="flex gap-2 items-center flex-grow sm:flex-grow-0">
-          <input 
-            type="text"
-            placeholder="Search by email..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            onKeyPress={(e) => { if (e.key === 'Enter') handleSearch(); }}
-            className="px-3 py-1.5 border border-[var(--color-border)] rounded-lg bg-[var(--color-bg-input)] text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono text-sm flex-grow"
-          />
-          <button
-            onClick={handleSearch}
-            className="p-2 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-primary)] hover:bg-[var(--color-button-secondary-bg-hover)] border border-[var(--color-border)]"
-            title="Search"
-          >
-            <Search className="w-4 h-4" />
-          </button>
-          {activeSearchQuery && (
-            <button
-              onClick={handleClearSearch}
-              className="p-2 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-error)] hover:bg-[var(--color-error-bg-hover)] border border-[var(--color-border)]"
-              title="Clear Search"
-            >
-              <ClearSearchIcon className="w-4 h-4" />
-            </button>
-          )}
+            {activeSearchQuery && (
+              <button
+                onClick={handleClearSearch}
+                className="p-2 rounded-sm bg-[var(--color-button-secondary-bg)] text-[var(--color-text-error)] hover:bg-[var(--color-error-bg-hover)] border border-[var(--color-border)] flex-shrink-0"
+                title="Clear Search"
+              >
+                <ClearSearchIcon className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 px-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <AnimatePresence>
           {applications.map(app => (
             renderApplicationCard(app)
@@ -541,7 +543,7 @@ export function AppView() {
         </AnimatePresence>
       </div>
 
-      <div className="mt-8 flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0 px-4 pb-4">
+      <div className="mt-8 flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0 pb-4">
         <div className="font-mono text-sm text-[var(--color-text-secondary)] order-2 sm:order-1">
           Page {currentPage} of {totalPageCount > 0 ? totalPageCount : 1}
           {totalApplicationsCount > 0 && !activeSearchQuery &&
@@ -559,14 +561,14 @@ export function AppView() {
             <button
               onClick={() => setCurrentPage(1)}
               disabled={currentPage === 1 || loading}
-              className="px-3 py-1.5 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
+              className="px-3 py-1.5 rounded-sm bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
             >
               First
             </button>
             <button
               onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
               disabled={currentPage === 1 || loading}
-              className="px-3 py-1.5 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
+              className="px-3 py-1.5 rounded-sm bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
             >
               Prev
             </button>
@@ -580,7 +582,7 @@ export function AppView() {
                   key={`${pageNumber}-${index}`}
                   onClick={() => setCurrentPage(pageNum)}
                   disabled={loading}
-                  className={`px-3 py-1.5 rounded-lg font-mono text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                  className={`px-3 py-1.5 rounded-sm font-mono text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                     currentPage === pageNum
                       ? 'bg-emerald-900 text-white'
                       : 'bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)]'
@@ -593,14 +595,14 @@ export function AppView() {
             <button
               onClick={() => setCurrentPage(prev => Math.min(totalPageCount, prev + 1))}
               disabled={currentPage === totalPageCount || loading || totalPageCount === 0}
-              className="px-3 py-1.5 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
+              className="px-3 py-1.5 rounded-sm bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
             >
               Next
             </button>
             <button
               onClick={() => setCurrentPage(totalPageCount)}
               disabled={currentPage === totalPageCount || loading || totalPageCount === 0}
-              className="px-3 py-1.5 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
+              className="px-3 py-1.5 rounded-sm bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
             >
               Last
             </button>

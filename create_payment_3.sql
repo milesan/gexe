@@ -1,0 +1,42 @@
+INSERT INTO public.payments (
+  id,
+  booking_id,
+  user_id,
+  start_date,
+  end_date,
+  amount_paid,
+  breakdown_json,
+  discount_code,
+  payment_type,
+  stripe_payment_id,
+  created_at,
+  updated_at,
+  status
+) VALUES (
+  gen_random_uuid(),
+  '98fdc9c4-4c1c-4af3-956c-5fb90aa7cb7a',
+  'ae54d6c3-aea3-4d5c-87fd-763174d90fdd',
+  '2025-05-27',
+  '2025-06-30',
+  2370.00,
+  '{
+    "accommodation": 1360.00,
+    "food_facilities": 1010.00,
+    "accommodation_original": 2000.00,
+    "duration_discount_percent": 0.16,
+    "seasonal_discount_percent": 0.19,
+    "discount_code": null,
+    "discount_code_percent": null,
+    "discount_code_applies_to": null,
+    "discount_code_amount": 0.00,
+    "credits_used": 0.00,
+    "subtotal_before_discounts": 3010.00,
+    "total_after_discounts": 2370.00
+  }'::jsonb,
+  null,
+  'initial',
+  null,
+  '2025-05-01 15:35:15.189+00',
+  '2025-05-01 15:35:15.189+00',
+  'paid'
+); 

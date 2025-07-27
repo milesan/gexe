@@ -242,7 +242,7 @@
 
   /* Booking Summary */
   .stay2-booking-summary {
-    @apply bg-white rounded-lg shadow-lg p-6;
+    @apply bg-white rounded-sm shadow-lg p-6;
   }
 
   .stay2-booking-summary h2 {

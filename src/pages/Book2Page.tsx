@@ -1018,7 +1018,7 @@ export function Book2Page() {
                     <button
                       onClick={() => setTestMode(!testMode)}
                       className={clsx(
-                        "flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-lg text-sm font-medium font-mono transition-all duration-200 border",
+                        "flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-sm text-sm font-medium font-mono transition-all duration-200 border",
                         testMode 
                           ? "bg-orange-500 text-white hover:bg-orange-600 border-orange-600" 
                           : "bg-[var(--color-button-secondary-bg)] text-primary hover:bg-[var(--color-button-secondary-bg-hover)] border-border"
@@ -1048,7 +1048,7 @@ export function Book2Page() {
                       <>
                         <button
                           onClick={() => setIsAdminMode(false)}
-                          className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-lg text-sm font-medium font-mono transition-colors duration-200 bg-[var(--color-button-secondary-bg)] text-primary hover:bg-[var(--color-button-secondary-bg-hover)] border border-border"
+                          className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-sm text-sm font-medium font-mono transition-colors duration-200 bg-[var(--color-button-secondary-bg)] text-primary hover:bg-[var(--color-button-secondary-bg-hover)] border border-border"
                         >
                           <svg 
                             className="h-4 w-4 xs:h-5 xs:w-5" 
@@ -1077,7 +1077,7 @@ export function Book2Page() {
                     ) : (
                       <button
                         onClick={() => setIsAdminMode(true)}
-                        className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-lg text-sm bg-accent-primary text-stone-800 hover:bg-accent-secondary transition-all duration-200 font-medium font-mono"
+                        className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-sm text-sm bg-accent-primary text-stone-800 hover:bg-accent-secondary transition-all duration-200 font-medium font-mono"
                       >
                         <svg 
                           className="h-4 w-4 xs:h-5 xs:w-5" 
@@ -1131,7 +1131,7 @@ export function Book2Page() {
                       </button> */}
 
                       {/* UPDATED: Single border, bg, custom icons, rounded-sm */}
-                      <div className="flex items-center rounded-sm border border-shade-1 bg-surface-dark"> {/* Added bg, changed rounded-lg to rounded-sm */}
+                      <div className="flex items-center rounded-sm border border-shade-1 bg-surface-dark"> {/* Added bg, changed rounded-sm to rounded-sm */}
                         <button 
                           className="p-1 xxs:p-1.5 sm:p-2 rounded-l-sm hover:bg-[var(--color-bg-surface-hover)]" /* Removed border-r, changed rounded-l-lg to rounded-l-sm */
                           onClick={() => handleMonthChange(subMonths(currentMonth, 1))} // Use handleMonthChange

@@ -389,7 +389,7 @@ export function ApplicationQuestionsManager() {
             onClick={onCancel}
         >
             <div
-                className="relative z-[101] bg-[var(--color-furface-modal,theme(colors.gray.800))] p-6 rounded-lg shadow-xl max-w-sm w-full border border-[var(--color-border)]"
+                className="relative z-[101] bg-[var(--color-furface-modal,theme(colors.gray.800))] p-6 rounded-sm shadow-xl max-w-sm w-full border border-[var(--color-border)]"
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="flex items-center mb-4">
@@ -400,12 +400,12 @@ export function ApplicationQuestionsManager() {
                 <div className="flex justify-end gap-3">
                     <button
                         onClick={onCancel}
-                        className="px-4 py-2 rounded-lg bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] font-mono transition-colors">
+                        className="px-4 py-2 rounded-sm bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] font-mono transition-colors">
                         Cancel
                     </button>
                     <button
                         onClick={onConfirm}
-                        className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 font-mono transition-colors">
+                        className="px-4 py-2 rounded-sm bg-red-600 text-white hover:bg-red-700 font-mono transition-colors">
                         Delete
                     </button>
                 </div>
@@ -430,7 +430,7 @@ export function ApplicationQuestionsManager() {
                     <h2 className="text-xl font-display font-light text-[var(--color-text-primary)]">Manage Application Questions</h2>
                     <button
                         onClick={() => handleAddNew()}
-                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors font-mono text-sm"
+                        className="flex items-center gap-2 px-4 py-2 rounded-sm bg-emerald-600 text-white hover:bg-emerald-700 transition-colors font-mono text-sm"
                     >
                         <Plus className="w-4 h-4" />
                         Add New Question (Overall)
@@ -438,7 +438,7 @@ export function ApplicationQuestionsManager() {
                 </div>
 
                 {error && (
-                    <div className="p-4 mb-4 bg-[var(--color-bg-error)] text-[var(--color-text-error)] rounded-lg font-mono">
+                    <div className="p-4 mb-4 bg-[var(--color-bg-error)] text-[var(--color-text-error)] rounded-sm font-mono">
                         Error: {error}
                     </div>
                 )}
@@ -447,7 +447,7 @@ export function ApplicationQuestionsManager() {
                     const questionsInSection = groupedQuestions.get(sectionName) || [];
                     // const isEditingThisIntro = editingIntroSection === sectionName; // TODO: Part of commented out section intro feature
                     return (
-                        <div key={sectionName} className="space-y-4 p-4 border border-[var(--color-border)] rounded-lg bg-[var(--color-bg-surface)]">
+                        <div key={sectionName} className="space-y-4 p-4 border border-[var(--color-border)] rounded-sm bg-[var(--color-bg-surface)]">
                             <div className="flex justify-between items-center">
                                 <h3 className="text-lg font-display text-[var(--color-text-primary)] capitalize">
                                     {sectionName} Section
@@ -508,7 +508,7 @@ export function ApplicationQuestionsManager() {
                             */}
 
                             {/* Placeholder for questions table for this section */}
-                            <div className="overflow-x-auto bg-[var(--color-bg-surface)] rounded-lg border border-[var(--color-border)] relative mt-4">
+                            <div className="overflow-x-auto bg-[var(--color-bg-surface)] rounded-sm border border-[var(--color-border)] relative mt-4">
                                 <table className="min-w-full divide-y divide-[var(--color-border)]">
                                     <thead className="bg-[var(--color-bg-surface-raised)]">
                                         <tr>
@@ -603,7 +603,7 @@ export function ApplicationQuestionsManager() {
                                     </Droppable>
                                 </table>
                                 {loading && questions.length > 0 && ( 
-                                    <div className="absolute inset-0 bg-[var(--color-bg-surface)]/70 dark:bg-[var(--color-bg-surface-raised)]/50 flex justify-center items-center rounded-lg backdrop-blur-sm">
+                                    <div className="absolute inset-0 bg-[var(--color-bg-surface)]/70 dark:bg-[var(--color-bg-surface-raised)]/50 flex justify-center items-center rounded-sm backdrop-blur-sm">
                                         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--color-accent-primary)]"></div>
                                     </div>
                                 )}

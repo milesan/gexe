@@ -538,7 +538,7 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
                 <img 
                   src={file.url} 
                   alt={`Uploaded photo ${index + 1}`}
-                  className="w-full h-32 object-cover rounded-lg border-2 border-retro-accent/20"
+                  className="w-full h-32 object-cover rounded-sm border-2 border-retro-accent/20"
                 />
                  {/* Delete Button Overlay */}
                  <div className={`absolute inset-0 bg-black/70 flex items-center justify-center transition-opacity duration-300 ${isDeleting === file.fileName ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>

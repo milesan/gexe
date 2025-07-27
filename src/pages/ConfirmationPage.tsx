@@ -72,7 +72,7 @@ export function ConfirmationPage() {
         <div className="p-8 space-y-6">
           {/* Show manual creation message if present */}
           {booking.isPendingManualCreation && booking.manualCreationMessage && (
-            <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg border border-amber-100 dark:border-amber-900/30 mb-6">
+            <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-sm border border-amber-100 dark:border-amber-900/30 mb-6">
               <p className="text-amber-800 dark:text-amber-300 font-mono text-sm">
                 {booking.manualCreationMessage}
               </p>
@@ -127,7 +127,7 @@ export function ConfirmationPage() {
             </div>
           </div>
 
-          <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg border border-amber-100 dark:border-amber-900/30 my-6">
+          <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-sm border border-amber-100 dark:border-amber-900/30 my-6">
             <p className="text-amber-800 dark:text-amber-300 text-center flex items-center justify-center font-mono text-sm">
               To ensure a smooth arrival, please respect the check-in window (2PM-5PM) and check-out time (11AM)
             </p>
@@ -140,7 +140,7 @@ export function ConfirmationPage() {
             </div>
           </div>
 
-          <div className="bg-emerald-50 dark:bg-emerald-900/20 p-6 rounded-lg space-y-4">
+          <div className="bg-emerald-50 dark:bg-emerald-900/20 p-6 rounded-sm space-y-4">
             <h3 className="font-mono text-lg text-emerald-900 dark:text-emerald-200">
               Tidbits
             </h3>
@@ -160,7 +160,7 @@ export function ConfirmationPage() {
             </ul>
           </div>
 
-          <div className="bg-slate-50 dark:bg-slate-900/20 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
+          <div className="bg-slate-50 dark:bg-slate-900/20 border border-slate-200 dark:border-slate-800 rounded-sm overflow-hidden">
             <button
               onClick={() => setIsPolicyOpen(!isPolicyOpen)}
               className="w-full p-4 flex items-center justify-between text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900/30 transition-colors"
@@ -236,7 +236,7 @@ export function ConfirmationPage() {
             href="https://gardening.notion.site/Welcome-to-The-Garden-2684f446b48e4b43b3f003d7fca33664?pvs=4"
             target="_blank"
             rel="noopener noreferrer"
-            className="block w-full bg-accent-primary hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white py-3 px-6 rounded-lg transition-colors text-center font-mono text-lg flex items-center justify-center gap-2"
+            className="block w-full bg-accent-primary hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white py-3 px-6 rounded-sm transition-colors text-center font-mono text-lg flex items-center justify-center gap-2"
           >
             Welcome Guide
             <ExternalLink className="w-4 h-4" />

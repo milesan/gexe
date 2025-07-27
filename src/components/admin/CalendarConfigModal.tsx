@@ -96,7 +96,7 @@ export function CalendarConfigModal({ isOpen, onClose, onSaved }: Props) {
 
   // Base modal classes (consistent with DiscountModal)
   const modalOverlayClasses = "fixed inset-0 bg-overlay backdrop-blur-sm flex items-center justify-center z-50 p-4"; // Match DiscountModal
-  const contentContainerClasses = "bg-gray-800/95 rounded-lg p-4 sm:p-6 max-w-md w-full relative z-[101] max-h-[90vh] overflow-y-auto shadow-xl border border-gray-500/30 text-white backdrop-blur-sm"; // Match DiscountModal styling
+  const contentContainerClasses = "bg-gray-800/95 rounded-sm p-4 sm:p-6 max-w-md w-full relative z-[101] max-h-[90vh] overflow-y-auto shadow-xl border border-gray-500/30 text-white backdrop-blur-sm"; // Match DiscountModal styling
   const contentPaddingClasses = ""; // Padding is now part of contentContainerClasses
   const textBaseClasses = "text-white font-mono"; // Simplified for dark modal
   const textMutedClasses = "text-gray-300 font-mono"; // Simplified for dark modal
