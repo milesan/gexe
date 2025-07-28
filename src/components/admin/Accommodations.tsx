@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Image as ImageIcon, X, Check, Save, Pencil, Wifi, Zap, Plus, Trash2, Camera, Trash, Info, Tag, MapPin } from 'lucide-react';
 import * as Tooltip from '@radix-ui/react-tooltip';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface AccommodationImage {
   id: string;
@@ -55,6 +56,60 @@ const ALLOWED_ACCOMMODATION_TYPES = [
     'test'
 ];
 
+// Error Modal Component
+interface ErrorModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  error: string;
+  title?: string;
+}
+
+function ErrorModal({ isOpen, onClose, error, title = "Error" }: ErrorModalProps) {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-overlay backdrop-blur-sm flex items-center justify-center z-[100] p-4"
+          onClick={onClose}
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            className="bg-[var(--color-bg-surface)] rounded-sm p-4 sm:p-6 max-w-md w-full relative z-[101] max-h-[90vh] overflow-y-auto shadow-xl border border-gray-500/30 color-text-primary backdrop-blur-sm"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={onClose}
+              className="absolute top-2 sm:top-4 right-2 sm:right-4 color-shade-2 hover:color-text-primary"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            <div className="mb-4 sm:mb-6">
+              <h3 className="text-lg sm:text-xl font-display color-text-primary">{title}</h3>
+            </div>
+
+            <p className="color-shade-2 mb-6 font-mono text-sm">
+              {error}
+            </p>
+            
+            <button
+              onClick={onClose}
+              className="w-full bg-accent-primary text-black py-2 rounded-sm transition-colors hover:brightness-90 font-mono"
+            >
+              Got it
+            </button>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
 export function Accommodations() {
   const [accommodations, setAccommodations] = useState<Accommodation[]>([]);
   const [accommodationItems, setAccommodationItems] = useState<AccommodationItem[]>([]);
@@ -80,6 +135,7 @@ export function Accommodations() {
   // Accommodation items editing states
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editingItemZone, setEditingItemZone] = useState<string | null>('');
+  const [editingItemIdValue, setEditingItemIdValue] = useState<number | null>(null);
   const [itemEditLoading, setItemEditLoading] = useState<boolean>(false);
   const [itemEditError, setItemEditError] = useState<string | null>(null);
   
@@ -111,6 +167,17 @@ export function Accommodations() {
     accommodation: null
   });
   const [showItemFilters, setShowItemFilters] = useState<boolean>(false);
+  
+  // Error modal state
+  const [errorModal, setErrorModal] = useState<{
+    isOpen: boolean;
+    error: string;
+    title: string;
+  }>({
+    isOpen: false,
+    error: '',
+    title: 'Error'
+  });
 
   useEffect(() => {
     fetchAccommodations();
@@ -706,18 +773,24 @@ export function Accommodations() {
   const handleEditItemZone = (item: AccommodationItem) => {
     setEditingItemId(item.id);
     setEditingItemZone(item.zone);
+    setEditingItemIdValue(item.item_id);
     setItemEditError(null);
   };
 
   const handleCancelItemEdit = () => {
     setEditingItemId(null);
     setEditingItemZone('');
+    setEditingItemIdValue(null);
     setItemEditError(null);
   };
 
   const handleSaveItemZone = async () => {
-    if (!editingItemId || !editingItemZone) {
-      setItemEditError('Invalid edit state');
+    if (!editingItemId || !editingItemZone || editingItemIdValue === null) {
+      setErrorModal({
+        isOpen: true,
+        error: 'Invalid edit state - missing required fields',
+        title: 'Validation Error'
+      });
       return;
     }
 
@@ -727,20 +800,47 @@ export function Accommodations() {
     try {
       const { error } = await supabase
         .from('accommodation_items')
-        .update({ zone: editingItemZone as any })
+        .update({ 
+          zone: editingItemZone as any,
+          item_id: editingItemIdValue
+        })
         .eq('id', editingItemId);
 
       if (error) throw error;
 
-      console.log('✅ Item zone updated:', { id: editingItemId, zone: editingItemZone });
+      console.log('✅ Item updated:', { id: editingItemId, zone: editingItemZone, item_id: editingItemIdValue });
       
-      // Update local state
-      await fetchAccommodationItems();
+      // Update local state immediately for responsiveness
+      setAccommodationItems(prev => 
+        prev.map(item => 
+          item.id === editingItemId 
+            ? { ...item, zone: editingItemZone as any, item_id: editingItemIdValue }
+            : item
+        )
+      );
+      
       handleCancelItemEdit();
 
     } catch (err: any) {
-      console.error('Update item zone error:', err);
-      setItemEditError(err.message || 'Failed to update zone');
+      console.error('Update item error:', err);
+      
+      // Parse the error message to make it more user-friendly
+      let errorMessage = err.message || 'Failed to update item';
+      let errorTitle = 'Update Error';
+      
+      if (errorMessage.includes('unique constraint') || errorMessage.includes('duplicate key')) {
+        errorTitle = 'Duplicate ID Error';
+        errorMessage = `The ID ${editingItemIdValue} is already taken by another item with the same type and size. Please choose a different ID.`;
+      } else if (errorMessage.includes('positive_item_id')) {
+        errorTitle = 'Invalid ID Error';
+        errorMessage = 'The ID must be a positive number greater than 0.';
+      }
+      
+      setErrorModal({
+        isOpen: true,
+        error: errorMessage,
+        title: errorTitle
+      });
     } finally {
       setItemEditLoading(false);
     }
@@ -1154,7 +1254,7 @@ export function Accommodations() {
           
           return (
             <div key={accommodation.id} className={`bg-[var(--color-bg-surface)] rounded-sm shadow-sm border ${isEditingThis ? 'border-[var(--color-accent-primary)] ring-1 ring-[var(--color-accent-primary)]' : 'border-[var(--color-border)]'} p-4 flex flex-col`}>
-              {/* Image Section - Updated for Multiple Images */} 
+              {/* Image Section - Updated for Multiple Images */}
               <div className="relative mb-4 group">
                 {(() => {
                   const allImages = getAllImages(accommodation);
@@ -1261,7 +1361,7 @@ export function Accommodations() {
                 </div>
               </div>
 
-              {/* Header: Title and Edit/Save/Cancel/Delete Controls */} 
+              {/* Header: Title and Edit/Save/Cancel/Delete Controls */}
               <div className="flex justify-between items-start mb-3">
                 {isEditingThis && currentEditData ? (
                     <div className='flex-grow mr-2'>
@@ -1348,7 +1448,7 @@ export function Accommodations() {
                 </div>
               )}
 
-              {/* Body: Editable Fields */} 
+              {/* Body: Editable Fields */}
               <div className="space-y-2 text-sm text-[var(--color-text-secondary)] flex-grow mb-2"> 
                 {isEditingThis && currentEditData ? (
                   <>
@@ -1821,9 +1921,9 @@ export function Accommodations() {
                             onClick={() => handleEditItemZone(item)}
                             disabled={!!editingItemId || !!deleteItemConfirmId}
                             className="p-1 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] rounded-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            aria-label="Edit zone"
+                            aria-label="Edit item"
                           >
-                            <MapPin className="w-4 h-4" />
+                            <Pencil className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleDeleteItemClick(item.id)}
@@ -1899,7 +1999,26 @@ export function Accommodations() {
                     </div>
                     <div className="flex justify-between">
                       <span>ID:</span>
-                      <span className="font-mono">{item.item_id.toString().padStart(2, '0')}</span>
+                      {isEditingThis ? (
+                        <input
+                          type="number"
+                          value={editingItemIdValue || ''}
+                          onChange={(e) => {
+                            const value = parseInt(e.target.value);
+                            if (!isNaN(value) && value > 0) {
+                              setEditingItemIdValue(value);
+                            } else if (e.target.value === '') {
+                              setEditingItemIdValue(null);
+                            }
+                          }}
+                          disabled={itemEditLoading}
+                          className="text-xs bg-[var(--color-furface-modal,theme(colors.gray.800))] border border-[var(--color-border)] rounded-sm px-1 py-0.5 w-12 text-right font-mono"
+                          min="1"
+                          step="1"
+                        />
+                      ) : (
+                        <span className="font-mono">{item.item_id.toString().padStart(2, '0')}</span>
+                      )}
                     </div>
                   </div>
                   
@@ -1916,6 +2035,12 @@ export function Accommodations() {
           </div>
         </div>
       </div>
+      <ErrorModal 
+        isOpen={errorModal.isOpen} 
+        onClose={() => setErrorModal(prev => ({ ...prev, isOpen: false }))}
+        error={errorModal.error}
+        title={errorModal.title}
+      />
     </div>
   );
 } 
