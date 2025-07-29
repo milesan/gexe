@@ -166,6 +166,7 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
 
   // Navigation helper for header links (avoids prop drilling from AuthenticatedApp)
   const handleHeaderNavigation = (path: string) => {
+      console.log('[MainAppLayout] handleHeaderNavigation called with path:', path);
       navigate(path);
       setIsMobileMenuOpen(false); // Close mobile menu on navigation
   };

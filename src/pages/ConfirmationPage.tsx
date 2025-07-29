@@ -12,9 +12,18 @@ export function ConfirmationPage() {
   const booking = location.state?.booking;
   const [isPolicyOpen, setIsPolicyOpen] = React.useState(false);
 
+  console.log('[ConfirmationPage] Component rendered with:', {
+    pathname: location.pathname,
+    hasBooking: !!booking,
+    bookingData: booking,
+    locationState: location.state
+  });
+
   React.useEffect(() => {
+    console.log('[ConfirmationPage] useEffect - checking booking data:', { hasBooking: !!booking });
     // If user tries to access confirmation page directly without booking data
     if (!booking) {
+      console.log('[ConfirmationPage] No booking data found, redirecting to /my-bookings');
       navigate('/my-bookings');
     }
   }, [booking, navigate]);
@@ -22,14 +31,51 @@ export function ConfirmationPage() {
   // Handle back navigation
   React.useEffect(() => {
     const handleNavigation = (e: PopStateEvent) => {
-      navigate('/my-bookings');
+      console.log('[ConfirmationPage] popstate event fired:', {
+        hasBooking: !!booking,
+        currentPath: window.location.pathname,
+        event: e
+      });
+      // Only redirect if there's no booking data (user accessed page directly)
+      if (!booking) {
+        console.log('[ConfirmationPage] No booking data on popstate, redirecting to /my-bookings');
+        navigate('/my-bookings');
+      } else {
+        console.log('[ConfirmationPage] Booking data exists on popstate, allowing navigation');
+      }
     };
 
+    console.log('[ConfirmationPage] Adding popstate event listener');
     window.addEventListener('popstate', handleNavigation);
-    return () => window.removeEventListener('popstate', handleNavigation);
-  }, [navigate]);
+    return () => {
+      console.log('[ConfirmationPage] Removing popstate event listener');
+      window.removeEventListener('popstate', handleNavigation);
+    };
+  }, [booking, navigate]);
+
+  // Add a general navigation listener to see all navigation attempts
+  React.useEffect(() => {
+    const handleBeforeUnload = () => {
+      console.log('[ConfirmationPage] beforeunload event fired');
+    };
+
+    const handleNavigationStart = () => {
+      console.log('[ConfirmationPage] Navigation starting to:', window.location.pathname);
+    };
+
+    console.log('[ConfirmationPage] Adding navigation event listeners');
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('popstate', handleNavigationStart);
+    
+    return () => {
+      console.log('[ConfirmationPage] Removing navigation event listeners');
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handleNavigationStart);
+    };
+  }, []);
 
   if (!booking) {
+    console.log('[ConfirmationPage] No booking data, returning null');
     return null;
   }
 
