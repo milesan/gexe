@@ -4,12 +4,13 @@ import { formatInTimeZone } from 'date-fns-tz';
 import { WeekBox } from './WeekBox';
 import clsx from 'clsx';
 import { Week } from '../types/calendar';
-import { isWeekSelectable, formatWeekRange, formatDateForDisplay, normalizeToUTCDate, generateWeekId, canDeselectArrivalWeek, getWeeksToDeselect, calculateTotalWeeksDecimal, areSameWeeks, isBlockedFranceEventWeek } from '../utils/dates';
+import { isWeekSelectable, formatWeekRange, formatDateForDisplay, normalizeToUTCDate, generateWeekId, canDeselectArrivalWeek, getWeeksToDeselect, calculateTotalWeeksDecimal, areSameWeeks, isBlockedFranceEventWeek, hasBlockedWeeksBetween } from '../utils/dates';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, X, ChevronDown, ChevronUp } from 'lucide-react';
 import * as Popover from '@radix-ui/react-popover';
 import { FlexibleCheckInModal } from './FlexibleCheckInModal';
+import { SecretEventModal } from './SecretEventModal';
 import { getSeasonalDiscount, getSeasonName } from '../utils/pricing';
 import { FitText } from './FitText';
 import { Fireflies } from './Fireflies';
@@ -141,7 +142,7 @@ const WeekComponent = React.memo(function WeekComponent({
           return null;
         })()
       )}
-      disabled={(!isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode) || isBlockedFranceEventWeek(week)) || disabled}
+             disabled={disabled}
     >
       {/* Conditionally render the content */}
       {isContentVisible && (
@@ -505,6 +506,8 @@ export function WeekSelector({
   
   const [selectedFlexDate, setSelectedFlexDate] = useState<Date | null>(null);
   const [flexModalWeek, setFlexModalWeek] = useState<Week | null>(null);
+  const [showSecretEventModal, setShowSecretEventModal] = useState(false);
+  const [isRangeSelectionModal, setIsRangeSelectionModal] = useState(false);
   
   // PERFORMANCE: Removed prop change monitoring for better performance
 
@@ -527,6 +530,23 @@ export function WeekSelector({
   const handleWeekClick = useCallback((week: Week) => {
     // PERFORMANCE: Removed verbose click logging
     
+    // Add debug logging for blocked week detection
+    console.log('[WeekSelector] Week clicked:', {
+      weekId: week.id,
+      startDate: formatDateForDisplay(week.startDate),
+      endDate: formatDateForDisplay(week.endDate),
+      isBlocked: isBlockedFranceEventWeek(week),
+      isSelectable: isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode, weeks),
+      clickedWeekDetails: {
+        startMonth: week.startDate.getMonth(),
+        startDay: week.startDate.getDate(),
+        startYear: week.startDate.getFullYear(),
+        endMonth: week.endDate.getMonth(),
+        endDay: week.endDate.getDate(),
+        endYear: week.endDate.getFullYear()
+      }
+    });
+
     // If the week is already selected, we're trying to deselect it
     if (isWeekSelected(week)) {
       // Get all weeks that should be deselected when clicking this week
@@ -568,13 +588,42 @@ export function WeekSelector({
       return;
     }
     
+    // Check if this week itself is blocked
+    if (isBlockedFranceEventWeek(week)) {
+      console.log('[WeekSelector] 🚨 BLOCKED WEEK DETECTED - Opening SecretEventModal');
+      console.log('[WeekSelector] Setting modal state:', { isRangeSelectionModal: false, showSecretEventModal: true });
+      setIsRangeSelectionModal(false); // Direct click
+      setShowSecretEventModal(true);
+      return;
+    }
+    
+    // Check if selecting this week would create a range that includes blocked weeks (only for "after" selections)
+    if (selectedWeeks.length > 0) {
+      const firstSelected = selectedWeeks[0];
+      
+      // Check if the new week would be after the first selected week (and after the blocked week)
+      if (week.startDate.getTime() > firstSelected.startDate.getTime()) {
+        // Check if there are blocked weeks between the first selected week and the new week
+        if (hasBlockedWeeksBetween(firstSelected, week, weeks)) {
+          console.log('[WeekSelector] 🚨 BLOCKED WEEKS BETWEEN DETECTED (after selection) - Opening SecretEventModal');
+          console.log('[WeekSelector] Setting modal state:', { isRangeSelectionModal: true, showSecretEventModal: true });
+          setIsRangeSelectionModal(true); // Range selection
+          setShowSecretEventModal(true);
+          return;
+        }
+      }
+    }
+    
+    // REMOVED: Range selection modal logic since UX doesn't allow changing check-in dates that way
+    
     // If we're selecting a new week (not deselecting)
-    if (!isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode, weeks) || isBlockedFranceEventWeek(week)) {
+    if (!isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode, weeks)) {
       console.log('[WeekSelector] Week not selectable:', {
         isAdmin,
         weekStatus: week.status,
         weekStartDate: formatDateForDisplay(week.startDate),
-        isBlockedFranceEvent: isBlockedFranceEventWeek(week)
+        isBlockedFranceEvent: isBlockedFranceEventWeek(week),
+        isSelectable: isWeekSelectable(week, isAdmin, selectedWeeks, undefined, testMode, weeks)
       });
       return;
     }
@@ -861,6 +910,12 @@ export function WeekSelector({
         isOpen={!!flexModalWeek}
         onClose={() => setFlexModalWeek(null)}
         onDateSelect={handleFlexDateSelect}
+      />
+      
+      <SecretEventModal
+        isOpen={showSecretEventModal}
+        onClose={() => setShowSecretEventModal(false)}
+        isRangeSelection={isRangeSelectionModal}
       />
     </>
   );
