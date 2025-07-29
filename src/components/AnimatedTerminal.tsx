@@ -344,7 +344,7 @@ export function AnimatedTerminal({ onComplete }: Props) {
                         {otpSent && (
                           <div>
                             <input
-                              type="text"
+                              type="number"
                               id="otp-input"
                               name="otp"
                               value={otp}

@@ -479,7 +479,7 @@ export function CabinSelector({
         <div className="max-w-2xl">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="rounded-xl border border-border bg-surface p-4 h-[300px] animate-pulse">
+              <div key={i} className="rounded-sm border border-border bg-surface p-4 h-[300px] animate-pulse">
                 <div className="h-32 bg-border/50 rounded mb-3"></div>
                 <div className="h-4 bg-border/50 rounded w-3/4 mb-2"></div>
                 <div className="h-3 bg-border/50 rounded w-1/2 mb-4"></div>
@@ -489,7 +489,7 @@ export function CabinSelector({
           </div>
         </div>
       ) : visibleAccommodations.length === 0 ? (
-        <div className="text-center py-12 bg-surface rounded-xl border border-border">
+        <div className="text-center py-12 bg-surface rounded-sm border border-border">
           <h3 className="text-lg font-medium text-primary mb-2 font-mono">No accommodations available</h3>
           <p className="text-secondary font-mono">Please adjust your dates or check back later.</p>
         </div>

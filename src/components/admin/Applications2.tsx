@@ -555,7 +555,7 @@ export function Applications2() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             onKeyPress={(e) => { if (e.key === 'Enter') handleSearch(); }}
-            className="px-2.5 py-1 border border-[var(--color-border)] rounded-md bg-[var(--color-bg-input)] text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono text-xs flex-grow min-w-0"
+            className="px-2.5 py-1 border border-[var(--color-border)] rounded-sm bg-[var(--color-bg-input)] text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono text-xs flex-grow min-w-0"
           />
           <button
             onClick={handleSearch}
@@ -619,8 +619,8 @@ export function Applications2() {
                       application.status === 'pending'
                         ? 'bg-yellow-100 text-yellow-800'
                         : application.status === 'approved'
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : 'bg-rose-100 text-rose-800'
+                        ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-700/50'
+                        : 'bg-red-900/30 text-red-400 border border-red-700/50'
                     }`}>
                     {application.status.toUpperCase()}
                   </span>
@@ -976,7 +976,7 @@ export function Applications2() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
-            className="bg-[var(--color-bg-surface)] p-6 md:p-8 rounded-xl shadow-2xl w-full max-w-md border border-[var(--color-border)]"
+            className="bg-[var(--color-bg-surface)] p-6 md:p-8 rounded-sm shadow-2xl w-full max-w-md border border-[var(--color-border)]"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-xl font-semibold text-[var(--color-text-primary)] mb-4 font-mono">Confirm User & Application Deletion</h2>
@@ -1039,7 +1039,7 @@ export function Applications2() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
-            className="bg-[var(--color-bg-surface)] p-6 md:p-8 rounded-xl shadow-2xl w-full max-w-md border border-[var(--color-border)]"
+            className="bg-[var(--color-bg-surface)] p-6 md:p-8 rounded-sm shadow-2xl w-full max-w-md border border-[var(--color-border)]"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-xl font-semibold text-[var(--color-text-primary)] mb-4 font-mono">

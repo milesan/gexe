@@ -162,7 +162,7 @@ export function AdminPage({ housekeepingOnly = false }: AdminPageProps) {
           </button>
         </div>
 
-        <div className="bg-[var(--color-bg-main)] rounded-xl border border-[var(--color-border)] shadow-sm">
+        <div className="bg-[var(--color-bg-main)]  shadow-sm">
           {currentView === 'applications' && <Applications2 />}
           {currentView === 'appview' && <AppView />}
           {currentView === 'bookings' && <BookingsList />}

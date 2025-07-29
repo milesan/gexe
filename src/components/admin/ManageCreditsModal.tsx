@@ -254,7 +254,7 @@ export function ManageCreditsModal({ application, onClose, onCreditsUpdated }: M
       onClick={onClose}
     >
       <div
-        className="bg-[var(--color-bg-surface)] p-6 md:p-8 rounded-xl shadow-2xl w-full max-w-2xl border border-[var(--color-border)] max-h-[90vh] overflow-y-auto"
+        className="bg-[var(--color-bg-surface)] p-6 md:p-8 rounded-sm shadow-2xl w-full max-w-2xl border border-[var(--color-border)] max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

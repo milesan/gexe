@@ -38,18 +38,17 @@ interface Booking {
   applied_discount_code: string | null;
   accommodations?: { title: string } | null;
   accommodation_price?: number | null;
-  accommodation_price_paid?: number | null; // NEW: Actual accommodation amount paid
+  accommodation_price_paid?: number | null;
   food_contribution?: number | null;
   seasonal_adjustment?: number | null;
-  seasonal_discount_percent?: number | null; // NEW: Seasonal discount percentage
+  seasonal_discount_percent?: number | null;
   duration_discount_percent?: number | null;
   discount_amount?: number | null;
   credits_used?: number | null;
   discount_code_percent?: number | null;
-  discount_code_applies_to?: string | null; // NEW: What the discount code applies to
-  accommodation_price_after_seasonal_duration?: number | null; // NEW: After seasonal/duration discounts
-  subtotal_after_discount_code?: number | null; // NEW: After discount code but before credits
-  // Add payments data
+  discount_code_applies_to?: string | null;
+  accommodation_price_after_seasonal_duration?: number | null;
+  subtotal_after_discount_code?: number | null;
   payments?: Payment[];
 }
 
@@ -80,13 +79,13 @@ export function BookingsList() {
   async function loadBookings() {
     setLoading(true);
     setError(null);
+    
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
-      console.log('Current user:', user.id);
 
-      console.log('Fetching bookings with accommodation titles and payments...');
-      const { data: bookingsData, error: bookingsError, count } = await supabase
+      // Single optimized query to get bookings with payments
+      const { data: bookingsData, error: bookingsError } = await supabase
         .from('bookings_with_emails')
         .select(`
           *,
@@ -103,126 +102,36 @@ export function BookingsList() {
           discount_code_applies_to,
           accommodation_price_after_seasonal_duration,
           subtotal_after_discount_code,
-          accommodations ( title )
-        `, { count: 'exact' })
+          accommodations ( title ),
+          payments (
+            id,
+            booking_id,
+            user_id,
+            start_date,
+            end_date,
+            amount_paid,
+            breakdown_json,
+            discount_code,
+            payment_type,
+            stripe_payment_id,
+            created_at,
+            updated_at,
+            status
+          )
+        `)
         .neq('status', 'cancelled')
         .order('created_at', { ascending: false });
 
       if (bookingsError) {
-        console.error('Error fetching bookings with details:', bookingsError);
         throw bookingsError;
       }
       
-      console.log(`Retrieved ${bookingsData?.length || 0} active bookings out of ${count || 0} total (excluding cancelled)`);
-      
-      // DEBUG: Let's also check what payments exist in the database
-      console.log('[BookingsList] Checking all payments in database...');
-      const { data: allPayments, error: allPaymentsError } = await supabase
-        .from('payments')
-        .select('id, booking_id, amount_paid, payment_type, created_at')
-        .order('created_at', { ascending: false })
-        .limit(10);
-      
-      if (allPaymentsError) {
-        console.error('[BookingsList] Error fetching all payments:', allPaymentsError);
-      } else {
-        console.log('[BookingsList] Recent payments in database:', allPayments);
-      }
-      
-      // DEBUG: Let's also check if there are any cancelled bookings that might have the payment
-      console.log('[BookingsList] Checking cancelled bookings...');
-      const { data: cancelledBookings, error: cancelledError } = await supabase
-        .from('bookings')
-        .select('id, status, created_at')
-        .eq('status', 'cancelled')
-        .order('created_at', { ascending: false })
-        .limit(5);
-      
-      if (cancelledError) {
-        console.error('[BookingsList] Error fetching cancelled bookings:', cancelledError);
-      } else {
-        console.log('[BookingsList] Recent cancelled bookings:', cancelledBookings);
-      }
-      
-      // Fetch payments separately for each booking
-      const bookingsWithPayments = await Promise.all(
-        (bookingsData || []).map(async (booking) => {
-          console.log(`[BookingsList] Fetching payments for booking ${booking.id}...`);
-          
-          const { data: paymentsData, error: paymentsError } = await supabase
-            .from('payments')
-            .select(`
-              id,
-              booking_id,
-              user_id,
-              start_date,
-              end_date,
-              amount_paid,
-              breakdown_json,
-              discount_code,
-              payment_type,
-              stripe_payment_id,
-              created_at,
-              updated_at,
-              status
-            `)
-            .eq('booking_id', booking.id);
+      const processedBookings = (bookingsData || []).map(booking => ({
+        ...booking,
+        accommodation_title: booking.accommodations?.title || 'N/A',
+        payments: booking.payments || []
+      }));
 
-          console.log(`[BookingsList] Payments query result for booking ${booking.id}:`, {
-            paymentsData,
-            paymentsError,
-            count: paymentsData?.length || 0
-          });
-
-          // DEBUG: If this booking has payments, let's see what they look like
-          if (paymentsData && paymentsData.length > 0) {
-            console.log(`[BookingsList] Payment details for booking ${booking.id}:`, paymentsData.map(p => ({
-              id: p.id,
-              booking_id: p.booking_id,
-              amount_paid: p.amount_paid,
-              payment_type: p.payment_type,
-              hasBreakdownJson: !!p.breakdown_json,
-              breakdownJsonType: typeof p.breakdown_json,
-              breakdownJsonPreview: p.breakdown_json ? JSON.stringify(p.breakdown_json).substring(0, 100) + '...' : null
-            })));
-          }
-
-          if (paymentsError) {
-            console.error(`Error fetching payments for booking ${booking.id}:`, paymentsError);
-            return { ...booking, payments: [] };
-          }
-
-          return {
-            ...booking,
-            payments: paymentsData || []
-          };
-        })
-      );
-      
-      // DEBUG: Log the first booking's payments to see the breakdown_json structure
-      if (bookingsWithPayments && bookingsWithPayments.length > 0) {
-        const firstBooking = bookingsWithPayments[0];
-        console.log('[BookingsList] First booking payments debug:', {
-          bookingId: firstBooking.id,
-          hasPayments: !!firstBooking.payments,
-          paymentsCount: firstBooking.payments?.length || 0,
-          payments: firstBooking.payments?.map((p: any) => ({
-            id: p.id,
-            hasBreakdownJson: !!p.breakdown_json,
-            breakdownJsonType: typeof p.breakdown_json,
-            breakdownJsonValue: p.breakdown_json
-          }))
-        });
-      }
-      
-      const processedBookings = bookingsWithPayments.map(booking => {
-        return {
-          ...booking,
-          accommodation_title: booking.accommodations?.title || 'N/A',
-        };
-      });
-
-      console.log('Setting bookings state with processed data:', processedBookings.length, 'bookings');
       setBookings(processedBookings);
     } catch (err) {
       console.error('Error loading bookings:', err);
@@ -233,7 +142,6 @@ export function BookingsList() {
   }
 
   const handleEditClick = (booking: Booking) => {
-    console.log('Editing booking:', booking);
     setEditingBooking(booking);
   };
 
@@ -242,7 +150,6 @@ export function BookingsList() {
       return;
     }
 
-    console.log('Attempting to cancel booking:', bookingId);
     setLoading(true);
 
     try {
@@ -252,11 +159,9 @@ export function BookingsList() {
         .eq('id', bookingId);
 
       if (deleteError) {
-        console.error('Error cancelling booking:', deleteError);
         throw deleteError;
       }
 
-      console.log('Booking cancelled successfully:', bookingId);
       await loadBookings();
       setError(null);
 
@@ -267,21 +172,15 @@ export function BookingsList() {
     }
   };
 
-  // Handler to close the edit modal
   const handleCloseEditModal = () => {
     setEditingBooking(null);
   };
   
-  // Handler to close the add modal
   const handleCloseAddModal = () => {
     setIsAddModalOpen(false);
   };
 
-  // Handler potentially needed if subscription doesn't auto-refresh reliably
   const handleSaveChanges = async () => {
-    console.log('Edit modal saved, reloading bookings list...');
-    // We might not need this explicit reload if the subscription works well,
-    // but it doesn't hurt to ensure freshness after an edit.
     await loadBookings(); 
   };
 
@@ -304,7 +203,7 @@ export function BookingsList() {
       <div className="mb-4 flex justify-end">
         <button
           onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors font-mono text-sm"
+          className="flex items-center gap-2 px-4 py-2 rounded-sm bg-emerald-600 text-white hover:bg-emerald-700 transition-colors font-mono text-sm"
         >
           <PlusCircle className="w-4 h-4" />
           Add Manual Entry
@@ -371,22 +270,8 @@ export function BookingsList() {
                         return finalAmount % 1 === 0 ? finalAmount.toFixed(0) : finalAmount.toFixed(2);
                       })()}
                     </span>
-                    {/* Show breakdown button - always available for admin */}
                     <button
-                      onClick={() => {
-                        console.log('[BookingsList] Breakdown button clicked for booking:', {
-                          id: booking.id,
-                          hasPayments: !!booking.payments,
-                          paymentsCount: booking.payments?.length || 0,
-                          payments: booking.payments?.map(p => ({
-                            id: p.id,
-                            booking_id: p.booking_id,
-                            amount_paid: p.amount_paid,
-                            hasBreakdownJson: !!p.breakdown_json
-                          }))
-                        });
-                        setBreakdownModalBooking(booking);
-                      }}
+                      onClick={() => setBreakdownModalBooking(booking)}
                       className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors p-1 rounded hover:bg-[var(--color-bg-surface)]"
                       title="View price breakdown"
                     >
@@ -441,7 +326,6 @@ export function BookingsList() {
         </table>
       </div>
       
-      {/* Render the edit modal conditionally */}
       {editingBooking && (
         <EditBookingModal 
           booking={editingBooking} 
@@ -450,15 +334,13 @@ export function BookingsList() {
         />
       )}
 
-      {/* Render the add modal conditionally */}
       {isAddModalOpen && (
         <AddBookingModal 
           onClose={handleCloseAddModal} 
-          onSave={handleSaveChanges} // Reuse save handler for refresh logic
+          onSave={handleSaveChanges}
         />
       )}
 
-      {/* Render the price breakdown modal */}
       {breakdownModalBooking && (
         <PriceBreakdownModal
           isOpen={!!breakdownModalBooking}

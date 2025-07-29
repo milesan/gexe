@@ -86,7 +86,7 @@ export function PaymentPage() {
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-2xl w-full bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden"
+        className="max-w-2xl w-full bg-white rounded-sm shadow-sm border border-stone-200 overflow-hidden"
       >
 
         <div className="p-8 space-y-6">

@@ -89,7 +89,7 @@ export function AppView() {
   const [error, setError] = useState<string | null>(null);
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
+  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
   const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
   const [currentPage, setCurrentPage] = useState(1);
   const [totalApplicationsCount, setTotalApplicationsCount] = useState(0);
@@ -128,13 +128,17 @@ export function AppView() {
 
       let query = supabase
         .from('application_details')
-        .select('id, user_id, data, status, created_at, user_email', { count: 'exact' })
-        .eq('status', activeTab)
-        .order('created_at', { ascending: false });
+        .select('id, user_id, data, status, created_at, user_email', { count: 'exact' });
+
+      if (activeTab !== 'all') {
+        query = query.eq('status', activeTab);
+      }
 
       if (activeSearchQuery) {
         query = query.ilike('user_email', `%${activeSearchQuery}%`);
       }
+
+      query = query.order('created_at', { ascending: false });
 
       query = query.range(from, to);
 
@@ -362,7 +366,7 @@ export function AppView() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -20 }}
-        className="bg-[var(--color-bg-surface)] p-6 rounded-xl shadow-sm border border-[var(--color-border)] hover:border-[var(--color-border-hover)] transition-colors space-y-6"
+        className="bg-[var(--color-bg-surface)] p-6 rounded-md shadow-sm border border-[var(--color-border)] hover:border-[var(--color-border-hover)] transition-colors space-y-6"
       >
         <div className="flex justify-between items-start gap-4">
           <div className="min-w-0 flex-1">
@@ -485,53 +489,54 @@ export function AppView() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="bg-[var(--color-bg-surface)] p-6 rounded-xl shadow-sm border border-[var(--color-border)] hover:border-[var(--color-border-hover)] transition-colors">
-        <div className="flex flex-col sm:flex-row flex-wrap gap-4 items-start sm:items-center">
-          <div className="flex flex-wrap gap-2 min-w-0 w-full">
-            {(['pending', 'approved', 'rejected'] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => {
-                  setActiveTab(tab);
-                  setCurrentPage(1);
-                }}
-                className={`px-4 py-2 rounded-sm transition-colors text-sm font-mono flex-shrink-0 ${
-                  activeTab === tab
-                    ? 'bg-emerald-900 text-white'
-                    : 'bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] border border-[var(--color-border)]'
-                }`}
-              >
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-              </button>
-            ))}
-          </div>
-          <div className="flex gap-2 items-center flex-grow sm:flex-grow-0 min-w-0 w-full sm:w-auto">
-            <input 
-              type="text"
-              placeholder="Search by email..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyPress={(e) => { if (e.key === 'Enter') handleSearch(); }}
-              className="px-3 py-1.5 border border-[var(--color-border)] rounded-sm bg-[var(--color-bg-input)] text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono text-sm flex-grow min-w-0"
-            />
+    <div className="p-4">
+      <h2 className="text-xl font-display mb-4 text-[var(--color-text-primary)]">Applications</h2>
+      
+      <div className="flex flex-col sm:flex-row flex-wrap gap-4 mb-6 items-start sm:items-center">
+        <div className="flex flex-wrap gap-2 min-w-0">
+          {(['all', 'pending', 'approved', 'rejected'] as const).map((tab) => (
             <button
-              onClick={handleSearch}
-              className="p-2 rounded-sm bg-[var(--color-button-secondary-bg)] text-[var(--color-text-primary)] hover:bg-[var(--color-button-secondary-bg-hover)] border border-[var(--color-border)] flex-shrink-0"
-              title="Search"
+              key={tab}
+              onClick={() => {
+                setActiveTab(tab);
+                setCurrentPage(1);
+              }}
+              className={`px-2.5 py-1 rounded-md transition-colors text-xs whitespace-nowrap font-mono ${
+                activeTab === tab
+                  ? 'bg-[var(--color-accent-primary)]/20 text-[var(--color-accent-primary)] border border-[var(--color-accent-primary)]/50'
+                  : 'bg-[var(--color-bg-surface)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-surface-hover)] border border-[var(--color-border)]'
+              }`}
             >
-              <Search className="w-4 h-4" />
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
-            {activeSearchQuery && (
-              <button
-                onClick={handleClearSearch}
-                className="p-2 rounded-sm bg-[var(--color-button-secondary-bg)] text-[var(--color-text-error)] hover:bg-[var(--color-error-bg-hover)] border border-[var(--color-border)] flex-shrink-0"
-                title="Clear Search"
-              >
-                <ClearSearchIcon className="w-4 h-4" />
-              </button>
-            )}
-          </div>
+          ))}
+        </div>
+
+        <div className="flex gap-1.5 items-center flex-grow sm:flex-grow-0 min-w-0 w-full sm:w-auto">
+          <input 
+            type="text"
+            placeholder="Search by email..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyPress={(e) => { if (e.key === 'Enter') handleSearch(); }}
+            className="px-2.5 py-1 border border-[var(--color-border)] rounded-md bg-[var(--color-bg-input)] text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono text-xs flex-grow min-w-0"
+          />
+          <button
+            onClick={handleSearch}
+            className="p-1.5 rounded-md bg-[var(--color-bg-surface)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-surface-hover)] border border-[var(--color-border)] flex-shrink-0"
+            title="Search"
+          >
+            <Search className="w-3 h-3" />
+          </button>
+          {activeSearchQuery && (
+            <button
+              onClick={handleClearSearch}
+              className="p-1.5 rounded-md bg-[var(--color-bg-surface)] text-[var(--color-text-error)] hover:bg-[var(--color-error-bg-hover)] border border-[var(--color-border)] flex-shrink-0"
+              title="Clear Search"
+            >
+              <ClearSearchIcon className="w-3 h-3" />
+            </button>
+          )}
         </div>
       </div>
 

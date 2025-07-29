@@ -150,7 +150,7 @@ export function AddBookingModal({ onClose, onSave }: AddBookingModalProps) {
       onClick={onClose} // Close on overlay click
     >
       <div 
-        className="bg-[var(--color-bg-main)] rounded-xl border border-[var(--color-border)] shadow-xl w-full max-w-2xl p-6 relative max-h-[90vh] overflow-y-auto"
+        className="bg-[var(--color-bg-main)] rounded-sm border border-[var(--color-border)] shadow-xl w-full max-w-2xl p-6 relative max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()} // Prevent closing when clicking inside modal
       >
         <button 

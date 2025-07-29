@@ -392,7 +392,7 @@ export function DiscountCodesManager() {
       {showDeleteConfirmModal && codeToDelete && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex justify-center items-center z-50 p-4" onClick={closeDeleteModal}>
             <div 
-                className="bg-[var(--color-bg-surface)] p-6 md:p-8 rounded-xl shadow-2xl w-full max-w-md border border-[var(--color-border)]"
+                className="bg-[var(--color-bg-surface)] p-6 md:p-8 rounded-sm shadow-2xl w-full max-w-md border border-[var(--color-border)]"
                 onClick={(e) => e.stopPropagation()} // Prevent closing modal when clicking inside
             >
                 <h2 className="text-xl font-semibold text-[var(--color-text-primary)] mb-3 font-display">Confirm Deletion</h2>

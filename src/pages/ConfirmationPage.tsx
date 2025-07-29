@@ -53,9 +53,9 @@ export function ConfirmationPage() {
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-            className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/20 rounded-full flex items-center justify-center mx-auto mb-6"
+            className="w-16 h-16 bg-emerald-900/20 rounded-full flex items-center justify-center mx-auto mb-6"
           >
-            <CheckCircle className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+            <CheckCircle className="w-8 h-8 text-emerald-400" />
           </motion.div>
           
           <h1 className="text-3xl font-display font-light text-text-primary mb-2">
@@ -72,8 +72,8 @@ export function ConfirmationPage() {
         <div className="p-8 space-y-6">
           {/* Show manual creation message if present */}
           {booking.isPendingManualCreation && booking.manualCreationMessage && (
-            <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-sm border border-amber-100 dark:border-amber-900/30 mb-6">
-              <p className="text-amber-800 dark:text-amber-300 font-mono text-sm">
+            <div className="bg-amber-900/20 p-4 rounded-sm border border-amber-900/30 mb-6">
+              <p className="text-amber-300 font-mono text-sm">
                 {booking.manualCreationMessage}
               </p>
             </div>
@@ -88,7 +88,7 @@ export function ConfirmationPage() {
               <p className="font-mono text-xl text-text-primary">
                 {formatInTimeZone(new Date(booking.checkIn), 'UTC', 'EEEE, MMMM d')}
               </p>
-              <p className="text-sm font-mono text-emerald-600 dark:text-emerald-400">
+              <p className="text-sm font-mono text-emerald-400">
                 Available from 2-5PM
               </p>
             </div>
@@ -101,7 +101,7 @@ export function ConfirmationPage() {
               <p className="font-mono text-xl text-text-primary">
                 {formatInTimeZone(new Date(booking.checkOut), 'UTC', 'EEEE, MMMM d')}
               </p>
-              <p className="text-sm font-mono text-emerald-600 dark:text-emerald-400">
+              <p className="text-sm font-mono text-emerald-400">
                 By 11AM
               </p>
             </div>
@@ -127,8 +127,8 @@ export function ConfirmationPage() {
             </div>
           </div>
 
-          <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-sm border border-amber-100 dark:border-amber-900/30 my-6">
-            <p className="text-amber-800 dark:text-amber-300 text-center flex items-center justify-center font-mono text-sm">
+          <div className="bg-amber-900/20 p-4 rounded-sm border border-amber-900/30 my-6">
+            <p className="text-amber-300 text-center flex items-center justify-center font-mono text-sm">
               To ensure a smooth arrival, please respect the check-in window (2PM-5PM) and check-out time (11AM)
             </p>
           </div>
@@ -140,30 +140,30 @@ export function ConfirmationPage() {
             </div>
           </div>
 
-          <div className="bg-emerald-50 dark:bg-emerald-900/20 p-6 rounded-sm space-y-4">
-            <h3 className="font-mono text-lg text-emerald-900 dark:text-emerald-200">
+          <div className="bg-emerald-900/20 p-6 rounded-sm space-y-4">
+            <h3 className="font-mono text-lg text-emerald-200">
               Tidbits
             </h3>
-            <ul className="space-y-2 text-sm text-emerald-800 dark:text-emerald-300 font-mono">
+            <ul className="space-y-2 text-sm text-emerald-300 font-mono">
               <li className="flex items-start gap-2">
-                <span className="text-emerald-700 dark:text-emerald-400 mt-1">❧</span>
+                <span className="text-emerald-400 mt-1">❧</span>
                 <span>This is a co-created experience </span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-emerald-700 dark:text-emerald-400 mt-1">❧</span>
+                <span className="text-emerald-400 mt-1">❧</span>
                 <span>The Garden is a strictly smoke & alcohol-free space</span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-emerald-700 dark:text-emerald-400 mt-1">❧</span>
+                <span className="text-emerald-400 mt-1">❧</span>
                 <span>Breakfast, lunch & dinner included Monday-Friday</span>
               </li>
             </ul>
           </div>
 
-          <div className="bg-slate-50 dark:bg-slate-900/20 border border-slate-200 dark:border-slate-800 rounded-sm overflow-hidden">
+          <div className="bg-slate-900/20 border border-slate-800 rounded-sm overflow-hidden">
             <button
               onClick={() => setIsPolicyOpen(!isPolicyOpen)}
-              className="w-full p-4 flex items-center justify-between text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900/30 transition-colors"
+              className="w-full p-4 flex items-center justify-between text-slate-300 hover:bg-slate-900/30 transition-colors"
             >
               <span className="font-mono text-lg">Cancellation Policy</span>
               {isPolicyOpen ? (
@@ -179,14 +179,14 @@ export function ConfirmationPage() {
                 animate={{ height: "auto", opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
                 transition={{ duration: 0.2 }}
-                className="border-t border-slate-200 dark:border-slate-800"
+                className="border-t border-slate-800"
               >
                 <div className="p-4 space-y-4">
-                  <p className="text-slate-600 dark:text-slate-400 text-sm font-mono leading-relaxed">
+                  <p className="text-slate-400 text-sm font-mono leading-relaxed">
                     As a non-profit association, your contributions are considered donations that directly support our mission and the operations of this space. While donations are typically non-refundable, we understand that plans can change and offer the following flexibility:
                   </p>
                   
-                  <ol className="space-y-3 text-sm text-slate-700 dark:text-slate-300 font-mono">
+                  <ol className="space-y-3 text-sm text-slate-300 font-mono">
                     <li className="flex items-start gap-2">
                       <span className="font-semibold min-w-[1.2rem]">1.</span>
                       <div>
@@ -236,7 +236,7 @@ export function ConfirmationPage() {
             href="https://gardening.notion.site/Welcome-to-The-Garden-2684f446b48e4b43b3f003d7fca33664?pvs=4"
             target="_blank"
             rel="noopener noreferrer"
-            className="block w-full bg-accent-primary hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white py-3 px-6 rounded-sm transition-colors text-center font-mono text-lg flex items-center justify-center gap-2"
+            className="block w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 px-6 rounded-sm transition-colors text-center font-mono text-lg flex items-center justify-center gap-2"
           >
             Welcome Guide
             <ExternalLink className="w-4 h-4" />

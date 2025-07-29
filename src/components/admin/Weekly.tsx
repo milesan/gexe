@@ -545,7 +545,7 @@ export function Weekly({ onClose }: Props) {
                 const dayBookings = getBookingsForDay(day);
                 
                 return (
-                  <div key={i} className="border border-[var(--color-border)] rounded p-4 min-h-[200px]">
+                  <div key={i} className="border border-[var(--color-border)] rounded-sm p-4 min-h-[200px]">
                     <h3 className="font-medium text-center mb-2 text-[var(--color-text-primary)]">
                       {format(day, 'EEE, MMM d')}
                     </h3>

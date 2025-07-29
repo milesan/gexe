@@ -687,7 +687,7 @@ export function Housekeeping({ onClose }: Props) {
                 );
 
                 return (
-                  <div key={i} className="border border-[var(--color-border)] bg-[var(--color-bg-surface)] rounded p-4 min-h-[200px]">
+                  <div key={i} className="border border-[var(--color-border)] bg-[var(--color-bg-surface)] rounded-sm p-4 min-h-[200px]">
                     <h3 className="font-medium text-center mb-2 text-[var(--color-text-primary)]">
                       {format(day, 'EEE, MMM d')}
                     </h3>

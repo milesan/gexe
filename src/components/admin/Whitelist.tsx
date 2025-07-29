@@ -314,7 +314,7 @@ export function Whitelist() {
         </div>
       )}
 
-      <div className="bg-[var(--color-bg-surface)] p-6 rounded-sm border border-[var(--color-border)] mb-6">
+      <div className="bg-[var(--color-bg-surface)] p-6 rounded-sm  mb-6">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-display font-medium text-[var(--color-text-primary)]">Add to Whitelist</h3>
           <button

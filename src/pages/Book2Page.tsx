@@ -1107,7 +1107,7 @@ export function Book2Page() {
               />
 
               {/* Moved Calendar card inside wrapper - CHANGING p-* to py-* now */}
-              <div className="rounded-xl shadow-sm py-3 xs:py-4 sm:py-6 mb-4 xs:mb-5 sm:mb-6">
+              <div className="rounded-sm shadow-sm py-3 xs:py-4 sm:py-6 mb-4 xs:mb-5 sm:mb-6">
                 {/* REMOVING px-* padding from this inner div */}
                 <SeasonLegend />
                 <div className="flex flex-col gap-3 mb-4">
@@ -1224,7 +1224,7 @@ export function Book2Page() {
               </div> {/* Closing Calendar card div */}
               
               {/* Outer Cabin Selector keeps py-* padding */}
-              <div className="rounded-xl shadow-sm py-3 xs:py-4 sm:py-6 mb-4 xs:mb-5 sm:mb-6 cabin-selector">
+              <div className="rounded-sm shadow-sm py-3 xs:py-4 sm:py-6 mb-4 xs:mb-5 sm:mb-6 cabin-selector">
                 {/* REMOVING px-* padding from this h2 */}
                 <h2 className="text-2xl sm:text-3xl  font-display font-light text-primary mb-3 xs:mb-4">Pick your nest</h2>
                 <CabinSelector 
@@ -1247,7 +1247,7 @@ export function Book2Page() {
             {/* Re-add sticky, add max-height and overflow for independent scrolling on large screens */}
             <div className="lg:sticky lg:top-8 lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto">
               {/* This inner div now just handles the styling */}
-              <div className="rounded-xl shadow-sm p-3 xs:p-4 sm:p-6 mb-4 xs:mb-5 sm:mb-6">
+              <div className="rounded-sm shadow-sm p-3 xs:p-4 sm:p-6 mb-4 xs:mb-5 sm:mb-6">
                 {selectedWeeks.length > 0 ? (
                   <BookingSummary 
                     selectedWeeks={selectedWeeks}
