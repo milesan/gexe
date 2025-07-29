@@ -32,7 +32,7 @@ export function ConfirmButtons({
           ${
             isBooking || !selectedAccommodation || selectedWeeks.length === 0
               ? 'bg-transparent text-shade-3 cursor-not-allowed'
-              : 'bg-emerald-900 text-white hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent-primary'
+              : 'text-stone-800 bg-accent-primary hover:bg-accent-secondary focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring,var(--color-accent-primary))] focus:ring-offset-2 focus:ring-offset-[var(--color-focus-offset,var(--color-bg-main))]'
           }`}
       >
         <span className="pixel-corners--content 2xl:text-2xl">
@@ -48,7 +48,7 @@ export function ConfirmButtons({
           className={`w-full mt-3 flex items-center justify-center pixel-corners--wrapper relative overflow-hidden px-6 py-2.5 sm:py-3 text-lg font-medium rounded-sm transition-colors duration-200
             ${isBooking || !selectedAccommodation || selectedWeeks.length === 0
                 ? 'bg-transparent text-shade-3 cursor-not-allowed'
-                : 'bg-secondary-muted text-white hover:bg-secondary-muted-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary-muted'
+                : 'bg-secondary-muted text-white hover:bg-secondary-muted-hover focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring,var(--color-accent-primary))] focus:ring-offset-2 focus:ring-offset-[var(--color-focus-offset,var(--color-bg-main))]'
             }`}
         >
           <span className="pixel-corners--content 2xl:text-2xl">
