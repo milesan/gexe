@@ -238,7 +238,7 @@ export function DiscountCodesManager() {
                  setNewAppliesTo('total');
             }
           }}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-sm transition-colors whitespace-nowrap font-mono text-sm bg-accent-primary text-stone-800 hover:bg-accent-secondary"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-sm transition-colors whitespace-nowrap font-mono text-sm bg-emerald-800 text-white hover:bg-emerald-700"
         >
           <Plus className="w-4 h-4" />
           {showAddForm ? 'Cancel' : 'Add Code'}

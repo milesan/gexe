@@ -665,7 +665,7 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
                          <button 
                             type="submit" 
                             disabled={loading}
-                            className="px-4 py-2 rounded-sm bg-emerald-600 text-white hover:bg-emerald-700 font-mono transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[80px]"
+                            className="px-4 py-2 rounded-sm bg-emerald-800 text-white hover:bg-emerald-700 font-mono transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[80px]"
                         >
                              {loading ? (
                                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>

@@ -8,6 +8,10 @@ interface AcceptInvitePageProps {
 
 export function AcceptInvitePage({ isWhitelist = false }: AcceptInvitePageProps) {
   console.log('AcceptInvitePage: Component mounted', { isWhitelist });
+  console.log('AcceptInvitePage: URL params', { 
+    searchParams: window.location.search,
+    pathname: window.location.pathname
+  });
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const token = searchParams.get('token');

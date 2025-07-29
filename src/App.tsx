@@ -20,8 +20,8 @@ import { WhitelistWelcomeModal } from './components/WhitelistWelcomeModal';
 import { BugReportFAB } from './components/BugReportFAB';
 import { useUserPermissions } from './hooks/useUserPermissions';
 
-// Configure logging early to silence logs in production
-configureLogging(false, true);  // Enable logging in production temporarily
+// Configure logging early to enable debugging logs
+configureLogging(false, true);  // Force enable logging for debugging
 
 // --- AppRouterLogic Component (Handles routing logic) ---
 interface AppRouterLogicProps {
@@ -43,20 +43,10 @@ function AppRouterLogic({
   // Use the proper hook instead of sync function
   const { isAdmin: isAdminCheck, isLoading: permissionsLoading } = useUserPermissions(session);
   
-  // Log received props for debugging routing issues
-  console.log('AppRouterLogic: Render START', { 
-    pathname: location.pathname, 
-    hasSession: !!session, 
-    isWhitelistedProp: isWhitelisted, //test
-    needsWelcomeCheckProp: needsWelcomeCheck, 
-    hasApplicationRecordProp: hasApplicationRecord, // Log the new prop
-    isAdminCheck,
-    permissionsLoading
-  });
+
 
   // --- Logged Out State ---
   if (!session) {
-    console.log('AppRouterLogic: Rendering PUBLIC routes BLOCK', { pathname: location.pathname });
     return (
       <Routes>
         {/* Routes accessible ONLY when logged OUT */}
@@ -72,7 +62,6 @@ function AppRouterLogic({
 
   // Show loading while permissions are being checked
   if (permissionsLoading) {
-    console.log('AppRouterLogic: Loading permissions...');
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-accent-primary"></div>
@@ -81,11 +70,9 @@ function AppRouterLogic({
   }
 
   // --- Logged In State ---
-  console.log('AppRouterLogic: Rendering AUTHENTICATED routes BLOCK');
   
   // Handle redirect away from /auth/callback AFTER session is confirmed
   if (location.pathname === '/auth/callback') {
-    console.log('AppRouterLogic: Authenticated user on /auth/callback, redirecting to / to trigger final routing.');
     return <Navigate to="/" replace />;
   }
 
@@ -98,21 +85,10 @@ function AppRouterLogic({
   const isApprovedCheck = metadata?.approved === true || metadata?.application_status === 'approved';
   const applicationStatusValue = metadata?.application_status || 'pending';
 
-  // Use props for whitelist/welcome status passed down from App.tsx
-  console.log(`AppRouterLogic: Evaluating Authenticated Routes for ${user?.email}`, { 
-      isAdmin: isAdminCheck, 
-      isApproved: isApprovedCheck, 
-      isWhitelisted: isWhitelisted, // FROM PROP
-      needsWelcomeCheck: needsWelcomeCheck, // FROM PROP
-      hasApplied: hasAppliedCheck, // From metadata (still used?)
-      applicationStatus: applicationStatusValue, // From metadata (still used?)
-      hasApplicationRecord: hasApplicationRecord, // FROM PROP
-      rawMetadata: metadata 
-  });
+
 
   // --- Admin Routes ---
   if (isAdminCheck) {
-    console.log('AppRouterLogic: Rendering Admin Routes with Layout');
     return (
       <Routes>
         <Route path="/accept" element={<AcceptInvitePage />} /> 
@@ -125,7 +101,6 @@ function AppRouterLogic({
 
   // --- Approved User Routes ---
   if (isApprovedCheck) {
-     console.log('AppRouterLogic: Rendering Approved User Routes with Layout');
      return (
         <Routes>
           <Route path="/accept" element={<AcceptInvitePage />} />
@@ -196,9 +171,16 @@ export default function App() {
 
   // --- Whitelist/Welcome Status Check Effect ---
   useEffect(() => {
+    console.log('App: Whitelist status check effect triggered', { 
+      sessionLoading, 
+      userEmail, 
+      userId,
+      hasUser: !!(userEmail && userId)
+    });
+
     // Only run if session is loaded and we have a user email AND id
     if (!sessionLoading && userEmail && userId) {
-      console.log(`App: Session loaded for ${userEmail}. Checking combined app entry status...`);
+      console.log('App: Starting whitelist status check for user', { userEmail, userId });
       // Start loading for the combined check
       setIsLoadingWhitelistStatus(true); 
       setIsLoadingApplicationStatus(true); // We can keep this or use a single new loading state
@@ -206,8 +188,7 @@ export default function App() {
 
       const checkCombinedStatus = async () => {
         try {
-          console.log(`App: checkCombinedStatus - Calling get_user_app_entry_status_v2 for userId: ${userId}, email: ${userEmail}`);
-          
+          console.log('App: Calling get_user_app_entry_status_v2 RPC', { userId, userEmail });
           const { data: statusData, error: rpcError } = await supabase.rpc('get_user_app_entry_status_v2', {
             p_user_id: userId,
             p_email: userEmail
@@ -221,7 +202,11 @@ export default function App() {
             setNeedsWelcomeCheckResult(false);
             setHasApplicationRecord(false);
           } else if (statusData) {
-            console.log('App: get_user_app_entry_status_v2 RPC result:', statusData);
+            console.log('App: RPC returned status data', { 
+              isWhitelisted: statusData.is_whitelisted,
+              needsWelcome: statusData.needs_welcome,
+              hasApplicationRecord: statusData.has_application_record
+            });
             setIsWhitelisted(statusData.is_whitelisted);
             setNeedsWelcomeCheckResult(statusData.needs_welcome); // Use the 'needs_welcome' field
             setHasApplicationRecord(statusData.has_application_record);
@@ -241,9 +226,9 @@ export default function App() {
           }
         } finally {
           if (mounted) {
+            console.log('App: Setting loading states to false');
             setIsLoadingWhitelistStatus(false); 
             setIsLoadingApplicationStatus(false);
-            console.log('App: Finished checking combined app entry status.');
           }
         }
       };
@@ -252,18 +237,17 @@ export default function App() {
 
       return () => { 
         mounted = false; 
-        console.log('App: Unmounting status check effect or user changed.')
       };
     // If session loaded but no user/id, reset all status and loading states
     } else if (!sessionLoading && (!userEmail || !userId)) {
-      console.log('App: Session loaded, but no user email/id found. Resetting status.');
+      console.log('App: No user data available, resetting status states');
       setIsWhitelisted(null);
       setNeedsWelcomeCheckResult(null);
       setHasApplicationRecord(null);
       setIsLoadingWhitelistStatus(false); 
       setIsLoadingApplicationStatus(false); 
     } else {
-       console.log('App: Waiting for session to load...');
+       console.log('App: Session still loading or no user data, resetting status states');
        // Reset status while session is loading
        setIsWhitelisted(null);
        setNeedsWelcomeCheckResult(null);
@@ -278,32 +262,32 @@ export default function App() {
   useEffect(() => {
     const handleResize = () => setScreenWidth(window.innerWidth);
     window.addEventListener('resize', handleResize);
-    console.log(`App: Initial screen width ${window.innerWidth}px. Resize listener added.`);
     return () => {
       window.removeEventListener('resize', handleResize);
-      console.log('App: Resize listener removed.');
     };
   }, []);
 
   // --- Combined Loading Logic ---
   // Wait for session AND the whitelist status check AND application status check (if a user exists)
   const isLoading = sessionLoading || (!!userEmail && (isLoadingWhitelistStatus || isLoadingApplicationStatus));
+  
+  console.log('App: Combined loading state', {
+    sessionLoading,
+    userEmail,
+    isLoadingWhitelistStatus,
+    isLoadingApplicationStatus,
+    isLoading
+  });
 
   if (isLoading) { 
-    console.log('App: Loading...', { sessionLoading, isLoadingWhitelistStatus, isLoadingApplicationStatus }); 
 
     // --- BEGIN ADDED FUNCTION ---
     const handleSignOut = async () => {
-      console.log('[App] Signing out user from loading screen...');
-
       try {
         // Attempt to sign out globally (invalidate server session)
-        console.log('[App] Attempting global sign out from loading screen...');
         const { error: globalError } = await supabase.auth.signOut({ scope: 'global' });
         if (globalError) {
           console.warn('[App] Global sign out from loading screen failed or session already invalid:', globalError.message);
-        } else {
-          console.log('[App] Global sign out from loading screen successful.');
         }
       } catch (err) {
         console.error('[App] Unexpected error during global sign out from loading screen:', err);
@@ -311,12 +295,9 @@ export default function App() {
 
       try {
         // Always attempt to sign out locally (clear client-side session)
-        console.log('[App] Performing local sign out from loading screen...');
         const { error: localError } = await supabase.auth.signOut({ scope: 'local' });
         if (localError) {
           console.error('[App] Local sign out from loading screen failed:', localError.message);
-        } else {
-          console.log('[App] Local sign out from loading screen successful.');
         }
       } catch (err) {
         console.error('[App] Unexpected error during local sign out from loading screen:', err);
@@ -390,6 +371,14 @@ function AppContent({
   setNeedsWelcomeCheckResult, // This setter is for the parent App.tsx state
 }: AppContentProps) {
   
+  console.log('AppContent: Component rendered with props', {
+    hasSession: !!session,
+    isLoading,
+    isWhitelisted,
+    needsWelcomeCheckResult,
+    hasApplicationRecord
+  });
+  
   const location = useLocation(); 
   const navigate = useNavigate();
   const user = session?.user; // Get user object for easier access to ID and metadata
@@ -403,6 +392,13 @@ function AppContent({
 
   // Effect to detect navigation from WhitelistSignupPage
   useEffect(() => {
+    console.log('AppContent: Navigation state effect triggered', { 
+      locationState: location.state,
+      pathname: location.pathname,
+      hasJustCompletedSignup: location.state?.justCompletedWhitelistSignup,
+      fromAcceptanceFlow: location.state?.fromAcceptanceFlow
+    });
+
     // Check for the specific flag we set in WhitelistSignupPage
     if (location.state?.justCompletedWhitelistSignup) {
       console.log('AppContent: Detected navigation from WhitelistSignupPage (justCompletedWhitelistSignup: true).');
@@ -411,67 +407,73 @@ function AppContent({
       const { justCompletedWhitelistSignup, ...restState } = location.state;
       navigate(location.pathname, { state: restState, replace: true });
     }
+
+    // Check for navigation from AcceptInvitePage (acceptance flow)
+    if (location.state?.fromAcceptanceFlow) {
+      console.log('AppContent: Detected navigation from AcceptInvitePage (fromAcceptanceFlow: true).');
+      setTriggerWelcomeModalFromNavFlag(true);
+      // Clear the flag from navigation state to prevent re-triggering
+      const { fromAcceptanceFlow, ...restState } = location.state;
+      navigate(location.pathname, { state: restState, replace: true });
+    }
   }, [location.state, navigate, location.pathname]);
 
   // --- Effect to decide when to show the Welcome Modal (and mark as seen) ---
   useEffect(() => {
+    console.log('AppContent: Welcome modal effect triggered', {
+      hasUser: !!user,
+      isLoading,
+      hasCompletedInitialLoad,
+      isWhitelisted,
+      needsWelcomeCheckResult,
+      hasApplicationRecord,
+      triggerWelcomeModalFromNavFlag,
+      isWelcomeModalActuallyVisible
+    });
+
     // Guard: Don't do anything if user is not available
     if (!user) {
+      console.log('AppContent: No user available, hiding modal if visible');
       if (isWelcomeModalActuallyVisible) setIsWelcomeModalActuallyVisible(false); // Hide if somehow visible
       return;
     }
 
     // Mark initial load as complete once we have user data
     if (!hasCompletedInitialLoad && !isLoading) {
+      console.log('AppContent: Marking initial load as complete');
       setHasCompletedInitialLoad(true);
     }
 
-    console.log('AppContent Welcome Modal Effect Check:', {
-      isLoading,
-      isWhitelisted,
-      hasApplicationRecord,
-      needsWelcomeCheckResult, // from get_user_app_entry_status_v2 (metadata)
-      triggerWelcomeModalFromNavFlag, // from navigation state
-      isWelcomeModalActuallyVisible,
-      hasCompletedInitialLoad,
-      userId: user.id
-    });
-
     let shouldShowModal = false;
     if (triggerWelcomeModalFromNavFlag) {
+      console.log('AppContent: Should show modal due to navigation flag');
       shouldShowModal = true;
-      console.log('AppContent: Modal decision: YES (triggered by navigation flag from signup page).');
     } else if (
       !isLoading &&
       hasCompletedInitialLoad && // Only show after initial load to prevent flash
-      isWhitelisted === true && // Use prop from RPC, not stale metadata
       needsWelcomeCheckResult === true && // Use prop from RPC
       hasApplicationRecord === true                 // CRUCIAL: They have completed the signup step
     ) {
+      console.log('AppContent: Should show modal due to status conditions');
       shouldShowModal = true;
-      console.log('AppContent: Modal decision: YES (DB conditions met: is_whitelisted, needs_welcome, AND has_application_record).');
     } else {
-      console.log('AppContent: Modal decision: NO.');
-      // Add some logging for why it might be no, if relevant conditions were met
-      if (!isLoading && isWhitelisted === true && needsWelcomeCheckResult === true && hasApplicationRecord === false) {
-        console.log('AppContent: Modal deferred because user still needs to complete signup (hasApplicationRecord is false).');
-      }
-      if (!hasCompletedInitialLoad && needsWelcomeCheckResult === true) {
-        console.log('AppContent: Modal deferred because initial load not complete (preventing flash).');
-      }
+      console.log('AppContent: Modal conditions not met', {
+        isLoading,
+        hasCompletedInitialLoad,
+        needsWelcomeCheckResult,
+        hasApplicationRecord
+      });
     }
 
     if (shouldShowModal && !isWelcomeModalActuallyVisible) {
-      console.log('AppContent: Showing Welcome Modal.');
+      console.log('AppContent: Showing welcome modal');
       setIsWelcomeModalActuallyVisible(true);
       // Mark as seen immediately when we decide to show it
-      console.log(`AppContent: Attempting to update user metadata (has_seen_welcome: true) for user ${user.id} (on show).`);
       supabase.auth.updateUser({ data: { has_seen_welcome: true } })
-        .then(({ data: updateData, error: updateError }) => {
+        .then(({ error: updateError }) => {
           if (updateError) {
             console.error('AppContent: Error updating user metadata (has_seen_welcome):', updateError);
           } else {
-            console.log('AppContent: Successfully updated user metadata (has_seen_welcome: true).');
             // DO NOT update state here, as it causes the modal to flash and hide.
             // The modal should only close on user action.
             // setNeedsWelcomeCheckResult(false); 
@@ -481,13 +483,12 @@ function AppContent({
           }
         });
     } else if (!shouldShowModal && isWelcomeModalActuallyVisible) {
-      console.log('AppContent: Hiding Welcome Modal.');
+      console.log('AppContent: Hiding welcome modal');
       setIsWelcomeModalActuallyVisible(false);
     }
   }, [
     user, // Add user as a dependency
     isLoading, 
-    isWhitelisted, 
     hasApplicationRecord, 
     needsWelcomeCheckResult, 
     triggerWelcomeModalFromNavFlag, 
@@ -498,7 +499,6 @@ function AppContent({
 
   // --- Welcome Modal Close Handler ---
   const handleWelcomeModalClose = useCallback(async () => {
-    console.log('AppContent: Closing Welcome Modal. Immediately updating state.');
     // Update UI state synchronously to hide modal and prevent re-appearance.
     setIsWelcomeModalActuallyVisible(false);
     setNeedsWelcomeCheckResult(false); 
@@ -508,13 +508,11 @@ function AppContent({
     // This is a fallback call to ensure the metadata is set if the user closes the modal
     // very quickly before the first async update completes. We don't need to await it.
     if (user && user.user_metadata?.has_seen_welcome !== true) {
-      console.log(`AppContent: Calling supabase.auth.updateUser as a fallback on close for user ${user.id}.`);
       supabase.auth.updateUser({ data: { has_seen_welcome: true } })
         .then(({ error }) => {
           if (error) {
             console.error('Error updating has_seen_welcome (on close fallback):', error);
           } else {
-            console.log('AppContent: Successfully updated has_seen_welcome (on close fallback).');
             // No need to set state again here, just update local user object if needed.
             if (user.user_metadata) user.user_metadata.has_seen_welcome = true;
           }
@@ -528,11 +526,8 @@ function AppContent({
   // --- Rendering Logic --- 
   // isLoading check for initial load. If nav flag is set, modal logic will handle visibility.
   if (isLoading && !triggerWelcomeModalFromNavFlag) { 
-    console.log('AppContent: Still in loading state passed from App.tsx.'); 
     return <div className="text-stone-600 font-mono">Loading...</div>;
   }
-
-  console.log('AppContent: Rendering. isWelcomeModalActuallyVisible:', isWelcomeModalActuallyVisible);
   
   return (
     <>

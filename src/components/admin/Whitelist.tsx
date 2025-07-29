@@ -26,6 +26,9 @@ export function Whitelist() {
   const [totalEntriesCount, setTotalEntriesCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeSearchQuery, setActiveSearchQuery] = useState('');
+  // Add new state for deletion confirmation modal
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [entryToDelete, setEntryToDelete] = useState<WhitelistEntry | null>(null);
 
   const ITEMS_PER_PAGE = 15;
 
@@ -182,6 +185,36 @@ export function Whitelist() {
 
       console.log('Successfully removed from whitelist');
       await loadWhitelist();
+    } catch (err) {
+      console.error('Error removing from whitelist:', err);
+      setError(err instanceof Error ? err.message : 'Failed to remove from whitelist');
+    }
+  };
+
+  const openDeleteConfirmModal = (entry: WhitelistEntry) => {
+    setEntryToDelete(entry);
+    setShowDeleteConfirmModal(true);
+  };
+
+  const closeDeleteConfirmModal = () => {
+    setEntryToDelete(null);
+    setShowDeleteConfirmModal(false);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!entryToDelete) return;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('delete-whitelist-entry', {
+        body: { id: entryToDelete.id }
+      });
+
+      if (error) throw error;
+      if (!data?.success) throw new Error('Failed to delete whitelist entry');
+
+      console.log('Successfully removed from whitelist');
+      await loadWhitelist();
+      closeDeleteConfirmModal();
     } catch (err) {
       console.error('Error removing from whitelist:', err);
       setError(err instanceof Error ? err.message : 'Failed to remove from whitelist');
@@ -421,7 +454,7 @@ export function Whitelist() {
                </div>
              </div>
              <button
-               onClick={() => removeFromWhitelist(entry.id)}
+               onClick={() => openDeleteConfirmModal(entry)}
                className="p-2 text-[var(--color-text-error)] hover:bg-[var(--color-bg-error-hover)] rounded-sm transition-colors flex-shrink-0"
              >
                <Trash2 className="w-4 h-4" />
@@ -560,6 +593,52 @@ export function Whitelist() {
            )}
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {showDeleteConfirmModal && entryToDelete && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-overlay backdrop-blur-sm flex items-center justify-center z-[100] p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+              className="bg-[var(--color-bg-surface)] rounded-sm max-w-md w-full p-6 relative z-[101]"
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-display text-lg font-medium text-[var(--color-text-primary)]">Confirm Deletion</h3>
+                <button
+                  onClick={closeDeleteConfirmModal}
+                  className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              <p className="text-[var(--color-text-secondary)] mb-4">
+                Are you sure you want to remove "{entryToDelete.email}" from the whitelist?
+              </p>
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={closeDeleteConfirmModal}
+                  className="px-4 py-2 rounded-sm bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] transition-colors font-mono"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmDelete}
+                  className="px-4 py-2 rounded-sm bg-red-600 text-white hover:bg-red-700 transition-colors font-mono"
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

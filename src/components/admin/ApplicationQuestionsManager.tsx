@@ -430,7 +430,7 @@ export function ApplicationQuestionsManager() {
                     <h2 className="text-xl font-display font-light text-[var(--color-text-primary)]">Manage Application Questions</h2>
                     <button
                         onClick={() => handleAddNew()}
-                        className="flex items-center gap-2 px-4 py-2 rounded-sm bg-emerald-600 text-white hover:bg-emerald-700 transition-colors font-mono text-sm"
+                        className="flex items-center gap-2 px-4 py-2 rounded-sm bg-emerald-800 text-white hover:bg-emerald-700 transition-colors font-mono text-sm"
                     >
                         <Plus className="w-4 h-4" />
                         Add New Question (Overall)

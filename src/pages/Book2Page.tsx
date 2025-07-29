@@ -72,28 +72,14 @@ const SeasonLegend = () => {
 export function Book2Page() {
   // console.log(`📊 [BOOK2] Render`); // Debug logging disabled
   
-  // Add render tracking
-  const renderCount = React.useRef(0);
-  renderCount.current += 1;
-  console.log(`[Book2Page] RENDER #${renderCount.current}`);
-  
   // Get current date and set the initial month
   const today = new Date();
   const initialMonth = startOfDay(startOfMonth(today));
-  
-  console.log('[Book2Page] Initializing with current month:', {
-    today: formatDateForDisplay(today),
-    initialMonth: formatDateForDisplay(initialMonth)
-  });
 
   const { accommodations, loading: accommodationsLoading } = useWeeklyAccommodations();
   // console.log('[FLICKER_DEBUG] useWeeklyAccommodations result:', { accommodationsCount: accommodations?.length, loading: accommodationsLoading });
   
-  console.log('[Book2Page] Accommodations state:', {
-    count: accommodations?.length,
-    loading: accommodationsLoading,
-    ids: accommodations?.map(a => a.id)
-  });
+
 
   const [selectedWeeks, setSelectedWeeks] = useState<Week[]>([]);
   const [selectedAccommodation, setSelectedAccommodation] = useState<string | null>(null);
@@ -104,44 +90,17 @@ export function Book2Page() {
   const [lastRefresh, setLastRefresh] = useState(0);
   const [showDiscountModal, setShowDiscountModal] = useState(false);
 
-  console.log('[Book2Page] Main state values:', {
-    selectedWeeksCount: selectedWeeks.length,
-    selectedAccommodation,
-    currentMonth: formatDateForDisplay(currentMonth),
-    isAdminMode,
-    lastRefresh
-  });
+
 
   // State for firefly effect
   const [showAccommodationFireflies, setShowAccommodationFireflies] = useState(false);
   const [testMode, setTestMode] = useState(false);
 
-  // Log test mode changes for debugging
-  useEffect(() => {
-    console.log('[Book2Page] Test mode changed:', testMode ? 'ENABLED' : 'DISABLED');
-  }, [testMode]);
 
-  // Log selectedWeeks changes
-  useEffect(() => {
-    console.log('[Book2Page] selectedWeeks changed:', {
-      count: selectedWeeks.length,
-      weeks: selectedWeeks.map(w => ({
-        id: w.id,
-        start: formatDateForDisplay(w.startDate),
-        end: formatDateForDisplay(w.endDate)
-      }))
-    });
-  }, [selectedWeeks]);
-
-  // Log selectedAccommodation changes
-  useEffect(() => {
-    console.log('[Book2Page] selectedAccommodation changed:', selectedAccommodation);
-  }, [selectedAccommodation]);
 
 
   // Calculate combined discount
   const calculateCombinedDiscount = useCallback((weeks: Week[]): number => {
-    console.log('[Book2Page] Calculating combined discount...');
     // Find the accommodation object first
     const accommodation = selectedAccommodation && accommodations
         ? accommodations.find(a => a.id === selectedAccommodation)
@@ -150,7 +109,6 @@ export function Book2Page() {
     const accommodationPrice = accommodation?.base_price ?? 0;
 
     if (!accommodation || weeks.length === 0) {
-      console.log('[Book2Page] No accommodation or weeks selected, combined discount is 0.');
       return 0;
     }
 
@@ -213,13 +171,7 @@ export function Book2Page() {
   // Calculate end date based on the normalized start date
   const calendarEndDate = addMonths(calendarStartDate, isMobile ? 3 : 4);
 
-  console.log('[Book2Page_TRACE] Values PASSED to useCalendar hook:', {
-    // --- ADDED: Log the raw Date object before formatting --- 
-    calendarStartDate_RAW_OBJECT: calendarStartDate,
-    // --- END ADDED --- 
-    startDate: formatDateForDisplay(calendarStartDate),
-    endDate: formatDateForDisplay(calendarEndDate),
-  });
+
   // --- END: Normalize date ---
 
   // Use our calendar hook WITH NORMALIZED START DATE
@@ -258,11 +210,7 @@ export function Book2Page() {
     }
   }, [lastRefresh]); // Removed setCalendarRefresh from dependencies
 
-  console.log('[Book2Page] Calendar state:', {
-    weeksCount: weeks?.length,
-    customizationsCount: customizations?.length,
-    isLoading: calendarLoading
-  });
+
 
   // Helper functions
   const isFirstOrLastSelectedHelper = useCallback((week: Week, currentSelection: Week[]) => {
@@ -283,31 +231,13 @@ export function Book2Page() {
 
   // Add a wrapped setCurrentMonth function with logging
   const handleMonthChange = useCallback((newMonth: Date) => {
-    // --- ADDED: Log the raw input date --- 
-    console.log('[handleMonthChange_TRACE] Received raw newMonth:', newMonth ? formatDateForDisplay(newMonth) : 'undefined', newMonth);
     // Ensure we always set the state to the beginning of the month
     const startOfNewMonth = startOfMonth(newMonth);
-    // --- MODIFIED: Added identifier --- 
-    console.log('[handleMonthChange_TRACE] Changing month (Normalized):', {
-      from: currentMonth ? formatDateForDisplay(currentMonth) : 'undefined',
-      to: formatDateForDisplay(startOfNewMonth), // Log the normalized date
-      selectedWeeksCount: selectedWeeks.length,
-      calculatedWeeksDecimal: calculateTotalWeeksDecimal(selectedWeeks)
-    });
     setCurrentMonth(startOfNewMonth); // Set state to the start of the month
   }, [currentMonth, selectedWeeks]);
 
   // Main handleWeekSelect function simplified
   const handleWeekSelect = useCallback((week: Week) => {
-    console.log('[Book2Page] Handling week selection:', {
-      weekId: week.id,
-      weekStart: formatDateForDisplay(week.startDate),
-      weekEnd: formatDateForDisplay(week.endDate),
-      isCustom: week.isCustom,
-      selectedWeeksCount: selectedWeeks?.length || 0,
-      hasFlexDate: !!week.selectedFlexDate,
-      flexDate: week.selectedFlexDate ? formatDateForDisplay(week.selectedFlexDate) : null
-    });
 
     if (isAdminMode) {
       setSelectedWeekForCustomization(week);
@@ -1020,8 +950,8 @@ export function Book2Page() {
                       className={clsx(
                         "flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-sm text-sm font-medium font-mono transition-all duration-200 border",
                         testMode 
-                          ? "bg-orange-500 text-white hover:bg-orange-600 border-orange-600" 
-                          : "bg-[var(--color-button-secondary-bg)] text-primary hover:bg-[var(--color-button-secondary-bg-hover)] border-border"
+                          ? "bg-orange-600/80 text-white hover:bg-orange-500/90 border-orange-500 shadow-lg" 
+                          : "bg-orange-900/30 text-white hover:bg-orange-700/40 border-orange-700/50"
                       )}
                       title={testMode ? "Disable test mode (allows selecting past weeks & unavailable accommodations)" : "Enable test mode (allows selecting past weeks & unavailable accommodations)"}
                     >
@@ -1048,7 +978,7 @@ export function Book2Page() {
                       <>
                         <button
                           onClick={() => setIsAdminMode(false)}
-                          className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-sm text-sm font-medium font-mono transition-colors duration-200 bg-[var(--color-button-secondary-bg)] text-primary hover:bg-[var(--color-button-secondary-bg-hover)] border border-border"
+                          className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-sm text-sm font-medium font-mono transition-colors duration-200 bg-emerald-600/80 text-white hover:bg-emerald-500/90 border-emerald-500 shadow-lg"
                         >
                           <svg 
                             className="h-4 w-4 xs:h-5 xs:w-5" 
@@ -1077,7 +1007,7 @@ export function Book2Page() {
                     ) : (
                       <button
                         onClick={() => setIsAdminMode(true)}
-                        className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-sm text-sm bg-accent-primary text-stone-800 hover:bg-accent-secondary transition-all duration-200 font-medium font-mono"
+                        className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1.5 xs:py-2 rounded-sm text-sm bg-emerald-900/30 text-white hover:bg-emerald-700/40 border border-emerald-700/50 transition-all duration-200 font-medium font-mono"
                       >
                         <svg 
                           className="h-4 w-4 xs:h-5 xs:w-5" 

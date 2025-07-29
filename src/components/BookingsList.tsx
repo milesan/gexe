@@ -6,6 +6,7 @@ import { Edit, Trash2, PlusCircle, Receipt } from 'lucide-react';
 import { EditBookingModal } from './EditBookingModal';
 import { AddBookingModal } from './AddBookingModal';
 import { PriceBreakdownModal } from './PriceBreakdownModal';
+import { motion } from 'framer-motion';
 
 interface Payment {
   id: string;
@@ -59,6 +60,9 @@ export function BookingsList() {
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [breakdownModalBooking, setBreakdownModalBooking] = useState<Booking | null>(null);
+  // Add new state for cancellation confirmation modal
+  const [showCancelConfirmModal, setShowCancelConfirmModal] = useState(false);
+  const [bookingToCancel, setBookingToCancel] = useState<Booking | null>(null);
 
   React.useEffect(() => {
     loadBookings();
@@ -145,10 +149,18 @@ export function BookingsList() {
     setEditingBooking(booking);
   };
 
-  const handleDeleteClick = async (bookingId: string) => {
-    if (!window.confirm('Are you sure you want to cancel this booking? This cannot be undone.')) {
-      return;
-    }
+  const openCancelConfirmModal = (booking: Booking) => {
+    setBookingToCancel(booking);
+    setShowCancelConfirmModal(true);
+  };
+
+  const closeCancelConfirmModal = () => {
+    setBookingToCancel(null);
+    setShowCancelConfirmModal(false);
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!bookingToCancel) return;
 
     setLoading(true);
 
@@ -156,7 +168,7 @@ export function BookingsList() {
       const { error: deleteError } = await supabase
         .from('bookings')
         .update({ status: 'cancelled' })
-        .eq('id', bookingId);
+        .eq('id', bookingToCancel.id);
 
       if (deleteError) {
         throw deleteError;
@@ -164,11 +176,19 @@ export function BookingsList() {
 
       await loadBookings();
       setError(null);
+      closeCancelConfirmModal();
 
     } catch (err) {
       console.error('Failed to cancel booking:', err);
       setError(err instanceof Error ? `Failed to cancel booking: ${err.message}` : 'An unknown error occurred during cancellation.');
       setLoading(false);
+    }
+  };
+
+  const handleDeleteClick = async (bookingId: string) => {
+    const booking = bookings.find(b => b.id === bookingId);
+    if (booking) {
+      openCancelConfirmModal(booking);
     }
   };
 
@@ -203,7 +223,7 @@ export function BookingsList() {
       <div className="mb-4 flex justify-end">
         <button
           onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-sm bg-emerald-600 text-white hover:bg-emerald-700 transition-colors font-mono text-sm"
+          className="flex items-center gap-2 px-4 py-2 rounded-sm bg-emerald-800 text-white hover:bg-emerald-700 transition-colors font-mono text-sm"
         >
           <PlusCircle className="w-4 h-4" />
           Add Manual Entry
@@ -347,6 +367,69 @@ export function BookingsList() {
           onClose={() => setBreakdownModalBooking(null)}
           booking={breakdownModalBooking}
         />
+      )}
+
+      {/* Cancellation Confirmation Modal */}
+      {showCancelConfirmModal && bookingToCancel && (
+        <div 
+          className="fixed inset-0 bg-overlay backdrop-blur-sm flex justify-center items-center z-[100] p-4"
+          onClick={closeCancelConfirmModal}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="bg-[var(--color-bg-surface)] p-6 md:p-8 rounded-sm shadow-2xl w-full max-w-md border border-[var(--color-border)] relative z-[101]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-xl font-semibold text-[var(--color-text-primary)] mb-4 font-mono">Confirm Booking Cancellation</h2>
+            <p className="text-[var(--color-text-secondary)] mb-1 font-mono">
+              Are you sure you want to cancel the booking for{' '}
+              <strong className="text-[var(--color-text-primary)]">
+                {bookingToCancel.guest_email || bookingToCancel.user_email || 'Unknown Guest'}
+              </strong>?
+            </p>
+            <div className="mb-4">
+              <p className="text-sm text-[var(--color-text-secondary)] font-mono mb-2">
+                <strong className="text-[var(--color-text-primary)]">Accommodation:</strong> {bookingToCancel.accommodation_title}
+              </p>
+              <p className="text-sm text-[var(--color-text-secondary)] font-mono mb-2">
+                <strong className="text-[var(--color-text-primary)]">Dates:</strong> {format(parseISO(bookingToCancel.check_in), 'PP')} - {format(parseISO(bookingToCancel.check_out), 'PP')}
+              </p>
+              <p className="text-sm text-[var(--color-text-secondary)] font-mono">
+                <strong className="text-[var(--color-text-primary)]">Total Price:</strong> €{bookingToCancel.total_price}
+                {bookingToCancel.credits_used && bookingToCancel.credits_used > 0 && (
+                  <span className="text-emerald-400"> (€{bookingToCancel.credits_used} in credits)</span>
+                )}
+              </p>
+            </div>
+            <p className="text-[var(--color-text-secondary)] mb-4 font-mono">
+              <strong className="text-[var(--color-text-primary)]">Note:</strong> This will cancel the booking and refund any credits that were used. 
+              To permanently delete the booking record, you'll need to do it via Supabase.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={closeCancelConfirmModal}
+                className="px-4 py-2 rounded-sm bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] transition-colors font-mono"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmCancel}
+                disabled={loading}
+                className={`px-4 py-2 rounded-sm bg-red-600 text-white hover:bg-red-700 transition-colors font-mono flex items-center justify-center ${
+                  loading ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
+                {loading ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                ) : (
+                  'Cancel Booking'
+                )}
+              </button>
+            </div>
+          </motion.div>
+        </div>
       )}
     </div>
   );

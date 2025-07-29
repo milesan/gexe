@@ -6,8 +6,6 @@ import { Week } from '../types/calendar';
 // Helper function to centralize season logic based solely on date
 function _getSeasonInfoByDate(date: Date): { name: string, baseDiscount: number } {
   const month = date.getUTCMonth();
-  console.log('[pricing] date get season info:', date.toISOString());
-  console.log('[pricing] month:', month);
   // Low Season (November-May)
   if (month <= 4 || month >= 10) return { name: 'Low Season', baseDiscount: 0.40 };
   // Medium Season (June, October)
@@ -32,10 +30,8 @@ export function getSeasonName(date: Date): string {
 }
 
 export function getDurationDiscount(numberOfWeeks: number): number {
-  console.log('[getDurationDiscount] Received weeks (decimal):', numberOfWeeks);
   // Round down to nearest whole week to determine discount tier
   const completeWeeks = Math.floor(numberOfWeeks);
-  console.log('[getDurationDiscount] Calculated complete weeks for discount logic:', completeWeeks);
 
   if (completeWeeks < 3) return 0;
 
@@ -58,8 +54,6 @@ export function getSeasonBreakdown(checkIn: Date, checkOut: Date): { hasMultiple
   // Normalize dates *immediately*
   const normCheckIn = normalizeToUTCDate(checkIn);
   const normCheckOut = normalizeToUTCDate(checkOut);
-  console.log('[pricing] normCheckIn:', normCheckIn.toISOString());
-  console.log('[pricing] normCheckOut:', normCheckOut.toISOString());
   // Initialize with all possible seasons, using base discounts for mapping
   // The 'discount' here represents the base seasonal discount, not the final applied discount
   const seasonMap: Record<string, { name: string, discount: number, nights: number }> = {
@@ -77,9 +71,7 @@ export function getSeasonBreakdown(checkIn: Date, checkOut: Date): { hasMultiple
   }
 
   const totalNights = differenceInDays(normCheckOut, normCheckIn);
-  console.log('[pricing] totalNights:', totalNights);
   if (totalNights === 0) {
-     console.log('[pricing] Zero nights duration in getSeasonBreakdown.');
     return {
       hasMultipleSeasons: false,
       seasons: Object.values(seasonMap) // Return initialized map structure
@@ -89,13 +81,11 @@ export function getSeasonBreakdown(checkIn: Date, checkOut: Date): { hasMultiple
   // Get all nights in the selected period (Manual UTC implementation)
   const allNights: Date[] = [];
   let currentDay = new Date(normCheckIn); // Start with a copy of the normalized check-in date
-  console.log('[pricing] currentDay:', currentDay.toISOString());
   // Loop while the current day is strictly before the normalized check-out date
   while (currentDay < normCheckOut) {
     allNights.push(new Date(currentDay)); // Add a copy of the current day (represents the night starting on this day)
     // Increment the day using UTC methods to avoid timezone issues
     currentDay.setUTCDate(currentDay.getUTCDate() + 1);
-    console.log('[pricing] currentDay after increment:', currentDay.toISOString());
   }
   // 'allNights' now contains Date objects for the start of each night in the period
 

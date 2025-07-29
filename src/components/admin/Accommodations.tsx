@@ -1442,9 +1442,9 @@ export function Accommodations() {
 
               {/* Delete Confirmation Message */}
               {isDeleteConfirming && (
-                <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-md">
-                  <p className="text-sm text-red-700 font-medium">Are you sure you want to delete this accommodation?</p>
-                  <p className="text-xs text-red-600 mt-1">This action cannot be undone.</p>
+                <div className="mb-3 p-2 bg-red-900/30 border border-red-700/50 rounded-md">
+                  <p className="text-sm text-red-400 font-medium">Are you sure you want to delete this accommodation?</p>
+                  <p className="text-xs text-red-400 mt-1">This action cannot be undone.</p>
                 </div>
               )}
 
@@ -2024,9 +2024,9 @@ export function Accommodations() {
                   
                   {/* Delete Confirmation Message */}
                   {deleteItemConfirmId === item.id && (
-                    <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-sm">
-                      <p className="text-sm text-red-700 font-medium">Are you sure you want to delete this accommodation item?</p>
-                      <p className="text-xs text-red-600 mt-1">This action cannot be undone.</p>
+                    <div className="mt-2 p-2 bg-red-900/30 border border-red-700/50 rounded-md">
+                      <p className="text-sm text-red-400 font-medium">Are you sure you want to delete this accommodation item?</p>
+                      <p className="text-xs text-red-400 mt-1">This action cannot be undone.</p>
                     </div>
                   )}
                 </div>

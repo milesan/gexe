@@ -317,11 +317,7 @@ export function generateStandardWeek(
     }
   }
   
-  // *** Add Logging Here ***
-  console.log('[generateStandardWeek] Returning:', {
-    startDate: adjustedStart.toISOString(),
-    endDate: endDate.toISOString()
-  });
+  // Logging removed for performance
   
   return { startDate: adjustedStart, endDate };
 }
@@ -336,12 +332,6 @@ export function generateWeeksWithCustomizations(
   customizations: WeekCustomization[] = [],
   isAdminMode: boolean = false
 ): Week[] {
-  console.log('[generateWeeksWithCustomizations] Starting with:', {
-    startDate: formatDateForDisplay(from),
-    endDate: formatDateForDisplay(to),
-    customizationsCount: customizations.length,
-    isAdminMode
-  });
   
   // Default config if none provided
   const safeConfig = config || { checkInDay: 0, checkOutDay: 6 };
@@ -355,15 +345,7 @@ export function generateWeeksWithCustomizations(
     doDateRangesOverlap(c.startDate, c.endDate, from, to)
   );
   
-  console.log('[generateWeeksWithCustomizations] Relevant customizations:', {
-    count: relevantCustomizations.length,
-    customizations: relevantCustomizations.map(c => ({
-      id: c.id,
-      startDate: formatDateForDisplay(c.startDate),
-      endDate: formatDateForDisplay(c.endDate),
-      status: c.status
-    }))
-  });
+
 
   // Create timeline of all date ranges
   const timeline: { 
@@ -471,16 +453,7 @@ export function generateWeeksWithCustomizations(
     // Mark this ID as used
     usedIds.add(id);
 
-    // *** Add Logging Here ***
-    console.log('[generateWeeksWithCustomizations] Processing timeline item before push:', {
-      id: id,
-      type: item.type,
-      itemStartDate: item.startDate.toISOString(),
-      itemEndDate: item.endDate.toISOString(),
-      isCustom: item.type === 'custom',
-      customizationFlexDates: item.customization?.flexibleDates?.map(d => d.toISOString()),
-      status: item.customization?.status
-    });
+
     
     // Create the week object with the unique ID
     result.push({
@@ -498,23 +471,7 @@ export function generateWeeksWithCustomizations(
   });
   
   // Filter weeks to ensure they start on or after the 'from' date
-  console.log(`[generateWeeksWithCustomizations] Filtering results: Keeping weeks on or after ${formatDateForDisplay(from)}. Initial count: ${result.length}`);
-  
   const filteredResult = result.filter(week => week.startDate.getTime() >= from.getTime());
-  
-  console.log('[generateWeeksWithCustomizations] Filtered weeks:', {
-    count: filteredResult.length,
-    firstWeek: filteredResult.length > 0 ? {
-      startDate: formatDateForDisplay(filteredResult[0].startDate),
-      endDate: formatDateForDisplay(filteredResult[0].endDate),
-      status: filteredResult[0].status
-    } : null,
-    lastWeek: filteredResult.length > 0 ? {
-      startDate: formatDateForDisplay(filteredResult[filteredResult.length - 1].startDate),
-      endDate: formatDateForDisplay(filteredResult[filteredResult.length - 1].endDate),
-      status: filteredResult[filteredResult.length - 1].status
-    } : null
-  });
 
   return filteredResult;
 }

@@ -29,7 +29,6 @@ interface MainAppLayoutProps {
 }
 
 export function MainAppLayout({ children }: MainAppLayoutProps) {
-  console.log('MainAppLayout: Initializing');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showHeader, setShowHeader] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
@@ -44,8 +43,7 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
   const isAdminPage = location.pathname === '/admin'; // <-- Add this line
   const isHousekeepingPage = location.pathname === '/housekeeping'; // <-- Add this line
 
-  // Add a log to check the access values
-  console.log('[MainAppLayout] Access check results:', { isAdmin, hasHousekeeping, sessionLoading, permissionsLoading });
+
 
   // Calculate loading state but don't return early yet
   const isLoading = sessionLoading || permissionsLoading;
@@ -58,7 +56,6 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
   // Scroll to top effect for specific routes
   useEffect(() => {
     if (scrollToTopRoutes.includes(location.pathname)) {
-      console.log(`MainAppLayout: Scrolling to top for route: ${location.pathname}`);
       // Small delay to ensure content is rendered
       const timeoutId = setTimeout(() => {
         window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
@@ -88,10 +85,8 @@ export function MainAppLayout({ children }: MainAppLayoutProps) {
   useEffect(() => {
     // checkWhitelistStatus(); // Remove call
     window.addEventListener('scroll', debouncedScrollHandler);
-    console.log("MainAppLayout: Scroll listener attached");
     return () => {
       window.removeEventListener('scroll', debouncedScrollHandler);
-      console.log("MainAppLayout: Scroll listener removed");
     };
   }, [debouncedScrollHandler]);
 

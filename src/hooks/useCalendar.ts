@@ -34,15 +34,7 @@ export function useCalendar({ startDate, endDate, isAdminMode = false }: UseCale
     const normalizedStartDate = normalizeToUTCDate(startDate);
     const normalizedEndDate = normalizeToUTCDate(endDate);
 
-    console.log('[useCalendar] Hook initialized:', {
-        startDate: startOfDay(new Date(startDate)),
-        endDate: startOfDay(new Date(endDate)),
-        isAdminMode,
-        dateRange: {
-            diffMs: normalizedEndDate.getTime() - normalizedStartDate.getTime(),
-            diffDays: Math.round((normalizedEndDate.getTime() - normalizedStartDate.getTime()) / (1000 * 60 * 60 * 24))
-        }
-    });
+
 
     // State
     const [config, setConfig] = useState<CalendarConfig | null>(null);
@@ -54,22 +46,6 @@ export function useCalendar({ startDate, endDate, isAdminMode = false }: UseCale
 
     // Generate weeks with customizations
     const weeks = useMemo(() => {
-        console.log('[useCalendar] Generating weeks within useMemo:', {
-            normalizedStartDate: normalizedStartDate.toISOString(),
-            normalizedEndDate: normalizedEndDate.toISOString(),
-            isAdminMode,
-            customizationsCount: customizations.length,
-        });
-
-        console.log('[useCalendar] Customizations BEFORE generation:', customizations.map(c => ({
-            id: c.id,
-            startDate: c.startDate instanceof Date ? c.startDate.toISOString() : c.startDate,
-            endDate: c.endDate instanceof Date ? c.endDate.toISOString() : c.endDate,
-            status: c.status,
-            name: c.name,
-            flexibleDates: c.flexibleDates?.map(d => d instanceof Date ? d.toISOString() : d)
-        })));
-
         const generatedWeeks = generateWeeksWithCustomizations(
             normalizedStartDate,
             normalizedEndDate,
@@ -77,19 +53,6 @@ export function useCalendar({ startDate, endDate, isAdminMode = false }: UseCale
             customizations,
             isAdminMode
         );
-
-        console.log('[useCalendar] Generated weeks AFTER generation:', {
-            count: generatedWeeks.length,
-            weeks: generatedWeeks.map(w => ({
-                id: w.id,
-                startDate: w.startDate instanceof Date ? w.startDate.toISOString() : w.startDate,
-                endDate: w.endDate instanceof Date ? w.endDate.toISOString() : w.endDate,
-                status: w.status,
-                name: w.name,
-                isCustom: w.isCustom,
-                flexibleDates: w.flexibleDates?.map(d => d instanceof Date ? d.toISOString() : d)
-            }))
-        });
 
         return generatedWeeks;
     }, [normalizedStartDate, normalizedEndDate, config, customizations, isAdminMode]);
@@ -99,7 +62,6 @@ export function useCalendar({ startDate, endDate, isAdminMode = false }: UseCale
         let mounted = true;
 
         async function loadData() {
-            console.log('[useCalendar] Loading data...');
             try {
                 setIsLoading(true);
                 setError(null);
@@ -111,11 +73,6 @@ export function useCalendar({ startDate, endDate, isAdminMode = false }: UseCale
                 ]);
 
                 if (!mounted) return;
-
-                console.log('[useCalendar] Data loaded:', {
-                    config: configResult,
-                    customizationsCount: customizationsResult.length
-                });
 
                 setConfig(configResult);
                 setCustomizations(customizationsResult);

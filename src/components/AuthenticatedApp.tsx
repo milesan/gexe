@@ -8,14 +8,9 @@ import { useSession } from '../hooks/useSession';
 import { useUserPermissions } from '../hooks/useUserPermissions';
 
 export function AuthenticatedApp() {
-  console.log('AuthenticatedApp: Rendering Routes');
   const { session, isLoading: sessionLoading } = useSession();
   const { isAdmin, hasHousekeeping, isLoading: permissionsLoading } = useUserPermissions(session);
   const location = useLocation();
-
-  console.log('[AuthenticatedApp] Loading states:', { sessionLoading, permissionsLoading });
-  console.log('[AuthenticatedApp] Access check results:', { isAdmin, hasHousekeeping });
-  console.log('[AuthenticatedApp] Current location:', { pathname: location.pathname });
 
   return (
     <>
@@ -26,20 +21,14 @@ export function AuthenticatedApp() {
           (isAdmin || hasHousekeeping) ? (
             <AdminPage />
           ) : (
-            (() => {
-              console.log('[AuthenticatedApp] Access denied to /admin, redirecting to /');
-              return <Navigate to="/" />;
-            })()
+            <Navigate to="/" />
           )
         } />
         <Route path="/housekeeping" element={
           hasHousekeeping ? (
             <AdminPage housekeepingOnly={true} />
           ) : (
-            (() => {
-              console.log('[AuthenticatedApp] Access denied to /housekeeping, redirecting to /');
-              return <Navigate to="/" />;
-            })()
+            <Navigate to="/" />
           )
         } />
         <Route path="/why" element={<WhyPage />} />
