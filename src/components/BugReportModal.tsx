@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, AlertCircle, CheckCircle, Upload } from 'lucide-react';
+import { X, AlertCircle, CheckCircle, Upload, Loader2 } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { logger } from '../utils/logging';
 import { supabase } from '../lib/supabase';
@@ -8,6 +8,14 @@ import { supabase } from '../lib/supabase';
 interface UploadedFileData {
   url: string;
   fileName: string;
+}
+
+interface UploadingFileData {
+  fileName: string;
+  originalName: string;
+  progress: number;
+  status: 'uploading' | 'success' | 'error';
+  error?: string;
 }
 
 interface BugReportModalProps {
@@ -26,7 +34,7 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
   const [status, setStatus] = useState<SubmitStatus>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFileData[]>([]);
-  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [uploadingFiles, setUploadingFiles] = useState<UploadingFileData[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
@@ -38,7 +46,7 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
         setStatus('idle');
         setErrorMessage(null);
         setUploadedFiles([]);
-        setUploadProgress(0);
+        setUploadingFiles([]);
         setUploadError(null);
         setIsDeleting(null);
       }, 300);
@@ -48,9 +56,8 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
 
   const handleFileUpload = async (files: File[]) => {
     setUploadError(null);
-    setUploadProgress(0);
 
-    const currentFileCount = uploadedFiles.length;
+    const currentFileCount = uploadedFiles.length + uploadingFiles.length;
     const filesToUpload = files.slice(0, IMAGE_LIMIT - currentFileCount);
 
     if (files.length > filesToUpload.length && currentFileCount < IMAGE_LIMIT) {
@@ -81,10 +88,20 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
       currentFileCount: currentFileCount
     });
 
-    let accumulatedProgress = 0;
+    // Add uploading placeholders immediately
+    const newUploadingFiles: UploadingFileData[] = filesToUpload.map(file => ({
+      fileName: `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9_.-]/g, '_').replace(/_{2,}/g, '_')}`,
+      originalName: file.name,
+      progress: 0,
+      status: 'uploading'
+    }));
+    
+    setUploadingFiles(prev => [...prev, ...newUploadingFiles]);
 
     try {
-      const uploadPromises = filesToUpload.map(async (file) => {
+      const uploadPromises = filesToUpload.map(async (file, index) => {
+        const uploadingFile = newUploadingFiles[index];
+        
         if (!file.type.startsWith('image/')) {
           logger.warn('[BugReportModal] Skipping non-image file:', file.name, file.type);
           throw new Error(`Skipped '${file.name}': Only image files are allowed.`);
@@ -97,6 +114,15 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
         const safeFileName = file.name.replace(/[^a-zA-Z0-9_.-]/g, '_').replace(/_{2,}/g, '_');
         const fileName = `${Date.now()}-${safeFileName}`;
         logger.log('[BugReportModal] Uploading to storage:', { bucket: 'bug-report-attachments', fileName });
+
+        // Update progress for this specific file
+        const updateProgress = (progress: number) => {
+          setUploadingFiles(prev => prev.map(f => 
+            f.fileName === uploadingFile.fileName 
+              ? { ...f, progress } 
+              : f
+          ));
+        };
 
         const { data, error } = await supabase.storage
           .from('bug-report-attachments')
@@ -117,8 +143,9 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
 
         logger.log('[BugReportModal] Generated public URL:', { publicUrl, fileName });
 
-        accumulatedProgress += 1;
-        setUploadProgress((accumulatedProgress / filesToUpload.length) * 100);
+        // Mark as successful and move to uploaded files
+        setUploadingFiles(prev => prev.filter(f => f.fileName !== uploadingFile.fileName));
+        setUploadedFiles(prev => [...prev, { url: publicUrl, fileName }]);
 
         return { url: publicUrl, fileName };
       });
@@ -128,17 +155,23 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
       const successfulUploads: UploadedFileData[] = [];
       let firstError: Error | null = null;
 
-      results.forEach(result => {
+      results.forEach((result, index) => {
           if (result.status === 'fulfilled' && result.value) {
               successfulUploads.push(result.value);
           } else if (result.status === 'rejected' && !firstError) {
               firstError = result.reason instanceof Error ? result.reason : new Error(String(result.reason));
               logger.error('[BugReportModal] Upload failed for one file:', { reason: result.reason });
+              
+              // Mark the failed upload
+              setUploadingFiles(prev => prev.map(f => 
+                f.fileName === newUploadingFiles[index].fileName 
+                  ? { ...f, status: 'error', error: result.reason instanceof Error ? result.reason.message : String(result.reason) }
+                  : f
+              ));
           }
       });
 
       if (successfulUploads.length > 0) {
-          setUploadedFiles(prevFiles => [...prevFiles, ...successfulUploads]);
           logger.log('[BugReportModal] Files processed:', {
               successCount: successfulUploads.length,
               newTotal: uploadedFiles.length + successfulUploads.length,
@@ -150,17 +183,9 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
           throw firstError;
       }
 
-      if (successfulUploads.length === filesToUpload.length) {
-        setUploadProgress(100);
-        setTimeout(() => setUploadProgress(0), 1500);
-      } else {
-        setUploadProgress(0);
-      }
-
     } catch (err: any) {
       logger.error('[BugReportModal] Upload process error:', err);
       setUploadError(err.message || 'An error occurred during upload.');
-      setUploadProgress(0);
     }
   };
 
@@ -241,9 +266,9 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
     }
   };
 
-  const currentFileCount = uploadedFiles.length;
+  const currentFileCount = uploadedFiles.length + uploadingFiles.length;
   const canUploadMore = currentFileCount < IMAGE_LIMIT;
-  const isUploading = uploadProgress > 0 && uploadProgress < 100;
+  const isUploading = uploadingFiles.length > 0;
   const inputId = `bug-report-file-upload`;
   const isUploadAreaDisabled = !canUploadMore || isUploading || !!isDeleting || status === 'submitting';
 
@@ -347,19 +372,10 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
                          <div className="flex flex-col items-center justify-center color-shade-2">
                             <Upload className="w-5 h-5 mb-1" />
                             <span className="text-sm sm:text-base font-medium">
-                               {isUploading ? `Uploading (${Math.round(uploadProgress)}%)...` : (isDeleting ? 'Deleting...' : (canUploadMore ? 'Click or drag to upload' : `Limit reached (${IMAGE_LIMIT})`))}
+                               {isUploading ? `Uploading...` : (isDeleting ? 'Deleting...' : (canUploadMore ? 'Click or drag to upload' : `Limit reached (${IMAGE_LIMIT})`))}
                             </span>
                             {!isUploadAreaDisabled && <p className="text-xs sm:text-sm mt-0.5">Max {MAX_FILE_SIZE_MB}MB per image</p>}
                          </div>
-
-                         {isUploading && (
-                            <div className="absolute bottom-0 left-0 right-0 h-1 bg-[var(--color-focus-ring,theme(colors.accent-primary/0.3))] rounded-b-md overflow-hidden">
-                               <div
-                                 className="h-1 bg-[var(--color-focus-ring,theme(colors.accent-primary))] transition-all duration-300 ease-linear"
-                                 style={{ width: `${uploadProgress}%` }}
-                               />
-                            </div>
-                         )}
                        </label>
 
                        {uploadError && (
@@ -369,8 +385,38 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
                          </div>
                        )}
 
-                       {uploadedFiles.length > 0 && (
+                       {(uploadedFiles.length > 0 || uploadingFiles.length > 0) && (
                          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2 pt-2">
+                           {/* Show uploading placeholders first */}
+                           {uploadingFiles.map((file, index) => (
+                             <div key={file.fileName} className="relative group aspect-square bg-gray-700/50 rounded border border-[var(--color-border-modal,theme(colors.gray.500/0.3))] overflow-hidden">
+                               <div className="w-full h-full flex flex-col items-center justify-center bg-gray-800/50">
+                                 {file.status === 'error' ? (
+                                   <div className="text-center p-2">
+                                     <AlertCircle className="w-6 h-6 text-red-400 mx-auto mb-1" />
+                                     <p className="text-xs text-red-300 font-mono text-center leading-tight">
+                                       {file.error || 'Upload failed'}
+                                     </p>
+                                   </div>
+                                 ) : (
+                                   <div className="text-center p-2">
+                                     <Loader2 className="w-6 h-6 text-blue-400 mx-auto mb-1 animate-spin" />
+                                     <p className="text-xs text-blue-300 font-mono text-center leading-tight">
+                                       Uploading...
+                                     </p>
+                                     <div className="w-full bg-gray-700 rounded-full h-1 mt-2">
+                                       <div 
+                                         className="bg-blue-400 h-1 rounded-full transition-all duration-300"
+                                         style={{ width: `${file.progress}%` }}
+                                       />
+                                     </div>
+                                   </div>
+                                 )}
+                               </div>
+                             </div>
+                           ))}
+                           
+                           {/* Show uploaded images */}
                            {uploadedFiles.map((file, index) => (
                              <div key={file.fileName} className="relative group aspect-square bg-gray-700/50 rounded border border-[var(--color-border-modal,theme(colors.gray.500/0.3))] overflow-hidden">
                                <img
