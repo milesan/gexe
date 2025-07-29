@@ -32,7 +32,7 @@ export function ConfirmButtons({
           ${
             isBooking || !selectedAccommodation || selectedWeeks.length === 0
               ? 'bg-transparent text-shade-3 cursor-not-allowed'
-              : 'bg-accent-primary text-stone-800 hover:bg-accent-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent-primary'
+              : 'bg-emerald-900 text-white hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent-primary'
           }`}
       >
         <span className="pixel-corners--content 2xl:text-2xl">
