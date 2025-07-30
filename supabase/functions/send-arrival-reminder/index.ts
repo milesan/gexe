@@ -14,12 +14,12 @@ const combinedCorsHeaders = { ...corsHeaders };
 
 const REMINDER_DAYS_BEFORE = 3;
 
-function generateArrivalReminderEmail({ guestName }: { guestName?: string }) {
+function generateArrivalReminderEmail() {
   const welcomeDocUrl = "https://gardening.notion.site/Welcome-to-The-Garden-2684f446b48e4b43b3f003d7fca33664?pvs=74";
   const samTelegramUrl = "https://t.me/greeneggssam";
   return `
     <div style="font-family: serif;">
-      <p>Dear friend of the forest${guestName ? ', ' + guestName : ''},</p>
+      <p>Dear friend of the forest,</p>
       <p>The day is fast-approaching; soon the gates will beckon you in.</p>
       <p>If you haven't already, please familiarise yourself with our <a href="${welcomeDocUrl}" target="_blank">Welcome Doc</a> & e-sign the agreements.</p>
       <p>Your point of contact is <a href="${samTelegramUrl}" target="_blank">Sam on Telegram</a>. Please let him know of your ETA and any relevant arrival info.</p>
@@ -60,7 +60,7 @@ serve(async (req) => {
     // Query the view to get bookings with emails within the next 3 days
     const { data: bookings, error: queryError } = await supabase
       .from('bookings_with_emails')
-      .select('id, user_email, guest_email, guest_name, check_in, status')
+      .select('id, user_email, guest_email, check_in, status')
       .eq('reminder_email_sent', false)
       .gte('check_in', todayStr)
       .lte('check_in', threeDaysFromNowStr)
@@ -81,7 +81,7 @@ serve(async (req) => {
 
     let sentCount = 0
     for (const booking of bookings) {
-      const { id, user_email, guest_email, guest_name } = booking
+      const { id, user_email, guest_email } = booking
       
       // Use user_email if available, otherwise fall back to guest_email
       const email = user_email || guest_email
@@ -98,7 +98,7 @@ serve(async (req) => {
           to: email,
           replyTo: 'living@thegarden.pt',
           subject: 'Your Stay at The Garden – Arrival Info',
-          html: generateArrivalReminderEmail({ guestName: guest_name }),
+          html: generateArrivalReminderEmail(),
         })
         if (emailError) {
           console.error('Error sending reminder for booking', id, ':', emailError)
