@@ -89,38 +89,12 @@ export function CabinSelector({
   displayWeeklyAccommodationPrice,
   testMode = false
 }: Props) {
-  // Add render tracking
-  const renderCount = React.useRef(0);
-  renderCount.current += 1;
-  console.log(`[CabinSelector] RENDER #${renderCount.current}`, {
-    selectedAccommodationId,
-    selectedWeeksCount: selectedWeeks.length,
-    accommodationsCount: accommodations.length,
-    isLoading,
-    isDisabled,
-    testMode
-  });
 
   const { session } = useSession();
   const { isAdmin, isLoading: permissionsLoading } = useUserPermissions(session);
 
   // State to track current image index for each accommodation
   const [currentImageIndices, setCurrentImageIndices] = useState<Record<string, number>>({});
-  
-  // Add state change logging
-  const setCurrentImageIndicesWithLog = useCallback((newState: Record<string, number> | ((prev: Record<string, number>) => Record<string, number>)) => {
-    console.log('[CabinSelector] currentImageIndices changing');
-    if (typeof newState === 'function') {
-      setCurrentImageIndices(prev => {
-        const result = newState(prev);
-        console.log('[CabinSelector] currentImageIndices updated:', { prev, result });
-        return result;
-      });
-    } else {
-      console.log('[CabinSelector] currentImageIndices set to:', newState);
-      setCurrentImageIndices(newState);
-    }
-  }, []);
 
   // Helper function to get current image for an accommodation
   const getCurrentImage = (accommodation: ExtendedAccommodation): string | null => {
@@ -134,8 +108,7 @@ export function CabinSelector({
 
   // Navigation functions
   const navigateToImage = (accommodationId: string, direction: 'prev' | 'next', totalImages: number) => {
-    console.log('[CabinSelector] 🖼️ Image navigation:', { accommodationId, direction, totalImages });
-    setCurrentImageIndicesWithLog(prev => {
+    setCurrentImageIndices(prev => {
       const currentIndex = prev[accommodationId] || 0;
       let newIndex;
       
@@ -153,8 +126,7 @@ export function CabinSelector({
   };
 
   const setImageIndex = (accommodationId: string, index: number) => {
-    console.log('[CabinSelector] 🖼️ Setting image index:', { accommodationId, index });
-    setCurrentImageIndicesWithLog(prev => ({
+    setCurrentImageIndices(prev => ({
       ...prev,
       [accommodationId]: index
     }));
@@ -241,8 +213,7 @@ export function CabinSelector({
     );
   };
 
-  // Debug logging for development
-  console.log('[CabinSelector] Rendered:', { selectedAccommodationId });
+
 
   // --- Normalization Step ---
   const normalizedCurrentMonth = new Date(Date.UTC(
@@ -254,12 +225,10 @@ export function CabinSelector({
 
   const { checkWeekAvailability, availabilityMap } = useWeeklyAccommodations();
   
-  // Add availability map logging
-  console.log('[CabinSelector] availabilityMap state:', Object.keys(availabilityMap).length, availabilityMap);
+
 
   // PERFORMANCE FIX: Memoize price info for each accommodation to prevent re-calculation on every render
   const memoizedPriceInfo = useMemo(() => {
-    console.log('[CabinSelector] 🔄 Creating memoized price info map');
     const priceMap: Record<string, { price: number | null; avgSeasonalDiscount: number | null }> = {};
     
     if (accommodations && accommodations.length > 0) {
@@ -270,7 +239,6 @@ export function CabinSelector({
       });
     }
     
-    console.log('[CabinSelector] 🔄 Memoized price info map created:', Object.keys(priceMap).length, 'accommodations');
     return priceMap;
   }, [accommodations, displayWeeklyAccommodationPrice]);
 
@@ -293,31 +261,14 @@ export function CabinSelector({
 
   // Clear selection if selected accommodation becomes unavailable (unless in test mode)
   useEffect(() => {
-    console.log('[CabinSelector] useEffect[selectedAccommodationId, selectedWeeks, availabilityMap, testMode] triggered', {
-      selectedAccommodationId,
-      selectedWeeksCount: selectedWeeks.length,
-      availabilityMapKeys: Object.keys(availabilityMap),
-      testMode
-    });
-
     if (selectedAccommodationId && selectedWeeks.length > 0) {
       if (testMode) {
-        console.log('[CabinSelector] Test mode enabled - skipping availability check for accommodation:', selectedAccommodationId);
         return;
       }
       
       const isAvailable = availabilityMap[selectedAccommodationId]?.isAvailable;
-      console.log('[CabinSelector] Checking availability for selected accommodation:', {
-        accommodationId: selectedAccommodationId,
-        isAvailable,
-        availabilityData: availabilityMap[selectedAccommodationId]
-      });
       
       if (!isAvailable) {
-        console.log('[CabinSelector] 🔥 CLEARING SELECTION - accommodation became unavailable:', {
-          accommodationId: selectedAccommodationId,
-          availability: availabilityMap[selectedAccommodationId]
-        });
         onSelectAccommodation('');
       }
     }
@@ -325,23 +276,12 @@ export function CabinSelector({
 
   // NEW: Clear accommodation selection when dates are cleared
   useEffect(() => {
-    console.log('[CabinSelector] useEffect[selectedWeeks, selectedAccommodationId] triggered for date clearing', {
-      selectedWeeksCount: selectedWeeks.length,
-      selectedAccommodationId
-    });
-
     if (selectedWeeks.length === 0 && selectedAccommodationId) {
-      console.log('[CabinSelector] 🔥 CLEARING ACCOMMODATION - dates were cleared.');
       onSelectAccommodation('');
     }
   }, [selectedWeeks, selectedAccommodationId, onSelectAccommodation]);
 
   useEffect(() => {
-    console.log('[CabinSelector] useEffect[selectedWeeks, accommodations, checkWeekAvailability] triggered for availability checking', {
-      selectedWeeksCount: selectedWeeks.length,
-      accommodationsCount: accommodations.length
-    });
-
     if (selectedWeeks.length > 0) {
       // Check availability for all accommodations when weeks are selected
       
@@ -349,35 +289,19 @@ export function CabinSelector({
       const checkInDate = selectedWeeks.length > 0 ? selectedWeeks[0].startDate : null;
       const checkOutDate = selectedWeeks.length > 0 ? selectedWeeks[selectedWeeks.length - 1].endDate : null;
 
-      console.log('[CabinSelector] 🔄 BATCH AVAILABILITY CHECK starting', {
-        checkInDate: checkInDate?.toISOString(),
-        checkOutDate: checkOutDate?.toISOString,
-        accommodationsToCheck: accommodations.filter(acc => !(acc as any).parent_accommodation_id).length
-      });
-
       accommodations.forEach(acc => {
         if (!(acc as any).parent_accommodation_id) { // Only check parent accommodations
-          console.log('[CabinSelector] 📞 Calling checkWeekAvailability for:', acc.title, acc.id);
           // MODIFIED: Pass derived dates to checkWeekAvailability
           checkWeekAvailability(acc, checkInDate, checkOutDate);
         }
       });
-      
-      console.log('[CabinSelector] 🔄 BATCH AVAILABILITY CHECK completed');
     }
     // MODIFIED: Dependency array includes derived dates implicitly via selectedWeeks
   }, [selectedWeeks, accommodations, checkWeekAvailability]);
 
   const handleSelectAccommodation = useCallback((id: string) => {
-    console.log('[CabinSelector] 🎯 handleSelectAccommodation called', {
-      clickedId: id,
-      currentSelected: selectedAccommodationId,
-      action: id === selectedAccommodationId ? 'DESELECT' : 'SELECT'
-    });
-
     // NEW: If clicking the already selected accommodation, deselect it
     if (id === selectedAccommodationId) {
-      console.log('[CabinSelector] 🔥 DESELECTING current accommodation');
       onSelectAccommodation('');
       return; // Stop further execution
     }
@@ -385,7 +309,6 @@ export function CabinSelector({
     // REMOVED: No longer checking availability here since useEffect[selectedWeeks] already does it
     // This was causing double API calls and state thrashing leading to flickering
 
-    console.log('[CabinSelector] 🔥 SELECTING new accommodation:', id);
     onSelectAccommodation(id);
   }, [onSelectAccommodation, selectedAccommodationId]);
 
@@ -400,10 +323,6 @@ export function CabinSelector({
     const testEmailPattern = /^redis213\+.*@gmail\.com$/i;
     const canSeeTests = testEmailPattern.test(userEmail);
     
-    if (canSeeTests) {
-      console.log(`[CabinSelector] Allowing test accommodations for test user: ${userEmail}`);
-    }
-    
     return canSeeTests;
   };
 
@@ -415,7 +334,6 @@ export function CabinSelector({
 
       // Filter out 'test' accommodations if the user is NOT an admin AND NOT a test user
       if (acc.type === 'test' && !canSeeTestAccommodations()) {
-         console.log(`[CabinSelector] Filtering out test accommodation "${acc.title}" for non-admin/non-test user.`);
          return false;
       }
 
@@ -497,7 +415,6 @@ export function CabinSelector({
         <div>
           <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-4">
             {visibleAccommodations.map((acc) => {
-              console.log('[CabinSelector] 🏠 Rendering accommodation card:', acc.title, acc.id);
               
               const isSelected = selectedAccommodationId === acc.id;
               const availability = availabilityMap[acc.id];
@@ -505,16 +422,6 @@ export function CabinSelector({
               const isFullyBooked = !isAvailable;
               const spotsAvailable = availability?.availableCapacity;
               const canSelect = testMode || (!isDisabled && !isFullyBooked);
-
-              console.log('[CabinSelector] 🏠 Accommodation state:', {
-                title: acc.title,
-                id: acc.id,
-                isSelected,
-                isAvailable,
-                isFullyBooked,
-                spotsAvailable,
-                canSelect
-              });
 
               const isTent = acc.type === 'tent';
               const isOutOfSeason = isTent && !isTentSeason && selectedWeeks.length > 0;
@@ -524,9 +431,7 @@ export function CabinSelector({
               const allImagesForAcc = getAllImages(acc);
 
               // Get the whole info object
-              console.log('[CabinSelector] 💰 Calling displayWeeklyAccommodationPrice for:', acc.title, acc.id);
               const weeklyInfo = getDisplayInfoOptimized(acc.id);
-              console.log('[CabinSelector] 💰 Price info received:', { accommodationId: acc.id, weeklyInfo });
               
               // Ensure weeklyInfo and its properties are defined before accessing
               let weeklyPrice = weeklyInfo?.price ?? null; // Use null as default if undefined
@@ -540,7 +445,6 @@ export function CabinSelector({
               let isTestAccommodation = acc.type === 'test';
               if (isTestAccommodation) {
                 weeklyPrice = 0.5; // Override price
-                console.log('[CabinSelector] 🧪 Test accommodation price override:', acc.title);
               }
               // --- END TEST ACCOMMODATION OVERRIDE ---
 
@@ -549,16 +453,6 @@ export function CabinSelector({
               const hasSeasonalDiscount = avgSeasonalDiscountForTooltip !== null && avgSeasonalDiscountForTooltip > 0 && !acc.title.toLowerCase().includes('dorm');
               const hasDurationDiscount = currentDurationDiscount > 0;
               const hasAnyDiscount = !isTestAccommodation && (hasSeasonalDiscount || hasDurationDiscount); // <-- Modified: Exclude test type
-
-              console.log('[CabinSelector] 💰 Final pricing state:', {
-                accommodationId: acc.id,
-                weeklyPrice,
-                hasSeasonalDiscount,
-                hasDurationDiscount,
-                hasAnyDiscount,
-                avgSeasonalDiscountForTooltip
-              });
-
               return (
                 <motion.div
                   key={acc.id}
@@ -578,12 +472,6 @@ export function CabinSelector({
                   onClick={(e) => {
                     // Prevent event bubbling to parent elements
                     e.stopPropagation();
-                    
-                    console.log('[CabinSelector] 🖱️ Card clicked:', {
-                      accommodationId: acc.id,
-                      title: acc.title,
-                      canSelect: testMode || (finalCanSelect && !isDisabled)
-                    });
                     
                     if (testMode || (finalCanSelect && !isDisabled)) {
                       handleSelectAccommodation(acc.id);

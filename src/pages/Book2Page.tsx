@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Calendar, ChevronLeft, ChevronRight, Home, X, HelpCircle } from 'lucide-react';
-import { isSameWeek, addWeeks, isAfter, isBefore, startOfMonth, format, addMonths, subMonths, startOfDay, isSameDay, addDays, differenceInDays } from 'date-fns';
+import { isSameWeek, addWeeks, isAfter, isBefore, format, addMonths, subMonths, startOfDay, isSameDay, addDays, differenceInDays } from 'date-fns';
 import { WeekSelector } from '../components/WeekSelector';
-import { formatDateForDisplay, normalizeToUTCDate, doDateRangesOverlap, calculateDurationDiscountWeeks, calculateTotalWeeksDecimal } from '../utils/dates';
+import { formatDateForDisplay, normalizeToUTCDate, doDateRangesOverlap, calculateDurationDiscountWeeks, calculateTotalWeeksDecimal, startOfMonthUTC } from '../utils/dates';
 import CabinSelector from '../components/CabinSelector';
 import { BookingSummary } from '../components/BookingSummary';
 import { MaxWeeksModal } from '../components/MaxWeeksModal';
@@ -74,7 +74,11 @@ export function Book2Page() {
   
   // Get current date and set the initial month
   const today = new Date();
-  const initialMonth = startOfDay(startOfMonth(today));
+  
+  // [TIMEZONE_FIX] Use UTC-based date initialization to avoid timezone conversion issues
+  const year = today.getUTCFullYear();
+  const month = today.getUTCMonth();
+  const initialMonth = new Date(Date.UTC(year, month, 1));
 
   const { accommodations, loading: accommodationsLoading } = useWeeklyAccommodations();
   // console.log('[FLICKER_DEBUG] useWeeklyAccommodations result:', { accommodationsCount: accommodations?.length, loading: accommodationsLoading });
@@ -167,31 +171,23 @@ export function Book2Page() {
   const isMobile = window.innerWidth < 768;
 
   // --- START: Normalize date specifically for the calendar hook ---
-  const calendarStartDate = startOfMonth(currentMonth);
+  const calendarStartDate = startOfMonthUTC(currentMonth);
   // Calculate end date based on the normalized start date
   const calendarEndDate = addMonths(calendarStartDate, isMobile ? 3 : 4);
-
 
   // --- END: Normalize date ---
 
   // Use our calendar hook WITH NORMALIZED START DATE
   const { 
     weeks,
-    customizations,
     isLoading: calendarLoading,
-    createCustomization,
-    updateCustomization,
-    deleteCustomization,
     setLastRefresh: setCalendarRefresh
   } = useCalendar({
-    startDate: calendarStartDate, // Pass normalized date
-    endDate: calendarEndDate,   // Pass end date derived from normalized start
+    startDate: calendarStartDate,
+    endDate: calendarEndDate,
     isAdminMode
   });
-
-  // console.log('[FLICKER_DEBUG] useCalendar result:', { weeksCount: weeks?.length, customizationsCount: customizations?.length, loading: calendarLoading });
-
-  // Track component mounting for debugging
+ // Track component mounting for debugging
   useEffect(() => {
     // console.log('[BOOK2] Mounted/Updated'); // Debug logging disabled
   });
@@ -231,9 +227,8 @@ export function Book2Page() {
 
   // Add a wrapped setCurrentMonth function with logging
   const handleMonthChange = useCallback((newMonth: Date) => {
-    // Ensure we always set the state to the beginning of the month
-    const startOfNewMonth = startOfMonth(newMonth);
-    setCurrentMonth(startOfNewMonth); // Set state to the start of the month
+    console.log('[MONTH_NAV_DEBUG] handleMonthChange called with:', newMonth.toISOString());
+    setCurrentMonth(newMonth); // Set state to the start of the month
   }, [currentMonth, selectedWeeks]);
 
   // Main handleWeekSelect function simplified
@@ -781,6 +776,8 @@ export function Book2Page() {
       currentMonth: formatDateForDisplay(currentMonth)
     });
     
+
+    
     const normalizedCurrentMonth = normalizeToUTCDate(currentMonth);
     const newInfo: Record<string, { price: number | null; avgSeasonalDiscount: number | null }> = {};
 
@@ -1053,7 +1050,7 @@ export function Book2Page() {
                       {/* REMOVED Home button */}
                       {/* <button 
                         className="p-1 xxs:p-1.5 sm:p-2 rounded-full hover:bg-[var(--color-bg-surface-hover)] text-accent-primary"
-                        onClick={() => handleMonthChange(startOfMonth(new Date()))} // Use handleMonthChange
+                        onClick={() => handleMonthChange(startOfMonthUTC(new Date()))} // Use handleMonthChange
                         aria-label="Return to current month"
                         title="Return to today"
                       >
@@ -1073,14 +1070,27 @@ export function Book2Page() {
                         {/* UPDATED styles to match header button, now bold, removed border/rounded */}
                         <div 
                           className="p-1.5 font-lettra-bold text-sm uppercase transition-colors bg-surface-dark text-primary hover:opacity-80 text-center whitespace-nowrap min-w-[120px] xxs:min-w-[140px] sm:min-w-[160px] cursor-pointer rounded-sm" /* Removed border, rounded-sm */
-                          onClick={() => handleMonthChange(startOfMonth(new Date()))} // Use handleMonthChange
+                          onClick={() => {
+                            // [TIMEZONE_FIX] Use UTC-based date for "Today" button
+                            const today = new Date();
+                            const year = today.getUTCFullYear();
+                            const month = today.getUTCMonth();
+                            const todayMonth = new Date(Date.UTC(year, month, 1));
+                            handleMonthChange(todayMonth);
+                          }}
                           title="Go to current month"
                         >
                           {format(currentMonth, 'MMMM yyyy')}
                         </div>
                         <button 
                           className="p-1 xxs:p-1.5 sm:p-2 rounded-r-sm hover:bg-[var(--color-bg-surface-hover)]" /* Removed border-l, changed rounded-r-lg to rounded-r-sm */
-                          onClick={() => handleMonthChange(addMonths(currentMonth, 1))} // Use handleMonthChange
+                          onClick={() => {
+                            console.log('[MONTH_NAV_DEBUG] Next button clicked');
+                            console.log('[MONTH_NAV_DEBUG] Current month:', currentMonth.toISOString());
+                            const nextMonth = addMonths(currentMonth, 1);
+                            console.log('[MONTH_NAV_DEBUG] Next month calculated:', nextMonth.toISOString());
+                            handleMonthChange(nextMonth);
+                          }}
                           aria-label="Next month"
                         >
                           {/* Replaced ChevronRight with img */}

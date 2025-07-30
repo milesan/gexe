@@ -154,8 +154,10 @@ export class CalendarService {
     const normalizedEnd = normalizeToUTCDate(endDate);
 
     console.log('[CalendarService] Getting customizations between:', {
-      startDate: formatDateForDisplay(normalizedStart),
-      endDate: formatDateForDisplay(normalizedEnd)
+      normalizedStart: formatDateForDisplay(normalizedStart),
+      normalizedEnd: formatDateForDisplay(normalizedEnd),
+      startDate: formatDateForDisplay(startDate),
+      endDate: formatDateForDisplay(endDate)
     });
 
     const { data: customizations, error } = await supabase

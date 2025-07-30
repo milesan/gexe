@@ -16,13 +16,15 @@ const REMINDER_DAYS_BEFORE = 3;
 
 function generateArrivalReminderEmail({ guestName }: { guestName?: string }) {
   const welcomeDocUrl = "https://gardening.notion.site/Welcome-to-The-Garden-2684f446b48e4b43b3f003d7fca33664?pvs=74";
+  const samTelegramUrl = "https://t.me/greeneggssam";
   return `
     <div style="font-family: serif;">
       <p>Dear friend of the forest${guestName ? ', ' + guestName : ''},</p>
-      <p>We are so pleased to be welcoming you to The Garden's Existential Residencies soon.</p>
-      <p>If you haven't already, please contact our Community Manager, Sam, <a href="https://t.me/greeneggssam" target="_blank">via t.me/greeneggssam</a> on Telegram & inform him of your ETA.</p>
-      <p>Reminder to please have a read (or re-read) through our <a href="${welcomeDocUrl}" target="_blank">welcome doc</a>.</p>
-      <p>Looking forward to meeting you amongst the moss.<br/>With warmth,<br/>The Garden Team</p>
+      <p>The day is fast-approaching; soon the gates will beckon you in.</p>
+      <p>If you haven't already, please familiarise yourself with our <a href="${welcomeDocUrl}" target="_blank">Welcome Doc</a> & e-sign the agreements.</p>
+      <p>Your point of contact is <a href="${samTelegramUrl}" target="_blank">Sam on Telegram</a>. Please let him know of your ETA and any relevant arrival info.</p>
+      <p>Looking forward to meeting you in the enchanted forest...</p>
+      <p>From the moss,<br/>Dawn, Sam & The Garden Team</p>
     </div>
   `;
 }
@@ -44,21 +46,25 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceRoleKey)
     const resendClient = new resend.Resend(resendApiKey)
 
-    // Calculate target date (today + 3 days, UTC)
+    // Calculate date range (today to 3 days from now)
     const now = new Date()
-    const targetDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
-    targetDate.setUTCDate(targetDate.getUTCDate() + REMINDER_DAYS_BEFORE)
-    const targetDateStr = targetDate.toISOString().slice(0, 10) // 'YYYY-MM-DD'
+    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+    const threeDaysFromNow = new Date(today)
+    threeDaysFromNow.setUTCDate(threeDaysFromNow.getUTCDate() + REMINDER_DAYS_BEFORE)
+    
+    const todayStr = today.toISOString().slice(0, 10) // 'YYYY-MM-DD'
+    const threeDaysFromNowStr = threeDaysFromNow.toISOString().slice(0, 10) // 'YYYY-MM-DD'
 
-    console.log('Looking for bookings with check_in =', targetDateStr)
+    console.log('Looking for bookings with check_in between', todayStr, 'and', threeDaysFromNowStr)
 
-    // Query the view to get bookings with emails
+    // Query the view to get bookings with emails within the next 3 days
     const { data: bookings, error: queryError } = await supabase
       .from('bookings_with_emails')
-      .select('id, user_email, check_in, status')
+      .select('id, user_email, guest_email, guest_name, check_in, status')
       .eq('reminder_email_sent', false)
-      .eq('check_in', targetDateStr)
-      .not('user_email', 'is', null) // Ensure there is a user to email
+      .gte('check_in', todayStr)
+      .lte('check_in', threeDaysFromNowStr)
+      .or('user_email.not.is.null,guest_email.not.is.null') // Ensure there is either a user email or guest email
       .not('status', 'eq', 'cancelled')
 
     if (queryError) {
@@ -75,10 +81,13 @@ serve(async (req) => {
 
     let sentCount = 0
     for (const booking of bookings) {
-      const { id, user_email: email } = booking
+      const { id, user_email, guest_email, guest_name } = booking
+      
+      // Use user_email if available, otherwise fall back to guest_email
+      const email = user_email || guest_email
 
       if (!email) {
-        console.warn('Booking', id, 'has no email in view, skipping.')
+        console.warn('Booking', id, 'has no email (neither user_email nor guest_email), skipping.')
         continue
       }
 
@@ -89,7 +98,7 @@ serve(async (req) => {
           to: email,
           replyTo: 'living@thegarden.pt',
           subject: 'Your Stay at The Garden – Arrival Info',
-          html: generateArrivalReminderEmail({}),
+          html: generateArrivalReminderEmail({ guestName: guest_name }),
         })
         if (emailError) {
           console.error('Error sending reminder for booking', id, ':', emailError)
@@ -104,7 +113,7 @@ serve(async (req) => {
           console.error('Error updating booking', id, ':', updateError)
         } else {
           sentCount++
-          console.log('Reminder sent and marked for booking', id)
+          console.log('Reminder sent and marked for booking', id, 'to', email)
         }
       } catch (err) {
         console.error('Exception sending reminder for booking', id, ':', err)

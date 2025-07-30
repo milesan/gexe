@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { format } from 'date-fns-tz';
 import { supabase } from '../lib/supabase';
 import { parseISO } from 'date-fns';
-import { Edit, Trash2, PlusCircle, Receipt } from 'lucide-react';
+import { Edit, Trash2, PlusCircle, Receipt, Mail, MailCheck, ChevronUp, ChevronDown } from 'lucide-react';
 import { EditBookingModal } from './EditBookingModal';
 import { AddBookingModal } from './AddBookingModal';
 import { PriceBreakdownModal } from './PriceBreakdownModal';
@@ -36,6 +36,7 @@ interface Booking {
   accommodation_title: string;
   user_email: string | null;
   guest_email?: string | null;
+  user_name?: string | null;
   applied_discount_code: string | null;
   accommodations?: { title: string } | null;
   accommodation_price?: number | null;
@@ -50,7 +51,24 @@ interface Booking {
   discount_code_applies_to?: string | null;
   accommodation_price_after_seasonal_duration?: number | null;
   subtotal_after_discount_code?: number | null;
+  reminder_email_sent?: boolean | null;
   payments?: Payment[];
+}
+
+// Define a simple User type for the map callbacks
+interface SimpleUser {
+  id: string;
+  email?: string;
+  first_name?: string;
+  last_name?: string;
+}
+
+type SortField = 'check_in' | 'created_at' | 'total_price';
+type SortDirection = 'asc' | 'desc';
+
+interface SortConfig {
+  field: SortField;
+  direction: SortDirection;
 }
 
 export function BookingsList() {
@@ -63,6 +81,10 @@ export function BookingsList() {
   // Add new state for cancellation confirmation modal
   const [showCancelConfirmModal, setShowCancelConfirmModal] = useState(false);
   const [bookingToCancel, setBookingToCancel] = useState<Booking | null>(null);
+  // Add state for copied email feedback
+  const [copiedEmailId, setCopiedEmailId] = useState<string | null>(null);
+  // Add state for sorting
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ field: 'created_at', direction: 'desc' });
 
   React.useEffect(() => {
     loadBookings();
@@ -79,6 +101,11 @@ export function BookingsList() {
       bookingsSubscription.unsubscribe();
     };
   }, []);
+
+  // Reload bookings when sort changes
+  React.useEffect(() => {
+    loadBookings();
+  }, [sortConfig]);
 
   async function loadBookings() {
     setLoading(true);
@@ -124,17 +151,107 @@ export function BookingsList() {
           )
         `)
         .neq('status', 'cancelled')
-        .order('created_at', { ascending: false });
+        .order(sortConfig.field, { ascending: sortConfig.direction === 'asc' });
 
       if (bookingsError) {
         throw bookingsError;
       }
       
-      const processedBookings = (bookingsData || []).map(booking => ({
-        ...booking,
-        accommodation_title: booking.accommodations?.title || 'N/A',
-        payments: booking.payments || []
-      }));
+      // Get all user IDs from the bookings
+      const userIds = [...new Set(bookingsData?.map(booking => booking.user_id).filter(Boolean) || [])];
+      
+      // Fetch all user details using the enhanced function
+      let allUserData: SimpleUser[] = [];
+      if (userIds.length > 0) {
+        try {
+          const { data: userData, error: userError } = await supabase
+            .rpc('get_profiles_by_ids', { 
+              user_ids: userIds 
+            });
+
+          if (userError) {
+            console.error('[BookingsList] userError from get_profiles_by_ids:', userError);
+            // Create basic placeholders for missing user data
+            allUserData = userIds.map(id => ({
+              id,
+              email: `${id.substring(0, 8)}@placeholder.com`,
+              first_name: 'Guest',
+              last_name: `#${id.substring(0, 6)}`
+            }));
+          } else {
+            allUserData = userData || [];
+            
+            // Add placeholders for any missing users
+            if (allUserData.length < userIds.length) {
+              const foundIds = new Set(allUserData.map((user: SimpleUser) => user.id));
+              const missingIds = userIds.filter(id => !foundIds.has(id));
+              
+              if (missingIds.length > 0) {
+                console.log('[BookingsList] Creating placeholders for missing users:', missingIds);
+                
+                missingIds.forEach(id => {
+                  allUserData.push({
+                    id,
+                    email: `${id.substring(0, 8)}@placeholder.com`,
+                    first_name: 'Guest',
+                    last_name: `#${id.substring(0, 6)}`
+                  });
+                });
+              }
+            }
+          }
+        } catch (err) {
+          console.error('[BookingsList] Unexpected error fetching user data:', err);
+          // Create basic placeholders for all users on error
+          allUserData = userIds.map(id => ({
+            id,
+            email: `${id.substring(0, 8)}@placeholder.com`,
+            first_name: 'Guest',
+            last_name: `#${id.substring(0, 6)}`
+          }));
+        }
+      }
+
+      // Create maps for user emails and names
+      const userEmailMap = Object.fromEntries(
+        allUserData.map((user: SimpleUser) => [user.id, user.email || `${user.id.substring(0, 8)}@placeholder.com`])
+      );
+
+      const userNameMap = Object.fromEntries(
+        allUserData.map((user: SimpleUser) => [
+          user.id, 
+          `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Unknown'
+        ])
+      );
+      
+      const processedBookings = (bookingsData || []).map(booking => {
+        let userEmail = booking.user_email || 'No email provided';
+        let userName = '';
+
+        if (booking.user_id) {
+          // This is a registered user
+          if (userEmailMap[booking.user_id]) {
+            userEmail = userEmailMap[booking.user_id];
+            userName = userNameMap[booking.user_id] || 'Unknown';
+          } else {
+            // Registered user, but no profile data found
+            userEmail = `${String(booking.user_id).substring(0, 8)}@unknown.user`;
+            userName = 'Unknown';
+          }
+        } else if (booking.guest_email) {
+          // This is a guest user
+          userEmail = booking.guest_email;
+          userName = '[added manually]';
+        }
+
+        return {
+          ...booking,
+          accommodation_title: booking.accommodations?.title || 'N/A',
+          user_email: userEmail,
+          user_name: userName,
+          payments: booking.payments || []
+        };
+      });
 
       setBookings(processedBookings);
     } catch (err) {
@@ -204,6 +321,53 @@ export function BookingsList() {
     await loadBookings(); 
   };
 
+  const handleSort = (field: SortField) => {
+    setSortConfig(prev => {
+      if (prev.field === field) {
+        // Same field, toggle direction
+        return { field, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
+      } else {
+        // New field, default to descending for dates and price
+        const defaultDirection = field === 'total_price' ? 'asc' : 'desc';
+        return { field, direction: defaultDirection };
+      }
+    });
+  };
+
+  const getSortIcon = (field: SortField) => {
+    if (sortConfig.field !== field) {
+      return null;
+    }
+    return sortConfig.direction === 'asc' ? 
+      <ChevronUp className="w-4 h-4" /> : 
+      <ChevronDown className="w-4 h-4" />;
+  };
+
+  const handleToggleReminder = async (booking: Booking) => {
+    try {
+      const newReminderStatus = !booking.reminder_email_sent;
+      
+      const { error } = await supabase
+        .from('bookings')
+        .update({ reminder_email_sent: newReminderStatus })
+        .eq('id', booking.id);
+
+      if (error) {
+        console.error('Error updating reminder status:', error);
+        return;
+      }
+
+      // Update the local state
+      setBookings(prev => prev.map(b => 
+        b.id === booking.id 
+          ? { ...b, reminder_email_sent: newReminderStatus }
+          : b
+      ));
+    } catch (err) {
+      console.error('Error toggling reminder status:', err);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-full">
@@ -239,23 +403,38 @@ export function BookingsList() {
               <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
                 Guest
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
-                Check-in
+              <th 
+                className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider cursor-pointer hover:bg-[var(--color-bg-surface-hover)] transition-colors"
+                onClick={() => handleSort('check_in')}
+              >
+                <div className="flex items-center gap-1">
+                  Check-in
+                  {getSortIcon('check_in')}
+                </div>
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
                 Check-out
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
-                Price
+                Reminder
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
-                Discount Code
+              <th 
+                className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider cursor-pointer hover:bg-[var(--color-bg-surface-hover)] transition-colors"
+                onClick={() => handleSort('total_price')}
+              >
+                <div className="flex items-center gap-1">
+                  Price
+                  {getSortIcon('total_price')}
+                </div>
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
-                Created At
+              <th 
+                className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider cursor-pointer hover:bg-[var(--color-bg-surface-hover)] transition-colors"
+                onClick={() => handleSort('created_at')}
+              >
+                <div className="flex items-center gap-1">
+                  Created At
+                  {getSortIcon('created_at')}
+                </div>
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
                 Actions
@@ -264,7 +443,7 @@ export function BookingsList() {
           </thead>
           <tbody className="bg-[var(--color-bg-surface)] divide-y divide-[var(--color-border)]">
             {bookings.map((booking) => (
-              <tr key={booking.id}>
+              <tr key={booking.id} className="hover:bg-[var(--color-bg-surface-hover)] transition-colors">
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm font-medium text-[var(--color-text-primary)]">
                     {booking.accommodation_title}
@@ -272,7 +451,36 @@ export function BookingsList() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-[var(--color-text-primary)]">
-                    {booking.guest_email || booking.user_email || 'N/A'}
+                    {booking.user_name && booking.user_name !== 'Unknown' ? (
+                      <div>
+                        <div className="font-medium">{booking.user_name}</div>
+                        <button 
+                          onClick={() => {
+                            navigator.clipboard.writeText(booking.user_email || '');
+                            setCopiedEmailId(booking.id);
+                            setTimeout(() => setCopiedEmailId(null), 1000);
+                            console.log('[BookingsList] Copied email to clipboard:', booking.user_email);
+                          }}
+                          className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-accent-primary)] transition-colors cursor-pointer"
+                          title="Click to copy email address"
+                        >
+                          {copiedEmailId === booking.id ? 'Copied!' : booking.user_email}
+                        </button>
+                      </div>
+                    ) : (
+                      <button 
+                        onClick={() => {
+                          navigator.clipboard.writeText(booking.user_email || '');
+                          setCopiedEmailId(booking.id);
+                          setTimeout(() => setCopiedEmailId(null), 1000);
+                          console.log('[BookingsList] Copied email to clipboard:', booking.user_email);
+                        }}
+                        className="text-sm text-[var(--color-text-primary)] hover:text-[var(--color-accent-primary)] transition-colors cursor-pointer"
+                        title="Click to copy email address"
+                      >
+                        {copiedEmailId === booking.id ? 'Copied!' : booking.user_email}
+                      </button>
+                    )}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--color-text-secondary)]">
@@ -280,6 +488,29 @@ export function BookingsList() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--color-text-secondary)]">
                   {format(parseISO(booking.check_out), 'PP')}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <button
+                    onClick={() => handleToggleReminder(booking)}
+                    className={`flex items-center gap-1 px-2 py-1 rounded-sm transition-colors hover:bg-[var(--color-bg-surface-hover)] ${
+                      booking.reminder_email_sent 
+                        ? 'text-green-600 hover:text-green-700' 
+                        : 'text-gray-400 hover:text-gray-600'
+                    }`}
+                    title={booking.reminder_email_sent ? 'Click to mark as not sent' : 'Click to mark as sent'}
+                  >
+                    {booking.reminder_email_sent ? (
+                      <>
+                        <MailCheck className="w-4 h-4" />
+                        <span className="text-xs font-medium">Sent</span>
+                      </>
+                    ) : (
+                      <>
+                        <Mail className="w-4 h-4" />
+                        <span className="text-xs">Pending</span>
+                      </>
+                    )}
+                  </button>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--color-text-primary)]">
                   <div className="flex items-center gap-2">
@@ -298,28 +529,6 @@ export function BookingsList() {
                       <Receipt className="w-4 h-4" />
                     </button>
                   </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--color-text-primary)]">
-                  {booking.applied_discount_code ? (
-                    <span className="px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-800 rounded-full">
-                      {booking.applied_discount_code}
-                    </span>
-                  ) : (
-                    <span className="text-[var(--color-text-secondary)]">
-                      {new Date(booking.created_at) < new Date('2025-06-02') ? 'Unknown' : 'None'}
-                    </span>
-                  )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                    booking.status === 'confirmed' 
-                      ? 'bg-green-100 text-green-800'
-                      : booking.status === 'pending'
-                      ? 'bg-yellow-100 text-yellow-800'
-                      : 'bg-red-100 text-red-800'
-                  }`}>
-                    {booking.status}
-                  </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--color-text-secondary)]">
                   {format(new Date(booking.created_at), 'PPp', { timeZone: 'UTC' })}

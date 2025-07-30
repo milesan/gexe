@@ -1,4 +1,4 @@
-import { addWeeks, startOfWeek, addDays, addMonths, setDay, startOfDay, isSameDay, endOfDay, isBefore, isAfter, subMonths, format, Day, parseISO, differenceInDays } from 'date-fns';
+import { addWeeks, startOfWeek, addDays, addMonths, setDay, startOfDay, isSameDay, endOfDay, isBefore, isAfter, subMonths, format, Day, parseISO, differenceInDays, startOfMonth } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 import { convertToUTC1 } from './timezone';
 import { CalendarConfig, Week, WeekCustomization, WeekStatus } from '../types/calendar';
@@ -47,6 +47,16 @@ export function formatDateOnly(date: Date): string {
 
 // Re-export the startOfDay function from date-fns
 export { startOfDay };
+
+// Returns the start of the month for a given date in UTC+0
+export function startOfMonthUTC(date: Date): Date {
+  // Create a new Date object in UTC
+  const utcDate = new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1)
+  );
+  // Use startOfMonth to ensure we get the beginning of the day
+  return startOfMonth(utcDate);
+}
 
 /**
  * Normalizes any date input into a Date object representing midnight UTC
@@ -496,11 +506,7 @@ export function isWeekSelectable(week: Week, isAdmin: boolean = false, selectedW
   const cutoffDate = normalizeToUTCDate(new Date(Date.UTC(currentYear, 10, 1))); // Month is 0-indexed, so 10 = November
   
   if (week.startDate.getTime() >= cutoffDate.getTime()) {
-    console.log('[isWeekSelectable] Blocking selection: Week starts on or after November 1st', {
-      weekStartDate: formatDateForDisplay(week.startDate),
-      cutoffDate: formatDateForDisplay(cutoffDate)
-    });
-    return false;
+     return false;
   }
   
   // For normal users, check both status and start date

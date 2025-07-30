@@ -143,14 +143,6 @@ export function calculateWeeklyAccommodationPrice(
   averageSeasonalDiscount: number
 ): number {
   const basePrice = accommodation.base_price ?? 0;
-  const accommodationType = accommodation.title ?? '';
-
-  console.log('[calculateWeeklyAccommodationPrice] Starting (with pre-calculated seasonal discount):', { 
-    basePrice, 
-    accommodationType, 
-    selectedWeeksCount: selectedWeeks.length, 
-    averageSeasonalDiscount_Received: averageSeasonalDiscount 
-  });
 
   if (basePrice === 0) {
     console.log('[calculateWeeklyAccommodationPrice] Base price is 0, returning 0.');
@@ -163,23 +155,9 @@ export function calculateWeeklyAccommodationPrice(
   // 2. Calculate Duration Discount Percentage (using COMPLETE weeks)
   const completeWeeks = calculateDurationDiscountWeeks(selectedWeeks);
   const durationDiscountPercent = getDurationDiscount(completeWeeks); // Uses Math.floor internally
-  console.log('[calculateWeeklyAccommodationPrice] Calculated duration discount:', { completeWeeks, durationDiscountPercent });
-
-  // 3. Apply discounts multiplicatively using ROUNDED seasonal discount
+    // 3. Apply discounts multiplicatively using ROUNDED seasonal discount
   const finalPrice = basePrice * (1 - roundedSeasonalDiscount) * (1 - durationDiscountPercent);
   const roundedFinalPrice = Math.round(finalPrice);
-
-  // ADDED: Detailed log before returning
-  console.log('[calculateWeeklyAccommodationPrice] FINAL RETURN VALUES:', { 
-    basePrice, 
-    averageSeasonalDiscount_Received: averageSeasonalDiscount,
-    roundedSeasonalDiscount_Used: roundedSeasonalDiscount, 
-    durationDiscountPercent_Used: durationDiscountPercent, 
-    finalPrice_BeforeRounding: finalPrice, 
-    finalPrice_Returned: roundedFinalPrice 
-  });
-  // END ADDED LOG
-
   return roundedFinalPrice;
 }
 

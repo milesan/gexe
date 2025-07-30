@@ -34,8 +34,6 @@ export function useCalendar({ startDate, endDate, isAdminMode = false }: UseCale
     const normalizedStartDate = normalizeToUTCDate(startDate);
     const normalizedEndDate = normalizeToUTCDate(endDate);
 
-
-
     // State
     const [config, setConfig] = useState<CalendarConfig | null>(null);
     const [customizations, setCustomizations] = useState<WeekCustomization[]>([]);
@@ -77,7 +75,7 @@ export function useCalendar({ startDate, endDate, isAdminMode = false }: UseCale
                 setConfig(configResult);
                 setCustomizations(customizationsResult);
             } catch (err) {
-                console.error('[useCalendar] Error loading data:', err);
+                console.error('[use Calendar] Error loading data:', err);
                 if (!mounted) return;
                 setError(err instanceof Error ? err : new Error('Failed to load calendar data'));
             } finally {

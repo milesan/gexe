@@ -34,23 +34,6 @@ export function mapCalendarConfigToRow(config: Partial<CalendarConfig>): Partial
 }
 
 export function mapWeekCustomizationFromRow(row: WeekCustomizationRow & { flexible_checkins?: { allowed_checkin_date: string }[] }): WeekCustomization {
-    const startDate = parseISO(row.start_date);
-    const endDate = parseISO(row.end_date);
-    
-    console.log('[mappers] Converting DB week customization to app model:', {
-        id: row.id,
-        dbStartDate: row.start_date,
-        dbEndDate: row.end_date,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-        status: row.status,
-        durationDays: Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1,
-        startDay: startDate.getDay(),
-        endDay: endDate.getDay(),
-        flexibleDatesCount: row.flexible_checkins?.length,
-        link: row.link
-    });
-    
     return {
         id: row.id,
         startDate: parseISO(`${row.start_date}T00:00:00.000Z`),

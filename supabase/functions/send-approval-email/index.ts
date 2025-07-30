@@ -57,21 +57,6 @@ serve(async (req) => {
     const supabaseClient = createClient(supabaseUrl, serviceRoleKey)
     const resendClient = new resend.Resend(resendApiKey)
 
-    console.log('Creating acceptance token...')
-    
-    // Generate acceptance token using Edge Function
-    const { data: tokenData, error: tokenError } = await supabaseClient.functions.invoke('create-acceptance-token', {
-      body: { applicationId }
-    });
-
-    if (tokenError) {
-      console.error('Error creating token:', tokenError)
-      throw tokenError
-    }
-
-    const acceptanceUrl = `${frontendUrl}/accept?token=${tokenData.token}`
-    //const acceptanceUrl = `${frontendUrl}`
-
     console.log('Attempting to send email via Resend...')
 
     // Send email using Resend
@@ -81,21 +66,11 @@ serve(async (req) => {
       replyTo: 'living@thegarden.pt',
       subject: 'The Garden Application Status',
       html: `
-        <div style="${styles.container || 'padding: 20px; font-family: sans-serif;'}">
-          <a href="${acceptanceUrl}" target="_blank" style="display: block; text-align: center;">
-            <img src="https://guquxpxxycfmmlqajdyw.supabase.co/storage/v1/object/public/email-assets//acceptance-image.jpg" alt="Welcome to The Garden - Click to Accept Invitation" style="display: inline-block; max-width: 100%; height: auto; border: 0;"/>
-          </a>
-          <div style="padding: 20px 0; text-align: center; color: #555; font-size: 14px;">
-            <ul style="padding: 0; margin: 0 0 20px 0; display: inline-block; text-align: left;">
-            <li style="margin-bottom: 8px;">You can now sign in to The Garden</li>
-            <li style="margin-bottom: 8px;">Spaces are first come, first serve</li>
-              <li style="margin-bottom: 8px;">Valid for 14 days</li>
-            </ul>
-            <p style="margin-top: 20px; font-size: 12px; color: #777;">
-              If the image above doesn't work, sign in here or log in normally: <br/>
-              <a href="${acceptanceUrl}" target="_blank" style="color: #115e59; text-decoration: underline;">${acceptanceUrl}</a>
-            </p>
-          </div>
+        <div style="font-family: serif;">
+          <p>Dear friend of the forest,</p>
+          <p>We are delighted to inform you that your application to The Garden has been approved.</p>
+          <p>You can now sign in to <a href="${frontendUrl}" target="_blank">The Garden</a> to secure your spot. Spaces are first come, first serve, so we recommend booking your stay soon.</p>
+          <p>Looking forward to welcoming you amongst the moss.<br/>With warmth,<br/>The Garden Team</p>
         </div>
       `
     })

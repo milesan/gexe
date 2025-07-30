@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { format, addDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay } from 'date-fns';
+import { format, addDays, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay } from 'date-fns';
 import { supabase } from '../lib/supabase';
 import { Calendar, ChevronLeft, ChevronRight, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { StatusModal } from './StatusModal';
 import type { AvailabilityStatus } from '../types/availability';
 import { motion, AnimatePresence } from 'framer-motion';
-import { normalizeToUTCDate, formatDateForDisplay } from '../utils/dates';
+import { normalizeToUTCDate, formatDateForDisplay, startOfMonthUTC } from '../utils/dates';
 import { calculateDaysBetween } from '../utils/dates';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 
@@ -83,7 +83,7 @@ export function InventoryCalendar({ onClose }: Props) {
 
       // Get availability data for the current month
       // Normalize to UTC before sending to API
-      const utcStartDate = normalizeToUTCDate(startOfMonth(currentDate));
+      const utcStartDate = normalizeToUTCDate(startOfMonthUTC(currentDate));
       const utcEndDate = normalizeToUTCDate(endOfMonth(currentDate));
       const startDate = formatDateForDisplay(utcStartDate);
       const endDate = formatDateForDisplay(utcEndDate);
@@ -295,7 +295,7 @@ export function InventoryCalendar({ onClose }: Props) {
 
   // Mobile calendar helpers
   const getCalendarDays = () => {
-    const start = startOfWeek(startOfMonth(currentDate));
+    const start = startOfWeek(startOfMonthUTC(currentDate));
     const end = endOfWeek(endOfMonth(currentDate));
     return eachDayOfInterval({ start, end });
   };
@@ -468,10 +468,10 @@ export function InventoryCalendar({ onClose }: Props) {
                 // Mobile Calendar View
                 <div className="space-y-4">
                   {/* Accommodation Selector */}
-                  <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-lg p-4">
+                  <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-sm p-4">
                     <button
                       onClick={() => setShowAccommodationSelector(!showAccommodationSelector)}
-                      className="w-full flex items-center justify-between p-3 bg-[var(--color-bg-surface-hover)] rounded-lg text-[var(--color-text-primary)]"
+                      className="w-full flex items-center justify-between p-3 bg-[var(--color-bg-surface-hover)] rounded-sm text-[var(--color-text-primary)]"
                     >
                       <span className="text-sm font-medium">
                         {selectedAccommodationForMobile 
@@ -502,7 +502,7 @@ export function InventoryCalendar({ onClose }: Props) {
 
                   {/* Mobile Calendar */}
                   {selectedAccommodationForMobile && (
-                    <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-lg p-4">
+                    <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-sm p-4">
                       <div className="grid grid-cols-7 gap-1 mb-4">
                         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
                           <div key={day} className="text-center text-xs font-medium text-[var(--color-text-secondary)] py-2">
@@ -530,7 +530,7 @@ export function InventoryCalendar({ onClose }: Props) {
                   )}
 
                   {/* Mobile Legend */}
-                  <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-lg p-4">
+                  <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-sm p-4">
                     <h3 className="text-sm font-medium text-[var(--color-text-primary)] mb-3">Legend</h3>
                     <div className="grid grid-cols-2 gap-3 text-xs">
                       <div className="flex items-center gap-2">
