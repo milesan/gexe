@@ -45,11 +45,11 @@ export function SecretEventModal({ isOpen, onClose, isRangeSelection = false }: 
             {isRangeSelection ? (
               <>
                 <p className="color-shade-2 mb-6 font-mono">
-                  Your selection includes the week of September 23-29th, 2025, which is reserved for a private garden rental event.
+                  Your selection includes the week of September 23-29th, 2025, which is closed for a secret off-site event.
                 </p>
                 
                 <p className="color-shade-2 mb-6 font-mono">
-                  Please adjust your selection to avoid the blocked week, or contact us directly at{' '}
+                  Please adjust your selection to avoid the blocked week, or if you're interested in renting the venue over that week (or for next season), please send a direct enquiry to{' '}
                   <a 
                     href="mailto:dawn@thegarden.pt?subject=Garden Rental Inquiry&body=Hi, I am interested in renting the garden for all or part of Sep 23-29th"
                     className="text-accent-primary hover:underline"
@@ -57,17 +57,16 @@ export function SecretEventModal({ isOpen, onClose, isRangeSelection = false }: 
                   >
                     dawn@thegarden.pt
                   </a>
-                  {' '}if you're interested in garden rental.
                 </p>
               </>
             ) : (
               <>
                 <p className="color-shade-2 mb-6 font-mono">
-                  This week is reserved for a private garden rental event. The entire garden is booked for September 23-29th, 2025.
+                  The Garden is closed for a secret off-site event.
                 </p>
                 
                 <p className="color-shade-2 mb-6 font-mono">
-                  If you're interested in renting the garden for your own event, please contact us directly at{' '}
+                  If you're interested in renting the venue over that week (or for next season), please send a direct enquiry to{' '}
                   <a 
                     href="mailto:dawn@thegarden.pt?subject=Garden Rental Inquiry&body=Hi, I am interested in renting the garden for all or part of Sep 23-29th"
                     className="text-accent-primary hover:underline"
