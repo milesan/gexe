@@ -1,11 +1,14 @@
 // src/components/admin/QuestionFormModal.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
-import { X, AlertCircle, Plus, Trash2, Eye, EyeOff, ListFilter } from 'lucide-react';
+import { X, AlertCircle, Plus, Trash2, Eye, EyeOff, ListFilter, GripVertical } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { ApplicationQuestion, VisibilityRules, VisibilityRule } from '../../types/application'; // Corrected import path
 import { APPLICATION_SECTION_ORDER } from '../../config/applicationConfig'; // For order_number logic
+// --- ADDED DND IMPORTS ---
+import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
+// --- END ADDED DND IMPORTS ---
 
 // Updated ApplicationQuestion interface (mirroring what should be in ../../types/application.ts)
 /*
@@ -167,6 +170,26 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
     const newOptions = formData.options.filter((_, i) => i !== index);
     setFormData(prev => ({ ...prev, options: newOptions }));
   };
+
+  // --- ADDED DND HANDLER FOR OPTIONS ---
+  const onOptionsDragEnd = useCallback((result: DropResult) => {
+    const { source, destination } = result;
+
+    if (!destination) {
+      return;
+    }
+
+    if (destination.droppableId === source.droppableId && destination.index === source.index) {
+      return;
+    }
+
+    const newOptions = Array.from(formData.options);
+    const [movedItem] = newOptions.splice(source.index, 1);
+    newOptions.splice(destination.index, 0, movedItem);
+
+    setFormData(prev => ({ ...prev, options: newOptions }));
+  }, [formData.options]);
+  // --- END DND HANDLER FOR OPTIONS ---
 
   // --- Rule Builder Handlers ---
   const handleAddRule = () => {
@@ -400,13 +423,13 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
                     {/* Type */}
                     <div>
                         <label htmlFor="type" className="block text-sm font-medium text-[var(--color-text-secondary)] font-mono mb-1">Type</label>
-                        <select
-                            id="type"
-                            name="type"
-                            value={formData.type}
-                            onChange={handleChange}
-                            className="w-full px-3 py-2 bg-[var(--color-furface-modal,theme(colors.gray.800))] border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent text-primary font-mono"
-                        >
+                                                 <select
+                             id="type"
+                             name="type"
+                             value={formData.type}
+                             onChange={handleChange}
+                             className="w-full px-3 py-2 bg-[var(--color-input-bg)] border border-[var(--color-border)] rounded-md focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] text-[var(--color-text-primary)] font-mono"
+                         >
                             {QUESTION_TYPES.map(typeOpt => (
                                 <option key={typeOpt} value={typeOpt}>{typeOpt}</option>
                             ))}
@@ -419,25 +442,57 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
                             <label className="block text-sm font-medium text-[var(--color-text-secondary)] font-mono">
                                 Options for {formData.type === 'radio' ? 'Radio' : 'Checkbox'} (each becomes a choice)
                             </label>
-                            {formData.options.map((option, index) => (
-                                <div key={index} className="flex items-center gap-2">
-                                    <input
-                                        type="text"
-                                        value={option}
-                                        onChange={(e) => handleOptionChange(index, e.target.value)}
-                                        placeholder={`Option ${index + 1}`}
-                                        className="flex-grow px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-input-bg)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono text-sm"
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => removeOption(index)}
-                                        className="p-2 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-md transition-colors"
-                                        aria-label="Remove option"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            ))}
+                            <DragDropContext onDragEnd={onOptionsDragEnd}>
+                                <Droppable droppableId="options-list" type="OPTION">
+                                    {(provided, snapshot) => (
+                                        <div
+                                            {...provided.droppableProps}
+                                            ref={provided.innerRef}
+                                            className={`space-y-2 ${snapshot.isDraggingOver ? 'bg-[var(--color-bg-surface-hover)]' : ''}`}
+                                        >
+                                            {formData.options.map((option, index) => (
+                                                <Draggable key={`option-${index}`} draggableId={`option-${index}`} index={index}>
+                                                    {(providedDraggable, snapshotDraggable) => (
+                                                        <div
+                                                            ref={providedDraggable.innerRef}
+                                                            {...providedDraggable.draggableProps}
+                                                                                                                         className={`flex items-center gap-2 p-2 rounded-md border ${
+                                                                 snapshotDraggable.isDragging 
+                                                                     ? 'shadow-lg bg-[var(--color-accent-primary-muted)] border-[var(--color-accent-primary)]' 
+                                                                     : 'border-[var(--color-border)] bg-[var(--color-input-bg)]'
+                                                             } transition-all`}
+                                                        >
+                                                            <div
+                                                                {...providedDraggable.dragHandleProps}
+                                                                className="flex-shrink-0 p-1 cursor-grab hover:bg-[var(--color-bg-surface-hover)] rounded"
+                                                                title="Drag to reorder"
+                                                            >
+                                                                <GripVertical className="w-4 h-4 text-[var(--color-text-tertiary)]" />
+                                                            </div>
+                                                            <input
+                                                                type="text"
+                                                                value={option}
+                                                                onChange={(e) => handleOptionChange(index, e.target.value)}
+                                                                placeholder={`Option ${index + 1}`}
+                                                                className="flex-grow px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-input-bg)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] font-mono text-sm"
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => removeOption(index)}
+                                                                className="flex-shrink-0 p-2 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-md transition-colors"
+                                                                aria-label="Remove option"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </Draggable>
+                                            ))}
+                                            {provided.placeholder}
+                                        </div>
+                                    )}
+                                </Droppable>
+                            </DragDropContext>
                             <button
                                 type="button"
                                 onClick={addOption}
@@ -452,13 +507,13 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
                     {/* Section */}
                     <div>
                          <label htmlFor="section" className="block text-sm font-medium text-[var(--color-text-secondary)] font-mono mb-1">Section</label>
-                        <select
-                            id="section"
-                            name="section"
-                            value={formData.section}
-                            onChange={handleChange}
-                            className="w-full px-3 py-2 bg-[var(--color-furface-modal,theme(colors.gray.800))] border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent text-primary font-mono"
-                         >
+                                                 <select
+                             id="section"
+                             name="section"
+                             value={formData.section}
+                             onChange={handleChange}
+                             className="w-full px-3 py-2 bg-[var(--color-input-bg)] border border-[var(--color-border)] rounded-md focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] text-[var(--color-text-primary)] font-mono"
+                          >
                             {QUESTION_SECTIONS.map(sectionOpt => (
                                 <option key={sectionOpt} value={sectionOpt}>{sectionOpt}</option>
                             ))}
@@ -468,13 +523,13 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
                     {/* Required */}
                     <div>
                         <label htmlFor="required" className="block text-sm font-medium text-[var(--color-text-secondary)] font-mono mb-1">Required</label>
-                        <select
-                            id="required"
-                            name="required"
-                            value={formData.required === null ? "null" : String(formData.required)}
-                            onChange={handleChange}
-                            className="w-full px-3 py-2 bg-[var(--color-furface-modal,theme(colors.gray.800))] border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent text-primary font-mono"
-                        >
+                                                 <select
+                             id="required"
+                             name="required"
+                             value={formData.required === null ? "null" : String(formData.required)}
+                             onChange={handleChange}
+                             className="w-full px-3 py-2 bg-[var(--color-input-bg)] border border-[var(--color-border)] rounded-md focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] text-[var(--color-text-primary)] font-mono"
+                         >
                             <option value="null">Not Set</option>
                             <option value="true">Yes</option>
                             <option value="false">No</option>
@@ -583,12 +638,12 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
                                             <div>
                                                 <label htmlFor={`rule-question-${rule.ui_id}`} className="block text-xs font-medium text-[var(--color-text-secondary)] font-mono mb-0.5">Target Question</label>
-                                                <select
-                                                    id={`rule-question-${rule.ui_id}`}
-                                                    value={rule.question_id}
-                                                    onChange={(e) => handleRuleChange(rule.ui_id, 'question_id', e.target.value)}
-                                                    className="w-full px-2 py-1.5 bg-[var(--color-furface-modal,theme(colors.gray.800))] border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent text-primary font-mono text-xs"
-                                                >
+                                                                                                 <select
+                                                     id={`rule-question-${rule.ui_id}`}
+                                                     value={rule.question_id}
+                                                     onChange={(e) => handleRuleChange(rule.ui_id, 'question_id', e.target.value)}
+                                                     className="w-full px-2 py-1.5 bg-[var(--color-input-bg)] border border-[var(--color-border)] rounded-md focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] text-[var(--color-text-primary)] font-mono text-xs"
+                                                 >
                                                     <option value="">Select a question...</option>
                                                     {allQuestions.filter(q => q.id !== question?.id && q.type !== 'markdown_text').map(q => (
                                                         <option key={q.id} value={q.id} title={q.text}>
@@ -599,12 +654,12 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
                                             </div>
                                             <div>
                                                 <label htmlFor={`rule-operator-${rule.ui_id}`} className="block text-xs font-medium text-[var(--color-text-secondary)] font-mono mb-0.5">Operator</label>
-                                                <select
-                                                    id={`rule-operator-${rule.ui_id}`}
-                                                    value={rule.operator}
-                                                    onChange={(e) => handleRuleChange(rule.ui_id, 'operator', e.target.value)}
-                                                    className="w-full px-2 py-1.5 bg-[var(--color-furface-modal,theme(colors.gray.800))] border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent text-primary font-mono text-xs"
-                                                >
+                                                                                                 <select
+                                                     id={`rule-operator-${rule.ui_id}`}
+                                                     value={rule.operator}
+                                                     onChange={(e) => handleRuleChange(rule.ui_id, 'operator', e.target.value)}
+                                                     className="w-full px-2 py-1.5 bg-[var(--color-input-bg)] border border-[var(--color-border)] rounded-md focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-primary)] focus:border-[var(--color-accent-primary)] text-[var(--color-text-primary)] font-mono text-xs"
+                                                 >
                                                     {VISIBILITY_OPERATORS.map(op => (
                                                         <option key={op} value={op}>{op}</option>
                                                     ))}

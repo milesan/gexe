@@ -773,7 +773,7 @@ export function Applications2() {
                   const specialWeeksQuestion = questions.find(q => q.id === "bfde0ed9-319a-45e4-8b0d-5c694ca2c850") as QuestionForAnswerRetrieval | undefined;
                   if (specialWeeksQuestion) {
                     const answer = getAnswer(application.data, specialWeeksQuestion);
-                    if (answer && answer !== "No <3") {
+                    if (answer && answer !== "No<3" && answer !== "No <3") {
                       const programName = answer.split(" | ")[0] || answer;
                       return (
                         <span className="inline-flex items-center px-2 py-1 rounded text-xs bg-amber-900/30 text-amber-400 border border-amber-700/50 font-mono">
