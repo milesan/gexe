@@ -135,7 +135,17 @@ export function AppView() {
       }
 
       if (activeSearchQuery) {
-        query = query.ilike('user_email', `%${activeSearchQuery}%`);
+        // Search by email OR name
+        const firstNameQuestion = questions.find(q => q.id === "39f455d1-0de8-438f-8f34-10818eaec15e");
+        const lastNameQuestion = questions.find(q => q.id === "246d0acf-25cd-4e4e-9434-765e6ea679cb");
+        
+        if (firstNameQuestion && lastNameQuestion) {
+          // Search by email OR first name OR last name OR full name
+          query = query.or(`user_email.ilike.%${activeSearchQuery}%,data->>${firstNameQuestion.id}.ilike.%${activeSearchQuery}%,data->>${lastNameQuestion.id}.ilike.%${activeSearchQuery}%`);
+        } else {
+          // Fallback to email-only search if questions not found
+          query = query.ilike('user_email', `%${activeSearchQuery}%`);
+        }
       }
 
       query = query.order('created_at', { ascending: false });
@@ -515,7 +525,7 @@ export function AppView() {
         <div className="flex gap-1.5 items-center flex-grow sm:flex-grow-0 min-w-0 w-full sm:w-auto">
           <input 
             type="text"
-            placeholder="Search by email..."
+            placeholder="Search by email or name..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             onKeyPress={(e) => { if (e.key === 'Enter') handleSearch(); }}
