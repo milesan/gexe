@@ -7,6 +7,7 @@ import { EditBookingModal } from './EditBookingModal';
 import { AddBookingModal } from './AddBookingModal';
 import { PriceBreakdownModal } from './PriceBreakdownModal';
 import { motion } from 'framer-motion';
+import { ApplicationDetails } from './admin/ApplicationDetails';
 
 interface Payment {
   id: string;
@@ -85,9 +86,13 @@ export function BookingsList() {
   const [copiedEmailId, setCopiedEmailId] = useState<string | null>(null);
   // Add state for sorting
   const [sortConfig, setSortConfig] = useState<SortConfig>({ field: 'created_at', direction: 'desc' });
+  // Add state for application details
+  const [selectedApplication, setSelectedApplication] = useState<any>(null);
+  const [questions, setQuestions] = useState<any[]>([]);
 
   React.useEffect(() => {
     loadBookings();
+    loadQuestions();
 
     // Subscribe to booking changes
     const bookingsSubscription = supabase
@@ -106,6 +111,47 @@ export function BookingsList() {
   React.useEffect(() => {
     loadBookings();
   }, [sortConfig]);
+
+  async function loadQuestions() {
+    try {
+      const { data, error } = await supabase
+        .from('application_questions')
+        .select('*')
+        .order('order_number');
+
+      if (error) throw error;
+      setQuestions(data || []);
+    } catch (err) {
+      console.error('Error loading questions:', err);
+    }
+  }
+
+  async function handleGuestNameClick(booking: Booking) {
+    if (!booking.user_id) {
+      console.log('No user_id for guest booking');
+      return;
+    }
+
+    try {
+      // Fetch the application for this user
+      const { data, error } = await supabase
+        .from('application_details')
+        .select('*')
+        .eq('user_id', booking.user_id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching application:', error);
+        return;
+      }
+
+      if (data) {
+        setSelectedApplication(data);
+      }
+    } catch (err) {
+      console.error('Error loading application details:', err);
+    }
+  }
 
   async function loadBookings() {
     setLoading(true);
@@ -453,7 +499,13 @@ export function BookingsList() {
                   <div className="text-sm text-[var(--color-text-primary)]">
                     {booking.user_name && booking.user_name !== 'Unknown' ? (
                       <div>
-                        <div className="font-medium">{booking.user_name}</div>
+                        <button
+                          onClick={() => handleGuestNameClick(booking)}
+                          className="font-medium hover:text-[var(--color-accent-primary)] hover:underline transition-colors cursor-pointer text-left"
+                          disabled={!booking.user_id || booking.user_name === '[added manually]'}
+                        >
+                          {booking.user_name}
+                        </button>
                         <button 
                           onClick={() => {
                             navigator.clipboard.writeText(booking.user_email || '');
@@ -461,7 +513,7 @@ export function BookingsList() {
                             setTimeout(() => setCopiedEmailId(null), 1000);
                             console.log('[BookingsList] Copied email to clipboard:', booking.user_email);
                           }}
-                          className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-accent-primary)] transition-colors cursor-pointer"
+                          className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-accent-primary)] transition-colors cursor-pointer block"
                           title="Click to copy email address"
                         >
                           {copiedEmailId === booking.id ? 'Copied!' : booking.user_email}
@@ -575,6 +627,15 @@ export function BookingsList() {
           isOpen={!!breakdownModalBooking}
           onClose={() => setBreakdownModalBooking(null)}
           booking={breakdownModalBooking}
+        />
+      )}
+
+      {/* Application Details Modal */}
+      {selectedApplication && (
+        <ApplicationDetails 
+          application={selectedApplication}
+          onClose={() => setSelectedApplication(null)}
+          questions={questions}
         />
       )}
 
