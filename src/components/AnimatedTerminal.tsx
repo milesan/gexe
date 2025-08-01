@@ -33,7 +33,7 @@ export function AnimatedTerminal({ onComplete }: Props) {
   const [asciiLines, setAsciiLines] = useState<string[]>([]);
   const [currentLine, setCurrentLine] = useState(0);
   const [currentChar, setCurrentChar] = useState(0);
-  const [borderChars, setBorderChars] = useState<string[]>([]);
+  const [showBorder, setShowBorder] = useState(false);
   const [isAsciiLoaded, setIsAsciiLoaded] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
@@ -53,10 +53,7 @@ export function AnimatedTerminal({ onComplete }: Props) {
     const updateDimensions = () => {
       if (containerRef.current) {
         const { width, height } = containerRef.current.getBoundingClientRect();
-        setDimensions({
-          width: Math.floor(width / 12),
-          height: Math.floor(height / 20)
-        });
+        setDimensions({ width, height });
       }
     };
 
@@ -71,38 +68,14 @@ export function AnimatedTerminal({ onComplete }: Props) {
   }, [isMobile]);
 
   useEffect(() => {
-    if (dimensions.width === 0 || dimensions.height === 0) return;
+    // Simple timer to show border after a delay
+    const timer = setTimeout(() => {
+      setShowBorder(true);
+      setTimeout(() => setShowLogin(true), 1000);
+    }, 500);
 
-    const chars: string[] = [];
-    const totalChars = (dimensions.width * 2) + (dimensions.height * 2);
-    const animationDuration = 1500;
-    const intervalTime = animationDuration / totalChars;
-
-    for (let i = 0; i < dimensions.width; i++) chars.push('═');
-    for (let i = 0; i < dimensions.height; i++) chars.push('║');
-    for (let i = 0; i < dimensions.width; i++) chars.push('═');
-    for (let i = 0; i < dimensions.height; i++) chars.push('║');
-
-    chars[0] = '╔';
-    chars[dimensions.width - 1] = '╗';
-    chars[dimensions.width + dimensions.height - 1] = '╝';
-    chars[dimensions.width * 2 + dimensions.height - 1] = '╚';
-
-    let currentIndex = 0;
-    const interval = setInterval(() => {
-      if (currentIndex < totalChars) {
-        setBorderChars(prev => [...prev, chars[currentIndex]]);
-        currentIndex++;
-        if (currentIndex === totalChars) {
-          setTimeout(() => setShowLogin(true), 500);
-        }
-      } else {
-        clearInterval(interval);
-      }
-    }, intervalTime);
-
-    return () => clearInterval(interval);
-  }, [dimensions]);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (asciiLines.length === 0 || currentLine >= asciiLines.length) return;
@@ -238,21 +211,39 @@ export function AnimatedTerminal({ onComplete }: Props) {
           style={{ opacity: 0 }}
         />
 
-        {borderChars.map((char, index) => (
-          <motion.div
-            key={index}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.05 }}
-            className="absolute font-mono text-retro-accent text-xl"
+        {/* Fluorescent border with glow */}
+        <motion.div
+          className="absolute inset-8 sm:inset-12 md:inset-16 lg:inset-20 pointer-events-none"
+          initial={{ opacity: 0 }}
+          animate={showBorder ? { opacity: 1 } : {}}
+          transition={{ duration: 1, ease: "easeOut" }}
+        >
+          {/* Fluorescent border */}
+          <div 
+            className="absolute inset-0 border-2 border-retro-accent/80 rounded-sm"
             style={{
-              ...getBorderPosition(index, dimensions),
-              transform: getBorderTransform(index, dimensions)
+              boxShadow: '0 0 8px rgba(0, 255, 0, 0.3), inset 0 0 8px rgba(0, 255, 0, 0.1)',
             }}
-          >
-            {char}
-          </motion.div>
-        ))}
+          />
+          
+          {/* Pulsing glow effect */}
+          <motion.div 
+            className="absolute inset-0 rounded-sm"
+            animate={showBorder ? {
+              boxShadow: [
+                '0 0 10px rgba(0, 255, 0, 0.15)',
+                '0 0 15px rgba(0, 255, 0, 0.2)',
+                '0 0 10px rgba(0, 255, 0, 0.15)',
+              ]
+            } : {}}
+            transition={{
+              duration: 4,
+              ease: "easeInOut",
+              repeat: Infinity,
+              repeatType: "loop"
+            }}
+          />
+        </motion.div>
 
         <AnimatePresence>
           {showLogin && (
@@ -409,55 +400,3 @@ export function AnimatedTerminal({ onComplete }: Props) {
   );
 }
 
-function getBorderPosition(index: number, dims = { width: 0, height: 0 }) {
-  const { width: totalWidth, height: totalHeight } = dims;
-
-  if (index < totalWidth) {
-    return {
-      left: `${(index / totalWidth) * 100}%`,
-      top: '0'
-    };
-  } else if (index < totalWidth + totalHeight) {
-    return {
-      right: '0',
-      top: `${((index - totalWidth) / totalHeight) * 100}%`
-    };
-  } else if (index < (totalWidth * 2) + totalHeight) {
-    return {
-      right: `${((index - (totalWidth + totalHeight)) / totalWidth) * 100}%`,
-      bottom: '0'
-    };
-  } else {
-    return {
-      left: '0',
-      bottom: `${((index - (totalWidth * 2 + totalHeight)) / totalHeight) * 100}%`
-    };
-  }
-}
-
-function getBorderTransform(index: number, dims = { width: 0, height: 0 }): string {
-  const { width: totalWidth, height: totalHeight } = dims;
-  const totalChars = (totalWidth * 2) + (totalHeight * 2);
-
-  const isTopEdge = index < totalWidth;
-  const isRightEdge = index >= totalWidth && index < totalWidth + totalHeight;
-  const isBottomEdge = index >= totalWidth + totalHeight && index < totalWidth * 2 + totalHeight;
-  const isLeftEdge = index >= totalWidth * 2 + totalHeight;
-
-  const isTopLeft = index === 0;
-  const isTopRight = index === totalWidth - 1;
-  const isBottomRight = index === totalWidth + totalHeight -1;
-  const isBottomLeft = index === totalWidth * 2 + totalHeight -1;
-
-  if (isTopLeft) return 'translate(0, 0)';
-  if (isTopRight) return 'translate(-100%, 0)';
-  if (isBottomRight) return 'translate(-100%, -100%)';
-  if (isBottomLeft) return 'translate(0, -100%)';
-
-  if (isTopEdge) return 'translate(-50%, 0)';
-  if (isRightEdge) return 'translate(-100%, -50%)';
-  if (isBottomEdge) return 'translate(-50%, -100%)';
-  if (isLeftEdge) return 'translate(0, -50%)';
-
-  return 'translate(-50%, -50%)';
-}
