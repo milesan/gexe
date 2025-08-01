@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { format } from 'date-fns-tz';
 import { supabase } from '../lib/supabase';
 import { parseISO } from 'date-fns';
-import { Edit, Trash2, PlusCircle, Receipt, Mail, MailCheck, ChevronUp, ChevronDown } from 'lucide-react';
+import { Edit, Trash2, PlusCircle, Receipt, Mail, MailCheck, ChevronUp, ChevronDown, Coins } from 'lucide-react';
 import { EditBookingModal } from './EditBookingModal';
 import { AddBookingModal } from './AddBookingModal';
 import { PriceBreakdownModal } from './PriceBreakdownModal';
@@ -89,6 +89,8 @@ export function BookingsList() {
   // Add state for application details
   const [selectedApplication, setSelectedApplication] = useState<any>(null);
   const [questions, setQuestions] = useState<any[]>([]);
+  // Add state for credit refund
+  const [refundAmount, setRefundAmount] = useState<string>('');
 
   React.useEffect(() => {
     loadBookings();
@@ -315,11 +317,18 @@ export function BookingsList() {
   const openCancelConfirmModal = (booking: Booking) => {
     setBookingToCancel(booking);
     setShowCancelConfirmModal(true);
+    // Set default refund amount to credits used
+    if (booking.credits_used && booking.credits_used > 0) {
+      setRefundAmount(booking.credits_used.toString());
+    } else {
+      setRefundAmount('0');
+    }
   };
 
   const closeCancelConfirmModal = () => {
     setBookingToCancel(null);
     setShowCancelConfirmModal(false);
+    setRefundAmount('');
   };
 
   const handleConfirmCancel = async () => {
@@ -328,18 +337,38 @@ export function BookingsList() {
     setLoading(true);
 
     try {
+      const refundAmountNum = parseFloat(refundAmount) || 0;
+      const creditsUsed = bookingToCancel.credits_used || 0;
+      
+      // Build the update object
+      const updateData: any = { status: 'cancelled' };
+      
+      // If admin specified a refund amount different from credits used, set it
+      if (bookingToCancel.user_id && creditsUsed > 0 && refundAmountNum !== creditsUsed) {
+        updateData.admin_refund_amount = refundAmountNum;
+      }
+      
+      // Cancel the booking (trigger will use admin_refund_amount if set)
       const { error: deleteError } = await supabase
         .from('bookings')
-        .update({ status: 'cancelled' })
+        .update(updateData)
         .eq('id', bookingToCancel.id);
 
-      if (deleteError) {
-        throw deleteError;
-      }
+      if (deleteError) throw deleteError;
 
       await loadBookings();
       setError(null);
       closeCancelConfirmModal();
+      
+      if (creditsUsed > 0) {
+        if (refundAmountNum !== creditsUsed) {
+          alert(`Booking cancelled. Refunded €${refundAmountNum} of €${creditsUsed} credits used.`);
+        } else {
+          alert(`Booking cancelled and €${creditsUsed} in credits refunded.`);
+        }
+      } else {
+        alert('Booking cancelled successfully.');
+      }
 
     } catch (err) {
       console.error('Failed to cancel booking:', err);
@@ -388,6 +417,7 @@ export function BookingsList() {
       <ChevronUp className="w-4 h-4" /> : 
       <ChevronDown className="w-4 h-4" />;
   };
+
 
   const handleToggleReminder = async (booking: Booking) => {
     try {
@@ -667,15 +697,34 @@ export function BookingsList() {
                 <strong className="text-[var(--color-text-primary)]">Dates:</strong> {format(parseISO(bookingToCancel.check_in), 'PP')} - {format(parseISO(bookingToCancel.check_out), 'PP')}
               </p>
               <p className="text-sm text-[var(--color-text-secondary)] font-mono">
-                <strong className="text-[var(--color-text-primary)]">Total Price:</strong> €{bookingToCancel.total_price}
-                {bookingToCancel.credits_used && bookingToCancel.credits_used > 0 && (
-                  <span className="text-emerald-400"> (€{bookingToCancel.credits_used} in credits)</span>
+                <strong className="text-[var(--color-text-primary)]">Total Price:</strong> €{Number(bookingToCancel.total_price).toFixed(2)}
+                {bookingToCancel.credits_used > 0 && (
+                  <span className="text-emerald-400"> (€{Number(bookingToCancel.credits_used).toFixed(2)} in credits)</span>
                 )}
               </p>
             </div>
+            {bookingToCancel.credits_used > 0 && bookingToCancel.user_id && (
+              <div className="mb-4 p-4 bg-emerald-900/20 border border-emerald-700/50 rounded-sm">
+                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                  Credit Refund Amount (€)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max={bookingToCancel.credits_used}
+                  step="0.01"
+                  value={refundAmount}
+                  onChange={(e) => setRefundAmount(e.target.value)}
+                  className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-sm text-[var(--color-text-primary)] font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  placeholder={`Max: €${Number(bookingToCancel.credits_used).toFixed(2)}`}
+                />
+                <p className="text-xs text-[var(--color-text-tertiary)] mt-1">
+                  This booking used €{Number(bookingToCancel.credits_used).toFixed(2)} in credits. You can refund any amount up to this value.
+                </p>
+              </div>
+            )}
             <p className="text-[var(--color-text-secondary)] mb-4 font-mono">
-              <strong className="text-[var(--color-text-primary)]">Note:</strong> This will cancel the booking and refund any credits that were used. 
-              To permanently delete the booking record, you'll need to do it via Supabase.
+              <strong className="text-[var(--color-text-primary)]">Note:</strong> This will cancel the booking{bookingToCancel.credits_used && bookingToCancel.credits_used > 0 && refundAmount && parseFloat(refundAmount) > 0 ? ` and refund €${parseFloat(refundAmount).toFixed(2)} in credits` : ''}. To permanently delete the booking record, you'll need to do it via Supabase.
             </p>
             <div className="flex justify-end gap-3">
               <button
