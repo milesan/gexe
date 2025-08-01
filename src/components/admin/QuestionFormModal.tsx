@@ -183,11 +183,15 @@ export function QuestionFormModal({ question, allQuestions, onClose }: QuestionF
       return;
     }
 
+    // Optimistic UI Update - immediately update the state to prevent jittering
     const newOptions = Array.from(formData.options);
     const [movedItem] = newOptions.splice(source.index, 1);
     newOptions.splice(destination.index, 0, movedItem);
 
-    setFormData(prev => ({ ...prev, options: newOptions }));
+    // Use requestAnimationFrame to ensure the drag-and-drop library finishes its cleanup animations
+    requestAnimationFrame(() => {
+      setFormData(prev => ({ ...prev, options: newOptions }));
+    });
   }, [formData.options]);
   // --- END DND HANDLER FOR OPTIONS ---
 

@@ -60,6 +60,8 @@ export function Applications2() {
   const [error, setError] = useState<string | null>(null);
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [themedResidencyFilter, setThemedResidencyFilter] = useState<string>('none');
+  const [availableThemedResidencies, setAvailableThemedResidencies] = useState<string[]>([]);
   const [questions, setQuestions] = useState<any[]>([]);
   const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
@@ -149,6 +151,19 @@ export function Applications2() {
         }
       }
       
+      // Apply themed residency filter
+      if (themedResidencyFilter !== 'none') {
+        const themedResidencyQuestionId = "bfde0ed9-319a-45e4-8b0d-5c694ca2c850";
+        if (themedResidencyFilter === 'all') {
+          // Filter for all applications with any themed residency (not "No<3" or "No <3")
+          query = query.not('data->>' + themedResidencyQuestionId, 'eq', 'No<3')
+                       .not('data->>' + themedResidencyQuestionId, 'eq', 'No <3');
+        } else {
+          // Filter for specific themed residency
+          query = query.like('data->>' + themedResidencyQuestionId, `${themedResidencyFilter}%`);
+        }
+      }
+      
       if (sortBy === 'arrival_date_asc') {
         // NOTE: This relies on finding the question for the arrival date.
         // The question text might need adjustment if it's different in the database.
@@ -206,12 +221,39 @@ export function Applications2() {
     } finally {
       setLoading(false);
     }
-  }, [filter, currentPage, activeSearchQuery, supabase, sortBy, questions]);
+  }, [filter, currentPage, activeSearchQuery, supabase, sortBy, questions, themedResidencyFilter]);
 
   const debouncedLoadApplications = useCallback(debounce(loadApplications, 500), [loadApplications]);
 
+  // Fetch available themed residencies
+  const fetchAvailableThemedResidencies = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('application_details')
+        .select('data')
+        .not('data->>bfde0ed9-319a-45e4-8b0d-5c694ca2c850', 'eq', 'No<3')
+        .not('data->>bfde0ed9-319a-45e4-8b0d-5c694ca2c850', 'eq', 'No <3');
+      
+      if (error) throw error;
+      
+      const uniquePrograms = new Set<string>();
+      (data || []).forEach(app => {
+        const answer = app.data?.['bfde0ed9-319a-45e4-8b0d-5c694ca2c850'];
+        if (answer && answer !== 'No<3' && answer !== 'No <3') {
+          const programName = answer.split(' | ')[0] || answer;
+          uniquePrograms.add(programName);
+        }
+      });
+      
+      setAvailableThemedResidencies(Array.from(uniquePrograms).sort());
+    } catch (err) {
+      console.error('Error fetching themed residencies:', err);
+    }
+  };
+
   useEffect(() => {
     loadQuestions();
+    fetchAvailableThemedResidencies();
   }, []);
 
   useEffect(() => {
@@ -543,6 +585,26 @@ export function Applications2() {
             <XCircle className="w-3 h-3" />
             Rejected
           </button>
+        </div>
+
+        {/* Themed Residency Filter Dropdown */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <label htmlFor="themed-residency-filter" className="text-xs font-mono text-[var(--color-text-secondary)] whitespace-nowrap">🌟 Program:</label>
+          <select
+            id="themed-residency-filter"
+            value={themedResidencyFilter}
+            onChange={(e) => {
+              setThemedResidencyFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="px-2.5 py-1 rounded-md text-xs border border-[var(--color-border)] font-mono bg-gray-800 text-gray-200 focus:outline-none hover:bg-gray-700 cursor-pointer"
+          >
+            <option value="none">All Applications</option>
+            <option value="all">All Themed Residencies</option>
+            {availableThemedResidencies.map(program => (
+              <option key={program} value={program}>{program}</option>
+            ))}
+          </select>
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
