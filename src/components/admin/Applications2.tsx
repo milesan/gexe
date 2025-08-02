@@ -712,7 +712,7 @@ export function Applications2() {
                 <div>
                   <p className="text-xs text-[var(--color-text-tertiary)] font-mono mb-1">Submitted</p>
                   <p className="text-sm text-[var(--color-text-primary)] font-mono">
-                    {new Date(application.created_at).toLocaleString('sv-SE', {
+                    {new Date(application.created_at).toLocaleString('pt-PT', {
                       timeZone: 'Europe/Lisbon',
                       year: 'numeric',
                       month: '2-digit', 
@@ -750,7 +750,7 @@ export function Applications2() {
                   <p className="text-xs text-[var(--color-text-tertiary)] font-mono mb-1">Last active</p>
                   {application.last_sign_in_at ? (
                     <p className="text-sm text-[var(--color-text-primary)] font-mono">
-                      {new Date(application.last_sign_in_at).toLocaleString('sv-SE', {
+                      {new Date(application.last_sign_in_at).toLocaleString('pt-PT', {
                         timeZone: 'Europe/Lisbon',
                         year: 'numeric',
                         month: '2-digit', 

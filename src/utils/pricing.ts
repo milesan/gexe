@@ -1,4 +1,4 @@
-import { isBefore, differenceInDays, isAfter } from 'date-fns';
+import { isBefore, differenceInDays, isAfter, addDays } from 'date-fns';
 import { normalizeToUTCDate, calculateDurationDiscountWeeks } from './dates';
 import { Accommodation } from '../types';
 import { Week } from '../types/calendar';
@@ -84,8 +84,8 @@ export function getSeasonBreakdown(checkIn: Date, checkOut: Date): { hasMultiple
   // Loop while the current day is strictly before the normalized check-out date
   while (currentDay < normCheckOut) {
     allNights.push(new Date(currentDay)); // Add a copy of the current day (represents the night starting on this day)
-    // Increment the day using UTC methods to avoid timezone issues
-    currentDay.setUTCDate(currentDay.getUTCDate() + 1);
+    // Use addDays to avoid mutation and timezone issues
+    currentDay = addDays(currentDay, 1);
   }
   // 'allNights' now contains Date objects for the start of each night in the period
 

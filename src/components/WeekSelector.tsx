@@ -810,7 +810,8 @@ export function WeekSelector({
     
     filteredWeeks.forEach(week => {
       // Use the week's start date to determine which month it belongs to
-      const monthKey = format(week.startDate, 'yyyy-MM');
+      // Use formatInTimeZone to ensure UTC-based month grouping
+      const monthKey = formatInTimeZone(week.startDate, 'UTC', 'yyyy-MM');
       const monthWeeks = grouped.get(monthKey) || [];
       monthWeeks.push(week);
       grouped.set(monthKey, monthWeeks);
@@ -821,7 +822,12 @@ export function WeekSelector({
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([monthKey, weeks]) => ({
         monthKey,
-        monthDate: new Date(monthKey + '-01'),
+        // Use UTC to create the month date to avoid timezone issues
+        monthDate: new Date(Date.UTC(
+          parseInt(monthKey.substring(0, 4)), // year
+          parseInt(monthKey.substring(5, 7)) - 1, // month (0-indexed)
+          1 // day
+        )),
         weeks
       }));
     

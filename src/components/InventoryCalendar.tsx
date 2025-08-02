@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { format, addDays, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay } from 'date-fns';
+import { addDays, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
 import { supabase } from '../lib/supabase';
 import { Calendar, ChevronLeft, ChevronRight, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { StatusModal } from './StatusModal';
 import type { AvailabilityStatus } from '../types/availability';
 import { motion, AnimatePresence } from 'framer-motion';
-import { normalizeToUTCDate, formatDateForDisplay, startOfMonthUTC } from '../utils/dates';
+import { normalizeToUTCDate, formatDateForDisplay, startOfMonthUTC, addMonthsUTC, subMonthsUTC } from '../utils/dates';
 import { calculateDaysBetween } from '../utils/dates';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 
@@ -43,7 +44,10 @@ export function InventoryCalendar({ onClose }: Props) {
   const [selectedDates, setSelectedDates] = useState<{ start: Date; end: Date } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(() => {
+    const now = new Date();
+    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  });
   const [dailyAvailability, setDailyAvailability] = useState<DailyAvailability>({});
   
   // Mobile detection and state
@@ -51,10 +55,10 @@ export function InventoryCalendar({ onClose }: Props) {
   const [selectedAccommodationForMobile, setSelectedAccommodationForMobile] = useState<string>('');
   const [showAccommodationSelector, setShowAccommodationSelector] = useState(false);
 
-  const daysInMonth = Array.from({ length: new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate() }, 
+  const daysInMonth = Array.from({ length: new Date(Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth() + 1, 0)).getUTCDate() }, 
     (_, i) => {
       // Create dates in UTC from the start to avoid timezone conversion issues
-      const utcDate = new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), i + 1));
+      const utcDate = new Date(Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth(), i + 1));
       return utcDate;
     });
 
@@ -84,7 +88,7 @@ export function InventoryCalendar({ onClose }: Props) {
       // Get availability data for the current month
       // Normalize to UTC before sending to API
       const utcStartDate = normalizeToUTCDate(startOfMonthUTC(currentDate));
-      const utcEndDate = normalizeToUTCDate(endOfMonth(currentDate));
+      const utcEndDate = normalizeToUTCDate(new Date(Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth() + 1, 0)));
       const startDate = formatDateForDisplay(utcStartDate);
       const endDate = formatDateForDisplay(utcEndDate);
 
@@ -295,8 +299,10 @@ export function InventoryCalendar({ onClose }: Props) {
 
   // Mobile calendar helpers
   const getCalendarDays = () => {
-    const start = startOfWeek(startOfMonthUTC(currentDate));
-    const end = endOfWeek(endOfMonth(currentDate));
+    const monthStart = startOfMonthUTC(currentDate);
+    const monthEnd = new Date(Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth() + 1, 0));
+    const start = startOfWeek(monthStart);
+    const end = endOfWeek(monthEnd);
     return eachDayOfInterval({ start, end });
   };
 
@@ -397,16 +403,16 @@ export function InventoryCalendar({ onClose }: Props) {
             <div className="p-4 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg-surface)]">
               <div className="flex items-center gap-4">
                 <button
-                  onClick={() => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1))}
+                  onClick={() => setCurrentDate(prev => subMonthsUTC(prev, 1))}
                   className="p-2 hover:bg-[var(--color-bg-surface-hover)] rounded-full text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
                 <h2 className="text-lg font-display font-light text-[var(--color-text-primary)]">
-                  {format(currentDate, 'MMMM yyyy')}
+                  {formatInTimeZone(currentDate, 'UTC', 'MMMM yyyy')}
                 </h2>
                 <button
-                  onClick={() => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1))}
+                  onClick={() => setCurrentDate(prev => addMonthsUTC(prev, 1))}
                   className="p-2 hover:bg-[var(--color-bg-surface-hover)] rounded-full text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
                 >
                   <ChevronRight className="w-5 h-5" />
@@ -565,8 +571,8 @@ export function InventoryCalendar({ onClose }: Props) {
                           // day is already a UTC date from daysInMonth generation
                           return (
                             <th key={day.toISOString()} className="px-2 py-2 text-center text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
-                              <div>{format(day, 'd')}</div>
-                              <div>{format(day, 'EEE')}</div>
+                              <div>{formatInTimeZone(day, 'UTC', 'd')}</div>
+                              <div>{formatInTimeZone(day, 'UTC', 'EEE')}</div>
                             </th>
                           );
                         })}

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Applications2 } from '../components/admin/Applications2';
+import { ApplicationsTable } from '../components/admin/ApplicationsTable';
 import { AppView } from '../components/admin/AppView';
 import { BookingsList } from '../components/BookingsList';
 import { InventoryCalendar } from '../components/InventoryCalendar';
@@ -9,11 +10,11 @@ import { Housekeeping } from '../components/admin/Housekeeping';
 import { Accommodations } from '../components/admin/Accommodations';
 import { ApplicationQuestionsManager } from '../components/admin/ApplicationQuestionsManager';
 import { DiscountCodesManager } from '../components/admin/DiscountCodesManager';
-import { ClipboardList, Calendar, Users, LayoutGrid, ListChecks, UserPlus, Home, Building2, ArrowLeft, HelpCircle, Percent } from 'lucide-react';
+import { ClipboardList, Calendar, Users, LayoutGrid, ListChecks, UserPlus, Home, Building2, ArrowLeft, HelpCircle, Percent, Table } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 
-type AdminView = 'applications' | 'appview' | 'bookings' | 'calendar' | 'weekly' | 'whitelist' | 'housekeeping' | 'accommodations' | 'questions' | 'discounts';
+type AdminView = 'applications' | 'applications-table' | 'appview' | 'bookings' | 'calendar' | 'weekly' | 'whitelist' | 'housekeeping' | 'accommodations' | 'questions' | 'discounts';
 
 interface AdminPageProps {
   housekeepingOnly?: boolean;
@@ -60,6 +61,17 @@ export function AdminPage({ housekeepingOnly = false }: AdminPageProps) {
           >
             <Users className="w-4 h-4" />
             Applications
+          </button>
+          <button
+            onClick={() => setCurrentView('applications-table')}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-sm transition-colors whitespace-nowrap font-mono text-sm ${
+              currentView === 'applications-table'
+                ? 'bg-emerald-900 text-white'
+                : 'bg-[var(--color-bg-surface)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-surface-hover)] border border-[var(--color-border)]'
+            }`}
+          >
+            <Table className="w-4 h-4" />
+            Table View
           </button>
           <button
             onClick={() => setCurrentView('appview')}
@@ -164,6 +176,7 @@ export function AdminPage({ housekeepingOnly = false }: AdminPageProps) {
 
         <div className="bg-[var(--color-bg-main)]  shadow-sm">
           {currentView === 'applications' && <Applications2 />}
+          {currentView === 'applications-table' && <ApplicationsTable />}
           {currentView === 'appview' && <AppView />}
           {currentView === 'bookings' && <BookingsList />}
           {currentView === 'whitelist' && <Whitelist />}

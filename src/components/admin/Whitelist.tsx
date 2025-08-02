@@ -12,6 +12,7 @@ interface WhitelistEntry {
   has_account: boolean;
   last_sign_in_at: string | null;
   has_finished_signup: boolean;
+  notes?: string | null;
 }
 
 export function Whitelist() {
@@ -107,6 +108,7 @@ export function Whitelist() {
       const from = (currentPage - 1) * ITEMS_PER_PAGE;
       const to = from + ITEMS_PER_PAGE - 1;
 
+      // First query the view for user details
       let query = supabase
         .from('whitelist_user_details')
         .select('*', { count: 'exact' });
@@ -122,8 +124,30 @@ export function Whitelist() {
       console.log('📊 Raw Supabase response:', { data, error: queryError, count });
 
       if (queryError) throw queryError;
-      console.log('✅ Whitelist data loaded:', data?.length, 'entries. Total count:', count);
-      setEntries(data || []);
+      
+      // Fetch notes from whitelist table
+      let entriesWithNotes = data || [];
+      if (data && data.length > 0) {
+        const emails = data.map(entry => entry.email);
+        const { data: whitelistData, error: whitelistError } = await supabase
+          .from('whitelist')
+          .select('email, notes')
+          .in('email', emails);
+        
+        if (!whitelistError && whitelistData) {
+          // Create a map of email to notes
+          const notesMap = new Map(whitelistData.map(w => [w.email, w.notes]));
+          
+          // Merge notes into entries
+          entriesWithNotes = data.map(entry => ({
+            ...entry,
+            notes: notesMap.get(entry.email) || null
+          }));
+        }
+      }
+      
+      console.log('✅ Whitelist data loaded:', entriesWithNotes.length, 'entries. Total count:', count);
+      setEntries(entriesWithNotes);
       setTotalEntriesCount(count || 0);
     } catch (err) {
       console.error('❌ Error loading whitelist:', err);
@@ -436,7 +460,7 @@ export function Whitelist() {
              initial={{ opacity: 0, y: 20 }}
              animate={{ opacity: 1, y: 0 }}
              exit={{ opacity: 0, y: -20 }}
-             className="bg-[var(--color-bg-surface)] p-4 rounded-sm border border-[var(--color-border)] flex justify-between items-start gap-3"
+             className="bg-[var(--color-bg-surface)] p-4 rounded-sm border border-[var(--color-border)] flex justify-between items-start gap-3 group"
            >
              <div className="flex-1 min-w-0">
                <div className="font-medium text-[var(--color-text-primary)] truncate">{entry.email}</div>
@@ -452,10 +476,16 @@ export function Whitelist() {
                    </span>
                  )}
                </div>
+               {entry.notes && (
+                 <div className="mt-2 text-sm text-[var(--color-text-secondary)] italic">
+                   Note: {entry.notes}
+                 </div>
+               )}
              </div>
              <button
                onClick={() => openDeleteConfirmModal(entry)}
-               className="p-2 text-[var(--color-text-error)] hover:bg-[var(--color-bg-error-hover)] rounded-sm transition-colors flex-shrink-0"
+               className="opacity-0 group-hover:opacity-100 p-2 rounded-sm bg-slate-600 text-white hover:bg-red-600 transition-all flex-shrink-0"
+               title="Delete whitelist entry"
              >
                <Trash2 className="w-4 h-4" />
              </button>

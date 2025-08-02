@@ -519,7 +519,7 @@ export function BookingsList() {
           </thead>
           <tbody className="bg-[var(--color-bg-surface)] divide-y divide-[var(--color-border)]">
             {bookings.map((booking) => (
-              <tr key={booking.id} className="hover:bg-[var(--color-bg-surface-hover)] transition-colors">
+              <tr key={booking.id} className="hover:bg-[var(--color-bg-surface-hover)] transition-colors group">
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm font-medium text-[var(--color-text-primary)]">
                     {booking.accommodation_title}
@@ -625,7 +625,7 @@ export function BookingsList() {
                   </button>
                   <button 
                     onClick={() => handleDeleteClick(booking.id)} 
-                    className="text-red-600 hover:text-red-900 transition-colors duration-150"
+                    className="opacity-0 group-hover:opacity-100 p-2 rounded-sm bg-slate-600 text-white hover:bg-red-600 transition-all"
                     aria-label={`Cancel booking ${booking.id}`}
                   >
                     <Trash2 className="w-4 h-4" />

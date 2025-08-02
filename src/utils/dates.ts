@@ -8,13 +8,13 @@ export function isBlockedFranceEventWeek(week: Week): boolean {
   const startDate = week.startDate;
   const endDate = week.endDate;
   
-  // Check if this week spans Sep 23-29, 2025 specifically
-  const startMonth = startDate.getMonth(); // 0-indexed, so September is 8
-  const startDay = startDate.getDate();
-  const startYear = startDate.getFullYear();
-  const endMonth = endDate.getMonth();
-  const endDay = endDate.getDate();
-  const endYear = endDate.getFullYear();
+  // Use UTC methods to avoid timezone issues
+  const startMonth = startDate.getUTCMonth(); // 0-indexed, so September is 8
+  const startDay = startDate.getUTCDate();
+  const startYear = startDate.getUTCFullYear();
+  const endMonth = endDate.getUTCMonth();
+  const endDay = endDate.getUTCDate();
+  const endYear = endDate.getUTCFullYear();
   
   // Check if start date is Sep 23, 2025 and end date is Sep 29, 2025
   return (startMonth === 8 && startDay === 23 && startYear === 2025 && 
@@ -54,8 +54,31 @@ export function startOfMonthUTC(date: Date): Date {
   const utcDate = new Date(
     Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1)
   );
-  // Use startOfMonth to ensure we get the beginning of the day
-  return startOfMonth(utcDate);
+  // Return the UTC date directly (it's already at midnight UTC)
+  return utcDate;
+}
+
+// Add months to a date while preserving UTC
+export function addMonthsUTC(date: Date, months: number): Date {
+  const utcYear = date.getUTCFullYear();
+  const utcMonth = date.getUTCMonth();
+  const utcDay = date.getUTCDate();
+  
+  // Calculate new month and year
+  const newMonth = utcMonth + months;
+  const newYear = utcYear + Math.floor(newMonth / 12);
+  const normalizedMonth = ((newMonth % 12) + 12) % 12;
+  
+  // Handle edge cases for days (e.g., Jan 31 + 1 month = Feb 28/29)
+  const daysInNewMonth = new Date(Date.UTC(newYear, normalizedMonth + 1, 0)).getUTCDate();
+  const newDay = Math.min(utcDay, daysInNewMonth);
+  
+  return new Date(Date.UTC(newYear, normalizedMonth, newDay));
+}
+
+// Subtract months from a date while preserving UTC
+export function subMonthsUTC(date: Date, months: number): Date {
+  return addMonthsUTC(date, -months);
 }
 
 /**

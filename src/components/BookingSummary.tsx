@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Calendar } from 'lucide-react';
 import { useSchedulingRules } from '../hooks/useSchedulingRules';
 import { getSeasonBreakdown } from '../utils/pricing';
+import { normalizeToUTCDate } from '../utils/dates';
 import { format, addDays } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { bookingService } from '../services/BookingService';
@@ -522,9 +523,7 @@ export function BookingSummary({
       });
       // Perform the check using UTC comparison
       const isValid = flexibleDates.some(date => 
-        date.getUTCFullYear() === selectedCheckInDate.getUTCFullYear() &&
-        date.getUTCMonth() === selectedCheckInDate.getUTCMonth() &&
-        date.getUTCDate() === selectedCheckInDate.getUTCDate()
+        normalizeToUTCDate(date).getTime() === normalizeToUTCDate(selectedCheckInDate).getTime()
       );
       console.log('[BookingSummary] Overall isValid based on UTC comparison:', isValid);
     }
@@ -532,9 +531,7 @@ export function BookingSummary({
 
     // Use UTC comparison for the actual validation check
     if (hasFlexibleDates && !flexibleDates?.some(date => 
-        date.getUTCFullYear() === selectedCheckInDate.getUTCFullYear() &&
-        date.getUTCMonth() === selectedCheckInDate.getUTCMonth() &&
-        date.getUTCDate() === selectedCheckInDate.getUTCDate()
+        normalizeToUTCDate(date).getTime() === normalizeToUTCDate(selectedCheckInDate).getTime()
       )) {
       console.log('[BookingSummary] Invalid check-in date selected (based on UTC comparison):', selectedCheckInDate);
       setError('Please select a valid check-in date from the available options');
@@ -1357,8 +1354,7 @@ Please manually create the booking for this user or process a refund.`;
   console.log('[BookingSummary] Show Stripe Modal state:', showStripeModal);
   // --- END LOGGING ---
 
-  const fallbackDate = new Date();
-  fallbackDate.setUTCHours(0, 0, 0, 0);
+  const fallbackDate = normalizeToUTCDate(new Date());
 
 
 
@@ -1421,7 +1417,7 @@ Please manually create the booking for this user or process a refund.`;
                     ? testPaymentAmount // Otherwise use admin test amount if set
                     : finalAmountAfterCredits // Use amount after credits
                 }
-                description={`${selectedAccommodation?.title || 'Accommodation'} for ${pricing.totalNights} nights${selectedCheckInDate ? ` from ${selectedCheckInDate.getDate()}. ${selectedCheckInDate.toLocaleDateString('en-US', { month: 'long' })}` : ''}`}
+                description={`${selectedAccommodation?.title || 'Accommodation'} for ${pricing.totalNights} nights${selectedCheckInDate ? ` from ${formatInTimeZone(selectedCheckInDate, 'UTC', 'd. MMMM')}` : ''}`}
                 bookingMetadata={selectedAccommodation && selectedCheckInDate ? {
                   accommodationId: selectedAccommodation.id,
                   checkIn: selectedCheckInDate ? formatInTimeZone(selectedCheckInDate, 'UTC', 'yyyy-MM-dd') : undefined,

@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Calendar, ChevronLeft, ChevronRight, Home, X, HelpCircle } from 'lucide-react';
 import { isSameWeek, addWeeks, isAfter, isBefore, format, addMonths, subMonths, startOfDay, isSameDay, addDays, differenceInDays } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
 import { WeekSelector } from '../components/WeekSelector';
-import { formatDateForDisplay, normalizeToUTCDate, doDateRangesOverlap, calculateDurationDiscountWeeks, calculateTotalWeeksDecimal, startOfMonthUTC } from '../utils/dates';
+import { formatDateForDisplay, normalizeToUTCDate, doDateRangesOverlap, calculateDurationDiscountWeeks, calculateTotalWeeksDecimal, startOfMonthUTC, addMonthsUTC, subMonthsUTC } from '../utils/dates';
 import CabinSelector from '../components/CabinSelector';
 import { BookingSummary } from '../components/BookingSummary';
 import { MaxWeeksModal } from '../components/MaxWeeksModal';
@@ -173,7 +174,7 @@ export function Book2Page() {
   // --- START: Normalize date specifically for the calendar hook ---
   const calendarStartDate = startOfMonthUTC(currentMonth);
   // Calculate end date based on the normalized start date
-  const calendarEndDate = addMonths(calendarStartDate, isMobile ? 3 : 4);
+  const calendarEndDate = addMonthsUTC(calendarStartDate, isMobile ? 3 : 4);
 
   // --- END: Normalize date ---
 
@@ -517,10 +518,10 @@ export function Book2Page() {
 
   useEffect(() => {
     if (!isAdmin && selectedWeeks.length > 0) {
-      const today = startOfDay(new Date());
+      const today = normalizeToUTCDate(new Date());
       const filteredWeeks = selectedWeeks.filter(week => {
-        const weekStartDate = startOfDay(new Date(week.startDate));
-        return weekStartDate >= today;
+        const weekStartDate = normalizeToUTCDate(week.startDate);
+        return weekStartDate.getTime() >= today.getTime();
       });
       
       if (filteredWeeks.length !== selectedWeeks.length) {
@@ -1061,7 +1062,7 @@ export function Book2Page() {
                       <div className="flex items-center rounded-sm border border-shade-1 bg-surface-dark"> {/* Added bg, changed rounded-sm to rounded-sm */}
                         <button 
                           className="p-1 xxs:p-1.5 sm:p-2 rounded-l-sm hover:bg-[var(--color-bg-surface-hover)]" /* Removed border-r, changed rounded-l-lg to rounded-l-sm */
-                          onClick={() => handleMonthChange(subMonths(currentMonth, 1))} // Use handleMonthChange
+                          onClick={() => handleMonthChange(subMonthsUTC(currentMonth, 1))} // Use handleMonthChange
                           aria-label="Previous month"
                         >
                           {/* Replaced ChevronLeft with img */}
@@ -1080,14 +1081,14 @@ export function Book2Page() {
                           }}
                           title="Go to current month"
                         >
-                          {format(currentMonth, 'MMMM yyyy')}
+                          {formatInTimeZone(currentMonth, 'UTC', 'MMMM yyyy')}
                         </div>
                         <button 
                           className="p-1 xxs:p-1.5 sm:p-2 rounded-r-sm hover:bg-[var(--color-bg-surface-hover)]" /* Removed border-l, changed rounded-r-lg to rounded-r-sm */
                           onClick={() => {
                             console.log('[MONTH_NAV_DEBUG] Next button clicked');
                             console.log('[MONTH_NAV_DEBUG] Current month:', currentMonth.toISOString());
-                            const nextMonth = addMonths(currentMonth, 1);
+                            const nextMonth = addMonthsUTC(currentMonth, 1);
                             console.log('[MONTH_NAV_DEBUG] Next month calculated:', nextMonth.toISOString());
                             handleMonthChange(nextMonth);
                           }}

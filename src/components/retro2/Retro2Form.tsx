@@ -148,6 +148,39 @@ export function Retro2Form({ questions, onSubmit, initialData }: Props) {
     });
   };
 
+  // --- START: Auto-scroll on tab functionality ---
+  useEffect(() => {
+    const handleFocusChange = (e: FocusEvent) => {
+      const target = e.target as HTMLElement;
+      
+      // Check if the focused element is an input, textarea, or button within a question
+      const questionContainer = target.closest('[id^="q-"]');
+      if (!questionContainer) return;
+      
+      // Small delay to ensure the browser has completed the focus change
+      setTimeout(() => {
+        // Find the parent question container and scroll it into view
+        const rect = questionContainer.getBoundingClientRect();
+        const isFullyVisible = rect.top >= 0 && rect.bottom <= window.innerHeight;
+        
+        if (!isFullyVisible) {
+          questionContainer.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center' 
+          });
+        }
+      }, 100);
+    };
+
+    // Add focus listener to the document
+    document.addEventListener('focusin', handleFocusChange);
+    
+    return () => {
+      document.removeEventListener('focusin', handleFocusChange);
+    };
+  }, []);
+  // --- END: Auto-scroll on tab functionality ---
+
   // --- START: Random Data Generation for Dev ---
   const isDevUser = currentUserEmail && /^redis213\+.*@gmail\.com$/.test(currentUserEmail);
 

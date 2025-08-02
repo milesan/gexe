@@ -84,7 +84,7 @@ export function CabinSelector({
   onSelectAccommodation,
   isLoading = false,
   selectedWeeks = [],
-  currentMonth = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate())),
+  currentMonth = normalizeToUTCDate(new Date()),
   isDisabled = false,
   displayWeeklyAccommodationPrice,
   testMode = false
@@ -216,11 +216,8 @@ export function CabinSelector({
 
 
   // --- Normalization Step ---
-  const normalizedCurrentMonth = new Date(Date.UTC(
-    currentMonth.getUTCFullYear(),
-    currentMonth.getUTCMonth(),
-    currentMonth.getUTCDate()
-  ));
+  // currentMonth is already normalized in the prop default
+  const normalizedCurrentMonth = currentMonth;
   // --- End Normalization ---
 
   const { checkWeekAvailability, availabilityMap } = useWeeklyAccommodations();
@@ -348,8 +345,8 @@ export function CabinSelector({
   // For tent season calculation, we'll use the first selected week's start date
   // If no weeks are selected, we'll use the current month for display purposes
   const firstSelectedDate = selectedWeeks.length > 0 
-    ? (selectedWeeks[0].startDate || new Date()) 
-    : new Date();
+    ? (selectedWeeks[0].startDate || normalizeToUTCDate(new Date())) 
+    : normalizeToUTCDate(new Date());
   
   const isTentSeason = (() => {
     if (selectedWeeks.length === 0) {
@@ -374,19 +371,12 @@ export function CabinSelector({
       let currentDay = new Date(startDate);
       while (currentDay < endDate) { // Use < to match pricing util logic (nights)
         allDays.push(new Date(currentDay));
-        currentDay.setUTCDate(currentDay.getUTCDate() + 1);
+        currentDay = addDays(currentDay, 1); // Use addDays instead of setUTCDate
       }
     });
-    // Fix: Tent season means *any* day is IN season for it to be potentially available
-    // It is only *out* of season if *all* days are outside the tent season window.
-    // However, the original filter logic was: hide if it *is* tent but it's *not* tent season.
-    // Let's stick to the original logic for now: Check if ALL days are within tent season
-    // return allDays.length > 0 && allDays.every(isInTentSeason);
-    // Reverting to simpler check based on first selected date for initial display filtering,
-    // but acknowledge the availability logic might be more complex.
-    // For filtering visibility, checking the first day is usually sufficient UI feedback.
-     const firstDay = allDays[0];
-     return firstDay ? isInTentSeason(firstDay) : false; // If no days, assume not tent season for filtering
+    // For tent availability, ALL days of the stay must be within tent season
+    // A tent can only be booked if the entire stay is within April 15 - Oct 7
+    return allDays.length > 0 && allDays.every(isInTentSeason);
   })();
 
   return (
