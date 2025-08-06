@@ -606,8 +606,10 @@ export function Applications2() {
                       if (questions.length > 0 && application.data) {
                         const firstNameQuestion = questions.find(q => q.text === "First Name") as QuestionForAnswerRetrieval | undefined;
                         const lastNameQuestion = questions.find(q => q.text === "Last Name") as QuestionForAnswerRetrieval | undefined;
-                        let firstName = firstNameQuestion ? getAnswer(application.data, firstNameQuestion) || '' : '';
-                        let lastName = lastNameQuestion ? getAnswer(application.data, lastNameQuestion) || '' : '';
+                        const firstNameAnswer = firstNameQuestion ? getAnswer(application.data, firstNameQuestion) : '';
+                        const lastNameAnswer = lastNameQuestion ? getAnswer(application.data, lastNameQuestion) : '';
+                        const firstName = firstNameAnswer ? String(firstNameAnswer) : '';
+                        const lastName = lastNameAnswer ? String(lastNameAnswer) : '';
                         return `${firstName} ${lastName}`.trim() || "Applicant Name Missing";
                       }
                       return "Applicant Name Unavailable";
@@ -767,7 +769,9 @@ export function Applications2() {
                   if (specialWeeksQuestion) {
                     const answer = getAnswer(application.data, specialWeeksQuestion);
                     if (answer && answer !== "No <3") {
-                      const programName = answer.split(" | ")[0] || answer;
+                      const programName = typeof answer === 'string' 
+                        ? (answer.split(" | ")[0] || answer)
+                        : String(answer);
                       return (
                         <span className="inline-flex items-center px-2 py-1 rounded text-xs bg-amber-900/30 text-amber-400 border border-amber-700/50 font-mono">
                           🌟 {programName}
