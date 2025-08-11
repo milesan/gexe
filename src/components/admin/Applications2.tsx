@@ -41,7 +41,10 @@ const ITEMS_PER_PAGE = 15;
 type ActionType = 'approve' | 'reject';
 
 // Helper function to get admin name from email
-const getAdminName = (email: string): string => {
+const getAdminName = (email: string | undefined | null): string => {
+  if (!email || typeof email !== 'string') {
+    return 'Unknown';
+  }
   const names: Record<string, string> = {
     'dawn@thegarden.pt': 'Dawn',
     'andre@thegarden.pt': 'Andre',
