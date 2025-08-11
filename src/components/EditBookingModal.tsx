@@ -117,7 +117,7 @@ export function EditBookingModal({ booking, onClose, onSave }: EditBookingModalP
 
   return (
     <div className="fixed inset-0 bg-gray-900 bg-opacity-75 backdrop-blur-sm flex justify-center items-center z-50 p-4 transition-opacity duration-300 ease-in-out">
-      <div className="bg-[var(--color-bg-surface)] rounded-lg shadow-xl p-6 w-full max-w-md relative border border-[var(--color-border)]">
+      <div className="bg-[var(--color-bg-surface)] rounded-sm shadow-xl p-6 w-full max-w-md relative border border-[var(--color-border)]">
         <button 
           onClick={onClose}
           className="absolute top-3 right-3 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"

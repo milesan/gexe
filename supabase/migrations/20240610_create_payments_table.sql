@@ -35,3 +35,6 @@ END$$;
 
 ALTER TABLE public.payments
   ADD COLUMN IF NOT EXISTS status payment_status NOT NULL DEFAULT 'pending';
+
+ALTER TABLE public.payments
+ALTER COLUMN booking_id DROP NOT NULL;

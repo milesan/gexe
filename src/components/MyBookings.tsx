@@ -850,7 +850,7 @@ export function MyBookings() {
   if (error) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-12">
-        <div className="bg-error-muted text-error p-4 rounded-lg">
+        <div className="bg-error-muted text-error p-4 rounded-sm">
           {error}
         </div>
       </div>
@@ -943,12 +943,12 @@ export function MyBookings() {
                     {booking.accommodation?.image_url && (
                       <button
                         onClick={() => setEnlargedImageUrl(booking.accommodation?.image_url || null)}
-                        className="focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-offset-2 rounded-lg transition-opacity hover:opacity-80"
+                        className="focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-offset-2 rounded-sm transition-opacity hover:opacity-80"
                       >
                         <img
                           src={booking.accommodation.image_url}
                           alt={booking.accommodation.title}
-                          className="w-32 h-32 object-cover rounded-lg cursor-pointer"
+                          className="w-32 h-32 object-cover rounded-sm cursor-pointer"
                         />
                       </button>
                     )}
@@ -972,7 +972,7 @@ export function MyBookings() {
             <img
               src={enlargedImageUrl}
               alt="Enlarged booking accommodation"
-              className="max-w-full max-h-[80vh] w-auto h-auto object-contain rounded-lg shadow-2xl"
+              className="max-w-full max-h-[80vh] w-auto h-auto object-contain rounded-sm shadow-2xl"
             />
             <button
               onClick={() => setEnlargedImageUrl(null)}

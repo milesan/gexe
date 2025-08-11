@@ -68,7 +68,7 @@ export function AdminArrivalRules({ onClose }: Props) {
   if (rulesLoading) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div className="bg-white rounded-lg p-6">
+        <div className="bg-white rounded-sm p-6">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-900 mx-auto"></div>
         </div>
       </div>
@@ -77,7 +77,7 @@ export function AdminArrivalRules({ onClose }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-md w-full p-6">
+      <div className="bg-white rounded-sm max-w-md w-full p-6">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-display font-light">Arrival & Departure Rules</h2>
           <button onClick={onClose} className="text-stone-500 hover:text-stone-700">
@@ -93,7 +93,7 @@ export function AdminArrivalRules({ onClose }: Props) {
             <select
               value={arrivalDay}
               onChange={(e) => setArrivalDay(e.target.value)}
-              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-emerald-500"
+              className="w-full p-2 border rounded-sm focus:ring-2 focus:ring-emerald-500"
             >
               {days.map(day => (
                 <option key={day} value={day}>
@@ -110,7 +110,7 @@ export function AdminArrivalRules({ onClose }: Props) {
             <select
               value={departureDay}
               onChange={(e) => setDepartureDay(e.target.value)}
-              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-emerald-500"
+              className="w-full p-2 border rounded-sm focus:ring-2 focus:ring-emerald-500"
             >
               {days.map(day => (
                 <option key={day} value={day}>
@@ -121,7 +121,7 @@ export function AdminArrivalRules({ onClose }: Props) {
           </div>
 
           {error && (
-            <div className="text-rose-600 text-sm bg-rose-50 p-3 rounded-lg">
+            <div className="text-rose-600 text-sm bg-rose-50 p-3 rounded-sm">
               {error}
             </div>
           )}
@@ -136,7 +136,7 @@ export function AdminArrivalRules({ onClose }: Props) {
             <button
               onClick={handleSave}
               disabled={saving || arrivalDay === departureDay}
-              className="bg-emerald-900 text-white px-4 py-2 rounded-lg hover:bg-emerald-800 disabled:bg-stone-300"
+              className="bg-emerald-900 text-white px-4 py-2 rounded-sm hover:bg-emerald-800 disabled:bg-stone-300"
             >
               {saving ? 'Saving...' : 'Save Rules'}
             </button>

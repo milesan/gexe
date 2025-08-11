@@ -103,7 +103,7 @@ export function AddRuleForm({ onClose, onSave, editingRule }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[60]">
-      <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-white rounded-sm w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <div className="p-6 border-b border-stone-200 flex justify-between items-center">
           <h3 className="text-xl font-medium">
             {editingRule ? 'Edit Rule' : 'Add New Rule'}
@@ -125,7 +125,7 @@ export function AddRuleForm({ onClose, onSave, editingRule }: Props) {
                     mode="single"
                     selected={startDate}
                     onSelect={setStartDate}
-                    className="border rounded-lg bg-white"
+                    className="border rounded-sm bg-white"
                   />
                 </div>
                 <div>
@@ -137,13 +137,13 @@ export function AddRuleForm({ onClose, onSave, editingRule }: Props) {
                     selected={endDate}
                     onSelect={setEndDate}
                     disabled={date => date < (startDate || new Date())}
-                    className="border rounded-lg bg-white"
+                    className="border rounded-sm bg-white"
                   />
                 </div>
               </div>
 
               <div className="space-y-4">
-                <div className="bg-rose-50 p-4 rounded-lg">
+                <div className="bg-rose-50 p-4 rounded-sm">
                   <label className="flex items-center gap-2">
                     <input
                       type="checkbox"
@@ -170,7 +170,7 @@ export function AddRuleForm({ onClose, onSave, editingRule }: Props) {
                       <select
                         value={arrivalDay || ''}
                         onChange={(e) => setArrivalDay(e.target.value || undefined)}
-                        className="w-full p-2 border rounded-lg"
+                        className="w-full p-2 border rounded-sm"
                       >
                         <option value="">Default</option>
                         {DAYS_OF_WEEK.map((day) => (
@@ -187,7 +187,7 @@ export function AddRuleForm({ onClose, onSave, editingRule }: Props) {
                       <select
                         value={departureDay || ''}
                         onChange={(e) => setDepartureDay(e.target.value || undefined)}
-                        className="w-full p-2 border rounded-lg"
+                        className="w-full p-2 border rounded-sm"
                       >
                         <option value="">Default</option>
                         {DAYS_OF_WEEK.map((day) => (
@@ -202,7 +202,7 @@ export function AddRuleForm({ onClose, onSave, editingRule }: Props) {
               </div>
 
               {error && (
-                <div className="p-4 bg-rose-50 text-rose-600 rounded-lg text-sm">
+                <div className="p-4 bg-rose-50 text-rose-600 rounded-sm text-sm">
                   {error}
                 </div>
               )}
@@ -217,7 +217,7 @@ export function AddRuleForm({ onClose, onSave, editingRule }: Props) {
                 <button
                   onClick={handleSave}
                   disabled={saving || !startDate || !endDate}
-                  className="bg-emerald-900 text-white px-4 py-2 rounded-lg hover:bg-emerald-800 disabled:bg-stone-300"
+                  className="bg-emerald-900 text-white px-4 py-2 rounded-sm hover:bg-emerald-800 disabled:bg-stone-300"
                 >
                   {saving ? 'Saving...' : editingRule ? 'Update' : 'Add Rule'}
                 </button>
@@ -235,7 +235,7 @@ export function AddRuleForm({ onClose, onSave, editingRule }: Props) {
                   {rules.map((rule) => (
                     <div
                       key={rule.id}
-                      className="bg-white p-6 rounded-lg border border-stone-200 hover:border-emerald-900/20 transition-colors"
+                      className="bg-white p-6 rounded-sm border border-stone-200 hover:border-emerald-900/20 transition-colors"
                     >
                       <div className="space-y-2">
                         <p className="font-display text-lg">

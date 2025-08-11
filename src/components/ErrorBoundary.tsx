@@ -27,7 +27,7 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
+          <div className="bg-white rounded-sm shadow-lg p-6 max-w-md w-full">
             <h2 className="text-xl font-semibold text-stone-900 mb-4">Something went wrong</h2>
             <p className="text-stone-600 mb-4">
               We're having trouble connecting to our servers. Please try:
@@ -39,7 +39,7 @@ export class ErrorBoundary extends Component<Props, State> {
             </ul>
             <button
               onClick={() => window.location.reload()}
-              className="w-full bg-emerald-900 text-white py-2 px-4 rounded-lg hover:bg-emerald-800 transition-colors"
+              className="w-full bg-emerald-900 text-white py-2 px-4 rounded-sm hover:bg-emerald-800 transition-colors"
             >
               Refresh Page
             </button>

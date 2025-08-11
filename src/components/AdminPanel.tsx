@@ -91,7 +91,7 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg w-full max-w-4xl h-[90vh] flex flex-col">
+      <div className="bg-white rounded-sm w-full max-w-4xl h-[90vh] flex flex-col">
         <div className="p-4 border-b flex justify-between items-center">
           <h2 className="text-xl font-semibold">Applications</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
@@ -109,7 +109,7 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
               {applications.map((application) => (
                 <div 
                   key={application.id}
-                  className="bg-white p-4 rounded-lg border border-stone-200 hover:border-emerald-900/20 transition-colors"
+                  className="bg-white p-4 rounded-sm border border-stone-200 hover:border-emerald-900/20 transition-colors"
                 >
                   <div className="flex justify-between items-start">
                     <div>

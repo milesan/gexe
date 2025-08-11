@@ -32,7 +32,7 @@ interface AccommodationItem {
   accommodation_id: string;
   zone: 'T' | 'G' | 'C' | 'M' | 'N' | 'U' | 'L' | 'P' | null;
   type: 'BT' | 'PT' | 'TP' | 'VC' | 'TC';
-  size: '2' | '3' | '4' | '5' | '6';
+  size: '2' | '3' | '4' | '5' | '6' | 'tent' | 'van';
   item_id: number;
   full_tag?: string;
   accommodation_title?: string;
@@ -144,7 +144,7 @@ export function Accommodations() {
   const [newItemData, setNewItemData] = useState<{
     accommodation_id: string;
     type: 'BT' | 'PT' | 'TP' | 'VC' | 'TC';
-    size: '2' | '3' | '4' | '5' | '6';
+    size: '2' | '3' | '4' | '5' | '6' | 'tent' | 'van';
     zone: string | null;
   } | null>(null);
   const [createItemLoading, setCreateItemLoading] = useState<boolean>(false);
@@ -1695,6 +1695,8 @@ export function Accommodations() {
                   <option value="4">4 - 4m Bell tent</option>
                   <option value="5">5 - 5m Bell tent</option>
                   <option value="6">6 - 6m Bell tent</option>
+                  <option value="tent">Tent - Your Own Tent</option>
+                  <option value="van">Van - Van Parking</option>
                 </select>
               </div>
               
@@ -1842,6 +1844,8 @@ export function Accommodations() {
                       <option value="4">4 - 4m Bell tent</option>
                       <option value="5">5 - 5m Bell tent</option>
                       <option value="6">6 - 6m Bell tent</option>
+                      <option value="tent">Tent - Your Own Tent</option>
+                      <option value="van">Van - Van Parking</option>
                     </select>
                   </div>
                 </div>

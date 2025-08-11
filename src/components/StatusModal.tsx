@@ -11,7 +11,7 @@ interface StatusModalProps {
 export function StatusModal({ onClose, onSave, currentStatus }: StatusModalProps) {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-surface rounded-lg w-full max-w-sm p-6">
+      <div className="bg-surface rounded-sm w-full max-w-sm p-6">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-primary">Set Availability Status</h3>
           <button onClick={onClose} className="text-secondary hover:text-primary">
@@ -21,7 +21,7 @@ export function StatusModal({ onClose, onSave, currentStatus }: StatusModalProps
         <div className="space-y-3">
           <button
             onClick={() => onSave('AVAILABLE')}
-            className={`w-full p-3 rounded-lg flex items-center justify-between ${
+            className={`w-full p-3 rounded-sm flex items-center justify-between ${
               currentStatus === 'AVAILABLE'
                 ? 'bg-green-100 border-2 border-green-500'
                 : 'bg-surface border border-color hover:bg-green-50'
@@ -32,7 +32,7 @@ export function StatusModal({ onClose, onSave, currentStatus }: StatusModalProps
           </button>
           <button
             onClick={() => onSave('HOLD')}
-            className={`w-full p-3 rounded-lg flex items-center justify-between ${
+            className={`w-full p-3 rounded-sm flex items-center justify-between ${
               currentStatus === 'HOLD'
                 ? 'bg-yellow-100 border-2 border-yellow-500'
                 : 'bg-surface border border-color hover:bg-yellow-50'
@@ -43,7 +43,7 @@ export function StatusModal({ onClose, onSave, currentStatus }: StatusModalProps
           </button>
           <button
             onClick={() => onSave('BOOKED')}
-            className={`w-full p-3 rounded-lg flex items-center justify-between ${
+            className={`w-full p-3 rounded-sm flex items-center justify-between ${
               currentStatus === 'BOOKED'
                 ? 'bg-red-100 border-2 border-red-500'
                 : 'bg-surface border border-color hover:bg-red-50'

@@ -84,7 +84,7 @@ export function BookingModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-md w-full p-6">
+      <div className="bg-white rounded-sm max-w-md w-full p-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-display font-light">Confirm Your Journey</h2>
           <button onClick={onClose} className="text-stone-500 hover:text-stone-700">
@@ -128,13 +128,13 @@ export function BookingModal({
           </div>
 
           {!isExtension && (
-            <div className="text-sm text-emerald-700 bg-emerald-50 p-3 rounded-lg">
+            <div className="text-sm text-emerald-700 bg-emerald-50 p-3 rounded-sm">
               {bookingRules.minAdvance}
             </div>
           )}
 
           {error && (
-            <div className="text-rose-600 text-sm bg-rose-50 p-3 rounded-lg">
+            <div className="text-rose-600 text-sm bg-rose-50 p-3 rounded-sm">
               {error}
             </div>
           )}
@@ -142,7 +142,7 @@ export function BookingModal({
           <button
             onClick={handleBooking}
             disabled={isLoading || creditsLoading || credits < totalAmount}
-            className="w-full bg-emerald-900 text-white py-3 px-6 rounded-lg hover:bg-emerald-800 disabled:bg-stone-300 disabled:cursor-not-allowed transition-colors text-sm font-body"
+            className="w-full bg-emerald-900 text-white py-3 px-6 rounded-sm hover:bg-emerald-800 disabled:bg-stone-300 disabled:cursor-not-allowed transition-colors text-sm font-body"
           >
             {isLoading ? 'Processing...' : credits < totalAmount ? 'Insufficient Credits' : 'Confirm Booking'}
           </button>

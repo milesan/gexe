@@ -49,7 +49,7 @@ export function BlackoutModal({ startDate, endDate, accommodations, onClose, onS
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-surface rounded-lg max-w-md w-full p-6">
+      <div className="bg-surface rounded-sm max-w-md w-full p-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold text-primary">Add Blackout Dates</h2>
           <button onClick={onClose} className="text-secondary hover:text-primary">
@@ -74,7 +74,7 @@ export function BlackoutModal({ startDate, endDate, accommodations, onClose, onS
             <select
               value={selectedAccommodation}
               onChange={(e) => setSelectedAccommodation(e.target.value)}
-              className="w-full p-2 border border-color rounded-lg bg-main text-primary"
+              className="w-full p-2 border border-color rounded-sm bg-main text-primary"
             >
               <option value="">Select accommodation</option>
               {accommodations.map((acc) => (
@@ -94,7 +94,7 @@ export function BlackoutModal({ startDate, endDate, accommodations, onClose, onS
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="e.g., Maintenance, Private event"
-              className="w-full p-2 border border-color rounded-lg bg-main text-primary"
+              className="w-full p-2 border border-color rounded-sm bg-main text-primary"
             />
           </div>
 
@@ -112,7 +112,7 @@ export function BlackoutModal({ startDate, endDate, accommodations, onClose, onS
             <button
               onClick={handleSave}
               disabled={saving}
-              className="bg-error text-white px-4 py-2 rounded-lg hover:bg-error-hover disabled:bg-border disabled:text-secondary disabled:cursor-not-allowed"
+              className="bg-error text-white px-4 py-2 rounded-sm hover:bg-error-hover disabled:bg-border disabled:text-secondary disabled:cursor-not-allowed"
             >
               {saving ? 'Saving...' : 'Save'}
             </button>

@@ -155,7 +155,7 @@ export function PriceBreakdownModal({ isOpen, onClose, booking }: PriceBreakdown
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-[var(--color-bg-surface)] rounded-lg max-w-lg w-full p-6 shadow-xl border border-gray-500/30 backdrop-blur-sm max-h-[90vh] overflow-y-auto"
+              className="bg-[var(--color-bg-surface)] rounded-sm max-w-lg w-full p-6 shadow-xl border border-gray-500/30 backdrop-blur-sm max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex justify-between items-center mb-6">
@@ -403,7 +403,7 @@ export function PriceBreakdownModal({ isOpen, onClose, booking }: PriceBreakdown
     if (!showIfZero && breakdown.originalAmount === 0) return null;
     
     return (
-      <div className="bg-[var(--color-bg-shade)] rounded-lg p-4 space-y-3">
+      <div className="bg-[var(--color-bg-shade)] rounded-sm p-4 space-y-3">
         <h4 className="text-sm font-semibold text-[var(--color-text-primary)] flex items-center gap-2 border-b border-[var(--color-border)] pb-2">
           {icon}
           {title}
@@ -476,7 +476,7 @@ export function PriceBreakdownModal({ isOpen, onClose, booking }: PriceBreakdown
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-[var(--color-bg-surface)] rounded-lg max-w-lg w-full p-6 shadow-xl border border-gray-500/30 backdrop-blur-sm max-h-[90vh] overflow-y-auto"
+            className="bg-[var(--color-bg-surface)] rounded-sm max-w-lg w-full p-6 shadow-xl border border-gray-500/30 backdrop-blur-sm max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-6">
@@ -514,7 +514,7 @@ export function PriceBreakdownModal({ isOpen, onClose, booking }: PriceBreakdown
                   <div key={payment.id} className="space-y-4">
                     {/* Payment Header */}
                     <div 
-                      className="bg-[var(--color-bg-shade)] rounded-lg p-4 border border-[var(--color-border)] cursor-pointer hover:bg-[var(--color-bg-surface)] transition-colors"
+                      className="bg-[var(--color-bg-shade)] rounded-sm p-4 border border-[var(--color-border)] cursor-pointer hover:bg-[var(--color-bg-surface)] transition-colors"
                       onClick={() => togglePayment(payment.id)}
                     >
                       <div className="flex justify-between items-center">
@@ -577,7 +577,7 @@ export function PriceBreakdownModal({ isOpen, onClose, booking }: PriceBreakdown
                     </div>
 
                     {/* Step-by-step Total Calculation */}
-                    <div className="bg-[var(--color-bg-shade)] rounded-lg p-4 space-y-3">
+                    <div className="bg-[var(--color-bg-shade)] rounded-sm p-4 space-y-3">
                       <h4 className="text-sm font-semibold text-[var(--color-text-primary)] flex items-center gap-2 border-b border-[var(--color-border)] pb-2">
                         <DollarSign className="w-4 h-4" />
                         Total Calculation

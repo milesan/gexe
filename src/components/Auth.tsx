@@ -55,16 +55,16 @@ export function Auth() {
         <p className="text-secondary font-body">Welcome to reality</p>
       </div>
       
-      <div className="bg-surface p-8 rounded-xl shadow-sm border border-color">
+      <div className="bg-surface p-8 rounded-sm shadow-sm border border-color">
         {error && (
-          <div className="mb-6 p-4 bg-error-muted border border-error-muted text-error rounded-lg text-sm">
+          <div className="mb-6 p-4 bg-error-muted border border-error-muted text-error rounded-sm text-sm">
             {error}
           </div>
         )}
         {success && (
-          <div className="mb-6 p-4 bg-accent-muted border border-accent-muted text-accent-primary rounded-lg text-sm">
+          <div className="mb-6 p-4 bg-accent-muted border border-accent-muted text-accent-primary rounded-sm text-sm">
             {success}
-          </div>
+          </div>    
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">

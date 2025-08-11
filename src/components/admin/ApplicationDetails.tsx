@@ -63,7 +63,7 @@ export function ApplicationDetails({ application, onClose, questions }: Applicat
             key={index}
             src={url}
             alt={`Applicant photo ${index + 1}`}
-            className={`w-full h-full object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity ${
+            className={`w-full h-full object-cover rounded-sm cursor-pointer hover:opacity-90 transition-opacity ${
               photoUrls.length === 3 && index === 2 ? 'col-span-2' : ''
             }`}
             onClick={() => setSelectedImage(url)}
@@ -82,7 +82,7 @@ export function ApplicationDetails({ application, onClose, questions }: Applicat
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-[var(--color-bg-main)] rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col"
+          className="bg-[var(--color-bg-main)] rounded-sm shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between p-6 border-b border-[var(--color-border)]">
@@ -115,7 +115,7 @@ export function ApplicationDetails({ application, onClose, questions }: Applicat
                         const answer = getSharedAnswer(application.data, currentQuestion);
                         
                         return (
-                          <div key={question.id} className="bg-[var(--color-bg-subtle)] p-4 rounded-lg">
+                          <div key={question.id} className="bg-[var(--color-bg-subtle)] p-4 rounded-sm">
                             <h4 className="text-sm font-medium text-[var(--color-text-primary)] mb-2">
                               {question.text}
                             </h4>

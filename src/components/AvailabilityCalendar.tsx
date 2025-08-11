@@ -131,9 +131,9 @@ export function AvailabilityCalendar() {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6">
+    <div className="bg-white rounded-sm shadow-lg p-6">
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border-l-4 border-red-500 rounded">
+        <div className="mb-4 p-4 bg-red-50 border-l-4 border-red-500 rounded-sm">
           <p className="text-red-700">{error}</p>
         </div>
       )}
@@ -142,7 +142,7 @@ export function AvailabilityCalendar() {
         <select
           value={selectedAccommodation}
           onChange={(e) => setSelectedAccommodation(e.target.value)}
-          className="p-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+          className="p-2 border rounded-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
         >
           <option value="all">All Accommodations</option>
           {accommodations.map((acc) => (

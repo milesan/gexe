@@ -18,7 +18,7 @@ export function LoginButton() {
 
       {showLogin && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
+          <div className="bg-white rounded-sm max-w-md w-full p-6">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-display font-light">Log In</h2>
               <button onClick={() => setShowLogin(false)} className="text-stone-500 hover:text-stone-700">
