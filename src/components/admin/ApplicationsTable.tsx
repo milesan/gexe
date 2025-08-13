@@ -1296,7 +1296,7 @@ export function ApplicationsTable() {
                   )}
                   {isColumnVisible('event') && (
                     <td className="p-2">
-                      {themedResidency && themedResidency !== "No<3" && themedResidency !== "No <3" ? (
+                      {themedResidency && typeof themedResidency === 'string' && themedResidency !== "No<3" && themedResidency !== "No <3" ? (
                         <span className="text-xs font-mono text-[var(--color-text-primary)]">
                           {themedResidency.split(" | ")[0]}
                         </span>
