@@ -32,7 +32,7 @@ export function StayDetails({ selectedWeeks }: StayDetailsProps) {
           {/* Arrival Information - REMOVED PADDING */}
           <div className="rounded-sm shadow-sm bg-surface p-4"> 
             <h4 className="uppercase font-lettra-bold text-shade-2 text-xs mb-2">
-              Arrive By
+              Arrive On
             </h4>
             <div className="space-y-1">
               <p className="uppercase text-2xl text-primary font-display">{formatDateWithDay(selectedWeeks[0].startDate)}</p>

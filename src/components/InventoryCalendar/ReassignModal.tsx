@@ -25,13 +25,22 @@ export function ReassignModal({ booking, accommodationRows, onClose, onReassign 
                           booking.accommodation_title === 'Van Parking';
   
   const availableRows = accommodationRows.filter(row => {
-    if (canAssignAnywhere) {
-      // Show all accommodation items for flexible accommodation types
-      return row.item_id && !row.is_bed; // Exclude dorm beds
-    } else {
-      // Show only same accommodation type
-      return row.accommodation_id === booking.accommodation_id && row.item_id;
+    // Must have an item_id (be a real tag, not a placeholder)
+    if (!row.item_id) return false;
+    
+    // Show dorm bed tags (with item_id) but not automatic dorm bed rows (is_bed flag)
+    if (row.is_bed) return false;
+    // But allow actual dorm bed tags that were created
+    // (these will have item_id but not is_bed flag)
+    
+    // For "Staying with somebody" - show ALL accommodation items
+    if (booking.accommodation_title === 'Staying with somebody') {
+      return true;
     }
+    
+    // For all other accommodations - show items with same accommodation_id
+    // This works for Van Parking, Your Own Tent, Bell Tents, Tipis, etc.
+    return row.accommodation_id === booking.accommodation_id;
   });
 
   const handleNewItemCreated = async (newItemId: string) => {
@@ -47,7 +56,17 @@ export function ReassignModal({ booking, accommodationRows, onClose, onReassign 
 
   const handleReassign = async (itemIdToAssign?: string) => {
     const itemId = itemIdToAssign || selectedItemId;
-    if (itemId === booking.accommodation_item_id) {
+    
+    // Ensure itemId is a string, not an object
+    if (typeof itemId === 'object') {
+      console.error('Invalid itemId - received object instead of string:', itemId);
+      setError('Invalid accommodation selection');
+      return;
+    }
+    
+    const itemIdString = String(itemId);
+    
+    if (!itemIdString || itemIdString === '' || itemIdString === booking.accommodation_item_id) {
       setError('Please select a different accommodation item');
       return;
     }
@@ -56,7 +75,7 @@ export function ReassignModal({ booking, accommodationRows, onClose, onReassign 
       booking_id: booking.id,
       booking_title: booking.accommodation_title,
       from_item: booking.accommodation_item_id,
-      to_item: itemId,
+      to_item: itemIdString,
       is_staying_with_somebody: booking.accommodation_title === 'Staying with somebody'
     });
 
@@ -64,7 +83,7 @@ export function ReassignModal({ booking, accommodationRows, onClose, onReassign 
     setError(null);
 
     try {
-      if (itemId === 'unassigned') {
+      if (itemIdString === 'unassigned') {
         // Remove the accommodation assignment
         const { error: updateError } = await supabase
           .from('bookings')
@@ -80,14 +99,14 @@ export function ReassignModal({ booking, accommodationRows, onClose, onReassign 
         const { error: reassignError } = await supabase
           .rpc('assign_accommodation_item_to_booking', {
             p_booking_id: booking.id,
-            p_accommodation_item_id: itemId
+            p_accommodation_item_id: itemIdString
           });
 
         if (reassignError) throw reassignError;
       }
       
       // If no error, the reassignment was successful
-      onReassign(booking.id, itemId);
+      onReassign(booking.id, itemIdString);
       onClose();
     } catch (err) {
       console.error('Error reassigning booking:', err);
@@ -118,7 +137,9 @@ export function ReassignModal({ booking, accommodationRows, onClose, onReassign 
       <div className="bg-[var(--color-bg-surface)] rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-medium text-[var(--color-text-primary)]">
-            Reassign Accommodation
+            {booking.accommodation_title === 'Staying with somebody' 
+              ? 'Select Host Accommodation' 
+              : 'Reassign Accommodation'}
           </h3>
           <button
             onClick={onClose}
@@ -147,27 +168,39 @@ export function ReassignModal({ booking, accommodationRows, onClose, onReassign 
         </div>
 
         <div className="mb-4">
-          <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
+          <label className="text-sm font-medium text-[var(--color-text-primary)] block mb-2">
             Select new accommodation:
           </label>
+          <p className="text-xs text-[var(--color-text-secondary)] mb-2">
+            To manage tags (add/edit/delete), go to Admin Panel → Accommodations tab
+          </p>
           <select
             value={selectedItemId}
             onChange={(e) => {
-              if (e.target.value === 'create_new') {
+              const selectedValue = e.target.value;
+              console.log('Dropdown selection changed:', { 
+                value: selectedValue, 
+                type: typeof selectedValue 
+              });
+              
+              if (selectedValue === 'create_new') {
                 setShowCreateModal(true);
               } else {
-                setSelectedItemId(e.target.value);
+                setSelectedItemId(selectedValue);
               }
             }}
             className="w-full p-2 bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded 
-                     text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                     text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-emerald-500
+                     max-h-64 overflow-y-auto"
           >
             <option value="">Select...</option>
             <option value="unassigned">⚪ Unassigned</option>
             <option value="create_new" className="text-emerald-500 font-medium">
               ➕ Create New Tag
             </option>
-            {canAssignAnywhere ? (
+            {availableRows.length === 0 ? (
+              <option disabled>No tags available - create a new one</option>
+            ) : canAssignAnywhere ? (
               // Group by accommodation type for flexible assignment types
               Object.entries(
                 availableRows.reduce((groups, row) => {
@@ -179,7 +212,7 @@ export function ReassignModal({ booking, accommodationRows, onClose, onReassign 
               ).map(([accommodationType, rows]) => (
                 <optgroup key={accommodationType} label={accommodationType}>
                   {rows.map(row => (
-                    <option key={row.id} value={row.item_id}>
+                    <option key={row.id} value={row.item_id || row.id}>
                       {row.label} {row.is_assigned === false && '(available)'}
                     </option>
                   ))}
@@ -189,7 +222,7 @@ export function ReassignModal({ booking, accommodationRows, onClose, onReassign 
               // Single group for same accommodation type
               <optgroup label="Available Units">
                 {availableRows.map(row => (
-                  <option key={row.id} value={row.item_id}>
+                  <option key={row.id} value={row.item_id || row.id}>
                     {row.label} {row.is_assigned === false && '(available)'}
                   </option>
                 ))}
@@ -206,7 +239,7 @@ export function ReassignModal({ booking, accommodationRows, onClose, onReassign 
 
         <div className="flex gap-3">
           <button
-            onClick={handleReassign}
+            onClick={() => handleReassign()}
             disabled={loading || !selectedItemId}
             className="flex-1 px-4 py-2 bg-emerald-500 text-white rounded hover:bg-emerald-600 
                      disabled:bg-gray-500 disabled:cursor-not-allowed transition-colors"

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Calendar } from 'lucide-react';
 import { formatInTimeZone } from 'date-fns-tz';
 import { ViewMode } from './types';
 
@@ -12,6 +12,7 @@ interface Props {
   onNavigate: (direction: 'prev' | 'next') => void;
   onClose: () => void;
   onSaveScroll: () => void;
+  onGoToToday?: () => void;
 }
 
 export function CalendarHeader({
@@ -22,7 +23,8 @@ export function CalendarHeader({
   onViewModeChange,
   onNavigate,
   onClose,
-  onSaveScroll
+  onSaveScroll,
+  onGoToToday
 }: Props) {
   return (
     <div className="p-4 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg-surface)]">
@@ -51,6 +53,20 @@ export function CalendarHeader({
         >
           <ChevronRight className="w-5 h-5" />
         </button>
+
+        {onGoToToday && (
+          <button
+            onClick={() => {
+              onSaveScroll();
+              onGoToToday();
+            }}
+            className="px-3 py-1 flex items-center gap-1 hover:bg-[var(--color-bg-surface-hover)] rounded text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+            title="Go to today (T)"
+          >
+            <Calendar className="w-4 h-4" />
+            <span className="text-sm">Today</span>
+          </button>
+        )}
         
         <div className="ml-4 flex items-center gap-2 border-l border-[var(--color-border)] pl-4">
           <button

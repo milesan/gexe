@@ -26,23 +26,71 @@ export function CalendarTable({
 }: Props) {
   const [reassignBooking, setReassignBooking] = useState<Booking | null>(null);
   const [selectBookingModal, setSelectBookingModal] = useState<{bookings: Booking[], action: 'reassign' | 'view'} | null>(null);
+  const [draggedBooking, setDraggedBooking] = useState<Booking | null>(null);
+  const [dragOverCell, setDragOverCell] = useState<{row: AccommodationRow, date: Date} | null>(null);
   
-  // Create stable booking row mappings for all accommodation types
+  // Filter accommodation rows to only show those with bookings in the current view
+  const visibleRows = React.useMemo(() => {
+    const viewStart = daysToShow[0];
+    const viewEnd = new Date(daysToShow[daysToShow.length - 1]);
+    viewEnd.setDate(viewEnd.getDate() + 1); // Include the last day
+    
+    return accommodationRows.filter(row => {
+      // Always show single rooms (they're limited and important to see availability)
+      if (SINGLE_ROOMS.includes(row.accommodation_title)) {
+        return true;
+      }
+      
+      // Always show dorm beds (limited capacity)
+      if (row.is_bed) {
+        return true;
+      }
+      
+      // Show tagged rows that have assigned bookings
+      if (row.item_id) {
+        const hasAssignedBooking = bookings.some(b =>
+          b.accommodation_item_id === row.item_id &&
+          b.check_in < viewEnd && 
+          b.check_out > viewStart
+        );
+        if (hasAssignedBooking) return true;
+      }
+      
+      // Check if there are any bookings for this accommodation in the view
+      const hasBookingsInView = bookings.some(booking => 
+        booking.accommodation_id === row.accommodation_id &&
+        (!row.item_id || booking.accommodation_item_id === row.item_id) &&
+        booking.check_in < viewEnd && 
+        booking.check_out > viewStart
+      );
+      
+      return hasBookingsInView;
+    });
+  }, [accommodationRows, bookings, daysToShow]);
+  
+  // Create stable booking row mappings based on accommodation_id
   const bookingRowMaps = React.useMemo(() => {
     const maps = new Map<string, Map<string, number>>();
     
-    // Get unique accommodation types
-    const accommodationTypes = new Set(accommodationRows.map(r => r.accommodation_title));
+    // Get unique accommodation IDs
+    const accommodationIds = new Set(visibleRows.map(r => r.accommodation_id));
     
-    accommodationTypes.forEach(type => {
-      const typeRows = accommodationRows.filter(r => r.accommodation_title === type);
-      const typeBookings = bookings.filter(b => b.accommodation_title === type && !b.accommodation_item_id);
+    accommodationIds.forEach(accId => {
+      // Get unassigned bookings for this accommodation
+      const unassignedBookings = bookings.filter(b => 
+        b.accommodation_id === accId && !b.accommodation_item_id
+      );
       
-      if (typeRows.length > 1 && typeBookings.length > 0) {
+      // Get unassigned rows for this accommodation
+      const unassignedRows = visibleRows.filter(r => 
+        r.accommodation_id === accId && !r.item_id
+      );
+      
+      if (unassignedRows.length > 1 && unassignedBookings.length > 0) {
         const bookingMap = new Map<string, number>();
         
         // Sort bookings by check-in date
-        const sortedBookings = typeBookings.sort((a, b) => a.check_in.getTime() - b.check_in.getTime());
+        const sortedBookings = unassignedBookings.sort((a, b) => a.check_in.getTime() - b.check_in.getTime());
         
         // Assign each booking to a row based on availability at check-in
         sortedBookings.forEach(booking => {
@@ -59,7 +107,7 @@ export function CalendarTable({
           });
           
           // Find first available row
-          for (let i = 0; i < typeRows.length; i++) {
+          for (let i = 0; i < unassignedRows.length; i++) {
             if (!occupiedRows.has(i)) {
               bookingMap.set(booking.id, i);
               break;
@@ -67,12 +115,12 @@ export function CalendarTable({
           }
         });
         
-        maps.set(type, bookingMap);
+        maps.set(accId, bookingMap);
       }
     });
     
     return maps;
-  }, [bookings, accommodationRows]);
+  }, [bookings, visibleRows]);
   
   const handleReassign = (bookingId: string, newItemId: string) => {
     // Trigger a refresh of the bookings
@@ -80,6 +128,60 @@ export function CalendarTable({
       onBookingUpdate();
     }
     setReassignBooking(null);
+  };
+
+  const handleDragStart = (booking: Booking, e: React.DragEvent) => {
+    // Only allow dragging for reassignable bookings
+    if (booking.accommodation_title?.includes('Bell Tent') || 
+        booking.accommodation_title?.includes('Tipi') ||
+        booking.accommodation_title === 'Staying with somebody' ||
+        booking.accommodation_title === 'Your Own Tent' ||
+        booking.accommodation_title === 'Van Parking') {
+      setDraggedBooking(booking);
+      e.dataTransfer.effectAllowed = 'move';
+    } else {
+      e.preventDefault();
+    }
+  };
+
+  const handleDragOver = (row: AccommodationRow, date: Date, e: React.DragEvent) => {
+    if (!draggedBooking) return;
+    
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverCell({ row, date });
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    // Only clear if we're leaving the table entirely
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setDragOverCell(null);
+    }
+  };
+
+  const handleDrop = async (row: AccommodationRow, date: Date, e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOverCell(null);
+    
+    if (!draggedBooking || !row.item_id) {
+      setDraggedBooking(null);
+      return;
+    }
+
+    // Check if the drop is valid (within booking dates and on an item row)
+    if (date >= draggedBooking.check_in && date < draggedBooking.check_out) {
+      // Use the reassign modal's logic
+      setReassignBooking(draggedBooking);
+      // Auto-select the target item in the modal
+      setTimeout(() => {
+        const selectElement = document.querySelector('select[value=""]') as HTMLSelectElement;
+        if (selectElement && row.item_id) {
+          selectElement.value = row.item_id;
+        }
+      }, 100);
+    }
+    
+    setDraggedBooking(null);
   };
 
   return (
@@ -109,10 +211,10 @@ export function CalendarTable({
         </tr>
       </thead>
       <tbody>
-        {accommodationRows.map((row, rowIndex) => {
+        {visibleRows.map((row, rowIndex) => {
           // Determine if we should show a header
           const isSingleRoom = SINGLE_ROOMS.includes(row.accommodation_title);
-          const prevRow = rowIndex > 0 ? accommodationRows[rowIndex - 1] : null;
+          const prevRow = rowIndex > 0 ? visibleRows[rowIndex - 1] : null;
           const prevIsSingleRoom = prevRow && SINGLE_ROOMS.includes(prevRow.accommodation_title);
           
           let showAccommodationHeader = false;
@@ -150,7 +252,7 @@ export function CalendarTable({
                   </div>
                 </td>
                 {daysToShow.map(day => {
-                  const cellBookings = getBookingsForCell(row, day, bookings, accommodationRows, bookingRowMaps);
+                  const cellBookings = getBookingsForCell(row, day, bookings, visibleRows, bookingRowMaps);
                   const hasBookings = cellBookings.length > 0;
                   
                   // Debug: Log cells with multiple bookings
@@ -176,11 +278,14 @@ export function CalendarTable({
                     booking.accommodation_title === 'Van Parking'
                   );
                   
+                  // Check if this cell is being dragged over
+                  const isDragOver = dragOverCell?.row.id === row.id && 
+                                   dragOverCell?.date.getTime() === day.getTime();
 
                   // Create cell content for multiple bookings
                   const cellContentData = cellBookings.map((booking, idx) => {
                     const isFirstDay = formatDateForDisplay(booking.check_in) === formatDateForDisplay(day);
-                    const isLastDay = formatDateForDisplay(booking.check_out) === formatDateForDisplay(day);
+                    const isCheckoutDay = formatDateForDisplay(booking.check_out) === formatDateForDisplay(day);
                     const showName = shouldShowName(booking, day, isFirstDay, viewMode, daysToShow);
                     const displayName = booking.first_name || 
                       booking.guest_name?.split(' ')[0] || 
@@ -192,12 +297,16 @@ export function CalendarTable({
                       displayName,
                       showName,
                       isFirstDay,
-                      isLastDay
+                      isCheckoutDay
                     };
                   });
 
+                  // Check if this is a checkout day for any booking
+                  const isCheckoutCell = cellContentData.some(d => d.isCheckoutDay);
+                  
                   // Determine background color - if multiple bookings, use a mixed color
                   let bgColorClass = '';
+                  let cellStyle: React.CSSProperties = {};
                   let isUnassignedStaying = false;
                   
                   if (hasBookings) {
@@ -222,16 +331,33 @@ export function CalendarTable({
                         booking.accommodation_title === 'Van Parking'
                       );
                       
-                      if (isUnassigned) {
+                      const baseColor = getBookingColor(booking);
+                      
+                      if (isCheckoutCell) {
+                        // Checkout day - create a triangle in top-left corner
+                        // We'll use a simpler approach with clip-path
+                        bgColorClass = '';
+                        cellStyle = {
+                          position: 'relative',
+                          background: 'transparent'
+                        };
+                      } else if (isUnassigned) {
                         // Unassigned bookings - slightly faded
-                        bgColorClass = getBookingColor(booking) + ' text-white opacity-60';
+                        bgColorClass = baseColor + ' text-white opacity-60';
                         isUnassignedStaying = true;
                       } else {
-                        bgColorClass = getBookingColor(booking) + ' text-white';
+                        bgColorClass = baseColor + ' text-white';
                       }
                     } else {
                       // Multiple bookings - use a special color
-                      bgColorClass = 'bg-gradient-to-r from-purple-500/70 to-pink-500/70 text-white';
+                      if (isCheckoutCell) {
+                        cellStyle = {
+                          background: `linear-gradient(135deg, rgba(168, 85, 247, 0.7) 50%, transparent 50%)`,
+                        };
+                        bgColorClass = 'text-white';
+                      } else {
+                        bgColorClass = 'bg-gradient-to-r from-purple-500/70 to-pink-500/70 text-white';
+                      }
                     }
                   } else if (row.is_assigned === false) {
                     bgColorClass = 'bg-gray-100/50 dark:bg-gray-800/30';
@@ -260,7 +386,13 @@ export function CalendarTable({
                   return (
                     <td 
                       key={day.toISOString()} 
-                      className={`px-2 py-1 border-r border-b border-[var(--color-border)] h-12 ${bgColorClass} ${hasBookings && isReassignable ? 'cursor-move hover:opacity-80' : ''} relative`}
+                      className={`px-2 py-1 border-r border-b border-[var(--color-border)] h-12 ${bgColorClass} ${hasBookings && isReassignable ? 'cursor-move hover:opacity-80' : ''} ${isDragOver ? 'ring-2 ring-emerald-500 ring-inset' : ''} relative transition-all`}
+                      style={cellStyle}
+                      draggable={hasBookings && isReassignable && !isCheckoutCell}
+                      onDragStart={hasBookings && isReassignable && !isCheckoutCell ? (e) => handleDragStart(cellBookings[0], e) : undefined}
+                      onDragOver={(e) => handleDragOver(row, day, e)}
+                      onDragLeave={handleDragLeave}
+                      onDrop={(e) => handleDrop(row, day, e)}
                       onClick={hasBookings ? (e) => {
                         
                         // Allow reassignment in both week and month views
@@ -302,39 +434,54 @@ export function CalendarTable({
                       } : undefined}
                       title={tooltipText}
                     >
+                      {isCheckoutCell && cellBookings.length === 1 && (
+                        <div 
+                          className={`absolute inset-0 ${getBookingColor(cellBookings[0])}`}
+                          style={{
+                            clipPath: 'polygon(0 0, 100% 0, 0 100%)'
+                          }}
+                        />
+                      )}
+                      {isCheckoutCell && cellBookings.length > 1 && (
+                        <div 
+                          className="absolute inset-0 bg-gradient-to-r from-purple-500/70 to-pink-500/70"
+                          style={{
+                            clipPath: 'polygon(0 0, 100% 0, 0 100%)'
+                          }}
+                        />
+                      )}
                       {hasBookings && (
-                        <div className={`font-medium text-center ${viewMode === 'month' ? 'text-xs px-1' : 'text-xs'} ${cellBookings.length > 1 ? 'flex flex-col' : ''}`}>
+                        <div className={`font-medium text-center ${viewMode === 'month' ? 'text-xs px-1' : 'text-xs'} ${cellBookings.length > 1 ? 'flex flex-col' : ''} ${isCheckoutCell ? 'relative z-10' : ''}`}>
                           {viewMode === 'month' ? (
                             // Month view - show names as clickable links
-                            cellContentData.filter(d => d.showName).map((data, idx) => (
+                            cellContentData.filter(d => d.showName || d.isCheckoutDay).map((data, idx) => (
                               <span
                                 key={data.booking.id}
-                                className="cursor-pointer hover:underline"
+                                className={`cursor-pointer hover:underline ${data.isCheckoutDay ? 'text-white font-bold' : ''}`}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   onBookingClick(data.booking, e);
                                 }}
                               >
-                                {data.displayName}
+                                {data.isCheckoutDay ? 'Out' : data.displayName}
                               </span>
                             ))
                           ) : (
                             // Week view - show with arrows and clickable names
                             cellContentData.slice(0, 2).map((data, idx) => (
                               <div key={data.booking.id} className="truncate">
-                                {data.isFirstDay && <span className="mr-1">→</span>}
-                                {data.showName && (
+                                {data.isFirstDay && !data.isCheckoutDay && <span className="mr-1">→</span>}
+                                {(data.showName || data.isCheckoutDay) && (
                                   <span
-                                    className="cursor-pointer hover:underline relative z-10"
+                                    className={`cursor-pointer hover:underline relative z-10 ${data.isCheckoutDay ? 'text-white font-bold' : ''}`}
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       onBookingClick(data.booking, e);
                                     }}
                                   >
-                                    {data.displayName}
+                                    {data.isCheckoutDay ? 'Out' : data.displayName}
                                   </span>
                                 )}
-                                {data.isLastDay && <span className="ml-1">←</span>}
                               </div>
                             ))
                           )}

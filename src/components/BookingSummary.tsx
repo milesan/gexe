@@ -23,7 +23,7 @@ import type { BookingSummaryProps, SeasonBreakdown, AppliedDiscount } from './Bo
 import type { PaymentBreakdown } from '../types/payment';
 
 // Import hooks
-import { usePricing } from './BookingSummary/BookingSummary.hooks';
+import { usePricing } from './BookingSummary/BookingSummary.hooks.tsx';
 
 // Import components
 import { StayDetails } from './BookingSummary/components/StayDetails';

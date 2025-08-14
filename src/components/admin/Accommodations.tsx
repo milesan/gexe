@@ -31,8 +31,8 @@ interface AccommodationItem {
   id: string;
   accommodation_id: string;
   zone: 'T' | 'G' | 'C' | 'M' | 'N' | 'U' | 'L' | 'P' | null;
-  type: 'BT' | 'PT' | 'TP' | 'VC' | 'TC';
-  size: '2' | '3' | '4' | '5' | '6' | 'tent' | 'van';
+  type: 'BT' | 'PT' | 'TP' | 'VC' | 'TC' | 'D3' | 'D6' | 'MC' | 'RM';
+  size: '1' | '2' | '3' | '4' | '5' | '6' | 'tent' | 'van' | 'L' | 'M' | 'R' | 'H' | 'W' | 'V';
   item_id: number;
   full_tag?: string;
   accommodation_title?: string;
@@ -143,8 +143,8 @@ export function Accommodations() {
   const [isCreatingNewItem, setIsCreatingNewItem] = useState<boolean>(false);
   const [newItemData, setNewItemData] = useState<{
     accommodation_id: string;
-    type: 'BT' | 'PT' | 'TP' | 'VC' | 'TC';
-    size: '2' | '3' | '4' | '5' | '6' | 'tent' | 'van';
+    type: 'BT' | 'PT' | 'TP' | 'VC' | 'TC' | 'D3' | 'D6';
+    size: '2' | '3' | '4' | '5' | '6' | 'tent' | 'van' | 'B1' | 'B2' | 'B3' | 'B4' | 'B5' | 'B6';
     zone: string | null;
   } | null>(null);
   const [createItemLoading, setCreateItemLoading] = useState<boolean>(false);
@@ -871,6 +871,30 @@ export function Accommodations() {
     if (!newItemData) return;
     
     const value = e.target.value;
+    
+    // Auto-set zone and type for dorms based on accommodation selection
+    if (fieldName === 'accommodation_id') {
+      const selectedAcc = accommodations.find(acc => acc.id === value);
+      if (selectedAcc && selectedAcc.title.includes('Dorm')) {
+        // Determine dorm type and zone
+        const isDorm3 = selectedAcc.title.includes('3-Bed');
+        const dormType = isDorm3 ? 'D3' : 'D6';
+        
+        // Extract building letter from title (e.g., "W-6-Bed Dorm" -> "W")
+        const buildingMatch = selectedAcc.title.match(/^([A-Z])-/);
+        const zone = buildingMatch ? buildingMatch[1] : null;
+        
+        setNewItemData({
+          ...newItemData,
+          accommodation_id: value,
+          type: dormType as 'D3' | 'D6',
+          zone: zone,
+          size: 'B1' // Default to bed 1
+        });
+        return;
+      }
+    }
+    
     setNewItemData({
       ...newItemData,
       [fieldName]: fieldName === 'zone' ? (value || null) : value
@@ -887,21 +911,35 @@ export function Accommodations() {
     setCreateItemError(null);
 
     try {
-      // Get the next available item_id for this type and size
-      const { data: existingItems, error: fetchError } = await supabase
-        .from('accommodation_items')
-        .select('item_id')
-        .eq('type', newItemData.type)
-        .eq('size', newItemData.size)
-        .order('item_id', { ascending: false })
-        .limit(1);
+      let nextItemId: number;
+      
+      // For dorm beds, use the bed number directly from the size field
+      if (newItemData.type === 'D3' || newItemData.type === 'D6') {
+        // Extract bed number from size (e.g., 'B1' -> 1)
+        const bedNumber = parseInt(newItemData.size.substring(1));
+        nextItemId = bedNumber;
+      } else {
+        // Get the next available item_id for this type and size
+        const { data: existingItems, error: fetchError } = await supabase
+          .from('accommodation_items')
+          .select('item_id')
+          .eq('type', newItemData.type)
+          .eq('size', newItemData.size)
+          .order('item_id', { ascending: false })
+          .limit(1);
 
-      if (fetchError) throw fetchError;
+        if (fetchError) throw fetchError;
 
-      const nextItemId = existingItems && existingItems.length > 0 
-        ? Math.max(...existingItems.map(item => item.item_id)) + 1 
-        : 1;
+        nextItemId = existingItems && existingItems.length > 0 
+          ? Math.max(...existingItems.map(item => item.item_id)) + 1 
+          : 1;
+      }
 
+      // For dorms, set size based on dorm type
+      const finalSize = (newItemData.type === 'D3' || newItemData.type === 'D6') 
+        ? (newItemData.type === 'D3' ? '3' : '6')
+        : newItemData.size;
+      
       // Insert the new accommodation item
       const { error: insertError } = await supabase
         .from('accommodation_items')
@@ -909,7 +947,7 @@ export function Accommodations() {
           accommodation_id: newItemData.accommodation_id,
           zone: newItemData.zone,
           type: newItemData.type,
-          size: newItemData.size,
+          size: finalSize,
           item_id: nextItemId
         });
 
@@ -1785,7 +1823,7 @@ export function Accommodations() {
                     >
                       <option value="">Select accommodation...</option>
                       {accommodations
-                        .filter(acc => acc.type === 'tent' || acc.type === 'parking' || acc.type === 'addon')
+                        .filter(acc => acc.type === 'tent' || acc.type === 'parking' || acc.type === 'addon' || acc.type === 'dorm')
                         .map(acc => (
                           <option key={acc.id} value={acc.id}>{acc.title}</option>
                         ))}
@@ -1798,7 +1836,7 @@ export function Accommodations() {
                     <select
                       value={newItemData.zone || ''}
                       onChange={(e) => handleNewItemInputChange(e, 'zone')}
-                      disabled={createItemLoading}
+                      disabled={createItemLoading || (newItemData.type === 'D3' || newItemData.type === 'D6')}
                       className={`${inputClassName.replace("bg-[var(--color-input-bg)]", "bg-[var(--color-furface-modal,theme(colors.gray.800))]")}`}
                     >
                       <option value="">None (Unknown)</option>
@@ -1827,25 +1865,50 @@ export function Accommodations() {
                       <option value="TP">TP - Tipi</option>
                       <option value="VC">VC - DIY Van</option>
                       <option value="TC">TC - DIY Tent</option>
+                      <option value="D3">D3 - 3-Bed Dorm</option>
+                      <option value="D6">D6 - 6-Bed Dorm</option>
                     </select>
                   </div>
                   
                   {/* Size Selection */}
                   <div>
-                    <label className={labelClassName}>Size</label>
+                    <label className={labelClassName}>{(newItemData.type === 'D3' || newItemData.type === 'D6') ? 'Bed Number' : 'Size'}</label>
                     <select
                       value={newItemData.size}
                       onChange={(e) => handleNewItemInputChange(e, 'size')}
                       disabled={createItemLoading}
                       className={`${inputClassName.replace("bg-[var(--color-input-bg)]", "bg-[var(--color-furface-modal,theme(colors.gray.800))]")}`}
                     >
-                      <option value="2">2 - 2.2m Tipi (Single)</option>
-                      <option value="3">3 - 3m Tipi (Double)</option>
-                      <option value="4">4 - 4m Bell tent</option>
-                      <option value="5">5 - 5m Bell tent</option>
-                      <option value="6">6 - 6m Bell tent</option>
-                      <option value="tent">Tent - Your Own Tent</option>
-                      <option value="van">Van - Van Parking</option>
+                      {(newItemData.type === 'D3' || newItemData.type === 'D6') ? (
+                        <>
+                          {newItemData.type === 'D3' ? (
+                            <>
+                              <option value="B1">Bed 1</option>
+                              <option value="B2">Bed 2</option>
+                              <option value="B3">Bed 3</option>
+                            </>
+                          ) : (
+                            <>
+                              <option value="B1">Bed 1</option>
+                              <option value="B2">Bed 2</option>
+                              <option value="B3">Bed 3</option>
+                              <option value="B4">Bed 4</option>
+                              <option value="B5">Bed 5</option>
+                              <option value="B6">Bed 6</option>
+                            </>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <option value="2">2 - 2.2m Tipi (Single)</option>
+                          <option value="3">3 - 3m Tipi (Double)</option>
+                          <option value="4">4 - 4m Bell tent</option>
+                          <option value="5">5 - 5m Bell tent</option>
+                          <option value="6">6 - 6m Bell tent</option>
+                          <option value="tent">Tent - Your Own Tent</option>
+                          <option value="van">Van - Van Parking</option>
+                        </>
+                      )}
                     </select>
                   </div>
                 </div>
