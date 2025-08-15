@@ -574,7 +574,15 @@ export function RetroQuestionField({ question, value, onChange, onBlur, themeCol
     return (
       <div className="space-y-4">
         <h3 className="text-xl font-display text-retro-accent">
-          {question.text}
+          <ReactMarkdown 
+            remarkPlugins={[remarkGfm]}
+            components={{
+              a: ({node, ...props}) => <a {...props} className="underline hover:text-retro-accent/70" target="_blank" rel="noopener noreferrer" />,
+              p: ({children}) => <span>{children}</span> // Render as span to avoid block element in h3
+            }}
+          >
+            {question.text}
+          </ReactMarkdown>
           {question.required && <span className="text-red-500 ml-1">*</span>}
         </h3>
         <div className="space-y-2">
