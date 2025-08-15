@@ -10,9 +10,10 @@ interface Props {
   accommodationRows: AccommodationRow[];
   onClose: () => void;
   onReassign: (bookingId: string, newItemId: string) => void;
+  onDataUpdate?: () => void;
 }
 
-export function ReassignModal({ booking, accommodationRows, onClose, onReassign }: Props) {
+export function ReassignModal({ booking, accommodationRows, onClose, onReassign, onDataUpdate }: Props) {
   const [selectedItemId, setSelectedItemId] = useState<string>(booking.accommodation_item_id || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,8 +60,12 @@ export function ReassignModal({ booking, accommodationRows, onClose, onReassign 
       
       console.log('✅ Deleted accommodation tag:', itemId);
       
-      // Reload the page to refresh the data
-      window.location.reload();
+      // Call the data update callback to refresh the data
+      if (onDataUpdate) {
+        onDataUpdate();
+      }
+      
+      // Don't close the modal - user might want to delete more tags or reassign
     } catch (err: any) {
       console.error('Delete tag error:', err);
       setError(err.message || 'Failed to delete tag');

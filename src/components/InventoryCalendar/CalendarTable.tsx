@@ -593,6 +593,7 @@ export function CalendarTable({
         accommodationRows={accommodationRows}
         onClose={() => setReassignBooking(null)}
         onReassign={handleReassign}
+        onDataUpdate={onBookingUpdate}
       />
     )}
     
