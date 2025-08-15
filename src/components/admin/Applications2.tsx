@@ -835,17 +835,27 @@ export function Applications2() {
 
                 {/* Special Week Badge */}
                 {(() => {
+                  // Check both direct access and via getAnswer function
                   const specialWeeksQuestion = questions.find(q => q.id === "bfde0ed9-319a-45e4-8b0d-5c694ca2c850") as QuestionForAnswerRetrieval | undefined;
-                  if (specialWeeksQuestion) {
-                    const answer = getAnswer(application.data, specialWeeksQuestion);
-                    if (answer && typeof answer === 'string' && answer !== "No<3" && answer !== "No <3") {
-                      const programName = answer.split(" | ")[0] || answer;
-                      return (
-                        <span className="inline-flex items-center px-2 py-1 rounded text-xs bg-amber-900/30 text-amber-400 border border-amber-700/50 font-mono">
-                          🌟 {programName}
-                        </span>
-                      );
-                    }
+                  let answer = application.data?.["bfde0ed9-319a-45e4-8b0d-5c694ca2c850"];
+                  
+                  // Handle array format (as shown in the example data)
+                  if (Array.isArray(answer) && answer.length > 0) {
+                    answer = answer[0];
+                  }
+                  
+                  // Fallback to getAnswer if direct access didn't work
+                  if (!answer && specialWeeksQuestion) {
+                    answer = getAnswer(application.data, specialWeeksQuestion);
+                  }
+                  
+                  if (answer && typeof answer === 'string' && answer !== "No<3" && answer !== "No <3") {
+                    const programName = answer.split(" | ")[0] || answer;
+                    return (
+                      <span className="inline-flex items-center px-2 py-1 rounded text-xs bg-amber-900/30 text-amber-400 border border-amber-700/50 font-mono">
+                        🌟 {programName}
+                      </span>
+                    );
                   }
                   return null;
                 })()}

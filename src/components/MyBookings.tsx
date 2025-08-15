@@ -4,7 +4,7 @@ import { calculateTotalWeeksDecimal, formatDateForDisplay, normalizeToUTCDate, c
 import { getSeasonBreakdown, getDurationDiscount, calculateWeeklyAccommodationPrice } from '../utils/pricing';
 import { bookingService } from '../services/BookingService';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ExternalLink, X, Info, Tag } from 'lucide-react';
+import { ExternalLink, X, Info, Tag, ImageOff } from 'lucide-react';
 import { useSession } from '../hooks/useSession';
 import type { Booking, Accommodation } from '../types';
 import type { AppliedDiscount } from './BookingSummary/BookingSummary.types';
@@ -35,6 +35,7 @@ export function MyBookings() {
   const [extensionWeeks, setExtensionWeeks] = React.useState<any[]>([]);
   const [originalCheckIn, setOriginalCheckIn] = React.useState<Date | null>(null);
   const [originalCheckOut, setOriginalCheckOut] = React.useState<Date | null>(null);
+  const [failedImages, setFailedImages] = React.useState<Set<string>>(new Set());
 
   const [showPaymentModal, setShowPaymentModal] = React.useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = React.useState(false);
@@ -120,6 +121,18 @@ export function MyBookings() {
       setLoading(true);
       const data = await bookingService.getUserBookings();
       console.log('[DEBUG] Raw booking data:', data);
+      
+      // Log accommodation image URLs for debugging
+      if (data && data.length > 0) {
+        console.log('[DEBUG] Accommodation images in bookings:', 
+          data.map((b: any) => ({
+            accommodation: b.accommodation?.title,
+            image_url: b.accommodation?.image_url,
+            has_image: !!b.accommodation?.image_url
+          }))
+        );
+      }
+      
       setBookings(data || []);
     } catch (err) {
       console.error('Error loading bookings:', err);
@@ -127,6 +140,38 @@ export function MyBookings() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleImageError = (imageUrl: string) => {
+    console.error('[DEBUG] Image failed to load:', imageUrl, {
+      url: imageUrl,
+      isValidUrl: imageUrl && (imageUrl.startsWith('http://') || imageUrl.startsWith('https://') || imageUrl.startsWith('//')),
+      urlLength: imageUrl?.length || 0,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Try to understand what kind of error occurred
+    const img = new Image();
+    img.onerror = (e) => {
+      console.error('[DEBUG] Image error details:', {
+        type: (e as any)?.type,
+        message: (e as any)?.message,
+        url: imageUrl
+      });
+    };
+    img.src = imageUrl;
+    
+    setFailedImages(prev => new Set(prev).add(imageUrl));
+  };
+
+  const handleImageLoad = (imageUrl: string) => {
+    console.log('[DEBUG] Image loaded successfully:', imageUrl);
+    // Remove from failed images if it was there
+    setFailedImages(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(imageUrl);
+      return newSet;
+    });
   };
 
   const handleExtensionWeekSelect = (week: any) => {
@@ -942,14 +987,26 @@ export function MyBookings() {
                     </div>
                     {booking.accommodation?.image_url && (
                       <button
-                        onClick={() => setEnlargedImageUrl(booking.accommodation?.image_url || null)}
+                        onClick={() => {
+                          if (!failedImages.has(booking.accommodation?.image_url || '')) {
+                            setEnlargedImageUrl(booking.accommodation?.image_url || null);
+                          }
+                        }}
                         className="focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-offset-2 rounded-sm transition-opacity hover:opacity-80"
                       >
-                        <img
-                          src={booking.accommodation.image_url}
-                          alt={booking.accommodation.title}
-                          className="w-32 h-32 object-cover rounded-sm cursor-pointer"
-                        />
+                        {failedImages.has(booking.accommodation?.image_url || '') ? (
+                          <div className="w-32 h-32 bg-gray-200 dark:bg-gray-700 rounded-sm flex items-center justify-center">
+                            <ImageOff className="w-8 h-8 text-gray-400 dark:text-gray-500" />
+                          </div>
+                        ) : (
+                          <img
+                            src={booking.accommodation.image_url}
+                            alt={booking.accommodation.title}
+                            className="w-32 h-32 object-cover rounded-sm cursor-pointer"
+                            onError={() => handleImageError(booking.accommodation?.image_url || '')}
+                            onLoad={() => handleImageLoad(booking.accommodation?.image_url || '')}
+                          />
+                        )}
                       </button>
                     )}
                   </div>
@@ -960,7 +1017,7 @@ export function MyBookings() {
         </div>
       </div>
 
-      {enlargedImageUrl && (
+      {enlargedImageUrl && !failedImages.has(enlargedImageUrl) && (
         <div
           className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
           onClick={() => setEnlargedImageUrl(null)}
@@ -973,6 +1030,10 @@ export function MyBookings() {
               src={enlargedImageUrl}
               alt="Enlarged booking accommodation"
               className="max-w-full max-h-[80vh] w-auto h-auto object-contain rounded-sm shadow-2xl"
+              onError={() => {
+                handleImageError(enlargedImageUrl);
+                setEnlargedImageUrl(null);
+              }}
             />
             <button
               onClick={() => setEnlargedImageUrl(null)}

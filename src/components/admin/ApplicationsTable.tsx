@@ -1113,8 +1113,13 @@ export function ApplicationsTable() {
                 getAnswer(application.data, questions.find(q => q.text === "Last Name") as QuestionForAnswerRetrieval) || '' : '';
               const arrivalDate = questions.length > 0 && application.data ? 
                 getAnswer(application.data, questions.find(q => q.id === "ae5cc5b2-e2ec-4126-9e53-7ab7fc495324") as QuestionForAnswerRetrieval) : null;
-              const themedResidency = questions.length > 0 && application.data ?
+              let themedResidency = questions.length > 0 && application.data ?
                 getAnswer(application.data, questions.find(q => q.id === "bfde0ed9-319a-45e4-8b0d-5c694ca2c850") as QuestionForAnswerRetrieval) : null;
+              
+              // Handle array format (as data might be stored as array)
+              if (Array.isArray(themedResidency) && themedResidency.length > 0) {
+                themedResidency = themedResidency[0];
+              }
 
               // Log tracking status for debugging
               if (index === 0) {

@@ -442,6 +442,20 @@ class BookingService {
         };
       });
 
+      // Add detailed logging for image URLs
+      if (transformedData && transformedData.length > 0) {
+        const imageDebugInfo = transformedData.map((booking: any) => ({
+          accommodation: booking.accommodation?.title,
+          image_url: booking.accommodation?.image_url,
+          url_valid: booking.accommodation?.image_url ? 
+            (booking.accommodation.image_url.startsWith('http://') || 
+             booking.accommodation.image_url.startsWith('https://') ||
+             booking.accommodation.image_url.startsWith('//')) : false,
+          url_length: booking.accommodation?.image_url?.length || 0
+        }));
+        console.log('[BookingService] Image URL debug info:', imageDebugInfo);
+      }
+      
       console.log('[BookingService] Fetched user bookings with payment totals:', transformedData);
       return transformedData;
     } catch (error) {
