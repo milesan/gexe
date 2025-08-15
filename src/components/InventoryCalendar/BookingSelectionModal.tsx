@@ -38,7 +38,12 @@ export function BookingSelectionModal({ bookings, onSelect, onClose, title }: Pr
               </div>
               <div className="text-sm text-[var(--color-text-secondary)] mt-1">
                 {booking.accommodation_title}
-                {booking.item_tag && ` - ${booking.item_tag}`}
+                {booking.item_tag && (
+                  // Simplify dorm bed tags
+                  booking.accommodation_title?.includes('Dorm') && booking.item_tag.match(/D[36].*?(\d+)$/)
+                    ? ` - Bed ${booking.item_tag.match(/D[36].*?(\d+)$/)?.[1]}`
+                    : ` - ${booking.item_tag}`
+                )}
               </div>
             </button>
           ))}

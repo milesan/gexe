@@ -46,6 +46,11 @@ export function CalendarTable({
         return true;
       }
       
+      // Always show dorm tagged rows (limited capacity)
+      if (row.accommodation_title?.includes('Dorm') && row.item_id) {
+        return true;
+      }
+      
       // Show tagged rows that have assigned bookings
       if (row.item_id) {
         const hasAssignedBooking = bookings.some(b =>
@@ -136,7 +141,10 @@ export function CalendarTable({
         booking.accommodation_title?.includes('Tipi') ||
         booking.accommodation_title === 'Staying with somebody' ||
         booking.accommodation_title === 'Your Own Tent' ||
-        booking.accommodation_title === 'Van Parking') {
+        booking.accommodation_title === 'Van Parking' ||
+        // Include dorm bookings for dragging
+        booking.accommodation_id === '25c2a846-926d-4ac8-9cbd-f03309883e22' || // 3-bed dorm
+        booking.accommodation_id === 'd30c5cf7-f033-449a-8cec-176b754db7ee') {   // 6-bed dorm
       setDraggedBooking(booking);
       e.dataTransfer.effectAllowed = 'move';
     } else {
@@ -255,6 +263,28 @@ export function CalendarTable({
                   const cellBookings = getBookingsForCell(row, day, bookings, visibleRows, bookingRowMaps);
                   const hasBookings = cellBookings.length > 0;
                   
+                  // DEBUG: Log unlimited accommodation checkout days
+                  if (row.accommodation_title === 'Van Parking' || 
+                      row.accommodation_title === 'Your Own Tent' || 
+                      row.accommodation_title === 'Staying with somebody') {
+                    if (cellBookings.length > 0) {
+                      cellBookings.forEach(b => {
+                        if (formatDateForDisplay(b.check_out) === formatDateForDisplay(day)) {
+                          console.log('🔺 CHECKOUT TRIANGLE SHOULD SHOW:', {
+                            row: row.label,
+                            day: formatDateForDisplay(day),
+                            booking: {
+                              id: b.id,
+                              guest: b.guest_name || b.guest_email,
+                              checkout: formatDateForDisplay(b.check_out),
+                              item_id: b.accommodation_item_id
+                            }
+                          });
+                        }
+                      });
+                    }
+                  }
+                  
                   // Debug: Log cells with multiple bookings
                   if (cellBookings.length > 2) {
                     console.log('Cell with 3+ bookings:', {
@@ -275,7 +305,10 @@ export function CalendarTable({
                     booking.accommodation_title?.includes('Tipi') ||
                     booking.accommodation_title === 'Staying with somebody' ||
                     booking.accommodation_title === 'Your Own Tent' ||
-                    booking.accommodation_title === 'Van Parking'
+                    booking.accommodation_title === 'Van Parking' ||
+                    // Include dorm bookings for reassignment
+                    booking.accommodation_id === '25c2a846-926d-4ac8-9cbd-f03309883e22' || // 3-bed dorm
+                    booking.accommodation_id === 'd30c5cf7-f033-449a-8cec-176b754db7ee'    // 6-bed dorm
                   );
                   
                   // Check if this cell is being dragged over
@@ -303,6 +336,19 @@ export function CalendarTable({
 
                   // Check if this is a checkout day for any booking
                   const isCheckoutCell = cellContentData.some(d => d.isCheckoutDay);
+                  const isOnlyCheckout = cellContentData.every(d => d.isCheckoutDay);
+                  
+                  // DEBUG: Log checkout cell detection
+                  if ((row.accommodation_title === 'Van Parking' || 
+                       row.accommodation_title === 'Your Own Tent' || 
+                       row.accommodation_title === 'Staying with somebody') && isCheckoutCell) {
+                    console.log('✅ isCheckoutCell=true for:', {
+                      row: row.label,
+                      day: formatDateForDisplay(day),
+                      isOnlyCheckout,
+                      cellBookingsCount: cellBookings.length
+                    });
+                  }
                   
                   // Determine background color - if multiple bookings, use a mixed color
                   let bgColorClass = '';
@@ -317,7 +363,10 @@ export function CalendarTable({
                         b.accommodation_title?.includes('Bell Tent') ||
                         b.accommodation_title?.includes('Tipi') ||
                         b.accommodation_title === 'Your Own Tent' ||
-                        b.accommodation_title === 'Van Parking'
+                        b.accommodation_title === 'Van Parking' ||
+                        // Include dorm bookings
+                        b.accommodation_id === '25c2a846-926d-4ac8-9cbd-f03309883e22' || // 3-bed dorm
+                        b.accommodation_id === 'd30c5cf7-f033-449a-8cec-176b754db7ee'    // 6-bed dorm
                       )
                     );
                     
@@ -328,19 +377,24 @@ export function CalendarTable({
                         booking.accommodation_title?.includes('Bell Tent') ||
                         booking.accommodation_title?.includes('Tipi') ||
                         booking.accommodation_title === 'Your Own Tent' ||
-                        booking.accommodation_title === 'Van Parking'
+                        booking.accommodation_title === 'Van Parking' ||
+                        // Include dorm bookings
+                        booking.accommodation_id === '25c2a846-926d-4ac8-9cbd-f03309883e22' || // 3-bed dorm
+                        booking.accommodation_id === 'd30c5cf7-f033-449a-8cec-176b754db7ee'    // 6-bed dorm
                       );
                       
                       const baseColor = getBookingColor(booking);
                       
-                      if (isCheckoutCell) {
-                        // Checkout day - create a triangle in top-left corner
-                        // We'll use a simpler approach with clip-path
+                      if (isOnlyCheckout) {
+                        // Only checkout, no active stay - show triangle only
                         bgColorClass = '';
                         cellStyle = {
                           position: 'relative',
                           background: 'transparent'
                         };
+                      } else if (isCheckoutCell) {
+                        // Mixed: checkout + active stay - show full color
+                        bgColorClass = baseColor + ' text-white';
                       } else if (isUnassigned) {
                         // Unassigned bookings - slightly faded
                         bgColorClass = baseColor + ' text-white opacity-60';
@@ -374,7 +428,10 @@ export function CalendarTable({
                           b.accommodation_title?.includes('Bell Tent') ||
                           b.accommodation_title?.includes('Tipi') ||
                           b.accommodation_title === 'Your Own Tent' ||
-                          b.accommodation_title === 'Van Parking'
+                          b.accommodation_title === 'Van Parking' ||
+                          // Include dorm bookings
+                          b.accommodation_id === '25c2a846-926d-4ac8-9cbd-f03309883e22' || // 3-bed dorm
+                          b.accommodation_id === 'd30c5cf7-f033-449a-8cec-176b754db7ee'    // 6-bed dorm
                         );
                         if (isUnassigned) {
                           return guestInfo + ' (Unassigned - click to assign)';
@@ -412,7 +469,10 @@ export function CalendarTable({
                           b.accommodation_title?.includes('Tipi') ||
                           b.accommodation_title === 'Staying with somebody' ||
                           b.accommodation_title === 'Your Own Tent' ||
-                          b.accommodation_title === 'Van Parking'
+                          b.accommodation_title === 'Van Parking' ||
+                          // Include dorm bookings for reassignment
+                          b.accommodation_id === '25c2a846-926d-4ac8-9cbd-f03309883e22' || // 3-bed dorm
+                          b.accommodation_id === 'd30c5cf7-f033-449a-8cec-176b754db7ee'    // 6-bed dorm
                         );
                         
                         console.log('Reassignable bookings:', {
@@ -434,24 +494,48 @@ export function CalendarTable({
                       } : undefined}
                       title={tooltipText}
                     >
-                      {isCheckoutCell && cellBookings.length === 1 && (
-                        <div 
-                          className={`absolute inset-0 ${getBookingColor(cellBookings[0])}`}
-                          style={{
-                            clipPath: 'polygon(0 0, 100% 0, 0 100%)'
-                          }}
-                        />
+                      {isCheckoutCell && cellBookings.length === 1 && (() => {
+                        if (row.accommodation_title === 'Van Parking' || 
+                            row.accommodation_title === 'Your Own Tent' || 
+                            row.accommodation_title === 'Staying with somebody') {
+                          console.log('🔻 RENDERING TRIANGLE for:', row.label, formatDateForDisplay(day));
+                        }
+                        return true;
+                      })() && (
+                        <>
+                          <div 
+                            className={`absolute inset-0 ${getBookingColor(cellBookings[0])}`}
+                            style={{
+                              clipPath: 'polygon(0 0, 70% 0, 0 70%)',
+                              opacity: 0.8
+                            }}
+                          />
+                          <div 
+                            className="absolute inset-0 border-l-2 border-t-2 border-gray-400 dark:border-gray-600"
+                            style={{
+                              clipPath: 'polygon(0 0, 70% 0, 0 70%)'
+                            }}
+                          />
+                        </>
                       )}
                       {isCheckoutCell && cellBookings.length > 1 && (
-                        <div 
-                          className="absolute inset-0 bg-gradient-to-r from-purple-500/70 to-pink-500/70"
-                          style={{
-                            clipPath: 'polygon(0 0, 100% 0, 0 100%)'
-                          }}
-                        />
+                        <>
+                          <div 
+                            className="absolute inset-0 bg-gradient-to-r from-purple-500/70 to-pink-500/70"
+                            style={{
+                              clipPath: 'polygon(0 0, 70% 0, 0 70%)'
+                            }}
+                          />
+                          <div 
+                            className="absolute inset-0 border-l-2 border-t-2 border-gray-400 dark:border-gray-600"
+                            style={{
+                              clipPath: 'polygon(0 0, 70% 0, 0 70%)'
+                            }}
+                          />
+                        </>
                       )}
                       {hasBookings && (
-                        <div className={`font-medium text-center ${viewMode === 'month' ? 'text-xs px-1' : 'text-xs'} ${cellBookings.length > 1 ? 'flex flex-col' : ''} ${isCheckoutCell ? 'relative z-10' : ''}`}>
+                        <div className={`font-medium text-center ${viewMode === 'month' ? 'text-xs px-1' : 'text-xs'} ${cellBookings.length > 1 ? 'flex flex-col' : ''} ${isCheckoutCell ? 'relative z-10 text-gray-700 dark:text-gray-300' : ''}`}>
                           {viewMode === 'month' ? (
                             // Month view - show names as clickable links
                             cellContentData.filter(d => d.showName || d.isCheckoutDay).map((data, idx) => (
@@ -463,7 +547,7 @@ export function CalendarTable({
                                   onBookingClick(data.booking, e);
                                 }}
                               >
-                                {data.isCheckoutDay ? 'Out' : data.displayName}
+                                {data.displayName}
                               </span>
                             ))
                           ) : (
@@ -479,7 +563,7 @@ export function CalendarTable({
                                       onBookingClick(data.booking, e);
                                     }}
                                   >
-                                    {data.isCheckoutDay ? 'Out' : data.displayName}
+                                    {data.displayName}
                                   </span>
                                 )}
                               </div>

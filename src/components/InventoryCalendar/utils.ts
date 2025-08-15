@@ -190,26 +190,121 @@ export function getBookingsForCell(
 ): Booking[] {
   // SIMPLIFIED LOGIC: Use accommodation_id and accommodation_item_id only
   
-  // Step 1: Get all bookings active on this date
+  // Step 1: Get all bookings active on this date (including checkout day)
   const activeBookings = bookings.filter(b => 
-    date >= b.check_in && date < b.check_out
+    date >= b.check_in && date <= b.check_out
   );
   
-  // Step 2: Handle special case - dorm beds
+  // Debug logging for dorm rows
+  if (row.accommodation_title?.includes('Dorm') && activeBookings.length > 0) {
+    const dormBookings = activeBookings.filter(b => b.accommodation_id === row.accommodation_id);
+    if (dormBookings.length > 0) {
+      console.log('Dorm cell check:', {
+        row_label: row.label,
+        row_id: row.id,
+        date: date.toISOString().split('T')[0],
+        is_bed: row.is_bed,
+        item_id: row.item_id,
+        dormBookings: dormBookings.length,
+        bookings: dormBookings.map(b => ({ id: b.id, item_id: b.accommodation_item_id }))
+      });
+    }
+  }
+  
+  // Step 2: Handle special case - dorm beds (automatic rows without tags)
   if (row.is_bed) {
+    // Get all dorm bookings for this accommodation
     const dormBookings = activeBookings.filter(b => 
-      b.accommodation_id === row.accommodation_id
+      b.accommodation_id === row.accommodation_id && !b.accommodation_item_id
     );
+    // Sort by check-in date to have consistent assignment
+    dormBookings.sort((a, b) => a.check_in.getTime() - b.check_in.getTime());
+    // Assign to bed based on position
     const bedBooking = dormBookings[row.bed_number! - 1];
     return bedBooking ? [bedBooking] : [];
   }
   
   // Step 3: If this row has an item_id, it's a tagged row
-  // Show ONLY bookings assigned to this specific tag
   if (row.item_id) {
-    return activeBookings.filter(b => 
-      b.accommodation_item_id === row.item_id
-    );
+    // Check if this is a dorm bed tag
+    const isDormTag = row.accommodation_title.includes('Dorm');
+    
+    if (isDormTag) {
+      // For dorm bed tags, first check for assigned bookings
+      const assignedBookings = activeBookings.filter(b => 
+        b.accommodation_item_id === row.item_id
+      );
+      
+      if (assignedBookings.length > 0) {
+        return assignedBookings;
+      }
+      
+      // If no assigned bookings, get unassigned dorm bookings and distribute
+      const unassignedDormBookings = activeBookings.filter(b => 
+        b.accommodation_id === row.accommodation_id && !b.accommodation_item_id
+      );
+      
+      // Sort for consistent distribution
+      unassignedDormBookings.sort((a, b) => a.check_in.getTime() - b.check_in.getTime());
+      
+      // Get all dorm item rows for this accommodation
+      const allDormItemRows = accommodationRows.filter(r => 
+        r.accommodation_id === row.accommodation_id && r.item_id && !r.is_bed
+      );
+      
+      // Sort by label to ensure consistent ordering
+      allDormItemRows.sort((a, b) => a.label.localeCompare(b.label));
+      
+      // Find which rows already have assigned bookings on this date
+      const occupiedRows = new Set<string>();
+      allDormItemRows.forEach(r => {
+        const hasAssigned = activeBookings.some(b => 
+          b.accommodation_item_id === r.item_id
+        );
+        if (hasAssigned) {
+          occupiedRows.add(r.id);
+        }
+      });
+      
+      // Get only the available (non-occupied) rows
+      const availableRows = allDormItemRows.filter(r => !occupiedRows.has(r.id));
+      
+      // Find this row's position in the available rows
+      const availableRowIndex = availableRows.findIndex(r => r.id === row.id);
+      
+      // Assign booking based on position in available rows
+      if (availableRowIndex >= 0 && availableRowIndex < unassignedDormBookings.length) {
+        return [unassignedDormBookings[availableRowIndex]];
+      }
+      
+      return [];
+    } else {
+      // Regular tagged row - show ONLY bookings assigned to this specific tag
+      const assignedToThisTag = activeBookings.filter(b => 
+        b.accommodation_item_id === row.item_id
+      );
+      
+      // DEBUG: Log assigned bookings for unlimited accommodations
+      if ((row.accommodation_title === 'Van Parking' || 
+           row.accommodation_title === 'Your Own Tent' || 
+           row.accommodation_title === 'Staying with somebody') && 
+          assignedToThisTag.length > 0) {
+        console.log('🏷️ Tag has assigned bookings:', {
+          tag: row.label,
+          date: date.toISOString().split('T')[0],
+          assignedCount: assignedToThisTag.length,
+          bookings: assignedToThisTag.map(b => ({
+            id: b.id,
+            guest: b.guest_name || b.guest_email,
+            checkin: b.check_in.toISOString().split('T')[0],
+            checkout: b.check_out.toISOString().split('T')[0],
+            isCheckoutDay: date.toISOString().split('T')[0] === b.check_out.toISOString().split('T')[0]
+          }))
+        });
+      }
+      
+      return assignedToThisTag;
+    }
   }
   
   // Step 4: For rows without item_id (single rooms or dynamic unassigned rows)
@@ -226,6 +321,24 @@ export function getBookingsForCell(
     b.accommodation_id === row.accommodation_id &&
     !b.accommodation_item_id
   );
+  
+  // DEBUG: Log unlimited accommodation bookings
+  if ((row.accommodation_title === 'Van Parking' || 
+       row.accommodation_title === 'Your Own Tent' || 
+       row.accommodation_title === 'Staying with somebody') && 
+      unassignedBookings.length > 0) {
+    console.log('📍 getBookingsForCell found unassigned bookings:', {
+      row: row.label,
+      date: date.toISOString().split('T')[0],
+      unassignedCount: unassignedBookings.length,
+      bookings: unassignedBookings.map(b => ({
+        id: b.id,
+        guest: b.guest_name || b.guest_email,
+        checkin: b.check_in.toISOString().split('T')[0],
+        checkout: b.check_out.toISOString().split('T')[0]
+      }))
+    });
+  }
   
   // If multiple unassigned rows, distribute bookings among them
   if (unassignedBookings.length > 0 && bookingRowMaps) {

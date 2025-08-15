@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus } from 'lucide-react';
+import { X, Plus, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { Booking, AccommodationRow } from './types';
 import { formatInTimeZone } from 'date-fns-tz';
@@ -19,11 +19,56 @@ export function ReassignModal({ booking, accommodationRows, onClose, onReassign 
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   // For "Staying with somebody", "Your Own Tent", and "Van Parking", show all accommodation items
+  // For dorm bookings, show only matching bed tags (D3 for 3-bed, D6 for 6-bed)
   // For other types, only show items of the same accommodation type
   const canAssignAnywhere = booking.accommodation_title === 'Staying with somebody' ||
                           booking.accommodation_title === 'Your Own Tent' ||
                           booking.accommodation_title === 'Van Parking';
   
+  const isDorm3Booking = booking.accommodation_id === '25c2a846-926d-4ac8-9cbd-f03309883e22';
+  const isDorm6Booking = booking.accommodation_id === 'd30c5cf7-f033-449a-8cec-176b754db7ee';
+  const isDormBooking = isDorm3Booking || isDorm6Booking;
+  
+  const handleNewItemCreated = async (newItemId: string) => {
+    // Close the create modal
+    setShowCreateModal(false);
+    
+    // Set the newly created item as selected
+    setSelectedItemId(newItemId);
+    
+    // Trigger the reassignment
+    await handleReassign(newItemId);
+  };
+
+  const handleDeleteTag = async (itemId: string) => {
+    if (!confirm('Are you sure you want to delete this tag? This cannot be undone.')) {
+      return;
+    }
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Delete the accommodation item
+      const { error: deleteError } = await supabase
+        .from('accommodation_items')
+        .delete()
+        .eq('id', itemId);
+      
+      if (deleteError) throw deleteError;
+      
+      console.log('✅ Deleted accommodation tag:', itemId);
+      
+      // Reload the page to refresh the data
+      window.location.reload();
+    } catch (err: any) {
+      console.error('Delete tag error:', err);
+      setError(err.message || 'Failed to delete tag');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const availableRows = accommodationRows.filter(row => {
     // Must have an item_id (be a real tag, not a placeholder)
     if (!row.item_id) return false;
@@ -38,21 +83,19 @@ export function ReassignModal({ booking, accommodationRows, onClose, onReassign 
       return true;
     }
     
+    // For dorm bookings - show only tags with matching accommodation_id
+    if (isDormBooking) {
+      // Simply filter by accommodation_id - this automatically gives us the right bed tags
+      // 3-Bed Dorm tags will only match 3-Bed Dorm accommodation_id
+      // 6-Bed Dorm tags will only match 6-Bed Dorm accommodation_id
+      return row.accommodation_id === booking.accommodation_id;
+    }
+    
     // For all other accommodations - show items with same accommodation_id
     // This works for Van Parking, Your Own Tent, Bell Tents, Tipis, etc.
     return row.accommodation_id === booking.accommodation_id;
   });
 
-  const handleNewItemCreated = async (newItemId: string) => {
-    // Close the create modal
-    setShowCreateModal(false);
-    
-    // Set the newly created item as selected
-    setSelectedItemId(newItemId);
-    
-    // Trigger the reassignment
-    await handleReassign(newItemId);
-  };
 
   const handleReassign = async (itemIdToAssign?: string) => {
     const itemId = itemIdToAssign || selectedItemId;
@@ -139,6 +182,8 @@ export function ReassignModal({ booking, accommodationRows, onClose, onReassign 
           <h3 className="text-lg font-medium text-[var(--color-text-primary)]">
             {booking.accommodation_title === 'Staying with somebody' 
               ? 'Select Host Accommodation' 
+              : isDormBooking
+              ? 'Reassign to Dorm Bed'
               : 'Reassign Accommodation'}
           </h3>
           <button
@@ -162,44 +207,50 @@ export function ReassignModal({ booking, accommodationRows, onClose, onReassign 
           </p>
           <p className="text-sm text-[var(--color-text-secondary)]">
             Current: <span className="font-medium text-[var(--color-text-primary)]">
-              {booking.item_tag || booking.accommodation_title}
+              {booking.item_tag ? (
+                // Simplify dorm bed tags
+                isDormBooking && booking.item_tag.match(/D[36].*?(\d+)$/)
+                  ? `Bed ${booking.item_tag.match(/D[36].*?(\d+)$/)?.[1]}`
+                  : booking.item_tag
+              ) : booking.accommodation_title}
             </span>
           </p>
         </div>
 
         <div className="mb-4">
           <label className="text-sm font-medium text-[var(--color-text-primary)] block mb-2">
-            Select new accommodation:
+            {isDormBooking 
+              ? `Select ${isDorm3Booking ? 'D3' : 'D6'} bed tag:` 
+              : 'Select new accommodation:'}
           </label>
           <p className="text-xs text-[var(--color-text-secondary)] mb-2">
-            To manage tags (add/edit/delete), go to Admin Panel → Accommodations tab
+            Click a tag to select it. Hover to see delete option (non-dorm tags only).
           </p>
-          <select
-            value={selectedItemId}
-            onChange={(e) => {
-              const selectedValue = e.target.value;
-              console.log('Dropdown selection changed:', { 
-                value: selectedValue, 
-                type: typeof selectedValue 
-              });
-              
-              if (selectedValue === 'create_new') {
-                setShowCreateModal(true);
-              } else {
-                setSelectedItemId(selectedValue);
-              }
-            }}
-            className="w-full p-2 bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded 
-                     text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-emerald-500
-                     max-h-64 overflow-y-auto"
-          >
-            <option value="">Select...</option>
-            <option value="unassigned">⚪ Unassigned</option>
-            <option value="create_new" className="text-emerald-500 font-medium">
-              ➕ Create New Tag
-            </option>
+          
+          {/* Options list with delete buttons */}
+          <div className="max-h-64 overflow-y-auto border border-[var(--color-border)] rounded bg-[var(--color-bg-surface)]">
+            {/* Unassigned option */}
+            <div 
+              className={`p-2 cursor-pointer hover:bg-[var(--color-bg-surface-hover)] ${selectedItemId === 'unassigned' ? 'bg-emerald-500/20' : ''}`}
+              onClick={() => setSelectedItemId('unassigned')}
+            >
+              ⚪ Unassigned
+            </div>
+            
+            {/* Create new tag option */}
+            {!isDormBooking && (
+              <div 
+                className="p-2 cursor-pointer hover:bg-[var(--color-bg-surface-hover)] text-emerald-500 font-medium"
+                onClick={() => setShowCreateModal(true)}
+              >
+                ➕ Create New Tag
+              </div>
+            )}
+            
             {availableRows.length === 0 ? (
-              <option disabled>No tags available - create a new one</option>
+              <div className="p-2 text-[var(--color-text-secondary)]">
+                No tags available - use Admin Panel to create tags
+              </div>
             ) : canAssignAnywhere ? (
               // Group by accommodation type for flexible assignment types
               Object.entries(
@@ -210,25 +261,71 @@ export function ReassignModal({ booking, accommodationRows, onClose, onReassign 
                   return groups;
                 }, {} as Record<string, typeof availableRows>)
               ).map(([accommodationType, rows]) => (
-                <optgroup key={accommodationType} label={accommodationType}>
-                  {rows.map(row => (
-                    <option key={row.id} value={row.item_id || row.id}>
-                      {row.label} {row.is_assigned === false && '(available)'}
-                    </option>
-                  ))}
-                </optgroup>
+                <div key={accommodationType} className="mt-2">
+                  <div className="text-xs text-[var(--color-text-secondary)] px-2 py-1">
+                    {accommodationType}
+                  </div>
+                  {rows.map(row => {
+                    // Check if this is a dorm tag (based on accommodation_id)
+                    const isDormTag = row.accommodation_id === '25c2a846-926d-4ac8-9cbd-f03309883e22' || 
+                                     row.accommodation_id === 'd30c5cf7-f033-449a-8cec-176b754db7ee';
+                    
+                    return (
+                      <div key={row.id} className="flex items-center justify-between group">
+                        <div 
+                          className={`flex-1 p-2 cursor-pointer hover:bg-[var(--color-bg-surface-hover)] ${selectedItemId === (row.item_id || row.id) ? 'bg-emerald-500/20' : ''}`}
+                          onClick={() => setSelectedItemId(row.item_id || row.id)}
+                        >
+                          {row.label} {row.is_assigned === false && '(available)'}
+                        </div>
+                        {!isDormTag && row.item_id && (
+                          <button
+                            onClick={() => handleDeleteTag(row.item_id!)}
+                            disabled={loading}
+                            className="p-1 mr-2 text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Delete tag"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               ))
             ) : (
               // Single group for same accommodation type
-              <optgroup label="Available Units">
-                {availableRows.map(row => (
-                  <option key={row.id} value={row.item_id || row.id}>
-                    {row.label} {row.is_assigned === false && '(available)'}
-                  </option>
-                ))}
-              </optgroup>
+              <div className="mt-2">
+                <div className="text-xs text-[var(--color-text-secondary)] px-2 py-1">
+                  {isDormBooking ? "Available Beds" : "Available Units"}
+                </div>
+                {availableRows.map(row => {
+                  // Check if this is a dorm tag
+                  const isDormTag = isDormBooking;
+                  
+                  return (
+                    <div key={row.id} className="flex items-center justify-between group">
+                      <div 
+                        className={`flex-1 p-2 cursor-pointer hover:bg-[var(--color-bg-surface-hover)] ${selectedItemId === (row.item_id || row.id) ? 'bg-emerald-500/20' : ''}`}
+                        onClick={() => setSelectedItemId(row.item_id || row.id)}
+                      >
+                        {row.label} {row.is_assigned === false && '(available)'}
+                      </div>
+                      {!isDormTag && row.item_id && (
+                        <button
+                          onClick={() => handleDeleteTag(row.item_id!)}
+                          className="p-1 mr-2 text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="Delete tag"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             )}
-          </select>
+          </div>
         </div>
 
         {error && (
@@ -262,7 +359,7 @@ export function ReassignModal({ booking, accommodationRows, onClose, onReassign 
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onItemCreated={handleNewItemCreated}
-        defaultAccommodationType={!canAssignAnywhere ? booking.accommodation_title : undefined}
+        defaultAccommodationType={booking.accommodation_title}
       />
     )}
     </>

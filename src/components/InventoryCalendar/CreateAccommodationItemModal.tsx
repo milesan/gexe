@@ -24,12 +24,22 @@ export function CreateAccommodationItemModal({ isOpen, onClose, onItemCreated, d
     accommodation_id: '',
     type: 'BT',
     size: '4',
-    zone: null as string | null
+    zone: null as string | null,
+    bedNumber: 1
   });
 
-  // Fetch accommodations on mount
+  // Fetch accommodations on mount and reset form
   useEffect(() => {
     if (isOpen) {
+      // Reset form to defaults when modal opens
+      setFormData({
+        accommodation_id: '',
+        type: 'BT',
+        size: '4',
+        zone: null,
+        bedNumber: 1
+      });
+      setError(null);
       fetchAccommodations();
     }
   }, [isOpen]);
@@ -39,7 +49,7 @@ export function CreateAccommodationItemModal({ isOpen, onClose, onItemCreated, d
       const { data, error } = await supabase
         .from('accommodations')
         .select('id, title, type')
-        .in('type', ['tent', 'parking', 'addon'])
+        .in('type', ['tent', 'parking', 'addon', 'dorm'])
         .order('title');
 
       if (error) throw error;
@@ -49,7 +59,42 @@ export function CreateAccommodationItemModal({ isOpen, onClose, onItemCreated, d
       if (defaultAccommodationType && data) {
         const defaultAccom = data.find(acc => acc.title === defaultAccommodationType);
         if (defaultAccom) {
-          setFormData(prev => ({ ...prev, accommodation_id: defaultAccom.id }));
+          // Apply auto-detection for Van Parking (by ID or title)
+          if (defaultAccom.id === '74d777b7-5268-4a8e-be22-b59eb8ba663d' || defaultAccom.title === 'Van Parking') {
+            setFormData({
+              accommodation_id: defaultAccom.id,
+              type: 'VC',
+              size: 'van',
+              zone: null,
+              bedNumber: 1
+            });
+          }
+          // Apply auto-detection for Your Own Tent (by ID or title)
+          else if (defaultAccom.id === '4c37de6b-3982-4734-b048-02a7cc585d89' || defaultAccom.title === 'Your Own Tent') {
+            setFormData({
+              accommodation_id: defaultAccom.id,
+              type: 'TC',
+              size: 'tent',
+              zone: null,
+              bedNumber: 1
+            });
+          }
+          // Apply auto-detection for dorms
+          else if (defaultAccom.type === 'dorm') {
+            const zoneMatch = defaultAccom.title.match(/\(([A-Z])[0-9]*\)/);
+            const zone = zoneMatch ? zoneMatch[1] : null;
+            const type = defaultAccom.title.includes('3-Bed') ? 'D3' : 'D6';
+            setFormData({
+              accommodation_id: defaultAccom.id,
+              type,
+              zone,
+              size: '1',
+              bedNumber: 1
+            });
+          }
+          else {
+            setFormData(prev => ({ ...prev, accommodation_id: defaultAccom.id }));
+          }
         }
       }
     } catch (err) {
@@ -142,7 +187,54 @@ export function CreateAccommodationItemModal({ isOpen, onClose, onItemCreated, d
             </label>
             <select
               value={formData.accommodation_id}
-              onChange={(e) => setFormData(prev => ({ ...prev, accommodation_id: e.target.value }))}
+              onChange={(e) => {
+                const selectedAccomId = e.target.value;
+                const selectedAccom = accommodations.find(acc => acc.id === selectedAccomId);
+                
+                // Auto-detect settings for Van Parking (by ID or title)
+                if (selectedAccomId === '74d777b7-5268-4a8e-be22-b59eb8ba663d' || 
+                    (selectedAccom && selectedAccom.title === 'Van Parking')) {
+                  setFormData(prev => ({ 
+                    ...prev, 
+                    accommodation_id: selectedAccomId,
+                    type: 'VC', // Van Camping
+                    size: 'van',
+                    zone: null // Let user choose zone
+                  }));
+                }
+                // Auto-detect settings for Your Own Tent (by ID or title)
+                else if (selectedAccomId === '4c37de6b-3982-4734-b048-02a7cc585d89' ||
+                         (selectedAccom && selectedAccom.title === 'Your Own Tent')) {
+                  setFormData(prev => ({ 
+                    ...prev, 
+                    accommodation_id: selectedAccomId,
+                    type: 'TC', // Tent Camping
+                    size: 'tent',
+                    zone: null // Let user choose zone
+                  }));
+                }
+                // Auto-detect settings for dorms
+                else if (selectedAccom && selectedAccom.type === 'dorm') {
+                  // Extract zone from title (e.g., "3-Bed Dorm (U3)" -> "U")
+                  const zoneMatch = selectedAccom.title.match(/\(([A-Z])[0-9]*\)/);
+                  const zone = zoneMatch ? zoneMatch[1] : null;
+                  
+                  // Determine type based on dorm size
+                  const type = selectedAccom.title.includes('3-Bed') ? 'D3' : 'D6';
+                  
+                  setFormData(prev => ({ 
+                    ...prev, 
+                    accommodation_id: selectedAccomId,
+                    type,
+                    zone,
+                    size: '1', // For dorms, size will be the bed number
+                    bedNumber: 1
+                  }));
+                }
+                else {
+                  setFormData(prev => ({ ...prev, accommodation_id: selectedAccomId }));
+                }
+              }}
               disabled={loading}
               className="w-full p-2 bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded 
                        text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -179,45 +271,83 @@ export function CreateAccommodationItemModal({ isOpen, onClose, onItemCreated, d
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">
-              Type
-            </label>
-            <select
-              value={formData.type}
-              onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value as any }))}
-              disabled={loading}
-              className="w-full p-2 bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded 
-                       text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            >
-              <option value="BT">BT - Bell Tent</option>
-              <option value="PT">PT - Pumpkin-Shaped Bell Tent</option>
-              <option value="TP">TP - Tipi</option>
-              <option value="VC">VC - Van Camping</option>
-              <option value="TC">TC - Tent Camping</option>
-            </select>
-          </div>
+          {accommodations.find(a => a.id === formData.accommodation_id)?.type !== 'dorm' && (
+            <div>
+              <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">
+                Type
+              </label>
+              <select
+                value={formData.type}
+                onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value as any }))}
+                disabled={loading}
+                className="w-full p-2 bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded 
+                         text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="BT">BT - Bell Tent</option>
+                <option value="PT">PT - Pumpkin-Shaped Bell Tent</option>
+                <option value="TP">TP - Tipi</option>
+                <option value="VC">VC - Van Camping</option>
+                <option value="TC">TC - Tent Camping</option>
+              </select>
+            </div>
+          )}
 
-          <div>
-            <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">
-              Size
-            </label>
-            <select
-              value={formData.size}
-              onChange={(e) => setFormData(prev => ({ ...prev, size: e.target.value as any }))}
-              disabled={loading}
-              className="w-full p-2 bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded 
-                       text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            >
-              <option value="2">2 - 2.2m Tipi (Single)</option>
-              <option value="3">3 - 3m Tipi (Double)</option>
-              <option value="4">4 - 4m Bell tent</option>
-              <option value="5">5 - 5m Bell tent</option>
-              <option value="6">6 - 6m Bell tent (Group)</option>
-              <option value="tent">Tent - Your Own Tent</option>
-              <option value="van">Van - Van Parking</option>
-            </select>
-          </div>
+          {accommodations.find(a => a.id === formData.accommodation_id)?.type === 'dorm' ? (
+            <div>
+              <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">
+                Bed Number
+              </label>
+              <select
+                value={formData.bedNumber}
+                onChange={(e) => setFormData(prev => ({ 
+                  ...prev, 
+                  bedNumber: parseInt(e.target.value),
+                  size: e.target.value
+                }))}
+                disabled={loading}
+                className="w-full p-2 bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded 
+                         text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                {formData.type === 'D3' ? (
+                  <>
+                    <option value="1">Bed 1</option>
+                    <option value="2">Bed 2</option>
+                    <option value="3">Bed 3</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="1">Bed 1</option>
+                    <option value="2">Bed 2</option>
+                    <option value="3">Bed 3</option>
+                    <option value="4">Bed 4</option>
+                    <option value="5">Bed 5</option>
+                    <option value="6">Bed 6</option>
+                  </>
+                )}
+              </select>
+            </div>
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">
+                Size
+              </label>
+              <select
+                value={formData.size}
+                onChange={(e) => setFormData(prev => ({ ...prev, size: e.target.value as any }))}
+                disabled={loading}
+                className="w-full p-2 bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded 
+                         text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="2">2 - 2.2m Tipi (Single)</option>
+                <option value="3">3 - 3m Tipi (Double)</option>
+                <option value="4">4 - 4m Bell tent</option>
+                <option value="5">5 - 5m Bell tent</option>
+                <option value="6">6 - 6m Bell tent (Group)</option>
+                <option value="tent">Tent - Your Own Tent</option>
+                <option value="van">Van - Van Parking</option>
+              </select>
+            </div>
+          )}
         </div>
 
         {error && (

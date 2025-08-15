@@ -9,7 +9,9 @@ import { CalendarHeader } from './CalendarHeader';
 import { CalendarTable } from './CalendarTable';
 import { Booking, AccommodationRow, ViewMode } from './types';
 import { SINGLE_ROOMS, AUTO_ASSIGN_TYPES } from './utils';
-import { DebugVanParking } from './DebugVanParking';
+// import { DebugVanParking } from './DebugVanParking';
+// import { DebugDorms } from './DebugDorms';
+// import { TestDormBookings } from './TestDormBookings';
 
 interface Props {
   onClose: () => void;
@@ -45,14 +47,20 @@ export function InventoryCalendar({ onClose }: Props) {
   const accommodationRowsWithUnlimited = React.useMemo(() => {
     if (!unlimitedAccommodations.length) return accommodationRows;
     
-    const rows = [...accommodationRows];
-    const specialRows: AccommodationRow[] = []; // Group special accommodation rows together
+    // Separate existing Van Parking and Staying with somebody rows from others
+    const vanParkingRows = accommodationRows.filter(r => r.accommodation_title === 'Van Parking');
+    const stayingWithRows = accommodationRows.filter(r => r.accommodation_title === 'Staying with somebody');
+    const otherRows = accommodationRows.filter(r => 
+      r.accommodation_title !== 'Van Parking' && 
+      r.accommodation_title !== 'Staying with somebody'
+    );
     
-    // For each unlimited accommodation, add rows based on visible bookings
+    const additionalVanParkingRows: AccommodationRow[] = [];
+    const additionalStayingWithRows: AccommodationRow[] = [];
+    const additionalOtherRows: AccommodationRow[] = [];
+    
+    // For each unlimited accommodation, add rows based on UNASSIGNED bookings only
     for (const acc of unlimitedAccommodations) {
-      // Skip if no bookings for this accommodation type
-      const existingItemCount = rows.filter(r => r.accommodation_id === acc.id && r.item_id).length;
-      
       // Get view period bounds
       let viewStart: Date;
       let viewEnd: Date;
@@ -65,65 +73,105 @@ export function InventoryCalendar({ onClose }: Props) {
         viewEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
       }
       
-      // For "Your Own Tent", "Van Parking", and "Staying with somebody",
-      // count ALL bookings (both assigned and unassigned)
-      let relevantBookings;
-      if (acc.title === 'Your Own Tent' || acc.title === 'Van Parking' || acc.title === 'Staying with somebody') {
-        relevantBookings = bookings.filter(b => {
-          // Debug logging for Van Parking
-          if (acc.title === 'Van Parking' && b.accommodation_title === 'Van Parking') {
-            console.log('Van Parking booking found:', {
-              id: b.id,
-              accommodation_title: b.accommodation_title,
-              accommodation_item_id: b.accommodation_item_id,
-              item_tag: b.item_tag,
-              guest: b.guest_name || b.guest_email
-            });
-          }
+      // For "Van Parking" and "Staying with somebody", only count UNASSIGNED bookings
+      // Assigned bookings already have their tag rows
+      let unassignedBookings;
+      if (acc.title === 'Van Parking' || acc.title === 'Staying with somebody') {
+        unassignedBookings = bookings.filter(b => {
           return b.accommodation_title === acc.title &&
-            // Check if booking overlaps with current view (even partially)
-            b.check_in < viewEnd && b.check_out > viewStart;
+            !b.accommodation_item_id && // Only unassigned bookings
+            // Check if booking is active during ANY part of the view period (including checkout on first day)
+            b.check_in < viewEnd && b.check_out >= viewStart;
         });
-        console.log(`Found ${relevantBookings.length} ${acc.title} bookings in view`);
+        console.log(`Found ${unassignedBookings.length} unassigned ${acc.title} bookings in view`);
+      } else if (acc.title === 'Your Own Tent') {
+        // For Your Own Tent, also only count unassigned bookings
+        unassignedBookings = bookings.filter(b => {
+          return b.accommodation_title === acc.title &&
+            !b.accommodation_item_id && // Only unassigned bookings
+            // Check if booking is active during ANY part of the view period (including checkout on first day)
+            b.check_in < viewEnd && b.check_out >= viewStart;
+        });
+        console.log(`Found ${unassignedBookings.length} unassigned ${acc.title} bookings in view`);
       } else {
         // For other unlimited types, only count unassigned bookings
-        relevantBookings = bookings.filter(b => 
+        unassignedBookings = bookings.filter(b => 
           b.accommodation_id === acc.id && 
           !b.accommodation_item_id &&
-          // Check if booking overlaps with current view (even partially)
-          b.check_in < viewEnd && b.check_out > viewStart
+          // Check if booking is active during ANY part of the view period (including checkout on first day)
+          b.check_in < viewEnd && b.check_out >= viewStart
         );
       }
       
-      // Calculate how many slots we need
-      // Simply create one row per booking for clarity
-      const neededSlots = relevantBookings.length;
+      // Calculate needed rows based on overlapping bookings
+      let neededRows = 0;
+      if (unassignedBookings.length > 0) {
+        // Sort bookings by check-in date
+        const sortedBookings = [...unassignedBookings].sort((a, b) => 
+          a.check_in.getTime() - b.check_in.getTime()
+        );
+        
+        // Track which row each booking is assigned to
+        const rowAssignments: Date[][] = []; // Each row tracks checkout dates
+        
+        for (const booking of sortedBookings) {
+          // Find first available row (where booking doesn't overlap)
+          let assignedRow = -1;
+          for (let rowIdx = 0; rowIdx < rowAssignments.length; rowIdx++) {
+            // Check if booking overlaps with any booking in this row
+            const overlaps = rowAssignments[rowIdx].some(checkoutDate => 
+              booking.check_in < checkoutDate
+            );
+            if (!overlaps) {
+              assignedRow = rowIdx;
+              break;
+            }
+          }
+          
+          // If no available row found, create new row
+          if (assignedRow === -1) {
+            assignedRow = rowAssignments.length;
+            rowAssignments.push([]);
+          }
+          
+          // Assign booking to row
+          rowAssignments[assignedRow].push(booking.check_out);
+        }
+        
+        neededRows = rowAssignments.length;
+        console.log(`${acc.title} needs ${neededRows} rows for ${unassignedBookings.length} bookings`);
+      }
       
-      // Add slots - one per booking
-      for (let i = 0; i < neededSlots; i++) {
+      // Add the needed rows
+      for (let i = 0; i < neededRows; i++) {
         const newRow = {
-          id: `${acc.id}-slot-${i}`,
-          label: acc.title === 'Your Own Tent' || acc.title === 'Van Parking' || acc.title === 'Staying with somebody' 
-            ? `${acc.title} ${i + 1}` 
-            : `?`,
+          id: `${acc.id}-unassigned-${i}`,
+          label: `${acc.title} (Unassigned ${i + 1})`,
           accommodation_title: acc.title,
           accommodation_id: acc.id,
           is_assigned: false
         };
         
-        // Group special accommodations together (but not tents - keep them with other accommodations)
-        if (acc.title === 'Van Parking' || acc.title === 'Staying with somebody') {
-          specialRows.push(newRow);
+        // Group by type
+        if (acc.title === 'Van Parking') {
+          additionalVanParkingRows.push(newRow);
+        } else if (acc.title === 'Staying with somebody') {
+          additionalStayingWithRows.push(newRow);
         } else {
-          rows.push(newRow);
+          additionalOtherRows.push(newRow);
         }
       }
     }
     
-    // Add special accommodation rows at the very bottom for simpler management
-    rows.push(...specialRows);
-    
-    return rows;
+    // Combine in order: other rows, then all Van Parking (assigned tags first, then unassigned), then all Staying with somebody
+    return [
+      ...otherRows,
+      ...additionalOtherRows,
+      ...vanParkingRows, // Existing Van Parking tags (assigned or empty)
+      ...additionalVanParkingRows, // Unassigned Van Parking bookings
+      ...stayingWithRows, // Existing Staying with somebody tags
+      ...additionalStayingWithRows // Unassigned Staying with somebody bookings
+    ];
   }, [accommodationRows, unlimitedAccommodations, bookings, viewMode, currentWeekStart, currentMonth]);
 
   // Helper function to calculate needed slots based on overlapping bookings IN THE CURRENT VIEW
@@ -299,6 +347,14 @@ export function InventoryCalendar({ onClose }: Props) {
 
       if (allAccError) throw allAccError;
 
+      console.log('All accommodations loaded:', allAccommodations?.map(a => ({ 
+        id: a.id, 
+        title: a.title, 
+        type: a.type,
+        inventory: a.inventory,
+        is_unlimited: a.is_unlimited 
+      })));
+
       // Separate limited and unlimited accommodations
       const accommodations = allAccommodations?.filter(acc => !acc.is_unlimited);
       const unlimitedAccoms = allAccommodations?.filter(acc => acc.is_unlimited);
@@ -332,14 +388,22 @@ export function InventoryCalendar({ onClose }: Props) {
       // Process all accommodations (both limited and unlimited) and categorize them
       allAccommodations?.forEach(acc => {
         if (acc.title.includes('Dorm')) {
-          // Check if we have dorm bed tags for this dorm
+          // Check if we have dorm bed tags for this dorm - filter by accommodation_id only
           const dormItems = items?.filter(item => item.accommodation_id === acc.id) || [];
+          
+          console.log(`Processing ${acc.title}:`, {
+            accommodation_id: acc.id,
+            inventory: acc.inventory,
+            dormItems: dormItems.length,
+            items: dormItems
+          });
           
           if (dormItems.length > 0) {
             // Use the actual dorm bed tags
             const dormItemRows = dormItems.map(item => ({
               id: item.id,
-              label: item.full_tag,
+              // For dorm beds, just show "Bed X" for clarity
+              label: `Bed ${item.item_id}`,
               accommodation_title: acc.title,
               accommodation_id: acc.id,
               item_id: item.id,
@@ -348,14 +412,17 @@ export function InventoryCalendar({ onClose }: Props) {
             
             // Sort by tag to maintain order
             dormItemRows.sort((a, b) => a.label.localeCompare(b.label));
+            console.log(`Adding ${dormItemRows.length} dorm tag rows for ${acc.title}`);
             dormRows.push(...dormItemRows);
           } else {
-            // Fallback to automatic bed rows if no tags exist
-            const bedCount = acc.title.includes('6-Bed') ? 6 : acc.title.includes('3-Bed') ? 3 : 1;
+            // Create automatic bed rows for unassigned dorm bookings
+            // Use inventory field for bed count, fallback to parsing title
+            const bedCount = acc.inventory || (acc.title.includes('6-Bed') ? 6 : acc.title.includes('3-Bed') ? 3 : 1);
+            console.log(`Creating ${bedCount} automatic bed rows for ${acc.title} (no tags yet)`);
             for (let bed = 1; bed <= bedCount; bed++) {
               dormRows.push({
                 id: `${acc.id}-bed-${bed}`,
-                label: `Bed ${bed}`,
+                label: `${acc.title} - Bed ${bed}`,
                 accommodation_title: acc.title,
                 accommodation_id: acc.id,
                 is_bed: true,
@@ -526,6 +593,23 @@ export function InventoryCalendar({ onClose }: Props) {
 
       console.log('[InventoryCalendar] Bookings data:', bookingsData?.length || 0);
       
+      // Debug dorm bookings specifically
+      const dormBookings = bookingsData?.filter(b => 
+        b.accommodations?.title?.includes('Dorm') ||
+        b.accommodation_id === 'd30c5cf7-f033-449a-8cec-176b754db7ee' || // 6-bed dorm
+        b.accommodation_id === '25c2a846-926d-4ac8-9cbd-f03309883e22'    // 3-bed dorm
+      );
+      if (dormBookings && dormBookings.length > 0) {
+        console.log('[InventoryCalendar] Dorm bookings found:', dormBookings.map(b => ({
+          id: b.id,
+          accommodation_id: b.accommodation_id,
+          accommodation_title: b.accommodations?.title,
+          check_in: b.check_in,
+          check_out: b.check_out,
+          guest: b.guest_email || b.user_email
+        })));
+      }
+      
       // Debug log first few bookings
       if (bookingsData && bookingsData.length > 0) {
         console.log('[InventoryCalendar] Sample booking data:', bookingsData.slice(0, 3).map(b => ({
@@ -596,6 +680,19 @@ export function InventoryCalendar({ onClose }: Props) {
   const handleBookingClick = async (booking: Booking, event: React.MouseEvent) => {
     event.stopPropagation();
     
+    // Debug log for unassigned bookings
+    if (!booking.accommodation_item_id && 
+        (booking.accommodation_title === 'Your Own Tent' || 
+         booking.accommodation_title === 'Van Parking' || 
+         booking.accommodation_title === 'Staying with somebody')) {
+      console.log('Clicked unassigned booking:', {
+        title: booking.accommodation_title,
+        application_id: booking.application_id,
+        user_id: booking.user_id,
+        guest: booking.guest_name || booking.guest_email
+      });
+    }
+    
     // If there's an application_id, fetch and show the application details
     if (booking.application_id) {
       try {
@@ -628,6 +725,44 @@ export function InventoryCalendar({ onClose }: Props) {
       } catch (err) {
         console.error('Error fetching application details:', err);
       }
+    } else if (booking.user_id) {
+      // Fallback: try to fetch by user_id if no application_id
+      console.log('No application_id, trying user_id:', booking.user_id);
+      try {
+        const { data: appData, error } = await supabase
+          .from('application_details')
+          .select(`
+            id,
+            user_id,
+            data,
+            status,
+            created_at,
+            user_email,
+            linked_name,
+            linked_email,
+            linked_application_id,
+            last_sign_in_at,
+            raw_user_meta_data,
+            admin_verdicts,
+            credits,
+            final_action
+          `)
+          .eq('user_id', booking.user_id)
+          .maybeSingle(); // Use maybeSingle() instead of single() to handle 0 or 1 rows
+          
+        if (error) throw error;
+        
+        if (appData) {
+          setSelectedApplication(appData);
+        } else {
+          console.warn('No application found for user_id:', booking.user_id);
+          // Could show a message to the user here
+        }
+      } catch (err) {
+        console.error('Error fetching application by user_id:', err);
+      }
+    } else {
+      console.warn('Booking has neither application_id nor user_id:', booking);
     }
   };
 
@@ -662,65 +797,67 @@ export function InventoryCalendar({ onClose }: Props) {
   };
 
   return (
-    <AnimatePresence>
-      <motion.div
-        key="inventory-calendar-backdrop"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 overflow-hidden"
-      >
+    <>
+      <AnimatePresence mode="wait">
         <motion.div
-          key="inventory-calendar-panel"
-          initial={{ y: "100%" }}
-          animate={{ y: 0 }}
-          exit={{ y: "100%" }}
-          transition={{ type: "spring", damping: 30, stiffness: 300 }}
-          className="absolute inset-0 bg-[var(--color-bg-surface)]"
+          key="inventory-calendar-backdrop"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 overflow-hidden"
         >
-          <div className="h-screen flex flex-col">
-            <CalendarHeader
-              viewMode={viewMode}
-              currentWeekStart={currentWeekStart}
-              currentMonth={currentMonth}
-              daysToShow={daysToShow}
-              onViewModeChange={setViewMode}
-              onNavigate={handleNavigate}
-              onClose={onClose}
-              onSaveScroll={saveScrollPosition}
-              onGoToToday={handleGoToToday}
-            />
+          <motion.div
+            key="inventory-calendar-panel"
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", damping: 30, stiffness: 300 }}
+            className="absolute inset-0 bg-[var(--color-bg-surface)]"
+          >
+            <div className="h-screen flex flex-col">
+              <CalendarHeader
+                viewMode={viewMode}
+                currentWeekStart={currentWeekStart}
+                currentMonth={currentMonth}
+                daysToShow={daysToShow}
+                onViewModeChange={setViewMode}
+                onNavigate={handleNavigate}
+                onClose={onClose}
+                onSaveScroll={saveScrollPosition}
+                onGoToToday={handleGoToToday}
+              />
 
-            <div className="flex-1 overflow-auto p-6 inventory-calendar-scroll">
-              {error && (
-                <div className="mb-4 p-4 bg-[var(--color-bg-error)] border-l-4 border-red-500 rounded">
-                  <p className="text-[var(--color-text-error)]">{error}</p>
-                </div>
-              )}
+              <div className="flex-1 overflow-auto p-6 inventory-calendar-scroll">
+                {error && (
+                  <div className="mb-4 p-4 bg-[var(--color-bg-error)] border-l-4 border-red-500 rounded">
+                    <p className="text-[var(--color-text-error)]">{error}</p>
+                  </div>
+                )}
 
-              {loading ? (
-                <div className="flex justify-center items-center h-96">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <CalendarTable
-                    daysToShow={daysToShow}
-                    accommodationRows={accommodationRowsWithUnlimited}
-                    bookings={bookings}
-                    viewMode={viewMode}
-                    onBookingClick={handleBookingClick}
-                    onBookingUpdate={() => {
-                      loadAccommodations(); // Reload to update assignment status
-                      loadBookings();
-                    }}
-                  />
-                </div>
-              )}
+                {loading ? (
+                  <div className="flex justify-center items-center h-96">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <CalendarTable
+                      daysToShow={daysToShow}
+                      accommodationRows={accommodationRowsWithUnlimited}
+                      bookings={bookings}
+                      viewMode={viewMode}
+                      onBookingClick={handleBookingClick}
+                      onBookingUpdate={() => {
+                        loadAccommodations(); // Reload to update assignment status
+                        loadBookings();
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          </motion.div>
         </motion.div>
-      </motion.div>
+      </AnimatePresence>
 
       {selectedApplication && (
         <ApplicationDetails
@@ -729,9 +866,6 @@ export function InventoryCalendar({ onClose }: Props) {
           questions={questions}
         />
       )}
-      
-      {/* Temporary debug component for Van Parking */}
-      <DebugVanParking />
-    </AnimatePresence>
+    </>
   );
 }
