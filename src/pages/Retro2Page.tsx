@@ -33,6 +33,7 @@ export function Retro2Page() {
       const { data, error: queryError } = await supabase
         .from('application_questions_2')
         .select('*')
+        .eq('visible', true)  // Only load visible questions
         .order('order_number');
 
       if (queryError) {
