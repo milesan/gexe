@@ -1,119 +1,38 @@
 import { formatDateForDisplay } from '../../utils/dates';
 import { Booking, AccommodationRow } from './types';
+import { SINGLE_ROOMS, ACCOMMODATION_COLOR_MAP } from './constants';
 
-export const SINGLE_ROOMS = [
-  'Microcabin Left', 'Microcabin Middle', 'Microcabin Right',
-  'The Hearth', 'The Yurt', 'Valleyview Room', 'Writer\'s Room'
-];
-
+export { SINGLE_ROOMS } from './constants';
 export const AUTO_ASSIGN_TYPES = ['Van Parking', 'Your Own Tent', 'Staying with somebody'];
 
-// Color families for different accommodation types
-export const ACCOMMODATION_COLOR_FAMILIES: Record<string, string[]> = {
-  // Bell Tents - Greens
-  'bell_tent': [
-    'bg-green-400/70',
-    'bg-green-500/70', 
-    'bg-green-600/70',
-    'bg-emerald-400/70',
-    'bg-emerald-500/70',
-    'bg-emerald-600/70',
-    'bg-teal-500/70',
-    'bg-teal-600/70',
-  ],
-  // Tipis - Blues
-  'tipi': [
-    'bg-blue-400/70',
-    'bg-blue-500/70',
-    'bg-blue-600/70',
-    'bg-sky-400/70',
-    'bg-sky-500/70',
-    'bg-sky-600/70',
-    'bg-cyan-500/70',
-    'bg-cyan-600/70',
-  ],
-  // Single Rooms - Purples
-  'single_room': [
-    'bg-purple-400/70',
-    'bg-purple-500/70',
-    'bg-purple-600/70',
-    'bg-violet-400/70',
-    'bg-violet-500/70',
-    'bg-violet-600/70',
-    'bg-indigo-500/70',
-    'bg-indigo-600/70',
-  ],
-  // Dorms - Oranges
-  'dorm': [
-    'bg-orange-400/70',
-    'bg-orange-500/70',
-    'bg-orange-600/70',
-    'bg-amber-400/70',
-    'bg-amber-500/70',
-    'bg-amber-600/70',
-    'bg-yellow-500/70',
-    'bg-yellow-600/70',
-  ],
-  // Van Parking - Reds/Pinks
-  'van_parking': [
-    'bg-red-400/70',
-    'bg-red-500/70',
-    'bg-red-600/70',
-    'bg-rose-400/70',
-    'bg-rose-500/70',
-    'bg-rose-600/70',
-    'bg-pink-500/70',
-    'bg-pink-600/70',
-  ],
-  // Your Own Tent - Browns/Grays
-  'tent': [
-    'bg-stone-400/70',
-    'bg-stone-500/70',
-    'bg-stone-600/70',
-    'bg-zinc-400/70',
-    'bg-zinc-500/70',
-    'bg-zinc-600/70',
-    'bg-gray-500/70',
-    'bg-gray-600/70',
-  ],
-  // Staying with somebody - Light blues
-  'staying': [
-    'bg-slate-400/70',
-    'bg-slate-500/70',
-    'bg-slate-600/70',
-    'bg-gray-400/70',
-    'bg-gray-500/70',
-    'bg-neutral-400/70',
-    'bg-neutral-500/70',
-    'bg-neutral-600/70',
-  ],
-  // Default/Other
-  'default': [
-    'bg-blue-500/70',
-    'bg-green-500/70',
-    'bg-yellow-500/70',
-    'bg-purple-500/70',
-    'bg-pink-500/70',
-    'bg-indigo-500/70',
-    'bg-red-500/70',
-    'bg-orange-500/70',
-  ]
-};
+// Re-export color families for backward compatibility
+export const ACCOMMODATION_COLOR_FAMILIES = ACCOMMODATION_COLOR_MAP;
 
 function getAccommodationColorFamily(accommodationTitle: string): string[] {
-  if (!accommodationTitle) return ACCOMMODATION_COLOR_FAMILIES.default;
+  if (!accommodationTitle) return ACCOMMODATION_COLOR_MAP.default;
   
   const titleLower = accommodationTitle.toLowerCase();
   
-  if (titleLower.includes('bell tent')) return ACCOMMODATION_COLOR_FAMILIES.bell_tent;
-  if (titleLower.includes('tipi')) return ACCOMMODATION_COLOR_FAMILIES.tipi;
-  if (SINGLE_ROOMS.some(room => room.toLowerCase() === titleLower)) return ACCOMMODATION_COLOR_FAMILIES.single_room;
-  if (titleLower.includes('dorm')) return ACCOMMODATION_COLOR_FAMILIES.dorm;
-  if (titleLower.includes('van parking')) return ACCOMMODATION_COLOR_FAMILIES.van_parking;
-  if (titleLower.includes('your own tent')) return ACCOMMODATION_COLOR_FAMILIES.tent;
-  if (titleLower.includes('staying with somebody')) return ACCOMMODATION_COLOR_FAMILIES.staying;
+  const colorMapping: Record<string, string[]> = {
+    'bell tent': ACCOMMODATION_COLOR_MAP.bell_tent,
+    'tipi': ACCOMMODATION_COLOR_MAP.tipi,
+    'dorm': ACCOMMODATION_COLOR_MAP.dorm,
+    'van parking': ACCOMMODATION_COLOR_MAP.van_parking,
+    'your own tent': ACCOMMODATION_COLOR_MAP.tent,
+    'staying with somebody': ACCOMMODATION_COLOR_MAP.staying,
+  };
   
-  return ACCOMMODATION_COLOR_FAMILIES.default;
+  // Check for keyword matches
+  for (const [keyword, colors] of Object.entries(colorMapping)) {
+    if (titleLower.includes(keyword)) return colors;
+  }
+  
+  // Check for single rooms
+  if (SINGLE_ROOMS.some(room => room.toLowerCase() === titleLower)) {
+    return ACCOMMODATION_COLOR_MAP.single_room;
+  }
+  
+  return ACCOMMODATION_COLOR_MAP.default;
 }
 
 export function getBookingColor(booking: Booking): string {
@@ -370,8 +289,9 @@ export function shouldShowName(
   daysInView: Date[]
 ): boolean {
   // Always show name on the first visible day of the booking (leftmost)
+  // Include checkout day in case it's the only visible day
   const firstVisibleDay = daysInView.find(d => 
-    d >= booking.check_in && d < booking.check_out
+    d >= booking.check_in && d <= booking.check_out
   );
   return firstVisibleDay && formatDateForDisplay(firstVisibleDay) === formatDateForDisplay(day);
 }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar } from 'lucide-react';
+import { X, Calendar, CheckCircle } from 'lucide-react';
 import { useSchedulingRules } from '../hooks/useSchedulingRules';
 import { getSeasonBreakdown } from '../utils/pricing';
 import { normalizeToUTCDate } from '../utils/dates';
@@ -79,6 +80,12 @@ export function BookingSummary({
   
   const [showStripeModal, setShowStripeModal] = useState(false);
   console.log('[BookingSummary] useState(showStripeModal) called');
+  
+  // --- ADDED: Processing modal state for user feedback ---
+  const [showProcessingModal, setShowProcessingModal] = useState(false);
+  const [processingMessage, setProcessingMessage] = useState('');
+  const [processingStage, setProcessingStage] = useState<'payment' | 'booking' | 'credits' | 'email' | 'complete'>('payment');
+  // --- END ADDED: Processing modal state ---
   
   // --- ADDED: Track state setters for flickering debug ---
   const setIsBookingWithLogging = useCallback((value: boolean) => {
@@ -558,6 +565,22 @@ export function BookingSummary({
     });
   }, []);
 
+  // --- ADDED: Prevent page close during processing ---
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (showProcessingModal || isBooking) {
+        const message = 'Your booking is still being processed. If you leave now, your payment may be completed but your booking might not be saved. Are you sure you want to leave?';
+        e.preventDefault();
+        e.returnValue = message;
+        return message;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [showProcessingModal, isBooking]);
+  // --- END ADDED: Prevent page close during processing ---
+
   // Validate availability before showing Stripe modal
   const validateAvailability = async () => {
     console.log('[Booking Summary] Validating availability...');
@@ -611,6 +634,15 @@ export function BookingSummary({
       selectedCheckInDate: !!selectedCheckInDate,
       selectedCheckInDateISO: selectedCheckInDate?.toISOString()
     });
+    
+    // --- ADDED: Show processing modal immediately ---
+    setShowProcessingModal(true);
+    setProcessingStage('booking');
+    setProcessingMessage('Creating your booking... Please do not close this window');
+    // Close Stripe modal if it's open
+    setShowStripeModalWithLogging(false);
+    // --- END ADDED ---
+    
     try {
       if (!selectedAccommodation || selectedWeeks.length === 0 || !selectedCheckInDate) {
         console.error('[Booking Summary] Missing required info for booking success:', { selectedAccommodation: !!selectedAccommodation, selectedWeeks: selectedWeeks.length > 0, selectedCheckInDate: !!selectedCheckInDate });
@@ -782,6 +814,10 @@ export function BookingSummary({
         console.log("[BOOKING_FLOW] === STEP 6: Creating booking in database ===");
         console.log("[BOOKING_FLOW] BOOKING PAYLOAD:", JSON.stringify(bookingPayload, null, 2));
         
+        // --- ADDED: Update processing stage ---
+        setProcessingMessage('Saving your booking details...');
+        // --- END ADDED ---
+        
         // --- ADDED: Log credits state right before database call ---
         console.log('[CREDIT_TRACKING] 🎯 MOMENT OF TRUTH - Credits before database call:', {
           availableCredits,
@@ -838,6 +874,13 @@ export function BookingSummary({
         setShowCelebrationFireflies(true);
         setPendingPaymentRowId(null); // Clear after booking completes
         
+        // --- ADDED: Update processing stage for credits ---
+        if (creditsToUse > 0) {
+          setProcessingStage('credits');
+          setProcessingMessage('Processing credits...');
+        }
+        // --- END ADDED ---
+        
         // Refresh credits manually to ensure UI updates immediately
         if (creditsToUse > 0) {
           console.log("[FLICKER_DEBUG] 🔄 CREDITS REFRESH SECTION");
@@ -865,6 +908,11 @@ export function BookingSummary({
           console.log('[CREDIT_TRACKING] ⏭️ SKIPPING CREDITS REFRESH - No credits used');
           console.log('[FLICKER_DEBUG] ⏭️ SKIPPING CREDITS REFRESH - No credits used');
         }
+        
+        // --- ADDED: Update processing stage for completion ---
+        setProcessingStage('complete');
+        setProcessingMessage('Booking confirmed! Redirecting to confirmation page...');
+        // --- END ADDED ---
         
         // Delay navigation slightly to show fireflies
         setTimeout(() => {
@@ -897,6 +945,10 @@ export function BookingSummary({
             creditsToUse
           });
           
+          // --- ADDED: Hide processing modal before navigation ---
+          setShowProcessingModal(false);
+          // --- END ADDED ---
+          
           navigate('/confirmation', { 
             state: { 
               booking: {
@@ -915,6 +967,11 @@ export function BookingSummary({
       } catch (err) {
         console.error('[BOOKING_FLOW] === STEP 6 FAILED: Error creating booking ===');
         console.error('[BOOKING_FLOW] Error details:', err);
+        
+        // --- ADDED: Update processing modal for error state ---
+        setProcessingStage('complete');
+        setProcessingMessage('Processing payment confirmation... Please wait.');
+        // --- END ADDED ---
         
         // ALWAYS navigate to confirmation page when payment succeeded but booking failed
         console.log('[BookingSummary] Payment succeeded but booking failed - navigating to confirmation page anyway');
@@ -1168,6 +1225,10 @@ Please manually create the booking for this user or process a refund.`;
             : 'Your payment was successful and confirmation email has been sent! Our team is finalizing your booking in our system. Note: This booking may not appear in your bookings list immediately but will be processed manually.'
         };
         
+        // --- ADDED: Hide processing modal before navigation ---
+        setShowProcessingModal(false);
+        // --- END ADDED ---
+        
         // Navigate to confirmation page with the booking data
         navigate('/confirmation', { 
           state: { 
@@ -1195,6 +1256,9 @@ Please manually create the booking for this user or process a refund.`;
       // Don't re-throw any errors - we've handled them gracefully above
       setErrorWithLogging('An error occurred. Please try again.');
       setIsBookingWithLogging(false);
+      // --- ADDED: Hide processing modal on error ---
+      setShowProcessingModal(false);
+      // --- END ADDED ---
     }
   }, [selectedAccommodation, selectedWeeks, selectedCheckInDate, navigate, pricing.totalAmount, appliedDiscount, creditsToUse, refreshCreditsWithLogging, userEmail, onClearWeeks, onClearAccommodation, bookingService, finalAmountAfterCredits]);
 
@@ -1383,13 +1447,15 @@ Please manually create the booking for this user or process a refund.`;
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[60]"
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]"
+            style={{ zIndex: 9999 }} // Ensure high z-index for Stripe modal
           >
             <motion.div
               initial={{ scale: 0.95 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.95 }}
-              className="bg-surface rounded-sm max-w-xl w-full p-6"
+              className="bg-surface rounded-sm max-w-xl w-full p-6 relative z-[9999]"
+              style={{ zIndex: 9999 }}
             >
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-display text-primary">Complete Payment</h3>
@@ -1438,6 +1504,112 @@ Please manually create the booking for this user or process a refund.`;
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Processing Modal - Rendered via Portal to ensure it's on top of everything */}
+      {showProcessingModal && createPortal(
+        <AnimatePresence>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4"
+            style={{ 
+              zIndex: 999999, // Maximum z-index to ensure it's always on top
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-[var(--color-bg-surface)] rounded-sm max-w-md w-full p-8 border border-[var(--color-border)] shadow-2xl"
+              style={{ 
+                position: 'relative',
+                zIndex: 999999
+              }}
+            >
+              <div className="flex flex-col items-center">
+                {/* Animated spinner */}
+                <div className="relative w-20 h-20 mb-6">
+                  <div className="absolute inset-0 border-4 border-[var(--color-border)] rounded-full"></div>
+                  <div className="absolute inset-0 border-4 border-emerald-500 rounded-full border-t-transparent animate-spin"></div>
+                  {processingStage === 'complete' && (
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="absolute inset-0 flex items-center justify-center"
+                    >
+                      <CheckCircle className="w-10 h-10 text-emerald-400" />
+                    </motion.div>
+                  )}
+                </div>
+                
+                {/* Status message */}
+                <h3 className="text-xl font-display font-light text-[var(--color-text-primary)] mb-2">
+                  Processing Your Booking
+                </h3>
+                
+                <p className="text-[var(--color-text-secondary)] text-center font-mono text-sm mb-6">
+                  {processingMessage}
+                </p>
+                
+                {/* Progress stages */}
+                <div className="w-full space-y-3">
+                  <div className={`flex items-center gap-3 ${processingStage === 'payment' || ['booking', 'credits', 'email', 'complete'].includes(processingStage) ? 'opacity-100' : 'opacity-40'}`}>
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${['booking', 'credits', 'email', 'complete'].includes(processingStage) ? 'bg-emerald-500 border-emerald-500' : processingStage === 'payment' ? 'border-emerald-500 animate-pulse' : 'border-[var(--color-border)]'}`}>
+                      {['booking', 'credits', 'email', 'complete'].includes(processingStage) && (
+                        <CheckCircle className="w-4 h-4 text-white" />
+                      )}
+                    </div>
+                    <span className="font-mono text-sm">Payment confirmed</span>
+                  </div>
+                  
+                  <div className={`flex items-center gap-3 ${processingStage === 'booking' || ['credits', 'email', 'complete'].includes(processingStage) ? 'opacity-100' : 'opacity-40'}`}>
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${['credits', 'email', 'complete'].includes(processingStage) ? 'bg-emerald-500 border-emerald-500' : processingStage === 'booking' ? 'border-emerald-500 animate-pulse' : 'border-[var(--color-border)]'}`}>
+                      {['credits', 'email', 'complete'].includes(processingStage) && (
+                        <CheckCircle className="w-4 h-4 text-white" />
+                      )}
+                    </div>
+                    <span className="font-mono text-sm">Creating booking</span>
+                  </div>
+                  
+                  {creditsToUse > 0 && (
+                    <div className={`flex items-center gap-3 ${processingStage === 'credits' || ['email', 'complete'].includes(processingStage) ? 'opacity-100' : 'opacity-40'}`}>
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${['email', 'complete'].includes(processingStage) ? 'bg-emerald-500 border-emerald-500' : processingStage === 'credits' ? 'border-emerald-500 animate-pulse' : 'border-[var(--color-border)]'}`}>
+                        {['email', 'complete'].includes(processingStage) && (
+                          <CheckCircle className="w-4 h-4 text-white" />
+                        )}
+                      </div>
+                      <span className="font-mono text-sm">Processing credits</span>
+                    </div>
+                  )}
+                  
+                  <div className={`flex items-center gap-3 ${processingStage === 'complete' ? 'opacity-100' : 'opacity-40'}`}>
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${processingStage === 'complete' ? 'bg-emerald-500 border-emerald-500' : 'border-[var(--color-border)]'}`}>
+                      {processingStage === 'complete' && (
+                        <CheckCircle className="w-4 h-4 text-white" />
+                      )}
+                    </div>
+                    <span className="font-mono text-sm">Complete</span>
+                  </div>
+                </div>
+                
+                {/* Warning message - Make it more prominent */}
+                <div className="mt-6 p-4 bg-amber-900/30 border-2 border-amber-500/70 rounded-sm animate-pulse">
+                  <p className="text-amber-300 text-sm font-mono text-center font-semibold">
+                    ⚠️ Please do not close this window until the process completes
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        </AnimatePresence>,
+        document.body // Render at body level to escape any parent z-index contexts
+      )}
 
       {/* Summary of Stay section - Outer sticky wrapper */}
       <div className="w-full max-w-md lg:max-w-lg mx-auto">

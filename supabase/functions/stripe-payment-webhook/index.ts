@@ -141,9 +141,11 @@ serve(async (req) => {
             metadata: paymentIntent.metadata
           });
           
-          // Give frontend time to create the booking (wait a bit before processing)
-          // If frontend booking succeeds, webhook will be skipped due to existing booking check
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          // --- MODIFIED: Reduced delay from 2000ms to 500ms for faster fallback ---
+          // Give frontend a brief moment to create the booking
+          // But process quickly as fallback if frontend fails
+          await new Promise(resolve => setTimeout(resolve, 500));
+          // --- END MODIFIED ---
         }
 
         // Check if booking already exists (idempotency and frontend coordination)

@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { Booking, AccommodationRow } from './types';
 import { formatInTimeZone } from 'date-fns-tz';
 import { CreateAccommodationItemModal } from './CreateAccommodationItemModal';
+import { ACCOMMODATION_IDS, UNLIMITED_ACCOMMODATION_TYPES } from './constants';
+import { isDormAccommodation } from './helpers';
 
 interface Props {
   booking: Booking;
@@ -19,16 +21,14 @@ export function ReassignModal({ booking, accommodationRows, onClose, onReassign,
   const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  // For "Staying with somebody", "Your Own Tent", and "Van Parking", show all accommodation items
-  // For dorm bookings, show only matching bed tags (D3 for 3-bed, D6 for 6-bed)
-  // For other types, only show items of the same accommodation type
-  const canAssignAnywhere = booking.accommodation_title === 'Staying with somebody' ||
-                          booking.accommodation_title === 'Your Own Tent' ||
-                          booking.accommodation_title === 'Van Parking';
+  // Determine booking type for filtering
+  const canAssignAnywhere = UNLIMITED_ACCOMMODATION_TYPES.includes(
+    booking.accommodation_title as any
+  );
   
-  const isDorm3Booking = booking.accommodation_id === '25c2a846-926d-4ac8-9cbd-f03309883e22';
-  const isDorm6Booking = booking.accommodation_id === 'd30c5cf7-f033-449a-8cec-176b754db7ee';
-  const isDormBooking = isDorm3Booking || isDorm6Booking;
+  const isDormBooking = isDormAccommodation(booking.accommodation_id);
+  const isDorm3Booking = booking.accommodation_id === ACCOMMODATION_IDS.DORM_3_BED;
+  const isDorm6Booking = booking.accommodation_id === ACCOMMODATION_IDS.DORM_6_BED;
   
   const handleNewItemCreated = async (newItemId: string) => {
     // Close the create modal
@@ -272,8 +272,7 @@ export function ReassignModal({ booking, accommodationRows, onClose, onReassign,
                   </div>
                   {rows.map(row => {
                     // Check if this is a dorm tag (based on accommodation_id)
-                    const isDormTag = row.accommodation_id === '25c2a846-926d-4ac8-9cbd-f03309883e22' || 
-                                     row.accommodation_id === 'd30c5cf7-f033-449a-8cec-176b754db7ee';
+                    const isDormTag = isDormAccommodation(row.accommodation_id);
                     
                     return (
                       <div key={row.id} className="flex items-center justify-between group">

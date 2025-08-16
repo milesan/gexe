@@ -118,8 +118,13 @@ export function StripeCheckoutForm({ total, authToken, description, userEmail, o
       console.log('[StripeCheckout] Payment confirmed, proceeding with booking...');
       console.log('[StripeCheckout] Payment Intent ID:', paymentIntentId);
       
+      // --- ADDED: Payment is confirmed, now the parent will show processing modal ---
+      console.log('[StripeCheckout] Payment confirmed - parent component will show processing modal');
+      // --- END ADDED ---
+      
       try {
         // Pass the payment intent ID to the success handler
+        // The parent component (BookingSummary) will show the processing modal
         await onSuccess(paymentIntentId, paymentRowId);
         // If successful, the parent component will handle navigation
       } catch (error) {

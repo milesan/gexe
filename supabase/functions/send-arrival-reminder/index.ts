@@ -16,13 +16,13 @@ const REMINDER_DAYS_BEFORE = 3;
 
 function generateArrivalReminderEmail() {
   const welcomeDocUrl = "https://gardening.notion.site/Welcome-to-The-Garden-2684f446b48e4b43b3f003d7fca33664?pvs=74";
-  const samTelegramUrl = "https://t.me/greeneggssam";
+  const dawnTelegramUrl = "https://t.me/dawn_ed";
   return `
     <div style="font-family: serif;">
       <p>Dear friend of the forest,</p>
       <p>The day is fast-approaching; soon the gates will beckon you in.</p>
       <p>If you haven't already, please familiarise yourself with our <a href="${welcomeDocUrl}" target="_blank">Welcome Doc</a> & e-sign the agreements.</p>
-      <p>Your point of contact is <a href="${samTelegramUrl}" target="_blank">Sam on Telegram</a>. Please let him know of your ETA and any relevant arrival info.</p>
+      <p>Your point of contact is <a href="${dawnTelegramUrl}" target="_blank">Dawn on Telegram</a>. Please let him know of your ETA and any relevant arrival info.</p>
       <p>Looking forward to meeting you in the enchanted forest...</p>
       <p>From the moss,<br/>Dawn, Sam & The Garden Team</p>
     </div>

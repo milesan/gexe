@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { ACCOMMODATION_IDS } from './constants';
 
 interface Accommodation {
   id: string;
@@ -59,8 +60,8 @@ export function CreateAccommodationItemModal({ isOpen, onClose, onItemCreated, d
       if (defaultAccommodationType && data) {
         const defaultAccom = data.find(acc => acc.title === defaultAccommodationType);
         if (defaultAccom) {
-          // Apply auto-detection for Van Parking (by ID or title)
-          if (defaultAccom.id === '74d777b7-5268-4a8e-be22-b59eb8ba663d' || defaultAccom.title === 'Van Parking') {
+          // Apply auto-detection based on accommodation ID
+          if (defaultAccom.id === ACCOMMODATION_IDS.VAN_PARKING) {
             setFormData({
               accommodation_id: defaultAccom.id,
               type: 'VC',
@@ -69,8 +70,7 @@ export function CreateAccommodationItemModal({ isOpen, onClose, onItemCreated, d
               bedNumber: 1
             });
           }
-          // Apply auto-detection for Your Own Tent (by ID or title)
-          else if (defaultAccom.id === '4c37de6b-3982-4734-b048-02a7cc585d89' || defaultAccom.title === 'Your Own Tent') {
+          else if (defaultAccom.id === ACCOMMODATION_IDS.YOUR_OWN_TENT) {
             setFormData({
               accommodation_id: defaultAccom.id,
               type: 'TC',

@@ -8,7 +8,15 @@ import { ApplicationDetails } from '../admin/ApplicationDetails';
 import { CalendarHeader } from './CalendarHeader';
 import { CalendarTable } from './CalendarTable';
 import { Booking, AccommodationRow, ViewMode } from './types';
-import { SINGLE_ROOMS, AUTO_ASSIGN_TYPES } from './utils';
+import { SINGLE_ROOMS } from './constants';
+import { 
+  isUnlimitedAccommodation, 
+  getUnassignedBookings, 
+  calculateNeededRows, 
+  getViewBounds, 
+  createUnassignedRow,
+  groupRowsByType 
+} from './helpers';
 // import { DebugVanParking } from './DebugVanParking';
 // import { DebugDorms } from './DebugDorms';
 // import { TestDormBookings } from './TestDormBookings';
@@ -47,110 +55,36 @@ export function InventoryCalendar({ onClose }: Props) {
   const accommodationRowsWithUnlimited = React.useMemo(() => {
     if (!unlimitedAccommodations.length) return accommodationRows;
     
-    // Separate existing Van Parking and Staying with somebody rows from others
-    const vanParkingRows = accommodationRows.filter(r => r.accommodation_title === 'Van Parking');
-    const stayingWithRows = accommodationRows.filter(r => r.accommodation_title === 'Staying with somebody');
-    const otherRows = accommodationRows.filter(r => 
-      r.accommodation_title !== 'Van Parking' && 
-      r.accommodation_title !== 'Staying with somebody'
-    );
+    // Group rows by type for better organization
+    const grouped = groupRowsByType(accommodationRows);
     
     const additionalVanParkingRows: AccommodationRow[] = [];
     const additionalStayingWithRows: AccommodationRow[] = [];
     const additionalOtherRows: AccommodationRow[] = [];
     
+    // Get view period bounds
+    const { start: viewStart, end: viewEnd } = getViewBounds(viewMode, currentWeekStart, currentMonth);
+    
     // For each unlimited accommodation, add rows based on UNASSIGNED bookings only
     for (const acc of unlimitedAccommodations) {
-      // Get view period bounds
-      let viewStart: Date;
-      let viewEnd: Date;
       
-      if (viewMode === 'week') {
-        viewStart = currentWeekStart;
-        viewEnd = new Date(currentWeekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
-      } else {
-        viewStart = currentMonth;
-        viewEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
-      }
+      // Get unassigned bookings for this accommodation in the view period
+      const unassignedBookings = getUnassignedBookings(bookings, acc.id, viewStart, viewEnd);
       
-      // For "Van Parking" and "Staying with somebody", only count UNASSIGNED bookings
-      // Assigned bookings already have their tag rows
-      let unassignedBookings;
-      if (acc.title === 'Van Parking' || acc.title === 'Staying with somebody') {
-        unassignedBookings = bookings.filter(b => {
-          return b.accommodation_title === acc.title &&
-            !b.accommodation_item_id && // Only unassigned bookings
-            // Check if booking is active during ANY part of the view period (including checkout on first day)
-            b.check_in < viewEnd && b.check_out >= viewStart;
-        });
+      if (unassignedBookings.length > 0) {
         console.log(`Found ${unassignedBookings.length} unassigned ${acc.title} bookings in view`);
-      } else if (acc.title === 'Your Own Tent') {
-        // For Your Own Tent, also only count unassigned bookings
-        unassignedBookings = bookings.filter(b => {
-          return b.accommodation_title === acc.title &&
-            !b.accommodation_item_id && // Only unassigned bookings
-            // Check if booking is active during ANY part of the view period (including checkout on first day)
-            b.check_in < viewEnd && b.check_out >= viewStart;
-        });
-        console.log(`Found ${unassignedBookings.length} unassigned ${acc.title} bookings in view`);
-      } else {
-        // For other unlimited types, only count unassigned bookings
-        unassignedBookings = bookings.filter(b => 
-          b.accommodation_id === acc.id && 
-          !b.accommodation_item_id &&
-          // Check if booking is active during ANY part of the view period (including checkout on first day)
-          b.check_in < viewEnd && b.check_out >= viewStart
-        );
       }
       
       // Calculate needed rows based on overlapping bookings
-      let neededRows = 0;
-      if (unassignedBookings.length > 0) {
-        // Sort bookings by check-in date
-        const sortedBookings = [...unassignedBookings].sort((a, b) => 
-          a.check_in.getTime() - b.check_in.getTime()
-        );
-        
-        // Track which row each booking is assigned to
-        const rowAssignments: Date[][] = []; // Each row tracks checkout dates
-        
-        for (const booking of sortedBookings) {
-          // Find first available row (where booking doesn't overlap)
-          let assignedRow = -1;
-          for (let rowIdx = 0; rowIdx < rowAssignments.length; rowIdx++) {
-            // Check if booking overlaps with any booking in this row
-            const overlaps = rowAssignments[rowIdx].some(checkoutDate => 
-              booking.check_in < checkoutDate
-            );
-            if (!overlaps) {
-              assignedRow = rowIdx;
-              break;
-            }
-          }
-          
-          // If no available row found, create new row
-          if (assignedRow === -1) {
-            assignedRow = rowAssignments.length;
-            rowAssignments.push([]);
-          }
-          
-          // Assign booking to row
-          rowAssignments[assignedRow].push(booking.check_out);
-        }
-        
-        neededRows = rowAssignments.length;
+      const neededRows = calculateNeededRows(unassignedBookings);
+      
+      if (neededRows > 0) {
         console.log(`${acc.title} needs ${neededRows} rows for ${unassignedBookings.length} bookings`);
       }
       
       // Add the needed rows
       for (let i = 0; i < neededRows; i++) {
-        const newRow = {
-          id: `${acc.id}-unassigned-${i}`,
-          label: `${acc.title} (Unassigned ${i + 1})`,
-          accommodation_title: acc.title,
-          accommodation_id: acc.id,
-          is_assigned: false
-        };
+        const newRow = createUnassignedRow(acc.id, acc.title, i);
         
         // Group by type
         if (acc.title === 'Van Parking') {
@@ -163,14 +97,16 @@ export function InventoryCalendar({ onClose }: Props) {
       }
     }
     
-    // Combine in order: other rows, then all Van Parking (assigned tags first, then unassigned), then all Staying with somebody
+    // Combine in order: single rooms, dorms, others, then Van Parking and Staying with somebody
     return [
-      ...otherRows,
+      ...grouped.singleRooms,
+      ...grouped.dorms,
+      ...grouped.others,
       ...additionalOtherRows,
-      ...vanParkingRows, // Existing Van Parking tags (assigned or empty)
-      ...additionalVanParkingRows, // Unassigned Van Parking bookings
-      ...stayingWithRows, // Existing Staying with somebody tags
-      ...additionalStayingWithRows // Unassigned Staying with somebody bookings
+      ...grouped.vanParking,
+      ...additionalVanParkingRows,
+      ...grouped.stayingWith,
+      ...additionalStayingWithRows
     ];
   }, [accommodationRows, unlimitedAccommodations, bookings, viewMode, currentWeekStart, currentMonth]);
 

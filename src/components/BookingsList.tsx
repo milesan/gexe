@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { format } from 'date-fns-tz';
 import { supabase } from '../lib/supabase';
 import { parseISO } from 'date-fns';
-import { Edit, Trash2, PlusCircle, Receipt, Mail, MailCheck, ChevronUp, ChevronDown, Coins } from 'lucide-react';
+import { Edit, Trash2, PlusCircle, Receipt, Mail, MailCheck, ChevronUp, ChevronDown, Coins, Square, CheckSquare, Trash } from 'lucide-react';
 import { EditBookingModal } from './EditBookingModal';
 import { AddBookingModal } from './AddBookingModal';
 import { PriceBreakdownModal } from './PriceBreakdownModal';
@@ -91,6 +91,9 @@ export function BookingsList() {
   const [questions, setQuestions] = useState<any[]>([]);
   // Add state for credit refund
   const [refundAmount, setRefundAmount] = useState<string>('');
+  // Add state for multi-select
+  const [selectedBookings, setSelectedBookings] = useState<Set<string>>(new Set());
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
 
   React.useEffect(() => {
     loadBookings();
@@ -377,6 +380,55 @@ export function BookingsList() {
     }
   };
 
+  // Toggle selection for a booking
+  const toggleBookingSelection = (bookingId: string) => {
+    const newSelection = new Set(selectedBookings);
+    if (newSelection.has(bookingId)) {
+      newSelection.delete(bookingId);
+    } else {
+      newSelection.add(bookingId);
+    }
+    setSelectedBookings(newSelection);
+  };
+
+  // Select/deselect all bookings
+  const toggleSelectAll = () => {
+    if (selectedBookings.size === bookings.length) {
+      setSelectedBookings(new Set());
+    } else {
+      setSelectedBookings(new Set(bookings.map(b => b.id)));
+    }
+  };
+
+  // Handle bulk delete
+  const handleBulkDelete = async () => {
+    if (selectedBookings.size === 0) return;
+    
+    setShowBulkDeleteConfirm(false);
+    const bookingsToDelete = Array.from(selectedBookings);
+    
+    try {
+      // Delete each booking
+      for (const bookingId of bookingsToDelete) {
+        const { error } = await supabase
+          .from('bookings')
+          .update({ status: 'cancelled' })
+          .eq('id', bookingId);
+        
+        if (error) {
+          console.error(`Error cancelling booking ${bookingId}:`, error);
+        }
+      }
+      
+      // Clear selections and reload
+      setSelectedBookings(new Set());
+      await loadBookings();
+    } catch (error) {
+      console.error('Error during bulk delete:', error);
+      setError('Failed to delete some bookings');
+    }
+  };
+
   const handleDeleteClick = async (bookingId: string) => {
     const booking = bookings.find(b => b.id === bookingId);
     if (booking) {
@@ -460,19 +512,54 @@ export function BookingsList() {
 
   return (
     <div className="p-4">
-      <div className="mb-4 flex justify-end">
-        <button
-          onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-sm bg-emerald-800 text-white hover:bg-emerald-700 transition-colors font-mono text-sm"
-        >
-          <PlusCircle className="w-4 h-4" />
-          Add Manual Entry
-        </button>
+      <div className="mb-6 flex justify-between items-center">
+        <h2 className="text-2xl font-semibold text-[var(--color-text-primary)] flex items-center gap-2">
+          All Bookings
+          <span className="text-lg text-[var(--color-text-secondary)]">
+            ({bookings.length} total)
+            {selectedBookings.size > 0 && (
+              <span className="ml-2 text-sm text-emerald-600">
+                ({selectedBookings.size} selected)
+              </span>
+            )}
+          </span>
+        </h2>
+        <div className="flex items-center gap-2">
+          {selectedBookings.size > 0 && (
+            <button
+              onClick={() => setShowBulkDeleteConfirm(true)}
+              className="px-4 py-2 bg-red-600 text-white rounded-sm hover:bg-red-700 transition-colors flex items-center gap-2"
+            >
+              <Trash className="w-4 h-4" />
+              Delete Selected ({selectedBookings.size})
+            </button>
+          )}
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-sm bg-emerald-800 text-white hover:bg-emerald-700 transition-colors font-mono text-sm"
+          >
+            <PlusCircle className="w-4 h-4" />
+            Add Manual Entry
+          </button>
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-[var(--color-border)]">
-          <thead className="bg-[var(--color-bg-surface)]">
+          <thead className="bg-[var(--color-bg-subtle)]">
             <tr>
+              <th className="px-3 py-3 text-left">
+                <button
+                  onClick={toggleSelectAll}
+                  className="p-1 hover:bg-[var(--color-bg-surface-hover)] rounded transition-colors"
+                  title={selectedBookings.size === bookings.length ? "Deselect all" : "Select all"}
+                >
+                  {selectedBookings.size === bookings.length ? (
+                    <CheckSquare className="w-4 h-4 text-emerald-600" />
+                  ) : (
+                    <Square className="w-4 h-4 text-[var(--color-text-secondary)]" />
+                  )}
+                </button>
+              </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
                 Accommodation
               </th>
@@ -519,7 +606,19 @@ export function BookingsList() {
           </thead>
           <tbody className="bg-[var(--color-bg-surface)] divide-y divide-[var(--color-border)]">
             {bookings.map((booking) => (
-              <tr key={booking.id} className="hover:bg-[var(--color-bg-surface-hover)] transition-colors group">
+              <tr key={booking.id} className={`hover:bg-[var(--color-bg-surface-hover)] transition-colors group ${selectedBookings.has(booking.id) ? 'bg-emerald-50 dark:bg-emerald-900/10' : ''}`}>
+                <td className="px-3 py-4">
+                  <button
+                    onClick={() => toggleBookingSelection(booking.id)}
+                    className="p-1 hover:bg-[var(--color-bg-surface-hover)] rounded transition-colors"
+                  >
+                    {selectedBookings.has(booking.id) ? (
+                      <CheckSquare className="w-4 h-4 text-emerald-600" />
+                    ) : (
+                      <Square className="w-4 h-4 text-[var(--color-text-secondary)]" />
+                    )}
+                  </button>
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm font-medium text-[var(--color-text-primary)]">
                     {booking.accommodation_title}
@@ -744,6 +843,61 @@ export function BookingsList() {
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                 ) : (
                   'Cancel Booking'
+                )}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Bulk Delete Confirmation Modal */}
+      {showBulkDeleteConfirm && (
+        <div 
+          className="fixed inset-0 bg-overlay backdrop-blur-sm flex justify-center items-center z-[100] p-4"
+          onClick={() => setShowBulkDeleteConfirm(false)}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="bg-[var(--color-bg-surface)] p-6 md:p-8 rounded-sm shadow-2xl w-full max-w-md border border-[var(--color-border)] relative z-[101]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-xl font-semibold text-[var(--color-text-primary)] mb-4 font-mono">
+              Confirm Bulk Deletion
+            </h2>
+            <p className="text-[var(--color-text-secondary)] mb-4 font-mono">
+              Are you sure you want to cancel <strong className="text-red-600">{selectedBookings.size} bookings</strong>?
+            </p>
+            <div className="mb-4 p-3 bg-yellow-900/20 border border-yellow-700/50 rounded-sm">
+              <p className="text-sm text-yellow-600 font-mono">
+                <strong>Warning:</strong> This action cannot be undone. All selected bookings will be marked as cancelled.
+              </p>
+            </div>
+            <p className="text-[var(--color-text-secondary)] mb-4 font-mono text-sm">
+              <strong className="text-[var(--color-text-primary)]">Note:</strong> This will cancel the bookings. To permanently delete the booking records, you'll need to do it via Supabase.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowBulkDeleteConfirm(false)}
+                className="px-4 py-2 rounded-sm bg-[var(--color-button-secondary-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-button-secondary-bg-hover)] transition-colors font-mono"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                disabled={loading}
+                className={`px-4 py-2 rounded-sm bg-red-600 text-white hover:bg-red-700 transition-colors font-mono flex items-center gap-2 ${
+                  loading ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
+                {loading ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                ) : (
+                  <>
+                    <Trash className="w-4 h-4" />
+                    Cancel {selectedBookings.size} Bookings
+                  </>
                 )}
               </button>
             </div>

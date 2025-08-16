@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { formatInTimeZone } from 'date-fns-tz';
 import { formatDateForDisplay } from '../../utils/dates';
 import { AccommodationRow, Booking, ViewMode } from './types';
-import { getBookingsForCell, getBookingColor, shouldShowName, SINGLE_ROOMS } from './utils';
+import { getBookingsForCell, getBookingColor, shouldShowName } from './utils';
+import { SINGLE_ROOMS, ACCOMMODATION_IDS } from './constants';
+import { isSingleRoom, isDormAccommodation, isReassignableBooking, isBookingInRange } from './helpers';
 import { ReassignModal } from './ReassignModal';
 import { BookingSelectionModal } from './BookingSelectionModal';
 import { RefreshCw } from 'lucide-react';
@@ -36,13 +38,8 @@ export function CalendarTable({
     viewEnd.setDate(viewEnd.getDate() + 1); // Include the last day
     
     return accommodationRows.filter(row => {
-      // Always show single rooms (they're limited and important to see availability)
-      if (SINGLE_ROOMS.includes(row.accommodation_title)) {
-        return true;
-      }
-      
-      // Always show dorm beds (limited capacity)
-      if (row.is_bed) {
+      // Always show single rooms and dorm beds (limited capacity)
+      if (isSingleRoom(row.accommodation_title) || row.is_bed) {
         return true;
       }
       
@@ -55,8 +52,7 @@ export function CalendarTable({
       if (row.item_id) {
         const hasAssignedBooking = bookings.some(b =>
           b.accommodation_item_id === row.item_id &&
-          b.check_in < viewEnd && 
-          b.check_out > viewStart
+          isBookingInRange(b, viewStart, viewEnd)
         );
         if (hasAssignedBooking) return true;
       }
@@ -65,8 +61,7 @@ export function CalendarTable({
       const hasBookingsInView = bookings.some(booking => 
         booking.accommodation_id === row.accommodation_id &&
         (!row.item_id || booking.accommodation_item_id === row.item_id) &&
-        booking.check_in < viewEnd && 
-        booking.check_out > viewStart
+        isBookingInRange(booking, viewStart, viewEnd)
       );
       
       return hasBookingsInView;
@@ -137,14 +132,7 @@ export function CalendarTable({
 
   const handleDragStart = (booking: Booking, e: React.DragEvent) => {
     // Only allow dragging for reassignable bookings
-    if (booking.accommodation_title?.includes('Bell Tent') || 
-        booking.accommodation_title?.includes('Tipi') ||
-        booking.accommodation_title === 'Staying with somebody' ||
-        booking.accommodation_title === 'Your Own Tent' ||
-        booking.accommodation_title === 'Van Parking' ||
-        // Include dorm bookings for dragging
-        booking.accommodation_id === '25c2a846-926d-4ac8-9cbd-f03309883e22' || // 3-bed dorm
-        booking.accommodation_id === 'd30c5cf7-f033-449a-8cec-176b754db7ee') {   // 6-bed dorm
+    if (isReassignableBooking(booking)) {
       setDraggedBooking(booking);
       e.dataTransfer.effectAllowed = 'move';
     } else {
@@ -372,16 +360,8 @@ export function CalendarTable({
                     
                     if (cellBookings.length === 1) {
                       const booking = cellBookings[0];
-                      const isUnassigned = !booking.accommodation_item_id && (
-                        booking.accommodation_title === 'Staying with somebody' ||
-                        booking.accommodation_title?.includes('Bell Tent') ||
-                        booking.accommodation_title?.includes('Tipi') ||
-                        booking.accommodation_title === 'Your Own Tent' ||
-                        booking.accommodation_title === 'Van Parking' ||
-                        // Include dorm bookings
-                        booking.accommodation_id === '25c2a846-926d-4ac8-9cbd-f03309883e22' || // 3-bed dorm
-                        booking.accommodation_id === 'd30c5cf7-f033-449a-8cec-176b754db7ee'    // 6-bed dorm
-                      );
+                      // A booking is only unassigned if it has no accommodation_item_id
+                      const isUnassigned = !booking.accommodation_item_id;
                       
                       const baseColor = getBookingColor(booking);
                       
@@ -433,17 +413,17 @@ export function CalendarTable({
                           b.accommodation_id === '25c2a846-926d-4ac8-9cbd-f03309883e22' || // 3-bed dorm
                           b.accommodation_id === 'd30c5cf7-f033-449a-8cec-176b754db7ee'    // 6-bed dorm
                         );
-                        if (isUnassigned) {
+                        if (isUnassigned && !isOnlyCheckout) {
                           return guestInfo + ' (Unassigned - click to assign)';
                         }
                         return guestInfo;
-                      }).join('\n') + (isReassignable && !isUnassignedStaying ? '\n\nClick to manage assignments' : '')
+                      }).join('\n') + (isReassignable && !isUnassignedStaying && !isOnlyCheckout ? '\n\nClick to manage assignments' : '')
                     : undefined;
 
                   return (
                     <td 
                       key={day.toISOString()} 
-                      className={`px-2 py-1 border-r border-b border-[var(--color-border)] h-12 ${bgColorClass} ${hasBookings && isReassignable ? 'cursor-move hover:opacity-80' : ''} ${isDragOver ? 'ring-2 ring-emerald-500 ring-inset' : ''} relative transition-all`}
+                      className={`px-2 py-1 border-r border-b border-[var(--color-border)] h-12 ${bgColorClass} ${hasBookings && isReassignable && !isOnlyCheckout ? 'cursor-move hover:opacity-80' : ''} ${isDragOver ? 'ring-2 ring-emerald-500 ring-inset' : ''} relative transition-all`}
                       style={cellStyle}
                       draggable={hasBookings && isReassignable && !isCheckoutCell}
                       onDragStart={hasBookings && isReassignable && !isCheckoutCell ? (e) => handleDragStart(cellBookings[0], e) : undefined}
@@ -454,6 +434,10 @@ export function CalendarTable({
                         
                         // Allow reassignment in both week and month views
                         if (!isReassignable) return;
+                        
+                        // Don't allow reassignment on checkout-only cells
+                        if (isOnlyCheckout) return;
+                        
                         // Handle cell click for reassignment
                         // Check if we clicked on the name span - if so, ignore
                         const target = e.target as HTMLElement;
@@ -507,7 +491,8 @@ export function CalendarTable({
                             className={`absolute inset-0 ${getBookingColor(cellBookings[0])}`}
                             style={{
                               clipPath: 'polygon(0 0, 70% 0, 0 70%)',
-                              opacity: 0.8
+                              // Match opacity: unassigned bookings get 0.6, assigned get full opacity
+                              opacity: !cellBookings[0].accommodation_item_id ? 0.6 : 1
                             }}
                           />
                           <div 
@@ -537,11 +522,11 @@ export function CalendarTable({
                       {hasBookings && (
                         <div className={`font-medium text-center ${viewMode === 'month' ? 'text-xs px-1' : 'text-xs'} ${cellBookings.length > 1 ? 'flex flex-col' : ''} ${isCheckoutCell ? 'relative z-10 text-gray-700 dark:text-gray-300' : ''}`}>
                           {viewMode === 'month' ? (
-                            // Month view - show names as clickable links
-                            cellContentData.filter(d => d.showName || d.isCheckoutDay).map((data, idx) => (
+                            // Month view - show names as clickable links only on first visible day
+                            cellContentData.filter(d => d.showName).map((data, idx) => (
                               <span
                                 key={data.booking.id}
-                                className={`cursor-pointer hover:underline ${data.isCheckoutDay ? 'text-white font-bold' : ''}`}
+                                className="cursor-pointer hover:underline"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   onBookingClick(data.booking, e);
@@ -551,13 +536,13 @@ export function CalendarTable({
                               </span>
                             ))
                           ) : (
-                            // Week view - show with arrows and clickable names
+                            // Week view - show names only on first visible day
                             cellContentData.slice(0, 2).map((data, idx) => (
                               <div key={data.booking.id} className="truncate">
                                 {data.isFirstDay && !data.isCheckoutDay && <span className="mr-1">→</span>}
-                                {(data.showName || data.isCheckoutDay) && (
+                                {data.showName && (
                                   <span
-                                    className={`cursor-pointer hover:underline relative z-10 ${data.isCheckoutDay ? 'text-white font-bold' : ''}`}
+                                    className="cursor-pointer hover:underline relative z-10"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       onBookingClick(data.booking, e);

@@ -358,10 +358,11 @@ class BookingService {
         console.warn('[BookingService] Error fetching accommodation details:', accError);
       }
 
-      // Send booking confirmation email
+      // Send booking confirmation email (non-blocking for faster response)
       if (user?.email) {
-        console.log('[BookingService] Sending booking confirmation email to:', user.email);
-        const { error: emailError } = await supabase.functions.invoke('send-booking-confirmation', {
+        console.log('[BookingService] Scheduling booking confirmation email to:', user.email);
+        // Fire and forget - don't await to speed up response
+        supabase.functions.invoke('send-booking-confirmation', {
           body: { 
             email: user.email,
             bookingId: newBooking.id,
@@ -371,13 +372,21 @@ class BookingService {
             totalPrice: booking.totalPrice,
             frontendUrl: getFrontendUrl()
           }
+        }).then(({ error: emailError }) => {
+          if (emailError) {
+            console.error('[BookingService] Email sending failed:', emailError);
+          } else {
+            console.log('[BookingService] Email sent successfully');
+          }
+        }).catch(err => {
+          console.error('[BookingService] Email sending exception:', err);
         });
-        console.log('[BookingService] Email sending result:', { emailError });
       }
 
       // After booking is created, if paymentRowId is provided, mark payment as paid
+      // Non-blocking to speed up response - booking is already created which is the critical part
       if (booking.paymentRowId && booking.paymentIntentId) {
-        await this.markPaymentAsPaid(booking.paymentRowId, booking.paymentIntentId, {
+        this.markPaymentAsPaid(booking.paymentRowId, booking.paymentIntentId, {
           accommodationPrice: booking.accommodationPrice,
           foodContribution: booking.foodContribution,
           seasonalAdjustment: booking.seasonalAdjustment,
@@ -389,6 +398,11 @@ class BookingService {
           accommodationPricePaid: booking.accommodationPricePaid,
           accommodationPriceAfterSeasonalDuration: booking.accommodationPriceAfterSeasonalDuration,
           subtotalAfterDiscountCode: booking.subtotalAfterDiscountCode,
+        }).then(result => {
+          console.log('[BookingService] Payment record updated successfully');
+        }).catch(err => {
+          console.error('[BookingService] Failed to update payment record:', err);
+          // Not critical - booking is already created
         });
       }
 
